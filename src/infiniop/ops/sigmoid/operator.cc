@@ -61,12 +61,13 @@ __C infiniStatus_t infiniopGetSigmoidWorkspaceSize(infiniopSigmoidDescriptor_t d
     return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
 
-__C infiniStatus_t infiniopSigmoid(infiniopSigmoidDescriptor_t desc,
-                                   void *workspace,
-                                   size_t workspace_size,
-                                   void *y,
-                                   void const *x,
-                                   void *stream) {
+__C infiniStatus_t infiniopSigmoid(
+    infiniopSigmoidDescriptor_t desc,
+    void *workspace,
+    size_t workspace_size,
+    void *y,
+    void const *x,
+    void *stream) {
 
 #define CALCULATE(CASE, NAMESPACE)                                                \
     case CASE:                                                                    \

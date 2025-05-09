@@ -12,13 +12,13 @@ public:
     __device__ __forceinline__ T operator()(const T &x) const {
         // Prevent data overflow
         //         x = __hmax(__hmin(x, __float2half(10.0f)), __float2half(-10.0f))
-        // sigmoid = 1 / (1 + exp(-x))
+        // sigmoid(x) = 1 / (1 + exp(-x))
         if constexpr (std::is_same_v<T, half2>) {
-            half2 denominator = __hadd2(make_half2(1, 1), h2exp(__hneg2(x))); // 1 + exp(-x)
-            return h2rcp(denominator);                                        //  1 / denominator
+            half2 denominator = __hadd2(make_half2(1, 1), h2exp(__hneg2(x)));
+            return h2rcp(denominator);
         } else if constexpr (std::is_same_v<T, half>) {
-            half denominator = __hadd(__float2half(1.0f), hexp(__hneg(x))); // 1 + exp(-x)
-            return hrcp(denominator);                                       //  1 / denominator
+            half denominator = __hadd(__float2half(1.0f), hexp(__hneg(x)));
+            return hrcp(denominator);
         } else if constexpr (std::is_same_v<T, float>) {
             float denominator = __fadd_rn(1.0f, __expf(-x));
             return __frcp_rn(denominator);

@@ -11,9 +11,10 @@ struct Test::Attributes {
     std::shared_ptr<Tensor> ans;
 };
 
-std::shared_ptr<Test> Test::build(std::unordered_map<std::string, std::vector<uint8_t>> attributes,
-                                  std::unordered_map<std::string, std::shared_ptr<Tensor>> tensors,
-                                  double rtol, double atol) {
+std::shared_ptr<Test> Test::build(
+    std::unordered_map<std::string, std::vector<uint8_t>> attributes,
+    std::unordered_map<std::string, std::shared_ptr<Tensor>> tensors,
+    double rtol, double atol) {
     auto test = std::shared_ptr<Test>(new Test(rtol, atol));
     test->_attributes = new Attributes();
     if (tensors.find("x") == tensors.end()
@@ -23,9 +24,7 @@ std::shared_ptr<Test> Test::build(std::unordered_map<std::string, std::vector<ui
     }
 
     test->_attributes->x = tensors["x"];
-
     test->_attributes->y = tensors["y"];
-
     test->_attributes->ans = tensors["ans"];
 
     return test;
