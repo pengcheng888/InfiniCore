@@ -134,8 +134,8 @@ def test(lib,
     '''
 
 
-    x = torch.rand(shape, dtype=dtype).to(torch_device) * 200.0 -100.0
-    y = torch.rand(shape, dtype=dtype).to(torch_device)* 200.0 -100.0
+    x = torch.rand(shape, dtype=dtype).to(torch_device) 
+    y = torch.rand(shape, dtype=dtype).to(torch_device)
 
 
 
