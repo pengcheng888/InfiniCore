@@ -14,7 +14,7 @@ from libinfiniop import (
     debug,
     get_tolerance,
     profile_operation,
-    create_workspace,
+    create_workspace
 )
 from enum import Enum, auto
 
@@ -35,21 +35,23 @@ _TEST_CASES_ = [
     ((4, 4, 5632), None, None, None),
     ((4, 4, 5632), (45056, 5632, 1), (45056, 5632, 1), (45056, 5632, 1)),
 ]
-
 _TEST_CASES_ = [
     # shape, a_stride, b_stride, c_stride
-    # ((1e1, 10, 10), (100,10, 1), (100,10, 1), (100,10, 1)),
-    # ((1e2, 10, 10), (100,10, 1), (100,10, 1), (100,10, 1)),
-    # ((1e3, 10, 10), (100,10, 1), (100,10, 1), (100,10, 1)),
-    # ((1e4, 10, 10), (100,10, 1), (100,10, 1), (100,10, 1)),
-    # ((1e5, 10, 10), (100,10, 1), (100,10, 1), (100,10, 1)),
-    ((1e6, 10, 10), (100,10, 1), (100,10, 1), (100,10, 1)),
-    # ((2e6, 10, 10), (100,10, 1), (100,10, 1), (100,10, 1)),
-
-    # ((1e5, 10, 10), None,None, None),
-    # ((1e6, 10, 10), None,None, None),
+    ((1e3, 10), (10, 1), (10, 1), (10, 1)),
+    ((1e4, 10), (10, 1), (10, 1), (10, 1)),
+    ((1e5, 10), (10, 1), (10, 1), (10, 1)),
+    ((1e6, 10), (10, 1), (10, 1), (10, 1)),
+    ((1e7, 10), (10, 1), (10, 1), (10, 1)),
+    ((2e7, 10), (10, 1), (10, 1), (10, 1)),
 ]
-
+_TEST_CASES_ = [
+    # shape, a_stride, b_stride, c_stride
+    ((1e5, 10),  None, None, None),
+    ((1e6, 10),  None, None, None),
+    ((1e7, 10),  None, None, None),
+    ((2e7, 10),  None, None, None),
+    ((5e7, 10),  None, None, None),
+]
 class Inplace(Enum):
     OUT_OF_PLACE = auto()
     INPLACE_A = auto()
@@ -67,7 +69,7 @@ _INPLACE = [
 _TEST_CASES = [
     test_case + (inplace_item,)
     for test_case in _TEST_CASES_
-    for inplace_item in [  Inplace.OUT_OF_PLACE,]
+    for inplace_item in [   Inplace.OUT_OF_PLACE]
 ]
 
 # Data types used for testing
@@ -76,24 +78,25 @@ _TENSOR_DTYPES = [torch.float16, torch.float32]
 # Tolerance map for different data types
 _TOLERANCE_MAP = {
     torch.float16: {"atol": 1e-3, "rtol": 1e-3},
-    torch.float32: {"atol": 1e-7, "rtol": 1e-7},
+    torch.float32: {"atol": 2e-7, "rtol": 1e-7},
 }
 
 DEBUG = False
-PROFILE = False
-NUM_PRERUN = 2
-NUM_ITERATIONS = 10
+PROFILE = False 
+NUM_PRERUN = 10
+NUM_ITERATIONS = 100
 
 
-class AddDescriptor(Structure):
+class SwiGLUDescriptor(Structure):
     _fields_ = [("device", c_int32)]
 
 
-infiniopAddDescriptor_t = POINTER(AddDescriptor)
+infiniopSwiGLUDescriptor_t = POINTER(SwiGLUDescriptor)
 
 
-def add(x, y):
-    return torch.add(x, y)
+def swiglu(a, b):
+    return a * b / (1 + torch.exp(-b.float()).to(b.dtype))
+    
 
 
 def process_tensors(c, c_strides, a, a_stride, b, b_stride, inplace):
@@ -140,19 +143,22 @@ def test(
     sync=None,
 ):
     print(
-        f"Testing Add on {torch_device} with shape:{shape} a_stride:{a_stride} b_stride:{b_stride} c_stride:{c_stride} "
+        f"Testing SwiGLU on {torch_device} with shape:{shape} a_stride:{a_stride} b_stride:{b_stride} c_stride:{c_stride} "
         f"dtype:{dtype} inplace:{inplace}"
     )
 
     shape = [int(val) for val in shape]
     
+    # a_stride = [int(val) for val in a_stride]
+    # b_stride = [int(val) for val in b_stride]
+    # c_stride = [int(val) for val in c_stride]
 
     a = torch.rand(shape, dtype=dtype).to(torch_device)
     b = torch.rand(shape, dtype=dtype).to(torch_device)
     c = torch.rand(shape, dtype=dtype).to(torch_device)
     a, b, c = process_tensors(c, c_stride, a, a_stride, b, b_stride, inplace)
 
-    ans = add(a, b)
+    ans = swiglu(a, b)
 
     a_tensor, b_tensor = [to_tensor(tensor, lib) for tensor in [a, b]]
     c_tensor = (
@@ -163,9 +169,9 @@ def test(
     if sync is not None:
         sync()
 
-    descriptor = infiniopAddDescriptor_t()
+    descriptor = infiniopSwiGLUDescriptor_t()
     check_error(
-        lib.infiniopCreateAddDescriptor(
+        lib.infiniopCreateSwiGLUDescriptor(
             handle,
             ctypes.byref(descriptor),
             c_tensor.descriptor,
@@ -180,24 +186,21 @@ def test(
 
     workspace_size = c_uint64(0)
     check_error(
-        lib.infiniopGetAddWorkspaceSize(descriptor, ctypes.byref(workspace_size))
+        lib.infiniopGetSwiGLUWorkspaceSize(descriptor, ctypes.byref(workspace_size))
     )
     workspace = create_workspace(workspace_size.value, c.device)
 
-    def lib_add():
+    def lib_swiglu():
         check_error(
-            lib.infiniopAdd(
-                descriptor,
+            lib.infiniopSwiGLU(
+                descriptor, 
                 workspace.data_ptr() if workspace is not None else None,
                 workspace_size.value,
-                c_tensor.data,
-                a_tensor.data,
-                b_tensor.data,
-                None,
+                c_tensor.data, a_tensor.data, b_tensor.data, None
             )
         )
 
-    lib_add()
+    lib_swiglu()
 
     atol, rtol = get_tolerance(_TOLERANCE_MAP, dtype)
     if DEBUG:
@@ -207,34 +210,34 @@ def test(
     # Profiling workflow
     if PROFILE:
         # fmt: off
-        profile_operation("PyTorch", lambda: add(a, b), torch_device, NUM_PRERUN, NUM_ITERATIONS)
-        profile_operation("    lib", lambda: lib_add(), torch_device, NUM_PRERUN, NUM_ITERATIONS)
+        # profile_operation("PyTorch", lambda: swiglu(a, b), torch_device, NUM_PRERUN, NUM_ITERATIONS)
+        profile_operation("    lib", lambda: lib_swiglu(), torch_device, NUM_PRERUN, NUM_ITERATIONS)
         # fmt: on
-    check_error(lib.infiniopDestroyAddDescriptor(descriptor))
+    check_error(lib.infiniopDestroySwiGLUDescriptor(descriptor))
 
 
 if __name__ == "__main__":
     args = get_args()
     lib = open_lib()
 
-    lib.infiniopCreateAddDescriptor.restype = c_int32
-    lib.infiniopCreateAddDescriptor.argtypes = [
+    lib.infiniopCreateSwiGLUDescriptor.restype = c_int32
+    lib.infiniopCreateSwiGLUDescriptor.argtypes = [
         infiniopHandle_t,
-        POINTER(infiniopAddDescriptor_t),
+        POINTER(infiniopSwiGLUDescriptor_t),
         infiniopTensorDescriptor_t,
         infiniopTensorDescriptor_t,
         infiniopTensorDescriptor_t,
     ]
 
-    lib.infiniopGetAddWorkspaceSize.restype = c_int32
-    lib.infiniopGetAddWorkspaceSize.argtypes = [
-        infiniopAddDescriptor_t,
+    lib.infiniopGetSwiGLUWorkspaceSize.restype = c_int32
+    lib.infiniopGetSwiGLUWorkspaceSize.argtypes = [
+        infiniopSwiGLUDescriptor_t,
         POINTER(c_uint64),
     ]
 
-    lib.infiniopAdd.restype = c_int32
-    lib.infiniopAdd.argtypes = [
-        infiniopAddDescriptor_t,
+    lib.infiniopSwiGLU.restype = c_int32
+    lib.infiniopSwiGLU.argtypes = [
+        infiniopSwiGLUDescriptor_t,
         c_void_p,
         c_uint64,
         c_void_p,
@@ -243,9 +246,9 @@ if __name__ == "__main__":
         c_void_p,
     ]
 
-    lib.infiniopDestroyAddDescriptor.restype = c_int32
-    lib.infiniopDestroyAddDescriptor.argtypes = [
-        infiniopAddDescriptor_t,
+    lib.infiniopDestroySwiGLUDescriptor.restype = c_int32
+    lib.infiniopDestroySwiGLUDescriptor.argtypes = [
+        infiniopSwiGLUDescriptor_t,
     ]
 
     # Configure testing options

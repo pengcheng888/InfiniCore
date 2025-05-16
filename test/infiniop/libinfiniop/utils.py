@@ -3,7 +3,7 @@ from .datatypes import *
 from .devices import *
 from typing import Sequence
 from .liboperators import infiniopTensorDescriptor_t, CTensor, infiniopHandle_t
-
+import time
 
 def check_error(status):
     if status != 0:
@@ -142,14 +142,14 @@ def get_args():
     parser.add_argument(
         "--num_prerun",
         type=lambda x: max(0, int(x)),
-        default=10,
-        help="Set the number of pre-runs before profiling. Default is 10. Must be a non-negative integer.",
+        default=2,
+        help="Set the number of pre-runs before profiling. Default is 2. Must be a non-negative integer.",
     )
     parser.add_argument(
         "--num_iterations",
         type=lambda x: max(0, int(x)),
-        default=1000,
-        help="Set the number of iterations for profiling. Default is 1000. Must be a non-negative integer.",
+        default=100,
+        help="Set the number of iterations for profiling. Default is 100. Must be a non-negative integer.",
     )
     parser.add_argument(
         "--debug",
@@ -365,7 +365,7 @@ def get_tolerance(tolerance_map, tensor_dtype, default_atol=0, default_rtol=1e-3
 
 
 def timed_op(func, num_iterations, device):
-    import time
+  
 
     """ Function for timing operations with synchronization. """
     synchronize_device(device)
@@ -396,7 +396,7 @@ def profile_operation(desc, func, torch_device, NUM_PRERUN, NUM_ITERATIONS):
 
     # Timed execution
     elapsed = timed_op(lambda: func(), NUM_ITERATIONS, torch_device)
-    print(f" {desc} time: {elapsed * 1000 :6f} ms")
+    print(f"NUM_ITERATIONS {NUM_ITERATIONS}  {desc} time: {elapsed * 1000 :6f} ms")
 
 
 def test_operator(lib, device, test_func, test_cases, tensor_dtypes):
@@ -413,7 +413,10 @@ def test_operator(lib, device, test_func, test_cases, tensor_dtypes):
     - tensor_dtypes (list): A list of tensor data types (e.g., `torch.float32`) to test.
     """
     lib.infinirtSetDevice(device, ctypes.c_int(0))
+    synchronize_device(device)
+
     handle = create_handle(lib)
+
     try:
         for test_case in test_cases:
             for tensor_dtype in tensor_dtypes:

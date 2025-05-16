@@ -1,9 +1,10 @@
 name      := pro
 workdir   := workspace111
-python      := /home/ubuntu/miniconda3/envs/py310torch260/bin/python
+python      := python
 
 # /home/ubuntu/miniconda3/envs/py310torch260/bin/python
 # @mkdir -p build && cd build && cmake .. && make -j16
+# nsys profile 	python /path/to/your/script.py  <your script.py's parameters>
 build:
 
 	@echo "------------------- xmake f -v  --------------------"
@@ -40,15 +41,22 @@ run-test:
 # @make build && cd $(workdir) && ./$(name)
 run:
 	# @make build
-	@echo "\n\n\n ------------------- python add_v2.py --nvidia --profile -------------------- \n"
-	@$(python)  test/infiniop/add_v2.py  --nvidia --profile
+	# @echo "\n\n\n ------------------- python add_v2.py --nvidia --profile -------------------- \n"
+	# @$(python)  test/infiniop/add_v2.py  --nvidia --profile
 
-	# @echo "\n\n\n ------------------- python swiglu.py --nvidia --profile -------------------- \n"
-	# @$(python) test/infiniop/swiglu.py  --nvidia --profile
+	@echo "\n\n\n ------------------- python swiglu_v2.py --nvidia --profile -------------------- \n"
+	@$(python) test/infiniop/swiglu_v2.py  --nvidia --profile
 	
 	# @echo "\n\n\n ------------------- python attention.py --nvidia --profile -------------------- \n"
 	# @$(python)  test/infiniop/attention.py  --nvidia --profile
+
+run-nsys:
+	# @echo "\n\n\n ------------------- python add_v3_nsys.py --nvidia -------------------- \n"
+	# @nsys profile  $(python) test/infiniop/add_v3_nsys.py  --nvidia 
 	
+	@echo "\n\n\n ------------------- python add_v3_nsys.py --nvidia -------------------- \n"
+	@nsys profile  $(python) test/infiniop/swiglu_v3_nsys.py  --nvidia 
+
 
 # 定义清理指令
 clean:
