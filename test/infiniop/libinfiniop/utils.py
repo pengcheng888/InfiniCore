@@ -148,8 +148,8 @@ def get_args():
     parser.add_argument(
         "--num_iterations",
         type=lambda x: max(0, int(x)),
-        default=1000,
-        help="Set the number of iterations for profiling. Default is 1000. Must be a non-negative integer.",
+        default=100,
+        help="Set the number of iterations for profiling. Default is 100. Must be a non-negative integer.",
     )
     parser.add_argument(
         "--debug",
