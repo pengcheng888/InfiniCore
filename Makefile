@@ -39,15 +39,16 @@ run-test:
 
 # @make build && cd $(workdir) && ./$(name)
 run:
-	@echo "\n\n\n ------------------- python add_v2.py --nvidia --profile -------------------- \n"
-	@$(python)  test/infiniop/add_v2.py  --nvidia --profile
+	# @echo "\n\n\n ------------------- python add_v2.py --nvidia --profile -------------------- \n"
+	# @$(python)  test/infiniop/add_v2.py  --nvidia --profile
 
-	@echo "\n\n\n ------------------- python swiglu_v2.py --nvidia --profile -------------------- \n"
-	@$(python) test/infiniop/swiglu_v2.py  --nvidia --profile
+	# @echo "\n\n\n ------------------- python swiglu_v2.py --nvidia --profile -------------------- \n"
+	# @$(python) test/infiniop/swiglu_v2.py  --nvidia --profile
 	
-	@echo "\n\n\n ------------------- python attention.py --nvidia --profile -------------------- \n"
-	@$(python)  test/infiniop/attention.py  --nvidia --profile
-	
+	@echo "\n\n\n ------------------- python attention_v2.py --nvidia --profile -------------------- \n"
+	@$(python)  test/infiniop/attention_v2.py  --nvidia --profile
+
+
 
 # 定义清理指令
 clean:
