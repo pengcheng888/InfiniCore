@@ -30,11 +30,30 @@ class AttentionDescriptor(Structure):
 infiniopAttentionDescriptor_t = POINTER(AttentionDescriptor)
 
 
-def causal_softmax(x):
+def causal_softmax(x,  # Size([32, 5, 5])
+                   ):
     type = x.dtype
     mask = torch.tril(torch.ones_like(x), diagonal=-1).flip(dims=[-2, -1])
+    '''
+    print(mask[0])
+    tensor([[0., 1., 1., 1., 1.],
+            [0., 0., 1., 1., 1.],
+            [0., 0., 0., 1., 1.],
+            [0., 0., 0., 0., 1.],
+            [0., 0., 0., 0., 0.]], device='cuda:0', dtype=torch.float16)
+    '''
     y = x.clone()
     masked = torch.where(mask == 1, -torch.inf, y.to(torch.float32))
+
+    '''
+    print(masked[0])    
+    tensor([[0.0176,   -inf,   -inf,   -inf,   -inf],
+            [0.0172, 0.0195,   -inf,   -inf,   -inf],
+            [0.0215, 0.0223, 0.0221,   -inf,   -inf],
+            [0.0218, 0.0227, 0.0232, 0.0204,   -inf],
+            [0.0209, 0.0217, 0.0210, 0.0192, 0.0210]], device='cuda:0')
+    '''
+
     return torch.nn.functional.softmax(masked, dim=-1).to(type)
 
 
@@ -44,48 +63,49 @@ def attention(q,  # [n_q_head, seq_len, head_dim]
               k_cache,  # [n_kv_head, k_cache_buf_len, head_dim]
               v_cache,  # [n_kv_head, v_cache_buf_len, head_dim]
               pos):
+    '''
+        32,  # n_q_head
+        4,  # n_kv_head
+        5,  # seq_len
+        64,  # head_dim
+        0,  # pos
+        2048,  # k_cache_buf_len
+        2048,  # v_cache_buf_len
+    '''
 
     type = q.dtype
 
     n_q_head = q.shape[0]  # 32
     n_kv_head = k.shape[0]  # 4 。 得需要8个q, 匹配一组 kv
 
-    # Concatenate key and value caches
-    k_cache = k_cache[:, :pos, :]  # (n_kv_head, pos, head_dim)   Size([4, 0, 64])  有0的话，相当于是空数据吗
-    v_cache = v_cache[:, :pos, :]  # (n_kv_head, pos, head_dim)   Size([4, 0, 64])
-
-    k = torch.cat([k_cache, k], dim=1)  # (n_kv_head, total_seq_len, head_dim)  total_seq_len是 5
-    v = torch.cat([v_cache, v], dim=1)  # (n_kv_head, total_seq_len, head_dim)  total_seq_len是 5
-
     total_seq_len = k.shape[1]  # 5
     head_dim = v.shape[-1]  # 64
 
     if n_q_head != n_kv_head:
         # Size([32, 5, 64]) ==> Size([4, 40, 64])
-        q = q.reshape(n_kv_head, -1, head_dim)  # (n_kv_head, n_group * seq_len, head_dim) n_group的值是40
+        q = q.reshape(n_kv_head, -1, head_dim)  # (n_kv_head, n_group * seq_len, head_dim)  n_group的值是8
 
     # Scaled dot-product attention
     attn_scores = (
-        # Size([4, 8, 64]) , Size([4, 1, 64])
+        # Size([4, 8*5, 64]) , Size([4, 5, 64])  ===>  4x40x5
+        # 4x40x5 ==> 32x5x5
         torch.einsum("hqd,hkd->hqk", q.to(torch.float32), k.to(torch.float32))
         .to(type).reshape(n_q_head, -1, total_seq_len)
-    )  # (n_q_head, seq_len, total_seq_len)  32x1x1 =>  Size([32, 1, 1])
+    )  # (n_q_head, seq_len, total_seq_len)  => Size([32, 5, 5])
 
     attn_scores = attn_scores / (head_dim ** 0.5)
 
-    attn_weights = causal_softmax(attn_scores).reshape(
-        n_kv_head, -1, total_seq_len
-    )  # (n_kv_head, seq_len, total_seq_len)
+    # Size([32, 5, 5]) ==> Size([4, 40, 5])
+    attn_weights = causal_softmax(attn_scores).reshape(n_kv_head, -1, total_seq_len)  # (n_kv_head, seq_len, total_seq_len)
 
     # Weighted sum of values
     attn_output = (
         torch.einsum(
+            # Size([4, 8*5, 5]) , Size([4, 5, 64])  ===>  Size([4, 40, 64])
+            # Size([4, 40, 64]) ==> Size([32, 5, 64])  ==> Size([5, 32, 64])
             "hqk,hkd->hqd", attn_weights.to(torch.float32), v.to(torch.float32)
-        )
-        .to(type)
-        .reshape(n_q_head, -1, head_dim)
-        .permute(1, 0, 2)
-    )  # ([seq_len, n_q_head, head_dim])
+        ).to(type).reshape(n_q_head, -1, head_dim).permute(1, 0, 2)
+    )  # ( [seq_len, n_q_head, head_dim] )
 
     return attn_output
 
@@ -377,6 +397,21 @@ if __name__ == "__main__":
         #     [64, 11264, 1],  # v_cache_stride
         # ),
     ]
+    test_cases = [
+        (
+            32,  # n_q_head 应该是Grouped Multi-Head Attention，q的数量是kv和整数倍，将多个Q头共享一个K或V头。通过广播计算
+            4,  # n_kv_head
+            5,  # seq_len
+            64,  # head_dim
+            0,  # pos
+            2048,  # k_cache_buf_len
+            2048,  # v_cache_buf_len
+            [64, 2560, 1],  # q_stride
+            [64, 2560, 1],  # k_stride
+            [64, 2560, 1],  # v_stride
+            [64, 11264, 1],  # k_cache_stride
+            [64, 11264, 1],  # v_cache_stride
+        )]
 
     args = get_args()
     lib = open_lib()

@@ -46,7 +46,7 @@ run:
 	# @$(python) test/infiniop/swiglu_v2.py  --nvidia --profile
 	
 	@echo "\n\n\n ------------------- python attention_v2.py --nvidia --profile -------------------- \n"
-	@$(python)  test/infiniop/attention_v2.py  --nvidia --profile
+	@$(python)  test/infiniop/attention_v2.py  --nvidia
 
 
 
