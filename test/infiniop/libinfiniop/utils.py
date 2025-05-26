@@ -4,7 +4,7 @@ from .devices import *
 from typing import Sequence
 from .liboperators import infiniopTensorDescriptor_t, CTensor, infiniopHandle_t
 
-
+import torch
 def check_error(status):
     if status != 0:
         raise Exception("Error code " + str(status))
@@ -37,7 +37,7 @@ def to_tensor(tensor, lib, force_unsigned=False):
         InfiniDtype.U64 if tensor.dtype == torch.uint64 else
         None
     )
-    
+
     if force_unsigned:
         dt = (
             InfiniDtype.U8 if dt == InfiniDtype.I8 else
@@ -85,6 +85,9 @@ def rearrange_tensor(tensor, new_strides):
 
     shape = tensor.shape
 
+    # --------------------------------------------------------------------------------- #
+    #                            计算新向量中的元素的个数                                  #
+    # --------------------------------------------------------------------------------- #
     new_size = [0] * len(shape)
     left = 0
     right = 0
@@ -97,11 +100,15 @@ def rearrange_tensor(tensor, new_strides):
             # left += new_strides[i] * (shape[i] - 1)
             raise ValueError("Negative strides are not supported yet")
 
-    # Create a new tensor with zeros
-    new_tensor = torch.zeros(
-        (right - left + 1,), dtype=tensor.dtype, device=tensor.device
-    )
+    # --------------------------------------------------------------------------------- #
+    #                      Create a new tensor with zeros                               #
+    #                     right - left + 1 是新向量中的元素个数                            #
+    # --------------------------------------------------------------------------------- #
+    new_tensor = torch.zeros((right - left + 1,), dtype=tensor.dtype, device=tensor.device)
 
+    # --------------------------------------------------------------------------------- #
+    #                            创建 i,j,k索引                                          #
+    # --------------------------------------------------------------------------------- #
     # Generate indices for original tensor based on original strides
     indices = [torch.arange(s) for s in shape]
     mesh = torch.meshgrid(*indices, indexing="ij")
@@ -109,13 +116,18 @@ def rearrange_tensor(tensor, new_strides):
     # Flatten indices for linear indexing
     linear_indices = [m.flatten() for m in mesh]
 
+    # --------------------------------------------------------------------------------- #
+    #                            计算每个位置的全局索引                                    #
+    # --------------------------------------------------------------------------------- #
     # Calculate new positions based on new strides
-    new_positions = sum(
-        linear_indices[i] * new_strides[i] for i in range(len(shape))
-    ).to(tensor.device)
+    new_positions = sum(linear_indices[i] * new_strides[i] for i in range(len(shape))
+                        ).to(tensor.device)
     offset = -left
     new_positions += offset
 
+    # --------------------------------------------------------------------------------- #
+    #                       通过全局索引从老向量中获得数值，存入新的向量                      #
+    # --------------------------------------------------------------------------------- #
     # Copy the original data to the new tensor
     new_tensor.view(-1).index_add_(0, new_positions, tensor.view(-1))
     new_tensor.set_(new_tensor.untyped_storage(), offset, shape, tuple(new_strides))
@@ -127,7 +139,15 @@ def rearrange_if_needed(tensor, stride):
     """
     Rearrange a PyTorch tensor if the given stride is not None.
     """
-    return rearrange_tensor(tensor, stride) if stride is not None else tensor
+    data = tensor.clone()
+
+    ret = rearrange_tensor(tensor, stride) if stride is not None else tensor
+    ret2 = data.contiguous() if stride is not None else tensor
+
+    print(ret)
+    print(ret2)
+    assert torch.allclose(ret, ret2, atol=0.001, rtol=0.001)
+    return ret
 
 
 def get_args():
@@ -231,13 +251,13 @@ def debug(actual, desired, atol=0, rtol=1e-2, equal_nan=False, verbose=True):
 
 
 def debug_all(
-    actual_vals: Sequence,
-    desired_vals: Sequence,
-    condition: str,
-    atol=0,
-    rtol=1e-2,
-    equal_nan=False,
-    verbose=True,
+        actual_vals: Sequence,
+        desired_vals: Sequence,
+        condition: str,
+        atol=0,
+        rtol=1e-2,
+        equal_nan=False,
+        verbose=True,
 ):
     """
     Debugging function to compare two sequences of values (actual and desired) pair by pair, results
@@ -477,10 +497,10 @@ def get_test_devices(args):
 def get_sync_func(device):
     import torch
     device_str = infiniDeviceEnum_str_map[device]
-    
+
     if device == InfiniDeviceEnum.CPU:
         sync = None
     else:
         sync = getattr(torch, device_str).synchronize
-    
+
     return sync

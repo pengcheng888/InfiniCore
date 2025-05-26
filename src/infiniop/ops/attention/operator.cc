@@ -88,6 +88,7 @@ __C __export infiniStatus_t infiniopCreateAttentionDescriptor(infiniopHandle_t h
     // Rearrange k into k_cache
     infiniopTensorDescriptor_t dst_k_desc;
     CHECK_STATUS(infiniopCreateTensorDescriptor(&dst_k_desc, 3, k_desc->shape().data(), k_cache_desc->strides().data(), k_cache_desc->dtype()));
+
     infiniopRearrangeDescriptor_t rearrange_desc_k;
     CHECK_STATUS(infiniopCreateRearrangeDescriptor(handle, &rearrange_desc_k, dst_k_desc, k_desc));
 
@@ -114,23 +115,28 @@ __C __export infiniStatus_t infiniopCreateAttentionDescriptor(infiniopHandle_t h
     CHECK_STATUS(infiniopCreateTensorDescriptor(&reshaped_q_desc, 3, q_desc->shape().data(), nullptr, q_desc->dtype()));
     TRANSFORM_TENSOR_DESC(reshaped_q_desc, dimSplit(0, {n_kv_head, n_group}));
     TRANSFORM_TENSOR_DESC(reshaped_q_desc, dimMerge(1, 2));
+
     //      full_k: [n_kv_head, head_dim, total_seq_len]
     infiniopTensorDescriptor_t full_k_desc;
     uint64_t full_k_shape[3] = {n_kv_head, total_seq_len, head_dim};
     CHECK_STATUS(infiniopCreateTensorDescriptor(&full_k_desc, 3, full_k_shape, k_cache_desc->strides().data(), k_cache_desc->dtype()));
     TRANSFORM_TENSOR_DESC(full_k_desc, dimPermute({0, 2, 1}));
+
     //      qk: [n_kv_head, n_group * seq_len, total_seq_len]
     infiniopTensorDescriptor_t qk_desc;
     uint64_t qk_shape[3] = {n_kv_head, n_group * seq_len, total_seq_len};
     CHECK_STATUS(infiniopCreateTensorDescriptor(&qk_desc, 3, qk_shape, nullptr, q_desc->dtype()));
+
     //      matmul1_desc
     //          qk_alpha
     float qk_alpha = 1 / sqrt(head_dim);
     infiniopGemmDescriptor_t matmul1_desc;
     CHECK_STATUS(infiniopCreateGemmDescriptor(handle, &matmul1_desc, qk_desc, reshaped_q_desc, full_k_desc));
+
     //      matmul1 workspace size
     uint64_t matmul1_workspace_size;
     CHECK_STATUS(infiniopGetGemmWorkspaceSize(matmul1_desc, &matmul1_workspace_size));
+
     //      matmul1 tensor size
     uint64_t matmul1_tensor_size = qk_desc->numel() * infiniSizeOf(qk_desc->dtype());
 
