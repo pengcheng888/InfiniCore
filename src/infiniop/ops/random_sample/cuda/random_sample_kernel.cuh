@@ -1,8 +1,18 @@
-﻿#include "../../../devices/cuda/cuda_kernel_common.cuh"
-#include "infinicore.h"
-#include <cub/device/device_radix_sort.cuh>
+﻿#include <cub/device/device_radix_sort.cuh>
 #include <cub/device/device_reduce.cuh>
 #include <cub/device/device_scan.cuh>
+#include "../../../devices/cuda/cuda_kernel_common.cuh"
+#include "infinicore.h"
+
+#ifdef ENABLE_INFINI_CUB
+#include "../../../../infinicub/include/cub_algorithms.cuh"
+#endif
+
+#ifdef ENABLE_INFINI_CUB
+
+#else
+
+#endif
 
 namespace op::random_sample::cuda {
 
@@ -10,43 +20,73 @@ namespace op::random_sample::cuda {
 
 template <class T>
 static cudaError argMax_(
-    cub::KeyValuePair<int, T> *kv_pair,
-    const T *logits,
+    cub::KeyValuePair<int, T>* kv_pair,
+    const T* logits,
     int n,
-    void *workspace_ptr,
-    size_t &workspace_len,
+    void* workspace_ptr,
+    size_t& workspace_len,
     cudaStream_t stream) {
-    return cub::DeviceReduce::ArgMax(
-        workspace_ptr, workspace_len,
-        logits, kv_pair, n,
-        stream);
+#ifdef ENABLE_INFINI_CUB
+    return infini_cub::cub_DeviceReduce_ArgMax(kv_pair,
+                                               logits,
+                                               n,
+                                               workspace_ptr,
+                                               workspace_len,
+                                               stream);
+#else
+    return cub::DeviceReduce::ArgMax(workspace_ptr, workspace_len, logits, kv_pair, n, stream);
+#endif
 }
 
 template <class Tval, class Tidx>
 static cudaError radixSort(
-    void *workspace_ptr, size_t &workspace_len,
-    const Tval *key_in, Tval *key_out,
-    const Tidx *val_in, Tidx *val_out,
+    void* workspace_ptr,
+    size_t& workspace_len,
+    const Tval* key_in,
+    Tval* key_out,
+    const Tidx* val_in,
+    Tidx* val_out,
     int n,
     cudaStream_t stream) {
-    return cub::DeviceRadixSort::SortPairsDescending(
-        workspace_ptr, workspace_len,
-        key_in, key_out,
-        val_in, val_out,
-        n,
-        0, sizeof(Tval) * 8,
-        stream);
+    // workspace_len = 0;
+    // return cudaError(0);
+
+#ifdef ENABLE_INFINI_CUB
+    return infini_cub::cub_DeviceRadixSort_SortPairsDescending(workspace_ptr, workspace_len,
+                                                               key_in,
+                                                               key_out,
+                                                               val_in,
+                                                               val_out,
+                                                               n,
+                                                               stream);
+#else
+    return cub::DeviceRadixSort::SortPairsDescending(workspace_ptr, workspace_len,
+                                                     key_in, key_out,
+                                                     val_in, val_out,
+                                                     n,
+                                                     0, sizeof(Tval) * 8,
+                                                     stream);
+#endif
 }
 
 template <class T>
 static cudaError inclusiveSum(
-    void *workspace_ptr, size_t &workspace_len,
-    T *data, int n,
+    void* workspace_ptr,
+    size_t& workspace_len,
+    T* data,
+    int n,
     cudaStream_t stream) {
-    return cub::DeviceScan::InclusiveSum(
-        workspace_ptr, workspace_len,
-        data, data, n,
-        stream);
+#ifdef ENABLE_INFINI_CUB
+    return infini_cub::cub_DeviceScan_InclusiveSum(workspace_ptr,
+                                                   workspace_len,
+                                                   data,
+                                                   n,
+                                                   stream);
+#else
+    return cub::DeviceScan::InclusiveSum(workspace_ptr, workspace_len,
+                                         data, data, n,
+                                         stream);
+#endif
 }
 
 // ↑↑↑ 重新封装 cub api，减少模板参数，方便调用
@@ -118,13 +158,13 @@ struct CudaTval<bf16_t> {
 // cuda toolkit 11.x 带的 cub::DeviceReduce::ArgMax 只接受 cub::KeyValuePair<int, Tval> 输出。
 // 这个 kernel 用于取出序号
 template <class Tidx, class Tval>
-static __global__ void castIdx(Tidx *result, const cub::KeyValuePair<int, Tval> *kv_pair) {
+static __global__ void castIdx(Tidx* result, const cub::KeyValuePair<int, Tval>* kv_pair) {
     *result = kv_pair->key;
 }
 
 // 填充排序要求的序号数组
 template <class Tidx>
-static __global__ void fillIndices(Tidx *indices, int n) {
+static __global__ void fillIndices(Tidx* indices, int n) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i < n) {
         indices[i] = i;
@@ -136,7 +176,8 @@ static __global__ void fillIndices(Tidx *indices, int n) {
 // 第一个数字需要被多个 block 读取，不能写
 template <class T>
 static __global__ void partialSoftmaxKernel(
-    T *__restrict__ data, int n,
+    T* __restrict__ data,
+    int n,
     float temperature) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (0 < i && i < n) {
@@ -148,7 +189,7 @@ static __global__ void partialSoftmaxKernel(
 // 将第一个数字写成 1，即 exp(0)
 template <class T>
 static __global__ void setSoftmaxMaxKernel(
-    T *__restrict__ data) {
+    T* __restrict__ data) {
     *data = 1;
 }
 
@@ -156,11 +197,13 @@ static __global__ void setSoftmaxMaxKernel(
 // 这个 kernel 仅用于避免将数据拷贝到 cpu
 template <class Tval, class Tidx>
 static __global__ void randomSampleKernel(
-    Tidx *__restrict__ result,
-    const Tval *__restrict__ sorted,
-    const Tidx *__restrict__ indices_out,
+    Tidx* __restrict__ result,
+    const Tval* __restrict__ sorted,
+    const Tidx* __restrict__ indices_out,
     size_t n,
-    float random, float topp, size_t topk) {
+    float random,
+    float topp,
+    size_t topk) {
     topk = cub::Min()(topk, n);
     auto p = (Tval)(random * cub::Min()(topp * (float)sorted[n - 1], (float)sorted[topk - 1]));
     for (size_t i = 0;; ++i) {
@@ -178,16 +221,18 @@ struct Algo {
 
     template <class Tidx, class Tval_>
     infiniStatus_t argmax(
-        void *workspace, size_t workspace_size,
-        void *result, const void *probs, size_t n,
-        void *stream_) const {
-
+        void* workspace,
+        size_t workspace_size,
+        void* result,
+        const void* probs,
+        size_t n,
+        void* stream_) const {
         using Tval = typename CudaTval<Tval_>::Type;
 
         auto stream = (cudaStream_t)stream_;
-        auto logits = (Tval *)probs;
-        auto kv_pair = (cub::KeyValuePair<int, Tval> *)workspace;
-        workspace = (void *)((char *)workspace + 256);
+        auto logits = (Tval*)probs;
+        auto kv_pair = (cub::KeyValuePair<int, Tval>*)workspace;
+        workspace = (void*)((char*)workspace + 256);
         workspace_size -= 256;
 
         argMax_(
@@ -196,37 +241,42 @@ struct Algo {
             n,
             workspace,
             workspace_size, stream);
-        castIdx<<<1, 1, 0, stream>>>((Tidx *)result, kv_pair);
+        castIdx<<<1, 1, 0, stream>>>((Tidx*)result, kv_pair);
 
         return INFINI_STATUS_SUCCESS;
     }
 
     template <class Tidx, class Tval_>
     infiniStatus_t random(
-        void *workspace_, size_t workspace_size,
-        void *result_, const void *probs, size_t n,
-        float random_val, float topp, int topk, float temperature,
-        void *stream_) const {
-
+        void* workspace_,
+        size_t workspace_size,
+        void* result_,
+        const void* probs,
+        size_t n,
+        float random_val,
+        float topp,
+        int topk,
+        float temperature,
+        void* stream_) const {
         using Tval = typename CudaTval<Tval_>::Type;
 
         auto stream = (cudaStream_t)stream_;
-        auto logits = (Tval *)probs;
-        auto result = (Tidx *)result_;
+        auto logits = (Tval*)probs;
+        auto result = (Tidx*)result_;
 
         auto workspace = reinterpret_cast<size_t>(workspace_);
         auto workspace_end = workspace + workspace_size;
 
-        auto indices = reinterpret_cast<Tidx *>(workspace);
+        auto indices = reinterpret_cast<Tidx*>(workspace);
         workspace += align256(sizeof(Tidx) * n);
 
-        auto sorted = reinterpret_cast<Tval *>(workspace);
+        auto sorted = reinterpret_cast<Tval*>(workspace);
         workspace += align256(sizeof(Tval) * n);
 
-        auto indices_out = reinterpret_cast<Tidx *>(workspace);
+        auto indices_out = reinterpret_cast<Tidx*>(workspace);
         workspace += align256(sizeof(Tidx) * n);
 
-        workspace_ = reinterpret_cast<void *>(workspace);
+        workspace_ = reinterpret_cast<void*>(workspace);
         workspace_size = workspace_end - workspace;
 
         auto block = cub::Min()((size_t)block_size, n);
@@ -256,4 +306,4 @@ struct Algo {
     }
 };
 
-} // namespace op::random_sample::cuda
+}  // namespace op::random_sample::cuda

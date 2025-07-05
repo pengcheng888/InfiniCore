@@ -1,4 +1,6 @@
 add_rules("mode.debug", "mode.release")
+
+
 -- Define color codes
 local GREEN = '\27[0;32m'
 local YELLOW = '\27[1;33m'
@@ -25,6 +27,13 @@ option("omp")
     set_description("Enable or disable OpenMP support for cpu kernel")
 option_end()
 
+-- infinicub   wpc
+option("prebuilt")
+    set_default(false)
+    set_showmenu(true)
+    set_description("Enable or disable cub package")
+option_end()
+
 if has_config("cpu") then
     includes("xmake/cpu.lua")
     add_defines("ENABLE_CPU_API")
@@ -33,6 +42,7 @@ end
 if has_config("omp") then
     add_defines("ENABLE_OMP")
 end
+
 
 -- 英伟达
 option("nv-gpu")
