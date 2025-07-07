@@ -8,7 +8,7 @@ if CUDNN_ROOT ~= nil then
     add_includedirs(CUDNN_ROOT .. "/include")
 end
 
-add_requires("infinicub", {optional = true, configs = {shared = false}})
+add_requires("infinicub 1.0.0", {optional = true, configs = {shared = false}})
 
 target("infiniop-cuda")
     set_kind("static")

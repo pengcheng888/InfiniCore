@@ -58,6 +58,7 @@ static cudaError radixSort(
         n,
         0, sizeof(Tval) * 8,
         stream);
+#endif
 }
 
 template <class T>
@@ -76,6 +77,7 @@ static cudaError inclusiveSum(
         workspace_ptr, workspace_len, 
         data, data, n,
         stream);
+#endif
 }
 
 // ↑↑↑ 重新封装 cub api，减少模板参数，方便调用
