@@ -1,4 +1,3 @@
-
 local CUDA_ROOT = os.getenv("CUDA_ROOT") or os.getenv("CUDA_HOME") or os.getenv("CUDA_PATH")
 local CUDNN_ROOT = os.getenv("CUDNN_ROOT") or os.getenv("CUDNN_HOME") or os.getenv("CUDNN_PATH")
 if CUDA_ROOT ~= nil then
@@ -8,11 +7,7 @@ if CUDNN_ROOT ~= nil then
     add_includedirs(CUDNN_ROOT .. "/include")
 end
 
--- add_requires("infinicub", {optional = true, system = false, configs = {shared = false}}) 
 add_requires("infinicub", {optional = true, configs = {shared = false}}) 
-if has_config("prebuilt") then
-    add_defines("ENABLE_INFINI_CUB")
-end
 
 target("infiniop-cuda")
     set_kind("static")
@@ -24,8 +19,8 @@ target("infiniop-cuda")
     add_links("cublas", "cudnn")
     add_cugencodes("native")
 
-    ---
     if has_config("prebuilt") then
+        add_defines("ENABLE_INFINI_CUB")
         includes("cub.lua")
         add_packages("infinicub")  -- 链接自定义包
     end

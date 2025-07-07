@@ -1,4 +1,3 @@
--------------------------------------------------------------------------
 local CUDA_ROOT = os.getenv("CUDA_ROOT") or os.getenv("CUDA_HOME") or os.getenv("CUDA_PATH")
 local CUDNN_ROOT = os.getenv("CUDNN_ROOT") or os.getenv("CUDNN_HOME") or os.getenv("CUDNN_PATH")
 if CUDA_ROOT ~= nil then
@@ -8,10 +7,9 @@ if CUDNN_ROOT ~= nil then
     add_includedirs(CUDNN_ROOT .. "/include")
 end
 
--- 库目标
+-- 静态库目标
 target("infinicub")
-    set_kind("static")  -- 从外部传入的配置 static shared
-    
+    set_kind("static")
     set_policy("build.cuda.devlink", true)
     set_toolchains("cuda")
     add_links("cublas", "cudnn")
@@ -37,11 +35,3 @@ target("infinicub")
 
     add_files("src/cub_algorithms.cu") 
 target_end()
- 
--- 测试目标
---target("main")
---    set_kind("binary")
---    add_deps("infinicub")    
---    add_includedirs("include")
---    add_files("tests/*.cpp")
-  

@@ -73,9 +73,8 @@ python scripts/install.py [XMAKE_CONFIG_FLAGS]
      ```shell
      # 英伟达
      # 可以指定 CUDA 路径， 一般环境变量为 `CUDA_HOME` 或者 `CUDA_ROOT`
-     xmake f --nv-gpu=true --cuda=$CUDA_HOME -cv
-
-     xmake f --nv-gpu=true --prebuilt=true --cuda=$CUDA_HOME -cv
+     # 如果预先编译的cub库，要将 prebuilt 设置为 true
+     xmake f --nv-gpu=true --cuda=$CUDA_HOME --prebuilt=false -cv
 
      # 寒武纪
      xmake f --cambricon-mlu=true -cv
@@ -102,16 +101,13 @@ python scripts/install.py [XMAKE_CONFIG_FLAGS]
 
 ```shell
 python test/infiniop/[operator].py [--cpu | --nvidia | --cambricon | --ascend]
-/home/ubuntu/SoftWare/Anaconda3/envs/yolov10/bin/python test/infiniop/add.py --nvidia
+python test/infiniop/random_sample.py --nvidia
 ```
 
 #### 一键运行所有Python算子测试
 
 ```shell
 python scripts/python_test.py [--cpu | --nvidia | --cambricon | --ascend]
-
-
-
 ```
 
 #### 算子测试框架
