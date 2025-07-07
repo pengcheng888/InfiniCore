@@ -1,6 +1,5 @@
 package("infinicub")
     set_description("Build infinicub library.")
-    set_policy("package.install_versiondir", true)
 
     add_versions("1.0.0", "commit-hash-or-sha256-for-v1.0.0")
     add_versions("1.0.1", "commit-hash-or-sha256-for-v1.0.1")
