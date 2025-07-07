@@ -12,6 +12,13 @@ if is_mode("debug") then
     add_defines("DEBUG_MODE")
 end
 
+-- infinicub
+option("prebuild")
+    set_default(false)
+    set_showmenu(true)
+    set_description("Enable or disable cub package")
+option_end()
+
 -- CPU
 option("cpu")
     set_default(true)
