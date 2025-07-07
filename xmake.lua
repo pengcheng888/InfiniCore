@@ -13,7 +13,7 @@ if is_mode("debug") then
 end
 
 -- infinicub
-option("prebuilt")
+option("prebuild")
     set_default(false)
     set_showmenu(true)
     set_description("Enable or disable cub package")

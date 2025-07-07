@@ -20,7 +20,7 @@ target("infiniop-cuda")
     add_links("cublas", "cudnn")
     add_cugencodes("native")
 
-    if has_config("prebuilt") then
+    if has_config("prebuild") then
         add_defines("ENABLE_INFINI_CUB")
         includes("cub.lua")
         add_packages("infinicub")
