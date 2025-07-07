@@ -73,8 +73,9 @@ python scripts/install.py [XMAKE_CONFIG_FLAGS]
      ```shell
      # 英伟达
      # 可以指定 CUDA 路径， 一般环境变量为 `CUDA_HOME` 或者 `CUDA_ROOT`
-     xmake f --nv-gpu=true --cuda=$CUDA_HOME -cv
-
+     # 如果预先编译cub库，要将 prebuilt 设置为 true
+     xmake f --nv-gpu=true --cuda=$CUDA_HOME --prebuilt=false -cv
+     
      # 寒武纪
      xmake f --cambricon-mlu=true -cv
 

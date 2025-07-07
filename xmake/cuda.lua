@@ -8,6 +8,8 @@ if CUDNN_ROOT ~= nil then
     add_includedirs(CUDNN_ROOT .. "/include")
 end
 
+add_requires("infinicub", {optional = true, configs = {shared = false}})
+
 target("infiniop-cuda")
     set_kind("static")
     add_deps("infini-utils")
@@ -17,6 +19,12 @@ target("infiniop-cuda")
     set_toolchains("cuda")
     add_links("cublas", "cudnn")
     add_cugencodes("native")
+
+    if has_config("prebuilt") then
+        add_defines("ENABLE_INFINI_CUB")
+        includes("cub.lua")
+        add_packages("infinicub")
+    end
 
     if is_plat("windows") then
         add_cuflags("-Xcompiler=/utf-8", "--expt-relaxed-constexpr", "--allow-unsupported-compiler")
