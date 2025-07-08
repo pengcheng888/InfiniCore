@@ -235,6 +235,7 @@ cudaError cub_DeviceRadixSort_SortPairsDescending(
         stream);
 }
 
+#ifdef _WIN64
 cudaError cub_DeviceRadixSort_SortPairsDescending(
     void *workspace_ptr,
     size_t &workspace_len,
@@ -252,6 +253,7 @@ cudaError cub_DeviceRadixSort_SortPairsDescending(
         0, sizeof(half) * 8,
         stream);
 }
+#endif
 
 // --------------------------------------------------------------
 // --------------------------------------------------------------
@@ -400,6 +402,7 @@ cudaError cub_DeviceRadixSort_SortPairsDescending(
         stream);
 }
 
+#ifdef _WIN64
 cudaError cub_DeviceRadixSort_SortPairsDescending(
     void *workspace_ptr,
     size_t &workspace_len,
@@ -417,6 +420,7 @@ cudaError cub_DeviceRadixSort_SortPairsDescending(
         0, sizeof(half) * 8,
         stream);
 }
+#endif
 
 // --------------------------------------------------------------
 // --------------------------------------------------------------
@@ -565,6 +569,7 @@ cudaError cub_DeviceRadixSort_SortPairsDescending(
         stream);
 }
 
+#ifdef _WIN64
 cudaError cub_DeviceRadixSort_SortPairsDescending(
     void *workspace_ptr,
     size_t &workspace_len,
@@ -582,6 +587,7 @@ cudaError cub_DeviceRadixSort_SortPairsDescending(
         0, sizeof(float) * 8,
         stream);
 }
+#endif
 
 // --------------------------------------------------------------
 // --------------------------------------------------------------
@@ -729,6 +735,7 @@ cudaError cub_DeviceRadixSort_SortPairsDescending(
                                                      stream);
 }
 
+#ifdef _WIN64
 cudaError cub_DeviceRadixSort_SortPairsDescending(
     void *workspace_ptr,
     size_t &workspace_len,
@@ -745,4 +752,6 @@ cudaError cub_DeviceRadixSort_SortPairsDescending(
                                                      0, sizeof(double) * 8,
                                                      stream);
 }
+#endif
+
 } // namespace infini_cub

@@ -159,6 +159,7 @@ cudaError cub_DeviceRadixSort_SortPairsDescending(
     int n,
     cudaStream_t stream);
 
+#ifdef _WIN64
 cudaError cub_DeviceRadixSort_SortPairsDescending(
     void *workspace_ptr,
     size_t &workspace_len,
@@ -168,6 +169,7 @@ cudaError cub_DeviceRadixSort_SortPairsDescending(
     ptrdiff_t *val_out,
     int n,
     cudaStream_t stream);
+#endif
 
 // --------------------------------------------------------------
 // --------------------------------------------------------------
@@ -252,6 +254,7 @@ cudaError cub_DeviceRadixSort_SortPairsDescending(
     int n,
     cudaStream_t stream);
 
+#ifdef _WIN64
 cudaError cub_DeviceRadixSort_SortPairsDescending(
     void *workspace_ptr,
     size_t &workspace_len,
@@ -261,6 +264,7 @@ cudaError cub_DeviceRadixSort_SortPairsDescending(
     ptrdiff_t *val_out,
     int n,
     cudaStream_t stream);
+#endif
 // --------------------------------------------------------------
 // --------------------------------------------------------------
 // --------------------------------------------------------------
@@ -344,6 +348,7 @@ cudaError cub_DeviceRadixSort_SortPairsDescending(
     int n,
     cudaStream_t stream);
 
+#ifdef _WIN64
 cudaError cub_DeviceRadixSort_SortPairsDescending(
     void *workspace_ptr,
     size_t &workspace_len,
@@ -353,7 +358,8 @@ cudaError cub_DeviceRadixSort_SortPairsDescending(
     ptrdiff_t *val_out,
     int n,
     cudaStream_t stream);
-    
+#endif
+
 // --------------------------------------------------------------
 // --------------------------------------------------------------
 // --------------------------------------------------------------
@@ -437,7 +443,7 @@ cudaError cub_DeviceRadixSort_SortPairsDescending(
     int n,
     cudaStream_t stream);
 
-
+#ifdef _WIN64
 cudaError cub_DeviceRadixSort_SortPairsDescending(
     void *workspace_ptr,
     size_t &workspace_len,
@@ -447,7 +453,8 @@ cudaError cub_DeviceRadixSort_SortPairsDescending(
     ptrdiff_t *val_out,
     int n,
     cudaStream_t stream);
-    
+#endif
+
 } // namespace infini_cub
 
 #endif // __CUB_ALGORITHMS_CUH__
