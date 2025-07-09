@@ -1,12 +1,14 @@
-#include "cub_algorithms.cuh"
+#ifdef ENABLE_CUDA_API
+
+#include "cub_algorithms_nvidia.cuh"
 #include <cub/cub.cuh>
 #include <cub/device/device_radix_sort.cuh>
 #include <cub/device/device_reduce.cuh>
 #include <cub/device/device_scan.cuh>
 
-namespace infini_cub {
+namespace infini_cub::nvidai::DeviceReduce {
 
-cudaError cub_DeviceReduce_ArgMax(
+cudaError ArgMax(
     void *workspace_ptr,
     size_t &workspace_len,
     const __nv_bfloat16 *logits,
@@ -17,7 +19,7 @@ cudaError cub_DeviceReduce_ArgMax(
     return cub::DeviceReduce::ArgMax(workspace_ptr, workspace_len, logits, kv_pair, n, stream);
 }
 
-cudaError cub_DeviceReduce_ArgMax(
+cudaError ArgMax(
     void *workspace_ptr,
     size_t &workspace_len,
     const half *logits,
@@ -27,7 +29,7 @@ cudaError cub_DeviceReduce_ArgMax(
     return cub::DeviceReduce::ArgMax(workspace_ptr, workspace_len, logits, kv_pair, n, stream);
 }
 
-cudaError cub_DeviceReduce_ArgMax(
+cudaError ArgMax(
     void *workspace_ptr,
     size_t &workspace_len,
     const float *logits,
@@ -37,7 +39,7 @@ cudaError cub_DeviceReduce_ArgMax(
     return cub::DeviceReduce::ArgMax(workspace_ptr, workspace_len, logits, kv_pair, n, stream);
 }
 
-cudaError cub_DeviceReduce_ArgMax(
+cudaError ArgMax(
     void *workspace_ptr,
     size_t &workspace_len,
     const double *logits,
@@ -46,11 +48,11 @@ cudaError cub_DeviceReduce_ArgMax(
     cudaStream_t stream) {
     return cub::DeviceReduce::ArgMax(workspace_ptr, workspace_len, logits, kv_pair, n, stream);
 }
-} // namespace infini_cub
+} // namespace infini_cub::nvidai::DeviceReduce
 
-namespace infini_cub {
+namespace infini_cub::nvidai::DeviceReduce {
 
-cudaError cub_DeviceScan_InclusiveSum(
+cudaError InclusiveSum(
     void *workspace_ptr,
     size_t &workspace_len,
     __nv_bfloat16 *data,
@@ -59,7 +61,7 @@ cudaError cub_DeviceScan_InclusiveSum(
     return cub::DeviceScan::InclusiveSum(workspace_ptr, workspace_len, data, data, n, stream);
 }
 
-cudaError cub_DeviceScan_InclusiveSum(
+cudaError InclusiveSum(
     void *workspace_ptr,
     size_t &workspace_len,
     half *data,
@@ -68,7 +70,7 @@ cudaError cub_DeviceScan_InclusiveSum(
     return cub::DeviceScan::InclusiveSum(workspace_ptr, workspace_len, data, data, n, stream);
 }
 
-cudaError cub_DeviceScan_InclusiveSum(
+cudaError InclusiveSum(
     void *workspace_ptr,
     size_t &workspace_len,
     float *data,
@@ -77,7 +79,7 @@ cudaError cub_DeviceScan_InclusiveSum(
     return cub::DeviceScan::InclusiveSum(workspace_ptr, workspace_len, data, data, n, stream);
 }
 
-cudaError cub_DeviceScan_InclusiveSum(
+cudaError InclusiveSum(
     void *workspace_ptr,
     size_t &workspace_len,
     double *data,
@@ -85,13 +87,11 @@ cudaError cub_DeviceScan_InclusiveSum(
     cudaStream_t stream) {
     return cub::DeviceScan::InclusiveSum(workspace_ptr, workspace_len, data, data, n, stream);
 }
-} // namespace infini_cub
+} // namespace infini_cub::nvidai::DeviceReduce
 
-namespace infini_cub {
-// --------------------------------------------------------------
-// --------------------------------------------------------------
-// --------------------------------------------------------------
-cudaError cub_DeviceRadixSort_SortPairsDescending(
+namespace infini_cub::nvidai::DeviceRadixSort {
+
+cudaError SortPairsDescending(
     void *workspace_ptr,
     size_t &workspace_len,
     const __nv_bfloat16 *key_in,
@@ -109,7 +109,7 @@ cudaError cub_DeviceRadixSort_SortPairsDescending(
         stream);
 }
 
-cudaError cub_DeviceRadixSort_SortPairsDescending(
+cudaError SortPairsDescending(
     void *workspace_ptr,
     size_t &workspace_len,
     const __nv_bfloat16 *key_in,
@@ -127,7 +127,7 @@ cudaError cub_DeviceRadixSort_SortPairsDescending(
         stream);
 }
 
-cudaError cub_DeviceRadixSort_SortPairsDescending(
+cudaError SortPairsDescending(
     void *workspace_ptr,
     size_t &workspace_len,
     const __nv_bfloat16 *key_in,
@@ -145,7 +145,7 @@ cudaError cub_DeviceRadixSort_SortPairsDescending(
         stream);
 }
 
-cudaError cub_DeviceRadixSort_SortPairsDescending(
+cudaError SortPairsDescending(
     void *workspace_ptr,
     size_t &workspace_len,
     const __nv_bfloat16 *key_in,
@@ -163,7 +163,7 @@ cudaError cub_DeviceRadixSort_SortPairsDescending(
         stream);
 }
 
-cudaError cub_DeviceRadixSort_SortPairsDescending(
+cudaError SortPairsDescending(
     void *workspace_ptr,
     size_t &workspace_len,
     const __nv_bfloat16 *key_in,
@@ -181,7 +181,7 @@ cudaError cub_DeviceRadixSort_SortPairsDescending(
         stream);
 }
 
-cudaError cub_DeviceRadixSort_SortPairsDescending(
+cudaError SortPairsDescending(
     void *workspace_ptr,
     size_t &workspace_len,
     const __nv_bfloat16 *key_in,
@@ -199,7 +199,7 @@ cudaError cub_DeviceRadixSort_SortPairsDescending(
         stream);
 }
 
-cudaError cub_DeviceRadixSort_SortPairsDescending(
+cudaError SortPairsDescending(
     void *workspace_ptr,
     size_t &workspace_len,
     const __nv_bfloat16 *key_in,
@@ -217,7 +217,7 @@ cudaError cub_DeviceRadixSort_SortPairsDescending(
         stream);
 }
 
-cudaError cub_DeviceRadixSort_SortPairsDescending(
+cudaError SortPairsDescending(
     void *workspace_ptr,
     size_t &workspace_len,
     const __nv_bfloat16 *key_in,
@@ -236,7 +236,7 @@ cudaError cub_DeviceRadixSort_SortPairsDescending(
 }
 
 #ifdef _WIN64
-cudaError cub_DeviceRadixSort_SortPairsDescending(
+cudaError SortPairsDescending(
     void *workspace_ptr,
     size_t &workspace_len,
     const __nv_bfloat16 *key_in,
@@ -258,7 +258,7 @@ cudaError cub_DeviceRadixSort_SortPairsDescending(
 // --------------------------------------------------------------
 // --------------------------------------------------------------
 // --------------------------------------------------------------
-cudaError cub_DeviceRadixSort_SortPairsDescending(
+cudaError SortPairsDescending(
     void *workspace_ptr,
     size_t &workspace_len,
     const half *key_in,
@@ -276,7 +276,7 @@ cudaError cub_DeviceRadixSort_SortPairsDescending(
         stream);
 }
 
-cudaError cub_DeviceRadixSort_SortPairsDescending(
+cudaError SortPairsDescending(
     void *workspace_ptr,
     size_t &workspace_len,
     const half *key_in,
@@ -294,7 +294,7 @@ cudaError cub_DeviceRadixSort_SortPairsDescending(
         stream);
 }
 
-cudaError cub_DeviceRadixSort_SortPairsDescending(
+cudaError SortPairsDescending(
     void *workspace_ptr,
     size_t &workspace_len,
     const half *key_in,
@@ -312,7 +312,7 @@ cudaError cub_DeviceRadixSort_SortPairsDescending(
         stream);
 }
 
-cudaError cub_DeviceRadixSort_SortPairsDescending(
+cudaError SortPairsDescending(
     void *workspace_ptr,
     size_t &workspace_len,
     const half *key_in,
@@ -330,7 +330,7 @@ cudaError cub_DeviceRadixSort_SortPairsDescending(
         stream);
 }
 
-cudaError cub_DeviceRadixSort_SortPairsDescending(
+cudaError SortPairsDescending(
     void *workspace_ptr,
     size_t &workspace_len,
     const half *key_in,
@@ -348,7 +348,7 @@ cudaError cub_DeviceRadixSort_SortPairsDescending(
         stream);
 }
 
-cudaError cub_DeviceRadixSort_SortPairsDescending(
+cudaError SortPairsDescending(
     void *workspace_ptr,
     size_t &workspace_len,
     const half *key_in,
@@ -366,7 +366,7 @@ cudaError cub_DeviceRadixSort_SortPairsDescending(
         stream);
 }
 
-cudaError cub_DeviceRadixSort_SortPairsDescending(
+cudaError SortPairsDescending(
     void *workspace_ptr,
     size_t &workspace_len,
     const half *key_in,
@@ -384,7 +384,7 @@ cudaError cub_DeviceRadixSort_SortPairsDescending(
         stream);
 }
 
-cudaError cub_DeviceRadixSort_SortPairsDescending(
+cudaError SortPairsDescending(
     void *workspace_ptr,
     size_t &workspace_len,
     const half *key_in,
@@ -403,7 +403,7 @@ cudaError cub_DeviceRadixSort_SortPairsDescending(
 }
 
 #ifdef _WIN64
-cudaError cub_DeviceRadixSort_SortPairsDescending(
+cudaError SortPairsDescending(
     void *workspace_ptr,
     size_t &workspace_len,
     const half *key_in,
@@ -425,7 +425,7 @@ cudaError cub_DeviceRadixSort_SortPairsDescending(
 // --------------------------------------------------------------
 // --------------------------------------------------------------
 // --------------------------------------------------------------
-cudaError cub_DeviceRadixSort_SortPairsDescending(
+cudaError SortPairsDescending(
     void *workspace_ptr,
     size_t &workspace_len,
     const float *key_in,
@@ -443,7 +443,7 @@ cudaError cub_DeviceRadixSort_SortPairsDescending(
         stream);
 }
 
-cudaError cub_DeviceRadixSort_SortPairsDescending(
+cudaError SortPairsDescending(
     void *workspace_ptr,
     size_t &workspace_len,
     const float *key_in,
@@ -461,7 +461,7 @@ cudaError cub_DeviceRadixSort_SortPairsDescending(
         stream);
 }
 
-cudaError cub_DeviceRadixSort_SortPairsDescending(
+cudaError SortPairsDescending(
     void *workspace_ptr,
     size_t &workspace_len,
     const float *key_in,
@@ -479,7 +479,7 @@ cudaError cub_DeviceRadixSort_SortPairsDescending(
         stream);
 }
 
-cudaError cub_DeviceRadixSort_SortPairsDescending(
+cudaError SortPairsDescending(
     void *workspace_ptr,
     size_t &workspace_len,
     const float *key_in,
@@ -497,7 +497,7 @@ cudaError cub_DeviceRadixSort_SortPairsDescending(
         stream);
 }
 
-cudaError cub_DeviceRadixSort_SortPairsDescending(
+cudaError SortPairsDescending(
     void *workspace_ptr,
     size_t &workspace_len,
     const float *key_in,
@@ -515,7 +515,7 @@ cudaError cub_DeviceRadixSort_SortPairsDescending(
         stream);
 }
 
-cudaError cub_DeviceRadixSort_SortPairsDescending(
+cudaError SortPairsDescending(
     void *workspace_ptr,
     size_t &workspace_len,
     const float *key_in,
@@ -533,7 +533,7 @@ cudaError cub_DeviceRadixSort_SortPairsDescending(
         stream);
 }
 
-cudaError cub_DeviceRadixSort_SortPairsDescending(
+cudaError SortPairsDescending(
     void *workspace_ptr,
     size_t &workspace_len,
     const float *key_in,
@@ -551,7 +551,7 @@ cudaError cub_DeviceRadixSort_SortPairsDescending(
         stream);
 }
 
-cudaError cub_DeviceRadixSort_SortPairsDescending(
+cudaError SortPairsDescending(
     void *workspace_ptr,
     size_t &workspace_len,
     const float *key_in,
@@ -570,7 +570,7 @@ cudaError cub_DeviceRadixSort_SortPairsDescending(
 }
 
 #ifdef _WIN64
-cudaError cub_DeviceRadixSort_SortPairsDescending(
+cudaError SortPairsDescending(
     void *workspace_ptr,
     size_t &workspace_len,
     const float *key_in,
@@ -592,7 +592,7 @@ cudaError cub_DeviceRadixSort_SortPairsDescending(
 // --------------------------------------------------------------
 // --------------------------------------------------------------
 // --------------------------------------------------------------
-cudaError cub_DeviceRadixSort_SortPairsDescending(
+cudaError SortPairsDescending(
     void *workspace_ptr,
     size_t &workspace_len,
     const double *key_in,
@@ -610,7 +610,7 @@ cudaError cub_DeviceRadixSort_SortPairsDescending(
         stream);
 }
 
-cudaError cub_DeviceRadixSort_SortPairsDescending(
+cudaError SortPairsDescending(
     void *workspace_ptr,
     size_t &workspace_len,
     const double *key_in,
@@ -628,7 +628,7 @@ cudaError cub_DeviceRadixSort_SortPairsDescending(
         stream);
 }
 
-cudaError cub_DeviceRadixSort_SortPairsDescending(
+cudaError SortPairsDescending(
     void *workspace_ptr,
     size_t &workspace_len,
     const double *key_in,
@@ -646,7 +646,7 @@ cudaError cub_DeviceRadixSort_SortPairsDescending(
         stream);
 }
 
-cudaError cub_DeviceRadixSort_SortPairsDescending(
+cudaError SortPairsDescending(
     void *workspace_ptr,
     size_t &workspace_len,
     const double *key_in,
@@ -664,7 +664,7 @@ cudaError cub_DeviceRadixSort_SortPairsDescending(
         stream);
 }
 
-cudaError cub_DeviceRadixSort_SortPairsDescending(
+cudaError SortPairsDescending(
     void *workspace_ptr,
     size_t &workspace_len,
     const double *key_in,
@@ -682,7 +682,7 @@ cudaError cub_DeviceRadixSort_SortPairsDescending(
         stream);
 }
 
-cudaError cub_DeviceRadixSort_SortPairsDescending(
+cudaError SortPairsDescending(
     void *workspace_ptr,
     size_t &workspace_len,
     const double *key_in,
@@ -700,7 +700,7 @@ cudaError cub_DeviceRadixSort_SortPairsDescending(
         stream);
 }
 
-cudaError cub_DeviceRadixSort_SortPairsDescending(
+cudaError SortPairsDescending(
     void *workspace_ptr,
     size_t &workspace_len,
     const double *key_in,
@@ -718,7 +718,7 @@ cudaError cub_DeviceRadixSort_SortPairsDescending(
         stream);
 }
 
-cudaError cub_DeviceRadixSort_SortPairsDescending(
+cudaError SortPairsDescending(
     void *workspace_ptr,
     size_t &workspace_len,
     const double *key_in,
@@ -736,7 +736,7 @@ cudaError cub_DeviceRadixSort_SortPairsDescending(
 }
 
 #ifdef _WIN64
-cudaError cub_DeviceRadixSort_SortPairsDescending(
+cudaError SortPairsDescending(
     void *workspace_ptr,
     size_t &workspace_len,
     const double *key_in,
@@ -754,4 +754,6 @@ cudaError cub_DeviceRadixSort_SortPairsDescending(
 }
 #endif
 
-} // namespace infini_cub
+} // namespace infini_cub::nvidai::DeviceRadixSort
+
+#endif // ENABLE_CUDA_API

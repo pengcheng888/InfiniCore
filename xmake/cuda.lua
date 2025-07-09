@@ -9,7 +9,7 @@ if CUDNN_ROOT ~= nil then
 end
 
 
-add_requires("infinicub 1.0.0", {optional = true, configs = {shared = false}})
+add_requires("infinicub 1.0.0", {optional = true, configs = {shared = false, defines="ENABLE_CUDA_API" }})
 
 target("infiniop-cuda")
     set_kind("static")
@@ -21,7 +21,7 @@ target("infiniop-cuda")
     add_links("cublas", "cudnn")
     add_cugencodes("native")
 
-    if has_config("prebuild") then
+    if has_config("prebuild") and has_config("nv-gpu")  then
         add_defines("ENABLE_INFINI_CUB")
         includes("cub.lua")
         add_packages("infinicub")

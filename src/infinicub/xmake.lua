@@ -18,6 +18,8 @@ target("infinicub")
     set_toolchains("cuda")
     add_links("cublas", "cudnn")
     add_cugencodes("native")
+  
+    add_defines("ENABLE_CUDA_API")
 
     if is_plat("windows") then
         add_cuflags("-Xcompiler=/utf-8", "--expt-relaxed-constexpr", "--allow-unsupported-compiler")
@@ -37,5 +39,5 @@ target("infinicub")
     set_languages("cxx17")
     add_includedirs("include")
 
-    add_files("src/cub_algorithms.cu") 
+    add_files("src/*.cu") 
 target_end()

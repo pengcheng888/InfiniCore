@@ -2,7 +2,7 @@
 #include "infinicore.h"
 
 #ifdef ENABLE_INFINI_CUB
-#include "../../../../infinicub/include/cub_algorithms.cuh"
+#include "../../../../infinicub/include/cub_algorithms_nvidia.cuh"
 #else
 #include <cub/device/device_radix_sort.cuh>
 #include <cub/device/device_reduce.cuh>
@@ -22,7 +22,7 @@ static cudaError argMax_(
     cudaStream_t stream) {
 
 #ifdef ENABLE_INFINI_CUB
-    return infini_cub::cub_DeviceReduce_ArgMax(
+    return infini_cub::nvidai::DeviceReduce::ArgMax(
         workspace_ptr, workspace_len,
         logits, kv_pair, n,
         stream);
@@ -43,7 +43,7 @@ static cudaError radixSort(
     cudaStream_t stream) {
 
 #ifdef ENABLE_INFINI_CUB
-    return infini_cub::cub_DeviceRadixSort_SortPairsDescending(
+    return infini_cub::nvidai::DeviceRadixSort::SortPairsDescending(
         workspace_ptr, workspace_len,
         key_in, key_out,
         val_in, val_out,
@@ -65,15 +65,15 @@ static cudaError inclusiveSum(
     void *workspace_ptr, size_t &workspace_len,
     T *data, int n,
     cudaStream_t stream) {
-        
+
 #ifdef ENABLE_INFINI_CUB
-    return infini_cub::cub_DeviceScan_InclusiveSum(
+    return infini_cub::nvidai::DeviceReduce::InclusiveSum(
         workspace_ptr, workspace_len,
         data, n,
         stream);
 #else
     return cub::DeviceScan::InclusiveSum(
-        workspace_ptr, workspace_len, 
+        workspace_ptr, workspace_len,
         data, data, n,
         stream);
 #endif

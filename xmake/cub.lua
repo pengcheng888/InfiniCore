@@ -3,6 +3,9 @@ package("infinicub")
 
     add_versions("1.0.0", "commit-hash-or-sha256-for-v1.0.0")
     add_versions("1.0.1", "commit-hash-or-sha256-for-v1.0.1")
+    add_versions("1.0.2", "commit-hash-or-sha256-for-v1.0.2")
+    add_versions("1.0.3", "commit-hash-or-sha256-for-v1.0.3")
+    add_versions("1.0.4", "commit-hash-or-sha256-for-v1.0.4")
 
     set_sourcedir(path.join(os.scriptdir(), "../src/infinicub"))
   
