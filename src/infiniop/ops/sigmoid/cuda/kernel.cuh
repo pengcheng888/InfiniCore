@@ -19,7 +19,7 @@ public:
             half denominator = __hadd(__float2half(1.0f), hexp(__hneg(x)));
             return hrcp(denominator);
         } else if constexpr (std::is_same_v<T, __nv_bfloat16>) {
-            __nv_bfloat16 denominator = __hadd(__float2bfloat16(1.0f), __float2bfloat16(__expf(__bfloat162float(-x))));
+            __nv_bfloat16 denominator = __float2bfloat16(__fadd_rn(1.0f, __expf(__bfloat162float(-x))));
             return __float2bfloat16(1.0f) / denominator;
         } else if constexpr (std::is_same_v<T, float>) {
             float denominator = __fadd_rn(1.0f, __expf(-x));

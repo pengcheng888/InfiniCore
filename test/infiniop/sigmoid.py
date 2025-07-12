@@ -24,13 +24,13 @@ from enum import Enum, auto
 # ==============================================================================
 # These are not meant to be imported from other modules
 _TEST_CASES_ = [
-    # shape, a_stride, b_stride, c_stride
+    # shape, x_stride, y_stride
     ((13, 4), None, None),
     ((13, 4), (10, 1), (10, 1)),
-    #((13, 4), (0, 1), None,),
+    ((13, 4), (0, 1), (0, 1)),
     ((13, 4, 4), None, None),
     ((13, 4, 4), (20, 4, 1), (20, 4, 1)),
-    #((13, 4, 4), (4, 0, 1), None),
+    ((13, 4, 4), (4, 0, 1), (4, 0, 1)),
     ((16, 5632), None, None),
     ((16, 5632), (13312, 1), (13312, 1)),
     ((4, 4, 5632), None, None),
