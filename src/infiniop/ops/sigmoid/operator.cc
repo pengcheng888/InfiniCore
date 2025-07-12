@@ -5,8 +5,8 @@
 #ifdef ENABLE_CPU_API
 #include "cpu/sigmoid_cpu.h"
 #endif
-#ifdef ENABLE_CUDA_API
-#include "cuda/sigmoid_cuda.cuh"
+#ifdef ENABLE_NVIDIA_API
+#include "nvidia/sigmoid_nvidia.cuh"
 #endif
 
 __C infiniStatus_t infiniopCreateSigmoidDescriptor(
@@ -28,8 +28,8 @@ __C infiniStatus_t infiniopCreateSigmoidDescriptor(
 #ifdef ENABLE_CPU_API
         CREATE(INFINI_DEVICE_CPU, cpu);
 #endif
-#ifdef ENABLE_CUDA_API
-        CREATE(INFINI_DEVICE_NVIDIA, cuda);
+#ifdef ENABLE_NVIDIA_API
+        CREATE(INFINI_DEVICE_NVIDIA, nvidia);
 #endif
 
     default:
@@ -50,8 +50,8 @@ __C infiniStatus_t infiniopGetSigmoidWorkspaceSize(infiniopSigmoidDescriptor_t d
 #ifdef ENABLE_CPU_API
         GET(INFINI_DEVICE_CPU, cpu)
 #endif
-#ifdef ENABLE_CUDA_API
-        GET(INFINI_DEVICE_NVIDIA, cuda)
+#ifdef ENABLE_NVIDIA_API
+        GET(INFINI_DEVICE_NVIDIA, nvidia)
 #endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
@@ -79,8 +79,8 @@ __C infiniStatus_t infiniopSigmoid(
 #ifdef ENABLE_CPU_API
         CALCULATE(INFINI_DEVICE_CPU, cpu);
 #endif
-#ifdef ENABLE_CUDA_API
-        CALCULATE(INFINI_DEVICE_NVIDIA, cuda);
+#ifdef ENABLE_NVIDIA_API
+        CALCULATE(INFINI_DEVICE_NVIDIA, nvidia);
 #endif
 
     default:
@@ -103,8 +103,8 @@ infiniopDestroySigmoidDescriptor(infiniopSigmoidDescriptor_t desc) {
 #ifdef ENABLE_CPU_API
         DELETE(INFINI_DEVICE_CPU, cpu);
 #endif
-#ifdef ENABLE_CUDA_API
-        DELETE(INFINI_DEVICE_NVIDIA, cuda);
+#ifdef ENABLE_NVIDIA_API
+        DELETE(INFINI_DEVICE_NVIDIA, nvidia);
 #endif
 
     default:
