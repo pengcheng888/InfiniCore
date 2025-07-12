@@ -3,7 +3,7 @@
 
 #include "../../../elementwise/cpu/elementwise_cpu.h"
 
-ELEMENTWISE_DESCRIPTOR(sigmoid, cpu)
+ELEMENTWISE_DESCRIPTOR(sigmoid, cpu, cpu)
 
 namespace op::sigmoid::cpu {
 typedef struct SigmoidOp {

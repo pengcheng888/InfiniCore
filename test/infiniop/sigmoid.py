@@ -1,22 +1,22 @@
-import os
-
 import torch
 import ctypes
-from ctypes import POINTER, Structure, c_int32, c_void_p, c_uint64
-from libinfiniop import (infiniopHandle_t,
-                         infiniopTensorDescriptor_t,
-                         open_lib,
-                         to_tensor,
-                         get_test_devices,
-                         check_error,
-                         rearrange_if_needed,
-                         test_operator,
-                         get_args,
-                         debug,
-                         get_tolerance,
-                         profile_operation,
-                         create_workspace,
-                         )
+from ctypes import c_uint64
+from libinfiniop import (
+    LIBINFINIOP,
+    TestTensor,
+    get_test_devices,
+    check_error,
+    test_operator,
+    get_args,
+    debug,
+    get_tolerance,
+    profile_operation,
+    TestWorkspace,
+    InfiniDtype,
+    InfiniDtypeNames,
+    InfiniDeviceNames,
+    infiniopOperatorDescriptor_t,
+)
 from enum import Enum, auto
 
 # ==============================================================================
@@ -24,7 +24,7 @@ from enum import Enum, auto
 # ==============================================================================
 # These are not meant to be imported from other modules
 _TEST_CASES_ = [
-    # shape, x_stride, y_stride  
+    # shape, a_stride, b_stride, c_stride
     ((13, 4), None, None),
     ((13, 4), (10, 1), (10, 1)),
     ((13, 4), (0, 1), None,),
@@ -40,9 +40,8 @@ _TEST_CASES_ = [
 
 
 class Inplace(Enum):
-    OUT_OF_PLACE = auto() 
-    INPLACE_X = auto() 
-
+    OUT_OF_PLACE = auto()
+    INPLACE_X = auto()
 
 # Inplace options applied for each test case in _TEST_CASES_
 _INPLACE = [
@@ -58,13 +57,13 @@ _TEST_CASES = [
 ]
 
 # Data types used for testing
-_TENSOR_DTYPES = [torch.float16, torch.float32, torch.float64]
+_TENSOR_DTYPES = [InfiniDtype.F16, InfiniDtype.F32, InfiniDtype.BF16]
 
 # Tolerance map for different data types
 _TOLERANCE_MAP = {
-    torch.float16: {"atol": 1e-3, "rtol": 1e-3},
-    torch.float32: {"atol": 1e-7, "rtol": 1e-7},
-    torch.float64: {"atol": 1e-7, "rtol": 1e-7},
+    InfiniDtype.F16: {"atol": 1e-3, "rtol": 1e-3},
+    InfiniDtype.F32: {"atol": 1e-7, "rtol": 1e-7},
+    InfiniDtype.BF16: {"atol": 1e-2, "rtol": 1e-2},
 }
 
 DEBUG = False
@@ -72,107 +71,70 @@ PROFILE = False
 NUM_PRERUN = 10
 NUM_ITERATIONS = 1000
 
+def torch_sigmoid(y, x):
+    torch.sigmoid(x, out=y)
 
-class SigmoidDescriptor(Structure):
-    _fields_ = [("device", c_int32)]
+def test(
+    handle,
+    device,
+    shape,
+    x_stride=None,
+    y_stride=None,
+    inplace=Inplace.OUT_OF_PLACE,
+    dtype=torch.float16,
+    sync=None,
+):
+    x = TestTensor(shape, x_stride, dtype, device)
+    if inplace == Inplace.INPLACE_X:
+        if x_stride != y_stride:
+            return
+        y = x
+    else:
+        y = TestTensor(shape, y_stride, dtype, device, mode="ones")
 
+    if y.is_broadcast():
+        return
 
-infiniopSigmoidDescriptor_t = POINTER(SigmoidDescriptor)
-
-
-def sigmoid_torch(x):
-    return torch.sigmoid(x)
-
-
-def process_tensors(y, y_strides, x, x_stride, inplace):
-    """
-    rearrange the tensors if needed and apply the inplace config.
-    if inplace is true and the output (i.e., c) is placed to the broadcasted input,
-    the inplace config is ignored and out-of-place is used
-    """
-    original_y_strides = y_strides if y_strides else y.stride()
-
-
-    def _rearrange(tensor, strides):
-        if strides and 0 in strides:
-            tensor.set_(tensor.untyped_storage(), 0, tensor.shape, strides)
-            return tensor
-        else:
-            return rearrange_if_needed(tensor, strides)
-
-    x, y = [
-        _rearrange(tensor, stride)
-        for tensor, stride in zip([x, y], [x_stride, y_strides])
-    ]
-    y = (
-        y
-        if inplace == Inplace.OUT_OF_PLACE
-        else (x)
+    print(
+        f"Testing Sigmoid on {InfiniDeviceNames[device]} with shape:{shape} x_stride:{x_stride} y_stride:{y_stride} "
+        f"dtype:{InfiniDtypeNames[dtype]} inplace:{inplace}"
     )
-    # if inplace is true and c has broadcasted config, reset it to the original unbroadcasted strides
-    if 0 in y.stride():
-        y.set_(y.untyped_storage(), 0, y.shape, original_y_strides)
+    
+    torch_sigmoid(y.torch_tensor(), x.torch_tensor())
 
-    return x, y
-
-
-def test(lib,
-         handle,
-         torch_device,
-         shape,
-         x_stride=None,
-         y_stride=None,
-         inplace=Inplace.OUT_OF_PLACE,
-         dtype=torch.float16,
-         sync=None,
-         ):
-    print(f"Testing Sigmoid on {torch_device} with shape:{shape} x_stride:{x_stride} c_stride:{y_stride} "
-          f"dtype:{dtype} inplace:{inplace}")
-
-    x = torch.rand(shape, dtype=dtype).to(torch_device) 
-    y = torch.rand(shape, dtype=dtype).to(torch_device)
-
-    x, y = process_tensors(y, y_stride, x, x_stride, inplace)
-
-    ans = sigmoid_torch(x)
-
-    x_tensor, = [to_tensor(tensor, lib) for tensor in [x, ]]
-    y_tensor = (
-        to_tensor(y, lib)
-        if inplace == Inplace.OUT_OF_PLACE
-        else x_tensor
-    )
     if sync is not None:
         sync()
-    
-    descriptor = infiniopSigmoidDescriptor_t()
+
+    descriptor = infiniopOperatorDescriptor_t()
     check_error(
-        lib.infiniopCreateSigmoidDescriptor(
+        LIBINFINIOP.infiniopCreateSigmoidDescriptor(
             handle,
             ctypes.byref(descriptor),
-            y_tensor.descriptor,
-            x_tensor.descriptor,
+            y.descriptor,
+            x.descriptor,
         )
     )
 
     # Invalidate the shape and strides in the descriptor to prevent them from being directly used by the kernel
-    for tensor in [x_tensor, y_tensor]:
-        tensor.destroyDesc(lib)
+    for tensor in [x, y]:
+        tensor.destroy_desc()
 
     workspace_size = c_uint64(0)
     check_error(
-        lib.infiniopGetSigmoidWorkspaceSize(descriptor, ctypes.byref(workspace_size))
+        LIBINFINIOP.infiniopGetSigmoidWorkspaceSize(
+            descriptor, ctypes.byref(workspace_size)
+        )
     )
-    workspace = create_workspace(workspace_size.value, y.device)
+    workspace = TestWorkspace(workspace_size.value, y.device)
 
     def lib_sigmoid():
         check_error(
-            lib.infiniopSigmoid(
+            LIBINFINIOP.infiniopSigmoid(
                 descriptor,
-                workspace.data_ptr() if workspace is not None else None,
-                workspace_size.value,
-                y_tensor.data,
-                x_tensor.data,
+                workspace.data(),
+                workspace.size(),
+                y.data(),
+                x.data(),
                 None,
             )
         )
@@ -181,52 +143,22 @@ def test(lib,
 
     atol, rtol = get_tolerance(_TOLERANCE_MAP, dtype)
     if DEBUG:
-        debug(y, ans, atol=atol, rtol=rtol)
-
-    assert torch.allclose(y, ans, atol=atol, rtol=rtol)
+        debug(y.actual_tensor(), y.torch_tensor(), atol=atol, rtol=rtol)
+ 
+    assert torch.allclose(y.actual_tensor(), y.torch_tensor(), atol=atol, rtol=rtol)
 
     # Profiling workflow
     if PROFILE:
         # fmt: off
-        profile_operation("PyTorch", lambda: sigmoid_torch(x), torch_device, NUM_PRERUN, NUM_ITERATIONS)
-        profile_operation("    lib", lambda: lib_sigmoid(), torch_device, NUM_PRERUN, NUM_ITERATIONS)
+        profile_operation("PyTorch", lambda: torch_sigmoid(y.torch_tensor(), x.torch_tensor()), device, NUM_PRERUN, NUM_ITERATIONS)
+        profile_operation("    lib", lambda: lib_sigmoid(), device, NUM_PRERUN, NUM_ITERATIONS)
         # fmt: on
-    check_error(lib.infiniopDestroySigmoidDescriptor(descriptor))
+    check_error(LIBINFINIOP.infiniopDestroySigmoidDescriptor(descriptor))
 
 
 if __name__ == "__main__":
     args = get_args()
-    lib = open_lib()
 
-    lib.infiniopCreateSigmoidDescriptor.restype = c_int32
-    lib.infiniopCreateSigmoidDescriptor.argtypes = [
-        infiniopHandle_t,
-        POINTER(infiniopSigmoidDescriptor_t),
-        infiniopTensorDescriptor_t,
-        infiniopTensorDescriptor_t,
-    ]
-
-    lib.infiniopGetSigmoidWorkspaceSize.restype = c_int32
-    lib.infiniopGetSigmoidWorkspaceSize.argtypes = [
-        infiniopSigmoidDescriptor_t,
-        POINTER(c_uint64),
-    ]
-
-    lib.infiniopSigmoid.restype = c_int32
-    lib.infiniopSigmoid.argtypes = [
-        infiniopSigmoidDescriptor_t,
-        c_void_p,
-        c_uint64,
-        c_void_p,
-        c_void_p,
-        c_void_p,
-    ]
-
-    lib.infiniopDestroySigmoidDescriptor.restype = c_int32
-    lib.infiniopDestroySigmoidDescriptor.argtypes = [
-        infiniopSigmoidDescriptor_t,
-    ]
- 
     # Configure testing options
     DEBUG = args.debug
     PROFILE = args.profile
@@ -234,6 +166,6 @@ if __name__ == "__main__":
     NUM_ITERATIONS = args.num_iterations
 
     for device in get_test_devices(args):
-        test_operator(lib, device, test, _TEST_CASES, _TENSOR_DTYPES)
+        test_operator(device, test, _TEST_CASES, _TENSOR_DTYPES)
 
-    print("\033[92mTest passed!\033[0m")
+    print("\033[92m  Test passed!  \033[0m")

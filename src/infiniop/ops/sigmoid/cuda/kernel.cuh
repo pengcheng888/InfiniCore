@@ -2,6 +2,7 @@
 #define __SIDMOID_CUDA_H__
 
 #include "../../../elementwise/cuda/elementwise_cuda.cuh"
+#include <cuda_bf16.h>
 #include <cuda_fp16.h>
 
 namespace op::sigmoid::cuda {
@@ -17,6 +18,9 @@ public:
         } else if constexpr (std::is_same_v<T, half>) {
             half denominator = __hadd(__float2half(1.0f), hexp(__hneg(x)));
             return hrcp(denominator);
+        } else if constexpr (std::is_same_v<T, __nv_bfloat16>) {
+            __nv_bfloat16 denominator = __hadd(__float2bfloat16(1.0f), __float2bfloat16(__expf(__bfloat162float(-x))));
+            return __float2bfloat16(1.0f) / denominator;
         } else if constexpr (std::is_same_v<T, float>) {
             float denominator = __fadd_rn(1.0f, __expf(-x));
             return __frcp_rn(denominator);

@@ -1,7 +1,7 @@
-#include "sigmoid_cuda.cuh"
-#include "sigmoid_cuda_internal.cuh"
+#include "../cuda/kernel.cuh"
+#include "sigmoid_nvidia.cuh"
 
-namespace op::sigmoid::cuda {
+namespace op::sigmoid::nvidia {
 
 Descriptor::~Descriptor() = default;
 
@@ -18,7 +18,7 @@ infiniStatus_t Descriptor::create(
     const auto &y_shape = out_desc->shape();
     const auto &x_shape = x_desc->shape();
 
-    CHECK_DTYPE(dtype, INFINI_DTYPE_F16, INFINI_DTYPE_F32, INFINI_DTYPE_F64);
+    CHECK_DTYPE(dtype, INFINI_DTYPE_F16, INFINI_DTYPE_F32, INFINI_DTYPE_F64, INFINI_DTYPE_BF16);
 
     CHECK_SAME_SHAPE(y_shape, x_shape);
 
@@ -41,15 +41,18 @@ infiniStatus_t Descriptor::calculate(
 
     switch (_dtype) {
     case INFINI_DTYPE_F16:
-        return _device_info->calculate<256, SigmoidOp, half>(_info, workspace, output, inputs, stream);
+        return _device_info->calculate<256, cuda::SigmoidOp, half>(_info, workspace, output, inputs, stream);
+    case INFINI_DTYPE_BF16:
+        return _device_info->calculate<256, cuda::SigmoidOp, __nv_bfloat16>(_info, workspace, output, inputs, stream);
     case INFINI_DTYPE_F32:
-        return _device_info->calculate<256, SigmoidOp, float>(_info, workspace, output, inputs, stream);
+        return _device_info->calculate<256, cuda::SigmoidOp, float>(_info, workspace, output, inputs, stream);
     case INFINI_DTYPE_F64:
-        return _device_info->calculate<256, SigmoidOp, double>(_info, workspace, output, inputs, stream);
+        return _device_info->calculate<256, cuda::SigmoidOp, double>(_info, workspace, output, inputs, stream);
+
     default:
         return INFINI_STATUS_BAD_TENSOR_DTYPE;
     }
 
     return INFINI_STATUS_SUCCESS;
 }
-} // namespace op::sigmoid::cuda
+} // namespace op::sigmoid::nvidia
