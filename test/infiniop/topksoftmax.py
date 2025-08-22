@@ -29,8 +29,8 @@ from libinfiniop import (
 _TEST_CASES_ = [
     # x_shape, x_stride
     ((2, 10), None, 7),
-    ((1, 20), None, 4),
-    # ((1, 256), None, 8),
+    ((8, 20), None, 4),
+    ((2, 128), None, 8),
 ]
 
 # w (weight) types
@@ -84,8 +84,12 @@ def test(
         f"x_stride:{x_stride} w_dtype:{InfiniDtypeNames[x_dtype]} dtype:{InfiniDtypeNames[dtype]}"
     )
 
+    data = torch.arange(0, x_shape[0] * x_shape[1]).reshape(x_shape)
+
     N, width = x_shape
-    x = TestTensor(x_shape, x_stride, x_dtype, device, mode="random")
+    x = TestTensor(x_shape, data.stride(), x_dtype, device, scale=0.5, mode="manual", set_tensor=data)
+
+    # print(x.torch_tensor())
     if sync is not None:
         sync()
 
