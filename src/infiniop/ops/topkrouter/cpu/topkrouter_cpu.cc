@@ -19,7 +19,9 @@ infiniStatus_t Descriptor::create(
 infiniStatus_t Descriptor::calculate(
     void *workspace, size_t workspace_size,
     float *values, int *indices, void *x,
-    float *correction_bias, void *stream) const {
+    float *correction_bias,
+    float routed_scaling_factor,
+    void *stream) const {
 
     return INFINI_STATUS_NOT_IMPLEMENTED;
 }

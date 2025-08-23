@@ -40,7 +40,7 @@ infiniStatus_t Descriptor::create(
 namespace {
 
 template <int BLOCK_SIZE = 128>
-infiniStatus_t launch_topkrouter(float *d_values_out, int *d_indices_out, void *d_input, float *d_correction_bias,
+infiniStatus_t launch_topkrouter(float *d_values_out, int *d_indices_out, void *d_input, float *d_correction_bias, float routed_scaling_factor,
                                  size_t N, size_t width, size_t topk, infiniDtype_t xtype, cudaStream_t stream) {
 
     const int block_threads = BLOCK_SIZE;
@@ -48,11 +48,11 @@ infiniStatus_t launch_topkrouter(float *d_values_out, int *d_indices_out, void *
     dim3 threads(block_threads);
 
     if (xtype == INFINI_DTYPE_F32) {
-        topkrouter_kernel<float, BLOCK_SIZE><<<blocks, threads, 0, stream>>>(d_values_out, d_indices_out, (float *)d_input, d_correction_bias, N, width, topk);
+        topkrouter_kernel<float, BLOCK_SIZE><<<blocks, threads, 0, stream>>>(d_values_out, d_indices_out, (float *)d_input, d_correction_bias, routed_scaling_factor, N, width, topk);
     } else if (xtype == INFINI_DTYPE_F16) {
-        topkrouter_kernel<half, BLOCK_SIZE><<<blocks, threads, 0, stream>>>(d_values_out, d_indices_out, (half *)d_input, d_correction_bias, N, width, topk);
+        topkrouter_kernel<half, BLOCK_SIZE><<<blocks, threads, 0, stream>>>(d_values_out, d_indices_out, (half *)d_input, d_correction_bias, routed_scaling_factor, N, width, topk);
     } else if (xtype == INFINI_DTYPE_BF16) {
-        topkrouter_kernel<__nv_bfloat16, BLOCK_SIZE><<<blocks, threads, 0, stream>>>(d_values_out, d_indices_out, (__nv_bfloat16 *)d_input, d_correction_bias, N, width, topk);
+        topkrouter_kernel<__nv_bfloat16, BLOCK_SIZE><<<blocks, threads, 0, stream>>>(d_values_out, d_indices_out, (__nv_bfloat16 *)d_input, d_correction_bias, routed_scaling_factor, N, width, topk);
     } else {
         return INFINI_STATUS_BAD_TENSOR_DTYPE;
     }
@@ -64,7 +64,7 @@ infiniStatus_t launch_topkrouter(float *d_values_out, int *d_indices_out, void *
 
 infiniStatus_t Descriptor::calculate(
     void *workspace, size_t workspace_size,
-    float *values, int *indices, void *x, float *correction_bias,
+    float *values, int *indices, void *x, float *correction_bias, float routed_scaling_factor,
     void *stream) const {
 
     if (workspace_size < _workspace_size) {
@@ -82,7 +82,7 @@ infiniStatus_t Descriptor::calculate(
     auto cuda_stream = reinterpret_cast<cudaStream_t>(stream);
 
     if (256 == width) {
-        launch_topkrouter<256>(values, indices, x, correction_bias, N, width, topk, _info.xtype, cuda_stream);
+        launch_topkrouter<256>(values, indices, x, correction_bias, routed_scaling_factor, N, width, topk, _info.xtype, cuda_stream);
     } else {
         return INFINI_STATUS_INTERNAL_ERROR;
     }

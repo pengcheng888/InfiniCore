@@ -59,12 +59,12 @@ __C infiniStatus_t infiniopGetTopkrouterWorkspaceSize(infiniopTopkrouterDescript
 }
 
 __C infiniStatus_t infiniopTopkrouter(infiniopTopkrouterDescriptor_t desc, void *workspace, size_t workspace_size,
-                                      void *values, void *indices, void *x, void *correction_bias, void *stream) {
+                                      void *values, void *indices, void *x, void *correction_bias, float routed_scaling_factor, void *stream) {
 
 #define CALCULATE(CASE, NAMESPACE)                                                         \
     case CASE:                                                                             \
         return reinterpret_cast<op::topkrouter::NAMESPACE::Descriptor *>(desc)->calculate( \
-            workspace, workspace_size, (float *)values, (int *)indices, x, (float *)correction_bias, stream)
+            workspace, workspace_size, (float *)values, (int *)indices, x, (float *)correction_bias, routed_scaling_factor, stream)
 
     switch (desc->device_type) {
 #ifdef ENABLE_CPU_API

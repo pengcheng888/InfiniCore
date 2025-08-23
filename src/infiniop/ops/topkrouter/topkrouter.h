@@ -42,6 +42,7 @@
             int *indices,                                        \
             void *x,                                             \
             float *correction_bias,                              \
+            float routed_scaling_factor,                         \
             void *stream) const;                                 \
     };                                                           \
     }

@@ -15,7 +15,7 @@ __C __export infiniStatus_t infiniopCreateTopkrouterDescriptor(
 __C __export infiniStatus_t infiniopGetTopkrouterWorkspaceSize(infiniopTopkrouterDescriptor_t desc, size_t *size);
 
 __C __export infiniStatus_t infiniopTopkrouter(infiniopTopkrouterDescriptor_t desc, void *workspace, size_t workspace_size,
-                                               void *values, void *indices, void *x, void *correction_bias, void *stream);
+                                               void *values, void *indices, void *x, void *correction_bias, float routed_scaling_factor, void *stream);
 
 __C __export infiniStatus_t infiniopDestroyTopkrouterxDescriptor(infiniopTopkrouterDescriptor_t desc);
 

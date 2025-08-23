@@ -552,6 +552,7 @@ def topkrouter_(lib):
         c_void_p,
         c_void_p,
         c_void_p,
+        c_float,
         c_void_p,
     ]
 

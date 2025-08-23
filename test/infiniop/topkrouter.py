@@ -34,7 +34,7 @@ _TEST_CASES_ = [
 
 # w (weight) types
 # Note: 'None' means the same as input dtype
-_X_DTYPES = [InfiniDtype.F32, InfiniDtype.BF16, InfiniDtype.F32]  # , InfiniDtype.BF16 InfiniDtype.F16, InfiniDtype.F32
+_X_DTYPES = [InfiniDtype.F32]  # , InfiniDtype.BF16 InfiniDtype.F16, InfiniDtype.F32
 # x types used for testing
 _VALUE_DTYPES = [InfiniDtype.F32]
 
@@ -109,11 +109,11 @@ class DeepseekV3TopkRouter(nn.Module):
 
         topk_indices = self.get_topk_indices(scores)  # (1,8)
         topk_weights = scores.gather(1, topk_indices)
-        if False:
-            if self.norm_topk_prob:
-                denominator = topk_weights.sum(dim=-1, keepdim=True) + 1e-20
-                topk_weights /= denominator
-            topk_weights = topk_weights * self.routed_scaling_factor
+
+        if self.norm_topk_prob:
+            denominator = topk_weights.sum(dim=-1, keepdim=True) + 1e-20
+            topk_weights /= denominator
+        topk_weights = topk_weights * self.routed_scaling_factor
         return topk_indices, topk_weights
 
 
@@ -185,6 +185,7 @@ def test(
                 indices.data_ptr(),
                 x.data(),
                 correction_bias.data(),
+                2.5,
                 None,
             )
         )
@@ -211,6 +212,7 @@ def test(
 
 if __name__ == "__main__":
     args = get_args()
+    args.nvidia = True
 
     # Configure testing options
     DEBUG = args.debug

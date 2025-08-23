@@ -40,16 +40,17 @@ struct CustomLess {
 // deepseek的topk
 //
 template <typename T, int BLOCK_THREADS = 256>
-__global__ void topkrouter_kernel(float *values_topk,       // 输出值, 形状[N, topk]
-                                  int *indices_topk,        // 输出索引, 形状[N, topk]
-                                  T *input,                 // 输入数据 [N, width]
-                                  float *d_correction_bias, // 输入数据 [width]
-                                  const size_t N,           // 总行数,toen数量
-                                  const size_t width,       // 每行元素数量
+__global__ void topkrouter_kernel(float *values_topk,          // 输出值, 形状[N, topk]
+                                  int *indices_topk,           // 输出索引, 形状[N, topk]
+                                  T *input,                    // 输入数据 [N, width]
+                                  float *d_correction_bias,    // 输入数据 [width]
+                                  float routed_scaling_factor, //
+                                  const size_t N,              // 总行数,toen数量
+                                  const size_t width,          // 每行元素数量
                                   const size_t topk
 
 ) {
-    int bid = blockIdx.x;
+    const int bid = blockIdx.x;
     if (bid >= N) {
         return;
     }
@@ -68,6 +69,7 @@ __global__ void topkrouter_kernel(float *values_topk,       // 输出值, 形状
     __shared__ float share_data[256];
     __shared__ float share_data_group[8];
     __shared__ float share_data_group_mask[8]; // 有效的组
+    __shared__ float share_sum;                // 有效的组
     if (tid < 8) {
         share_data_group_mask[tid] = 0.0f;
     }
@@ -134,12 +136,32 @@ __global__ void topkrouter_kernel(float *values_topk,       // 输出值, 形状
         __shared__ typename BlockRadixSort::TempStorage temp_storage;
         BlockRadixSort(temp_storage).SortDescending(thread_values, thread_indices);
     }
-
     __syncthreads();
-    if (tid < 8) {
-        int index = thread_indices[0];
-        indices_topk_output[tid] = index;
-        values_topk_output[tid] = sigmoid_func(data_input[index]);
+
+    // ----------------------------------------------------------- //
+    //                 归一化                                       //
+    // ----------------------------------------------------------- //
+    if (0 == warp_id) {
+        value = 0.0f;
+        if (tid < 8) {
+            int index = thread_indices[0];
+            value = sigmoid_func(data_input[index]);
+        }
+
+        typedef cub::WarpReduce<float, warp_threads> WarpReduce;
+        __shared__ typename WarpReduce::TempStorage temp_storage;
+        // 使用有效项数进行部分归约
+        float warp_sum = WarpReduce(temp_storage).Sum(value);
+        if (0 == tid) {
+            share_sum = warp_sum + 1e-20;
+        }
+        __syncwarp();
+
+        if (tid < 8) {
+            int index = thread_indices[0];
+            indices_topk_output[tid] = index;
+            values_topk_output[tid] = routed_scaling_factor * value / share_sum;
+        }
     }
 }
 
