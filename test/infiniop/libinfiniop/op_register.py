@@ -454,6 +454,7 @@ def swiglu_(lib):
         infiniopOperatorDescriptor_t,
     ]
 
+
 @OpRegister.operator
 def conv_(lib):
     lib.infiniopCreateConvDescriptor.restype = c_int32
@@ -487,5 +488,38 @@ def conv_(lib):
     ]
     lib.infiniopDestroyConvDescriptor.restype = c_int32
     lib.infiniopDestroyConvDescriptor.argtypes = [
+        infiniopOperatorDescriptor_t,
+    ]
+
+
+@OpRegister.operator
+def topksoftmax_(lib):
+    lib.infiniopCreateTopksoftmaxDescriptor.restype = c_int32
+    lib.infiniopCreateTopksoftmaxDescriptor.argtypes = [
+        infiniopHandle_t,
+        POINTER(infiniopOperatorDescriptor_t),
+        infiniopTensorDescriptor_t,
+        c_size_t, c_size_t, c_size_t
+    ]
+
+    lib.infiniopGetTopksoftmaxWorkspaceSize.restype = c_int32
+    lib.infiniopGetTopksoftmaxWorkspaceSize.argtypes = [
+        infiniopOperatorDescriptor_t,
+        POINTER(c_size_t),
+    ]
+
+    lib.infiniopTopksoftmax.restype = c_int32
+    lib.infiniopTopksoftmax.argtypes = [
+        infiniopOperatorDescriptor_t,
+        c_void_p,
+        c_size_t,
+        c_void_p,
+        c_void_p,
+        c_void_p,
+        c_void_p,
+    ]
+
+    lib.infiniopDestroyTopksoftmaxDescriptor.restype = c_int32
+    lib.infiniopDestroyTopksoftmaxDescriptor.argtypes = [
         infiniopOperatorDescriptor_t,
     ]
