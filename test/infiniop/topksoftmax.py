@@ -59,11 +59,10 @@ def tensorInfo(data):
     print("data:  ", data.is_contiguous(), data.device, data.dtype, data.shape, data.stride(), data.data_ptr(), hex(data.data_ptr()))
 
 
-def torch_topksoftmax(router_logits, top_k):
+def torch_topksoftmax(router_logits, top_k,    norm_topk_prob = False):
     routing_weights = F.softmax(router_logits, dim=1, dtype=torch.float)
     routing_weights, selected_experts = torch.topk(routing_weights, top_k, dim=-1)
 
-    norm_topk_prob = False
     if norm_topk_prob:  # only diff with mixtral sparse moe block!
         routing_weights /= routing_weights.sum(dim=-1, keepdim=True)
     return routing_weights, selected_experts
@@ -74,7 +73,7 @@ def test(
         device,
         x_shape,
         x_stride,
-        tokp,
+        topk,
         x_dtype=InfiniDtype.F32,
         dtype=InfiniDtype.F16,
         sync=None,
@@ -83,7 +82,7 @@ def test(
         f"Testing topksoftmax on {InfiniDeviceNames[device]} with x_shape:{x_shape}"
         f"x_stride:{x_stride} w_dtype:{InfiniDtypeNames[x_dtype]} dtype:{InfiniDtypeNames[dtype]}"
     )
-
+    norm_topk_prob = True
     data = torch.arange(0, x_shape[0] * x_shape[1]).reshape(x_shape)
 
     N, width = x_shape
@@ -98,10 +97,7 @@ def test(
         LIBINFINIOP.infiniopCreateTopksoftmaxDescriptor(
             handle,
             ctypes.byref(descriptor),
-            x.descriptor,
-            N,
-            width,
-            tokp
+            x.descriptor
         )
     )
 
@@ -117,8 +113,8 @@ def test(
     )
     workspace = TestWorkspace(workspace_size.value, x.device)
 
-    values = torch.zeros((N, tokp), dtype=torch.float32, device=torch_device_map[x.device])
-    indices = torch.zeros((N, tokp), dtype=torch.int32, device=torch_device_map[x.device])
+    values = torch.zeros((N, topk), dtype=torch.float32, device=torch_device_map[x.device])
+    indices = torch.zeros((N, topk), dtype=torch.int32, device=torch_device_map[x.device])
 
     def lib_topksoftmax():
         check_error(
@@ -129,11 +125,13 @@ def test(
                 values.data_ptr(),
                 indices.data_ptr(),
                 x.data(),
+                topk,
+                norm_topk_prob,
                 None,
             )
         )
 
-    lable_values, lable_indices = torch_topksoftmax(x.torch_tensor().clone(), tokp)
+    lable_values, lable_indices = torch_topksoftmax(x.torch_tensor().clone(), topk, norm_topk_prob = norm_topk_prob)
     lable_indices = lable_indices.to(dtype=torch.int32)
     lib_topksoftmax()
 
@@ -148,7 +146,7 @@ def test(
     # Profiling workflow
     if PROFILE:
         # fmt: off
-        profile_operation("PyTorch", lambda: torch_topksoftmax(x.actual_tensor().clone(), tokp), device, NUM_PRERUN, NUM_ITERATIONS)
+        profile_operation("PyTorch", lambda: torch_topksoftmax(x.actual_tensor().clone(), topk), device, NUM_PRERUN, NUM_ITERATIONS)
         profile_operation("    lib", lambda: lib_topksoftmax(), device, NUM_PRERUN, NUM_ITERATIONS)
         # fmt: on
     check_error(LIBINFINIOP.infiniopDestroyTopksoftmaxDescriptor(descriptor))

@@ -32,14 +32,15 @@
         static infiniStatus_t create(                            \
             infiniopHandle_t handle,                             \
             Descriptor **desc_ptr,                               \
-            infiniopTensorDescriptor_t x_desc,                   \
-            size_t N, size_t width, size_t topk);                \
+            infiniopTensorDescriptor_t x_desc);                  \
                                                                  \
         infiniStatus_t calculate(                                \
             void *workspace, size_t workspace_size,              \
             float *values,                                       \
             int *indices,                                        \
             void *x,                                             \
+            size_t topk,                                         \
+            bool norm,                                           \
             void *stream) const;                                 \
     };                                                           \
     }

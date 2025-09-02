@@ -31,7 +31,8 @@ __global__ void softmax_topk_row_kernel(float *values_topk, // 输出值, 形状
                                         T *input,           // 输入数据 [N, width]
                                         const size_t N,     // 总行数
                                         const size_t width, // 每行元素数量
-                                        const size_t topk
+                                        const size_t topk,
+                                        bool norm
 
 ) {
     const int bid = blockIdx.x;
@@ -44,16 +45,21 @@ __global__ void softmax_topk_row_kernel(float *values_topk, // 输出值, 形状
     float *values_topk_output = values_topk + bid * topk;
     int *indices_topk_output = indices_topk + bid * topk;
 
+    const int warp_id = tid / 32;
+    const int lane_id = tid % 32;
+
     __shared__ T shared_max;
     __shared__ float shared_sum;
     typedef cub::BlockReduce<T, BLOCK_SIZE> BlockReduce;
+
     // ------------------------------------------------ //
     //             第一步：计算最大值                      //
     // ------------------------------------------------ //
     T thread_max = data_input[0];
-    for (int i = tid; i < width; i += BLOCK_SIZE) {
-        thread_max = thread_max > data_input[i] ? thread_max : data_input[i];
+    if (tid < width) {
+        thread_max = thread_max > data_input[tid] ? thread_max : data_input[tid];
     }
+
     {
         __shared__ typename BlockReduce::TempStorage temp_storage_max;
         T value_max = BlockReduce(temp_storage_max).Reduce(thread_max, cub::Max());
@@ -67,9 +73,9 @@ __global__ void softmax_topk_row_kernel(float *values_topk, // 输出值, 形状
     //             第二步：计算指数和                      //
     // ------------------------------------------------ //
     float exp_val = 0.0f;
-    for (int i = tid; i < width; i += BLOCK_SIZE) {
-        T temp_val = data_input[i] - shared_max;
-        exp_val += exp_func<T>(temp_val);
+    if (tid < width) {
+        T temp_val = data_input[tid] - shared_max;
+        exp_val = exp_func<T>(temp_val);
     }
 
     {
@@ -84,11 +90,6 @@ __global__ void softmax_topk_row_kernel(float *values_topk, // 输出值, 形状
     // ------------------------------------------------ //
     //           第三步：计算 Softmax                     //
     // ------------------------------------------------ //
-    // for (int i = tid; i < width; i += BLOCK_SIZE) {
-    //     T temp_val = data_input[i] - shared_max;
-    //     data_output[i] = exp_func<T>(temp_val) / shared_sum;
-    // }
-
     exp_val /= shared_sum;
 
     // ------------------------------------------------ //
@@ -96,7 +97,7 @@ __global__ void softmax_topk_row_kernel(float *values_topk, // 输出值, 形状
     // ------------------------------------------------ //
     float thread_values[1] = {-FLT_MAX};
     int thread_indices[1] = {-1};
-    if (exp_val > thread_values[0]) {
+    if ((tid < width) && (exp_val > thread_values[0])) {
         thread_values[0] = exp_val;
         thread_indices[0] = tid;
     }
@@ -106,12 +107,38 @@ __global__ void softmax_topk_row_kernel(float *values_topk, // 输出值, 形状
     BlockRadixSort(temp_storage).SortDescending(thread_values, thread_indices);
     __syncthreads();
 
-    // ------------------------------------------------ //
-    //           第五步： 返回值                          //
-    // ------------------------------------------------ //
-    if (tid < topk) {
-        values_topk_output[tid] = thread_values[0];
-        indices_topk_output[tid] = thread_indices[0];
+    if (0 == warp_id) {
+        int indice = -1;
+        float value = 0.0f;
+        if (tid < topk) {
+            indice = thread_indices[0];
+            value = thread_values[0];
+        }
+        // ------------------------------------------------ //
+        //           第五步： topk的和                         //
+        // ------------------------------------------------ //
+        typedef cub::WarpReduce<float, 32> WarpReduce;
+        __shared__ typename WarpReduce::TempStorage temp_storage;
+        float warp_sum = WarpReduce(temp_storage).Sum(value);
+        if (0 == tid) {
+            shared_sum = warp_sum + 1e-20;
+        }
+        __syncwarp();
+
+        // ------------------------------------------------ //
+        //           第6步： norm归一化                       //
+        // ------------------------------------------------ //
+        if (norm && (tid < topk)) {
+            value /= shared_sum;
+        }
+
+        // ------------------------------------------------ //
+        //           第7步： 最终的返回值                       //
+        // ------------------------------------------------ //
+        if (tid < topk) {
+            values_topk_output[tid] = value;
+            indices_topk_output[tid] = indice;
+        }
     }
 }
 

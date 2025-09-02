@@ -12,15 +12,14 @@
 __C infiniStatus_t infiniopCreateTopksoftmaxDescriptor(
     infiniopHandle_t handle,
     infiniopTopksoftmaxDescriptor_t *desc_ptr,
-    infiniopTensorDescriptor_t x_desc,
-    size_t N, size_t width, size_t topk) {
+    infiniopTensorDescriptor_t x_desc) {
 
 #define CREATE(CASE, NAMESPACE)                                                    \
     case CASE:                                                                     \
         return op::topksoftmax::NAMESPACE::Descriptor::create(                     \
             handle,                                                                \
             reinterpret_cast<op::topksoftmax::NAMESPACE::Descriptor **>(desc_ptr), \
-            x_desc, N, width, topk)
+            x_desc)
 
     switch (handle->device) {
 #ifdef ENABLE_CPU_API
@@ -58,11 +57,16 @@ __C infiniStatus_t infiniopGetTopksoftmaxWorkspaceSize(infiniopTopksoftmaxDescri
 }
 
 __C infiniStatus_t infiniopTopksoftmax(infiniopTopksoftmaxDescriptor_t desc, void *workspace, size_t workspace_size,
-                                       void *values, void *indices, void *x, void *stream) {
+                                       void *values, void *indices, void *x, size_t topk, bool norm, void *stream) {
+
+    if (topk > 32) {
+        return INFINI_STATUS_BAD_PARAM;
+    }
+
 #define CALCULATE(CASE, NAMESPACE)                                                          \
     case CASE:                                                                              \
         return reinterpret_cast<op::topksoftmax::NAMESPACE::Descriptor *>(desc)->calculate( \
-            workspace, workspace_size, (float *)values, (int *)indices, x, stream)
+            workspace, workspace_size, (float *)values, (int *)indices, x, topk, norm, stream)
 
     switch (desc->device_type) {
 #ifdef ENABLE_CPU_API

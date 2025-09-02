@@ -4,7 +4,7 @@ from .structs import (
     infiniopOperatorDescriptor_t,
 )
 
-from ctypes import c_int32, c_void_p, c_size_t, POINTER, c_float
+from ctypes import c_int32, c_void_p, c_size_t, POINTER, c_float, c_bool
 
 
 class OpRegister:
@@ -499,7 +499,6 @@ def topksoftmax_(lib):
         infiniopHandle_t,
         POINTER(infiniopOperatorDescriptor_t),
         infiniopTensorDescriptor_t,
-        c_size_t, c_size_t, c_size_t
     ]
 
     lib.infiniopGetTopksoftmaxWorkspaceSize.restype = c_int32
@@ -516,6 +515,8 @@ def topksoftmax_(lib):
         c_void_p,
         c_void_p,
         c_void_p,
+        c_size_t,
+        c_bool , 
         c_void_p,
     ]
 
