@@ -23,6 +23,7 @@ def run_tests(args):
         "rms_norm.py",
         "rope.py",
         "sub.py",
+        "sigmoid.py",
         "swiglu.py",
     ]:
         result = subprocess.run(
