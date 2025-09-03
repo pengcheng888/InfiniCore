@@ -1,7 +1,7 @@
 #ifndef __SIDMOID_CUDA_H__
 #define __SIDMOID_CUDA_H__
 
-#include "../../../elementwise/cuda/elementwise_cuda.cuh"
+#include "../../../elementwise/nvidia/elementwise_nvidia.cuh"
 #include <cuda_bf16.h>
 #include <cuda_fp16.h>
 
