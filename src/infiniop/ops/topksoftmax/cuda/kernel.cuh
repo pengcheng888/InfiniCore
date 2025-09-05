@@ -46,7 +46,6 @@ __global__ void softmax_topk_row_kernel(float *values_topk, // 输出值, 形状
     int *indices_topk_output = indices_topk + bid * topk;
 
     const int warp_id = tid / 32;
-    const int lane_id = tid % 32;
 
     __shared__ T shared_max;
     __shared__ float shared_sum;

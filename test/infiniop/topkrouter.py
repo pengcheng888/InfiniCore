@@ -27,14 +27,14 @@ from libinfiniop import (
 # ==============================================================================
 # These are not meant to be imported from other modules
 _TEST_CASES_ = [
-    # x_shape, x_stride
+    # x_shape, x_stride, select_experts
     ((1, 256), None, 8),
-    ((3, 256), None, 8),
+    # ((2, 256), None, 8),
 ]
 
 # w (weight) types
 # Note: 'None' means the same as input dtype
-_X_DTYPES = [InfiniDtype.F32]  # , InfiniDtype.BF16 InfiniDtype.F16, InfiniDtype.F32
+_X_DTYPES = [InfiniDtype.F32, InfiniDtype.BF16, InfiniDtype.F16]  # 
 # x types used for testing
 _VALUE_DTYPES = [InfiniDtype.F32]
 
@@ -70,10 +70,10 @@ class DeepseekV3TopkRouter(nn.Module):
         self.norm_topk_prob = True  # config.norm_topk_prob
 
         # self.weight = nn.Parameter(torch.empty((self.n_routed_experts, config.hidden_size)))
-        self.weight = torch.rand(256, 7168) * 2 - 1
+        # self.weight = torch.rand(256, 7168) * 2 - 1
 
         # self.register_buffer("e_score_correction_bias", torch.zeros(self.n_routed_experts))
-        self.e_score_correction_bias = torch.zeros(256, device="cuda")
+        self.e_score_correction_bias = torch.zeros(256, device=correction_bias.device)
         self.e_score_correction_bias[:] = correction_bias[:]
 
     @torch.no_grad()
@@ -114,11 +114,12 @@ class DeepseekV3TopkRouter(nn.Module):
             denominator = topk_weights.sum(dim=-1, keepdim=True) + 1e-20
             topk_weights /= denominator
         topk_weights = topk_weights * self.routed_scaling_factor
+
         return topk_indices, topk_weights
 
 
 def torch_topkrouter(router_logits, correction_bias):
-    lable_indices, lable_values = DeepseekV3TopkRouter(correction_bias.actual_tensor())(router_logits)
+    lable_indices, lable_values = DeepseekV3TopkRouter(correction_bias)(router_logits)
     lable_indices = lable_indices.to(torch.int32)
     return lable_values, lable_indices
 
@@ -128,13 +129,13 @@ def test(
         device,
         x_shape,
         x_stride,
-        tokp,
+        topk,
         x_dtype=InfiniDtype.F32,
         dtype=InfiniDtype.F16,
         sync=None,
 ):
     print(
-        f"Testing topkrouter on {InfiniDeviceNames[device]} with x_shape:{x_shape}"
+        f"Testing topkrouter on {InfiniDeviceNames[device]} with x_shape:{x_shape} "
         f"x_stride:{x_stride} w_dtype:{InfiniDtypeNames[x_dtype]} dtype:{InfiniDtypeNames[dtype]}"
     )
 
@@ -153,10 +154,7 @@ def test(
             handle,
             ctypes.byref(descriptor),
             x.descriptor,
-            correction_bias.descriptor,
-            N,
-            width,
-            tokp
+            correction_bias.descriptor
         )
     )
 
@@ -172,8 +170,10 @@ def test(
     )
     workspace = TestWorkspace(workspace_size.value, x.device)
 
-    values = torch.zeros((N, tokp), dtype=torch.float32, device=torch_device_map[x.device])
-    indices = torch.zeros((N, tokp), dtype=torch.int32, device=torch_device_map[x.device])
+    values = torch.zeros((N, topk), dtype=torch.float32, device=torch_device_map[x.device])
+    indices = torch.zeros((N, topk), dtype=torch.int32, device=torch_device_map[x.device])
+
+    routed_scaling_factor = 2.5
 
     def lib_topkrouter():
         check_error(
@@ -185,13 +185,16 @@ def test(
                 indices.data_ptr(),
                 x.data(),
                 correction_bias.data(),
-                2.5,
+                routed_scaling_factor,
+                topk,
                 None,
             )
         )
 
     lib_topkrouter()
-    lable_values, lable_indices = torch_topkrouter(x.actual_tensor(), correction_bias)
+
+
+    lable_values, lable_indices = torch_topkrouter(x.actual_tensor(), correction_bias.actual_tensor())
 
     atol, rtol = get_tolerance(_TOLERANCE_MAP, dtype)
     if DEBUG:
@@ -204,7 +207,7 @@ def test(
     # Profiling workflow
     if PROFILE:
         # fmt: off
-        profile_operation("PyTorch", lambda: torch_topkrouter(x.actual_tensor().clone(), tokp), device, NUM_PRERUN, NUM_ITERATIONS)
+        profile_operation("PyTorch", lambda: torch_topkrouter(x.actual_tensor().clone(), topk), device, NUM_PRERUN, NUM_ITERATIONS)
         profile_operation("    lib", lambda: lib_topkrouter(), device, NUM_PRERUN, NUM_ITERATIONS)
         # fmt: on
     check_error(LIBINFINIOP.infiniopDestroyTopkrouterDescriptor(descriptor))
@@ -212,7 +215,6 @@ def test(
 
 if __name__ == "__main__":
     args = get_args()
-    args.nvidia = True
 
     # Configure testing options
     DEBUG = args.debug

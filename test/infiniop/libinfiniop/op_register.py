@@ -560,9 +560,6 @@ def topksoftmax_(lib):
     ]
 
 
-
-
-
 @OpRegister.operator
 def topkrouter_(lib):
     lib.infiniopCreateTopkrouterDescriptor.restype = c_int32
@@ -570,8 +567,7 @@ def topkrouter_(lib):
         infiniopHandle_t,
         POINTER(infiniopOperatorDescriptor_t),
         infiniopTensorDescriptor_t,
-        infiniopTensorDescriptor_t,
-        c_size_t, c_size_t, c_size_t
+        infiniopTensorDescriptor_t
     ]
 
     lib.infiniopGetTopkrouterWorkspaceSize.restype = c_int32
@@ -590,6 +586,7 @@ def topkrouter_(lib):
         c_void_p,
         c_void_p,
         c_float,
+        c_size_t,
         c_void_p,
     ]
 
@@ -597,3 +594,6 @@ def topkrouter_(lib):
     lib.infiniopDestroyTopkrouterDescriptor.argtypes = [
         infiniopOperatorDescriptor_t,
     ]
+
+
+

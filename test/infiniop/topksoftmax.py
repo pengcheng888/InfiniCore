@@ -1,7 +1,6 @@
 import torch
 import ctypes
 from ctypes import c_uint64
-
 import torch.nn.functional as F
 
 from libinfiniop import (
@@ -28,14 +27,14 @@ from libinfiniop import (
 # These are not meant to be imported from other modules
 _TEST_CASES_ = [
     # x_shape, x_stride
-    ((2, 10), None, 7),
+    ((1, 10), None, 7),
     ((8, 20), None, 4),
     ((2, 128), None, 8),
 ]
 
 # w (weight) types
 # Note: 'None' means the same as input dtype
-_X_DTYPES = [InfiniDtype.F16, InfiniDtype.F32, InfiniDtype.BF16]
+_X_DTYPES = [InfiniDtype.F32, InfiniDtype.F16, InfiniDtype.BF16]  #
 # x types used for testing
 _VALUE_DTYPES = [InfiniDtype.F32]
 
@@ -46,7 +45,7 @@ _TEST_CASES = [
 
 # Tolerance map for different data types
 _TOLERANCE_MAP = {
-    InfiniDtype.F32: {"atol": 2e-3, "rtol": 2e-3},
+    InfiniDtype.F32: {"atol": 1e-3, "rtol": 1e-3},
 }
 
 DEBUG = False
@@ -59,7 +58,7 @@ def tensorInfo(data):
     print("data:  ", data.is_contiguous(), data.device, data.dtype, data.shape, data.stride(), data.data_ptr(), hex(data.data_ptr()))
 
 
-def torch_topksoftmax(router_logits, top_k,    norm_topk_prob = False):
+def torch_topksoftmax(router_logits, top_k, norm_topk_prob=False):
     routing_weights = F.softmax(router_logits, dim=1, dtype=torch.float)
     routing_weights, selected_experts = torch.topk(routing_weights, top_k, dim=-1)
 
@@ -131,7 +130,7 @@ def test(
             )
         )
 
-    lable_values, lable_indices = torch_topksoftmax(x.torch_tensor().clone(), topk, norm_topk_prob = norm_topk_prob)
+    lable_values, lable_indices = torch_topksoftmax(x.torch_tensor().clone(), topk, norm_topk_prob=norm_topk_prob)
     lable_indices = lable_indices.to(dtype=torch.int32)
     lib_topksoftmax()
 
