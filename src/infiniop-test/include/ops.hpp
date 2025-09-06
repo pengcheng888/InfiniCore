@@ -17,55 +17,57 @@ DECLARE_INFINIOP_TEST(causal_softmax)
 DECLARE_INFINIOP_TEST(rearrange)
 DECLARE_INFINIOP_TEST(sub)
 DECLARE_INFINIOP_TEST(sigmoid)
-DECLARE_INFINIOP_TEST(topk_router)
+DECLARE_INFINIOP_TEST(topkrouter)
+DECLARE_INFINIOP_TEST(topksoftmax)
 
-#define REGISTER_INFINIOP_TEST(name)                      \
-    {                                                     \
-        #name,                                            \
-        {                                                 \
-            infiniop_test::name::Test::build,             \
-            infiniop_test::name::Test::attribute_names(), \
-            infiniop_test::name::Test::tensor_names(),    \
-            infiniop_test::name::Test::output_names(),    \
-        }},
+#define REGISTER_INFINIOP_TEST(name)                                                                                   \
+  { #name,                                                                                                             \
+    {                                                                                                                  \
+        infiniop_test::name::Test::build,                                                                              \
+        infiniop_test::name::Test::attribute_names(),                                                                  \
+        infiniop_test::name::Test::tensor_names(),                                                                     \
+        infiniop_test::name::Test::output_names(),                                                                     \
+    } },
 
 /*
  * Register all the tests here
  */
-#define TEST_BUILDER_MAPPINGS                  \
-    {                                          \
-        REGISTER_INFINIOP_TEST(gemm)           \
-        REGISTER_INFINIOP_TEST(random_sample)  \
-        REGISTER_INFINIOP_TEST(add)            \
-        REGISTER_INFINIOP_TEST(mul)            \
-        REGISTER_INFINIOP_TEST(clip)           \
-        REGISTER_INFINIOP_TEST(swiglu)         \
-        REGISTER_INFINIOP_TEST(rope)           \
-        REGISTER_INFINIOP_TEST(rms_norm)       \
-        REGISTER_INFINIOP_TEST(causal_softmax) \
-        REGISTER_INFINIOP_TEST(rearrange)      \
-        REGISTER_INFINIOP_TEST(sub)            \
-        REGISTER_INFINIOP_TEST(sigmoid)        \
-        REGISTER_INFINIOP_TEST(topk_router)    \
-    }
+#define TEST_BUILDER_MAPPINGS                                                                                          \
+  {                                                                                                                    \
+    REGISTER_INFINIOP_TEST(gemm)                                                                                       \
+    REGISTER_INFINIOP_TEST(random_sample)                                                                              \
+    REGISTER_INFINIOP_TEST(add)                                                                                        \
+    REGISTER_INFINIOP_TEST(mul)                                                                                        \
+    REGISTER_INFINIOP_TEST(clip)                                                                                       \
+    REGISTER_INFINIOP_TEST(swiglu)                                                                                     \
+    REGISTER_INFINIOP_TEST(rope)                                                                                       \
+    REGISTER_INFINIOP_TEST(rms_norm)                                                                                   \
+    REGISTER_INFINIOP_TEST(causal_softmax)                                                                             \
+    REGISTER_INFINIOP_TEST(rearrange)                                                                                  \
+    REGISTER_INFINIOP_TEST(sub)                                                                                        \
+    REGISTER_INFINIOP_TEST(sigmoid)                                                                                    \
+    REGISTER_INFINIOP_TEST(topkrouter)                                                                                 \
+    REGISTER_INFINIOP_TEST(topksoftmax)                                                                                \
+  }
 
-namespace infiniop_test {
-
+namespace infiniop_test
+{
 // Global variable for {op_name: builder} mappings
 extern std::unordered_map<std::string, const TestBuilder> TEST_BUILDERS;
 
 template <typename V>
-bool check_names(
-    const std::unordered_map<std::string, V> &map,
-    const std::vector<std::string> &names) {
-    for (auto const &name : names) {
-        if (map.find(name) == map.end()) {
-            return false;
-        }
+bool check_names(const std::unordered_map<std::string, V>& map, const std::vector<std::string>& names)
+{
+  for (auto const& name : names)
+  {
+    if (map.find(name) == map.end())
+    {
+      return false;
     }
-    return true;
+  }
+  return true;
 }
 
-} // namespace infiniop_test
+}  // namespace infiniop_test
 
 #endif

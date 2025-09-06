@@ -4,16 +4,15 @@
 #include <iomanip>
 #include <iostream>
 
-namespace infiniop_test::topkrouter
+namespace infiniop_test::topksoftmax
 {
 struct Test::Attributes
 {
   std::shared_ptr<Tensor> values;
   std::shared_ptr<Tensor> indices;
   std::shared_ptr<Tensor> x;
-  std::shared_ptr<Tensor> correction_bias;
-  float routed_scaling_factor;
   int topk;
+  bool norm;
   std::shared_ptr<Tensor> lable_values;
   std::shared_ptr<Tensor> lable_indices;
 };
@@ -25,10 +24,10 @@ std::shared_ptr<Test> Test::build(std::unordered_map<std::string, std::vector<ui
   auto test = std::shared_ptr<Test>(new Test(rtol, atol));
   test->_attributes = new Attributes();
 
-  if (attributes.find("routed_scaling_factor") == attributes.end() || attributes.find("topk") == attributes.end() ||
+  if (attributes.find("topk") == attributes.end() || attributes.find("norm") == attributes.end() ||
       tensors.find("values") == tensors.end() || tensors.find("indices") == tensors.end() ||
-      tensors.find("x") == tensors.end() || tensors.find("correction_bias") == tensors.end() ||
-      tensors.find("lable_values") == tensors.end() || tensors.find("lable_indices") == tensors.end())
+      tensors.find("x") == tensors.end() || tensors.find("lable_values") == tensors.end() ||
+      tensors.find("lable_indices") == tensors.end())
   {
     throw std::runtime_error("Invalid Test: Missing attributes or tensors");
   }
@@ -36,10 +35,9 @@ std::shared_ptr<Test> Test::build(std::unordered_map<std::string, std::vector<ui
   test->_attributes->values = tensors["values"];
   test->_attributes->indices = tensors["indices"];
   test->_attributes->x = tensors["x"];
-  test->_attributes->correction_bias = tensors["correction_bias"];
 
-  test->_attributes->routed_scaling_factor = *reinterpret_cast<float*>(attributes["routed_scaling_factor"].data());
   test->_attributes->topk = *reinterpret_cast<int*>(attributes["topk"].data());
+  test->_attributes->norm = *reinterpret_cast<bool*>(attributes["norm"].data());
 
   test->_attributes->lable_values = tensors["lable_values"];
   test->_attributes->lable_indices = tensors["lable_indices"];
@@ -50,22 +48,20 @@ std::shared_ptr<Test> Test::build(std::unordered_map<std::string, std::vector<ui
 std::shared_ptr<infiniop_test::Result> Test::run(infiniopHandle_t handle, infiniDevice_t device, int device_id,
                                                  size_t warm_ups, size_t iterations)
 {
-  infiniopTopkrouterDescriptor_t op_desc;
-  CHECK_OR(infiniopCreateTopkrouterDescriptor(handle, &op_desc, _attributes->x->desc(),
-                                              _attributes->correction_bias->desc()),
-           return TEST_FAILED(OP_CREATION_FAILED, "Failed to create Topkrouter descriptor"));
+  infiniopTopksoftmaxDescriptor_t op_desc;
+  CHECK_OR(infiniopCreateTopksoftmaxDescriptor(handle, &op_desc, _attributes->x->desc()),
+           return TEST_FAILED(OP_CREATION_FAILED, "Failed to create Topksoftmax descriptor"));
 
   //
   auto values = _attributes->values->to(device, device_id);
   auto indices = _attributes->indices->to(device, device_id);
   auto x = _attributes->x->to(device, device_id);
-  auto correction_bias = _attributes->correction_bias->to(device, device_id);
 
-  float routed_scaling_factor = _attributes->routed_scaling_factor;
   int topk = _attributes->topk;
+  bool norm = _attributes->norm;
 
   size_t workspace_size;
-  CHECK_OR(infiniopGetTopkrouterWorkspaceSize(op_desc, &workspace_size),
+  CHECK_OR(infiniopGetTopksoftmaxWorkspaceSize(op_desc, &workspace_size),
            return TEST_FAILED(OP_CREATION_FAILED, "Failed to get workspace size"));
   void* workspace = nullptr;
   if (workspace_size > 0)
@@ -74,9 +70,9 @@ std::shared_ptr<infiniop_test::Result> Test::run(infiniopHandle_t handle, infini
              return TEST_FAILED(OP_CREATION_FAILED, "Failed to allocate workspace"));
   }
 
-  CHECK_OR(infiniopTopkrouter(op_desc, workspace, workspace_size, values->data(), indices->data(), x->data(),
-                              correction_bias->data(), routed_scaling_factor, topk, nullptr),
-           return TEST_FAILED(OP_EXECUTION_FAILED, "Topkrouter execution failed"));
+  CHECK_OR(infiniopTopksoftmax(op_desc, workspace, workspace_size, values->data(), indices->data(), x->data(), topk,
+                               norm, nullptr),
+           return TEST_FAILED(OP_EXECUTION_FAILED, "Topksoftmax execution failed"));
 
   try
   {
@@ -92,8 +88,8 @@ std::shared_ptr<infiniop_test::Result> Test::run(infiniopHandle_t handle, infini
 
   elapsed_time = benchmark(
       [=]() {
-        infiniopTopkrouter(op_desc, workspace, workspace_size, values->data(), indices->data(), x->data(),
-                           correction_bias->data(), routed_scaling_factor, topk, nullptr);
+        infiniopTopksoftmax(op_desc, workspace, workspace_size, values->data(), indices->data(), x->data(), topk, norm,
+                            nullptr);
       },
       warm_ups, iterations);
 
@@ -107,12 +103,12 @@ std::shared_ptr<infiniop_test::Result> Test::run(infiniopHandle_t handle, infini
 
 std::vector<std::string> Test::attribute_names()
 {
-  return { "routed_scaling_factor", "topk" };
+  return { "topk", "norm" };
 }
 
 std::vector<std::string> Test::tensor_names()
 {
-  return { "values", "indices", "x", "correction_bias", "x", "lable_values", "lable_indices" };
+  return { "values", "indices", "x", "lable_values", "lable_indices" };
 }
 
 std::vector<std::string> Test::output_names()
@@ -124,13 +120,13 @@ std::string Test::toString() const
 {
   std::ostringstream oss;
   oss << op_name() << std::endl;
-  oss << "- routed_scaling_factor=" << _attributes->routed_scaling_factor << std::endl;
+
   oss << "- topk=" << _attributes->topk << std::endl;
+  oss << "- norm=" << _attributes->norm << std::endl;
 
   oss << "- values: " << _attributes->values->info() << std::endl;
   oss << "- indices: " << _attributes->indices->info() << std::endl;
   oss << "- x: " << _attributes->x->info() << std::endl;
-  oss << "- correction_bias: " << _attributes->correction_bias->info() << std::endl;
 
   oss << "- lable_values: " << _attributes->lable_values->info() << std::endl;
   oss << "- lable_indices: " << _attributes->lable_indices->info() << std::endl;
@@ -145,4 +141,4 @@ Test::~Test()
   delete _attributes;
 }
 
-}  // namespace infiniop_test::topkrouter
+}  // namespace infiniop_test::topksoftmax

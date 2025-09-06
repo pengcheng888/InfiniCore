@@ -1,14 +1,14 @@
 #ifndef _Topkrouter_KERNEL_CUH__
 #define _Topkrouter_KERNEL_CUH__
+#include <cuda_bf16.h>
+#include <cuda_fp16.h>
+#include <cuda_runtime.h>
 #include <cfloat>
 #include <cub/block/block_load.cuh>
 #include <cub/block/block_radix_sort.cuh>
 #include <cub/block/block_reduce.cuh>
 #include <cub/block/block_store.cuh>
 #include <cub/cub.cuh>
-#include <cuda_bf16.h>
-#include <cuda_fp16.h>
-#include <cuda_runtime.h>
 
 template <typename T>
 inline __device__ float exp_func(T x) {
@@ -31,7 +31,7 @@ inline __device__ T sigmoid_func(T x) {
 
 struct CustomLess {
     template <typename DataType>
-    __device__ bool operator()(const DataType &lhs, const DataType &rhs) {
+    __device__ bool operator()(const DataType& lhs, const DataType& rhs) {
         return lhs > rhs;
     }
 };
@@ -40,13 +40,13 @@ struct CustomLess {
 // deepseek的topk
 //
 template <typename T, int BLOCK_THREADS = 256>
-__global__ void topkrouter_kernel(float *values_topk,          // 输出值, 形状[N, topk]
-                                  int *indices_topk,           // 输出索引, 形状[N, topk]
-                                  T *input,                    // 输入数据 [N, width]
-                                  float *d_correction_bias,    // 输入数据 [width]
-                                  float routed_scaling_factor, //
-                                  const size_t N,              // 总行数,toen数量
-                                  const size_t width,          // 每行元素数量
+__global__ void topkrouter_kernel(float* values_topk,                 // 输出值, 形状[N, topk]
+                                  int* indices_topk,                  // 输出索引, 形状[N, topk]
+                                  const T* input,                     // 输入数据 [N, width]
+                                  const float* d_correction_bias,     // 输入数据 [width]
+                                  const float routed_scaling_factor,  //
+                                  const size_t N,                     // 总行数,toen数量
+                                  const size_t width,                 // 每行元素数量
                                   const size_t topk
 
 ) {
@@ -55,9 +55,9 @@ __global__ void topkrouter_kernel(float *values_topk,          // 输出值, 形
         return;
     }
     const int tid = threadIdx.x;
-    const T *data_input = input + bid * width;
-    float *values_topk_output = values_topk + bid * topk;
-    int *indices_topk_output = indices_topk + bid * topk;
+    const T* data_input = input + bid * width;
+    float* values_topk_output = values_topk + bid * topk;
+    int* indices_topk_output = indices_topk + bid * topk;
 
     constexpr int warp_threads = 32;
     constexpr int block_threads = 256;
@@ -67,7 +67,7 @@ __global__ void topkrouter_kernel(float *values_topk,          // 输出值, 形
 
     __shared__ float share_data[256];
     __shared__ float share_data_group[8];
-    __shared__ float share_data_group_mask[8]; // 有效的group
+    __shared__ float share_data_group_mask[8];  // 有效的group
     __shared__ float share_sum;
     if (tid < 8) {
         share_data_group_mask[tid] = 0.0f;
@@ -165,4 +165,4 @@ __global__ void topkrouter_kernel(float *values_topk,          // 输出值, 形
     }
 }
 
-#endif // _topkrouter_KERNEL_CUH__
+#endif  // _topkrouter_KERNEL_CUH__

@@ -111,7 +111,7 @@ class TopkrouterTestCase(InfiniopTestCase):
                  correction_bias_shape: List[int] | None,
                  correction_bias_strides: List[int] | None,
                  ):
-        super().__init__("topk_router")
+        super().__init__("topkrouter")
         self.values = values
         self.indices = indices
         self.x = x
@@ -190,7 +190,7 @@ class TopkrouterTestCase(InfiniopTestCase):
 
 
 if __name__ == "__main__":
-    test_writer = InfiniopTestWriter("topk_router.gguf")
+    test_writer = InfiniopTestWriter("topkrouter.gguf")
     test_cases = []
 
     _TEST_CASES_ = [
