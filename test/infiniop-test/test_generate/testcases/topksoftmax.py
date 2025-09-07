@@ -11,7 +11,7 @@ def random_tensor(shape: tuple, dtype: np.dtype) -> np.ndarray:
     return np.random.uniform(-1.0, 1.0, shape).astype(dtype) * 0.001
 
 
-def torch_Tokpsoftmax(router_logits, top_k: int, norm_topk_prob: bool):
+def torch_Topksoftmax(router_logits, top_k: int, norm_topk_prob: bool):
     routing_weights = F.softmax(router_logits, dim=1, dtype=torch.float)
     routing_weights, selected_experts = torch.topk(routing_weights, top_k, dim=-1)
     if norm_topk_prob:  # only diff with mixtral sparse moe block!
@@ -19,6 +19,13 @@ def torch_Tokpsoftmax(router_logits, top_k: int, norm_topk_prob: bool):
 
     routing_weights = routing_weights.to(torch.float)
     return routing_weights, selected_experts
+
+
+def python_Topksoftmax(router_logits, top_k: int, norm_topk_prob: bool):
+    router_logits = torch.from_numpy(router_logits)
+
+    lable_values, lable_indices = torch_Topksoftmax(router_logits, top_k, norm_topk_prob)
+    return lable_values.numpy(), lable_indices.numpy()
 
 
 class TopksoftmaxTestCase(InfiniopTestCase):
@@ -88,7 +95,7 @@ class TopksoftmaxTestCase(InfiniopTestCase):
         test_writer.add_int32(test_writer.gguf_key("topk"), self.topk)
         test_writer.add_bool(test_writer.gguf_key("norm"), self.norm)
 
-        lable_values, lable_indices = torch_Tokpsoftmax(self.x.copy(), self.topk, self.norm_topk_prob)
+        lable_values, lable_indices = python_Topksoftmax(self.x.copy(), self.topk, self.norm)
 
         test_writer.add_tensor(
             test_writer.gguf_key("lable_values"),
@@ -103,7 +110,7 @@ class TopksoftmaxTestCase(InfiniopTestCase):
 
 
 if __name__ == "__main__":
-    test_writer = InfiniopTestWriter("topkrouter.gguf")
+    test_writer = InfiniopTestWriter("topksoftmax.gguf")
     test_cases = []
 
     _TEST_CASES_ = [
