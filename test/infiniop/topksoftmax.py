@@ -26,10 +26,10 @@ from libinfiniop import (
 # ==============================================================================
 # These are not meant to be imported from other modules
 _TEST_CASES_ = [
-    # x_shape, x_stride
-    ((1, 10), None, 7),
-    ((8, 20), None, 4),
-    ((2, 128), None, 8),
+    # x_shape, x_stride, topk, norm
+    ((1, 10), None, 7, True),
+    ((8, 20), None, 4, True),
+    ((2, 128), None, 10, True),
 ]
 
 # w (weight) types
@@ -46,6 +46,8 @@ _TEST_CASES = [
 # Tolerance map for different data types
 _TOLERANCE_MAP = {
     InfiniDtype.F32: {"atol": 1e-3, "rtol": 1e-3},
+    InfiniDtype.F16: {"atol": 1e-3, "rtol": 1e-3},
+    InfiniDtype.BF16: {"atol": 1e-3, "rtol": 1e-3},
 }
 
 DEBUG = False
@@ -61,7 +63,6 @@ def tensorInfo(data):
 def torch_topksoftmax(router_logits, top_k, norm_topk_prob=False):
     routing_weights = F.softmax(router_logits, dim=1, dtype=torch.float)
     routing_weights, selected_experts = torch.topk(routing_weights, top_k, dim=-1)
-
     if norm_topk_prob:  # only diff with mixtral sparse moe block!
         routing_weights /= routing_weights.sum(dim=-1, keepdim=True)
     return routing_weights, selected_experts
@@ -73,6 +74,7 @@ def test(
         x_shape,
         x_stride,
         topk,
+        norm_topk_prob,
         x_dtype=InfiniDtype.F32,
         dtype=InfiniDtype.F16,
         sync=None,
@@ -81,7 +83,7 @@ def test(
         f"Testing topksoftmax on {InfiniDeviceNames[device]} with x_shape:{x_shape}"
         f"x_stride:{x_stride} w_dtype:{InfiniDtypeNames[x_dtype]} dtype:{InfiniDtypeNames[dtype]}"
     )
-    norm_topk_prob = True
+
     data = torch.arange(0, x_shape[0] * x_shape[1]).reshape(x_shape)
 
     N, width = x_shape

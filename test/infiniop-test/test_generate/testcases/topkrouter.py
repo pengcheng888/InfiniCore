@@ -74,14 +74,10 @@ class DeepseekV3TopkRouter(nn.Module):
         return topk_indices, topk_weights
 
 
-def python_topkrouter(values: np.ndarray,
-                      indices: np.ndarray,
-                      x: np.ndarray,
+def python_topkrouter(x: np.ndarray,
                       correction_bias: np.ndarray,
                       routed_scaling_factor: float,
                       topk: int):
-    # values = torch.from_numpy(values)
-    # indices = torch.from_numpy(indices)
     x = torch.from_numpy(x)
     correction_bias = torch.from_numpy(correction_bias)
 
@@ -89,9 +85,7 @@ def python_topkrouter(values: np.ndarray,
     lable_indices, lable_values = DeepseekV3TopkRouter(correction_bias, routed_scaling_factor=routed_scaling_factor, topk=topk)(router_logits)
     lable_indices = lable_indices.to(torch.int32)
 
-    lable_values = lable_values.numpy()
-    indices = lable_indices.numpy()
-    return lable_values, indices
+    return lable_values.numpy(), lable_indices.numpy()
 
 
 class TopkrouterTestCase(InfiniopTestCase):
@@ -100,8 +94,8 @@ class TopkrouterTestCase(InfiniopTestCase):
                  indices: np.ndarray,  # 传出参数
                  x: np.ndarray,  # 传入参数
                  correction_bias: np.ndarray,  # 传入参数
-                 routed_scaling_factor: float,  # 传入参数
-                 topk: int,  # 传入参数
+                 routed_scaling_factor: float,
+                 topk: int,
                  values_shape: List[int] | None,
                  values_strides: List[int] | None,
                  indices_shape: List[int] | None,
@@ -119,7 +113,7 @@ class TopkrouterTestCase(InfiniopTestCase):
 
         self.routed_scaling_factor = routed_scaling_factor
         self.topk = topk
-      
+
         self.values_shape = values_shape
         self.values_strides = values_strides
         self.indices_shape = indices_shape
@@ -174,8 +168,7 @@ class TopkrouterTestCase(InfiniopTestCase):
         test_writer.add_float32(test_writer.gguf_key("routed_scaling_factor"), self.routed_scaling_factor)
         test_writer.add_int32(test_writer.gguf_key("topk"), self.topk)
 
-
-        lable_values, lable_indices = python_topkrouter(values, indices, self.x.copy(), self.correction_bias.copy(), routed_scaling_factor, topk)
+        lable_values, lable_indices = python_topkrouter(self.x.copy(), self.correction_bias.copy(), routed_scaling_factor, topk)
 
         test_writer.add_tensor(
             test_writer.gguf_key("lable_values"),
@@ -194,11 +187,11 @@ if __name__ == "__main__":
     test_cases = []
 
     _TEST_CASES_ = [
-        # x_shape, x_strides, correction_bias_shape, b_stride， routed_scaling_factor, topk
+        # x_shape, x_strides, correction_bias_shape, correction_bias_stride， routed_scaling_factor, topk
         ((1, 256), None, (256,), None, 2.5, 8),
-        ((2, 256), None, (256,), None, 2.5, 8),
+        ((2, 256), None, (256,), None, 1.5, 8),
     ]
-    _TENSOR_DTYPES_ = [np.float32]  # , np.float16
+    _TENSOR_DTYPES_ = [np.float32, np.float16]
     for dtype in _TENSOR_DTYPES_:
         for x_shape, x_strides, correction_bias_shape, b_stride, routed_scaling_factor, topk in _TEST_CASES_:
             ntoken = x_shape[0]

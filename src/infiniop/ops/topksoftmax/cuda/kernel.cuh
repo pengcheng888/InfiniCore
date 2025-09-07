@@ -22,15 +22,12 @@ inline __device__ float exp_func(T x) {
     return __expf(data);
 }
 
-//
-// 对每一行数据做softmax,然后排序得到前k个最大值
-//
 template <typename T, int BLOCK_SIZE = 128>
-__global__ void softmax_topk_row_kernel(float *values_topk, // 输出值, 形状[N, topk]
+__global__ void softmax_topk_row_kernel(float *values_topk, // 输出数据, 形状[N, topk]
                                         int *indices_topk,  // 输出索引, 形状[N, topk]
-                                        T *input,           // 输入数据 [N, width]
-                                        const size_t N,     // 总行数
-                                        const size_t width, // 每行元素数量
+                                        const T *input,     // 输入数据 [N, width]
+                                        const size_t N,
+                                        const size_t width,
                                         const size_t topk,
                                         bool norm
 
@@ -41,7 +38,7 @@ __global__ void softmax_topk_row_kernel(float *values_topk, // 输出值, 形状
     }
 
     const int tid = threadIdx.x;
-    T *data_input = input + bid * width;
+    const T *data_input = input + bid * width;
     float *values_topk_output = values_topk + bid * topk;
     int *indices_topk_output = indices_topk + bid * topk;
 
@@ -100,10 +97,11 @@ __global__ void softmax_topk_row_kernel(float *values_topk, // 输出值, 形状
         thread_values[0] = exp_val;
         thread_indices[0] = tid;
     }
-
-    typedef cub::BlockRadixSort<float, BLOCK_SIZE, 1, int> BlockRadixSort;
-    __shared__ typename BlockRadixSort::TempStorage temp_storage;
-    BlockRadixSort(temp_storage).SortDescending(thread_values, thread_indices);
+    {
+        typedef cub::BlockRadixSort<float, BLOCK_SIZE, 1, int> BlockRadixSort;
+        __shared__ typename BlockRadixSort::TempStorage temp_storage;
+        BlockRadixSort(temp_storage).SortDescending(thread_values, thread_indices);
+    }
     __syncthreads();
 
     if (0 == warp_id) {
@@ -113,14 +111,17 @@ __global__ void softmax_topk_row_kernel(float *values_topk, // 输出值, 形状
             indice = thread_indices[0];
             value = thread_values[0];
         }
+
         // ------------------------------------------------ //
         //           第五步： topk的和                         //
         // ------------------------------------------------ //
-        typedef cub::WarpReduce<float, 32> WarpReduce;
-        __shared__ typename WarpReduce::TempStorage temp_storage;
-        float warp_sum = WarpReduce(temp_storage).Sum(value);
-        if (0 == tid) {
-            shared_sum = warp_sum + 1e-20;
+        {
+            typedef cub::WarpReduce<float, 32> WarpReduce;
+            __shared__ typename WarpReduce::TempStorage temp_storage;
+            float warp_sum = WarpReduce(temp_storage).Sum(value);
+            if (0 == tid) {
+                shared_sum = warp_sum + 1e-9;
+            }
         }
         __syncwarp();
 

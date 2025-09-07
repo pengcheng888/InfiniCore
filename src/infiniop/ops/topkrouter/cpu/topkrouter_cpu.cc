@@ -32,7 +32,6 @@ inline float sigmoid_func(T x) {
     } else {
         value = x;
     }
-
     return 1.0f / (1.0f + std::exp(-value));
 }
 
@@ -41,43 +40,41 @@ void topkrouter_cpu_one_token(float *values_input,                              
                               int *indices_input,                                     // 输出索引
                               const T *x_input,                                       // 输入数据
                               std::vector<std::pair<float, size_t>> &value_index_arr, // 输入数据
-                              const float *correction_bias, const float routed_scaling_factor, const size_t topk,
+                              const float *correction_bias,
+                              const float routed_scaling_factor, const size_t topk,
                               const size_t width, const size_t n_routed_experts, const size_t n_group,
                               const size_t topk_group, const bool norm_topk_prob) {
 
     // ------------------------------------------------------ //
-    //             对输入数据做 sigmoid                         //
+    //               对输入数据做 sigmoid                       //
     // ------------------------------------------------------ //
     for (size_t i = 0; i < width; ++i) {
         value_index_arr[i].first = sigmoid_func(value_index_arr[i].first);
-        value_index_arr[i].second = i;
     }
 
     // ------------------------------------------------------ //
-    //                   再加偏执参                            //
+    //                   再加偏置                              //
     // ------------------------------------------------------ //
     for (size_t i = 0; i < width; ++i) {
         value_index_arr[i].first += correction_bias[i];
     }
 
     // ----------------------------------------------------------- //
-    //      分为 n_group 组，找出每组的最大值                     //
+    //          分为 n_group 组，找出每组的最大值                      //
     // ----------------------------------------------------------- //
-    const size_t group_size = width / n_group; // 表示每个组的数量
-
     std::vector<std::pair<float, size_t>> value_index_group;
     value_index_group.resize(n_group);
 
+    const size_t group_size = width / n_group; // group_size表示每个组的元素数量
     for (size_t igroup = 0; igroup < n_group; ++igroup) {
-        auto it = value_index_arr.begin() + igroup * group_size;
-
         std::vector<std::pair<float, size_t>> value_index_warp;
         value_index_warp.resize(group_size);
 
-        // 每个group的数据
+        auto it = value_index_arr.begin() + igroup * group_size;
         for (size_t i = 0; i < group_size; ++i) {
-            value_index_warp[i] = {(*it++).first, i};
+            value_index_warp[i] = {(it++)->first, i};
         }
+
         // 每个group中的数据，进行排序
         std::sort(value_index_warp.begin(), value_index_warp.end(),
                   [](const std::pair<float, size_t> &a, const std::pair<float, size_t> &b) { return a.first > b.first; });
@@ -87,14 +84,13 @@ void topkrouter_cpu_one_token(float *values_input,                              
     }
 
     // ------------------------------------------------------------------ //
-    //       对 value_index_group 的数据, 再选前 4(topk_group) 个            //
+    //       对 value_index_group 的数据, 再选前 topk_group 个               //
     // ------------------------------------------------------------------ //
     std::sort(value_index_group.begin(), value_index_group.end(),
               [](const std::pair<float, size_t> &a, const std::pair<float, size_t> &b) { return a.first > b.first; });
 
     std::vector<bool> group_mask;
     group_mask.resize(n_group, false);
-
     for (size_t i = 0; i < topk_group; ++i) {
         size_t index = value_index_group[i].second;
         group_mask[index] = true;
@@ -123,23 +119,24 @@ void topkrouter_cpu_one_token(float *values_input,                              
     // ----------------------------------------------------------- //
     //                取topk个数据                                  //
     // ----------------------------------------------------------- //
-    float sum = 0.0f;
+    float exp_sum = 0.0f;
     for (size_t i = 0; i < topk; ++i) {
         int index = value_index_arr[i].second;
-        float value = sigmoid_func(x_input[index]);
+        float exp_value = sigmoid_func(x_input[index]);
 
-        values_input[i] = value;
+        values_input[i] = exp_value;
         indices_input[i] = index;
 
-        sum += value;
+        exp_sum += exp_value;
     }
+
     // ----------------------------------------------------------- //
     //                    归一化                                    //
     // ----------------------------------------------------------- //
     if (norm_topk_prob) {
-        sum += 1e-9;
+        exp_sum += 1e-9;
         for (size_t i = 0; i < topk; ++i) {
-            values_input[i] = routed_scaling_factor * values_input[i] / sum;
+            values_input[i] = routed_scaling_factor * values_input[i] / exp_sum;
         }
     }
 }
@@ -152,7 +149,7 @@ infiniStatus_t topkrouter_cpu_func(float *values, int *indices,
                                    const size_t n_group = 8, const size_t topk_group = 4,
                                    const bool norm_topk_prob = true) {
     /*
-    O-----------> width
+    O-----------> width 地址连续
     |
     |
     N
@@ -162,20 +159,10 @@ infiniStatus_t topkrouter_cpu_func(float *values, int *indices,
         int *indices_input = indices + n * topk;
         const T *x_input = x + n * width;
 
-        // printf(" routed_scaling_factor : %f\n", routed_scaling_factor);
-        // printf(" topk : %ld\n", topk);
-        // printf(" N : %ld\n", N);
-        // printf("width : %ld\n", width);
-        // printf(" n_routed_experts : %ld\n", n_routed_experts);
-        // printf(" n_group : %ld\n", n_group);
-        // printf(" topk_group : %ld\n", topk_group);
-        // printf(" norm_topk_prob : %d\n", norm_topk_prob);
-
         std::vector<std::pair<float, size_t>> value_index_arr;
         value_index_arr.resize(width);
 
         for (size_t i = 0; i < width; ++i) {
-
             float temp;
             if constexpr (std::is_same<T, fp16_t>::value) {
                 temp = _f16_to_f32(x_input[i]);
@@ -184,13 +171,12 @@ infiniStatus_t topkrouter_cpu_func(float *values, int *indices,
             } else {
                 temp = x_input[i];
             }
-
-            value_index_arr[i].first = temp;
+            value_index_arr[i] = {temp, i};
         }
 
         topkrouter_cpu_one_token<T>(values_input, indices_input, x_input, value_index_arr,
-                                    correction_bias, routed_scaling_factor, topk, width,
-                                    n_routed_experts, n_group, topk_group, norm_topk_prob);
+                                    correction_bias, routed_scaling_factor,
+                                    topk, width, n_routed_experts, n_group, topk_group, norm_topk_prob);
     }
 
     return INFINI_STATUS_SUCCESS;
@@ -207,7 +193,7 @@ infiniStatus_t Descriptor::calculate(void *workspace, size_t workspace_size, flo
     const size_t n_group = 8;
     const size_t topk_group = 4;
     const bool norm_topk_prob = true;
-    //
+
     if ((width != n_routed_experts) || (width % n_group != 0) || (256 != width)) {
         return INFINI_STATUS_BAD_PARAM;
     }
@@ -228,38 +214,3 @@ infiniStatus_t Descriptor::calculate(void *workspace, size_t workspace_size, flo
     return INFINI_STATUS_SUCCESS;
 }
 } // namespace op::topkrouter::cpu
-
-// infiniStatus_t Descriptor::calculate(
-//     void *workspace, size_t workspace_size,
-//     void *y, const void *x, const void *w,
-//     void *stream) const {
-//     if (_info.atype == INFINI_DTYPE_F16) {
-//         if (_info.wtype == INFINI_DTYPE_F16) {
-//             CHECK_STATUS(rmsnormHalfPrecision(&_info, (fp16_t *)y, (const fp16_t *)x, (const fp16_t *)w));
-//         } else if (_info.wtype == INFINI_DTYPE_F32) {
-//             CHECK_STATUS(rmsnormHalfPrecision(&_info, (fp16_t *)y, (const fp16_t *)x, (const float *)w));
-//         } else if (_info.wtype == INFINI_DTYPE_BF16) {
-//             CHECK_STATUS(rmsnormHalfPrecision(&_info, (fp16_t *)y, (const fp16_t *)x, (const bf16_t *)w));
-//         } else {
-//             return INFINI_STATUS_BAD_TENSOR_DTYPE;
-//         }
-//     } else if (_info.atype == INFINI_DTYPE_BF16) {
-//         if (_info.wtype == INFINI_DTYPE_BF16) {
-//             CHECK_STATUS(rmsnormHalfPrecision(&_info, (bf16_t *)y, (const bf16_t *)x, (const bf16_t *)w));
-//         } else if (_info.wtype == INFINI_DTYPE_F32) {
-//             CHECK_STATUS(rmsnormHalfPrecision(&_info, (bf16_t *)y, (const bf16_t *)x, (const float *)w));
-//         } else if (_info.wtype == INFINI_DTYPE_F16) {
-//             CHECK_STATUS(rmsnormHalfPrecision(&_info, (bf16_t *)y, (const bf16_t *)x, (const fp16_t *)w));
-//         } else {
-//             return INFINI_STATUS_BAD_TENSOR_DTYPE;
-//         }
-//     } else if (_info.atype == INFINI_DTYPE_F32) {
-//         CHECK_STATUS(rmsnorm(&_info, (float *)y, (const float *)x, (const float *)w));
-//     } else if (_info.atype == INFINI_DTYPE_F64) {
-//         CHECK_STATUS(rmsnorm(&_info, (double *)y, (const double *)x, (const double *)w));
-//     } else {
-//         return INFINI_STATUS_BAD_TENSOR_DTYPE;
-//     }
-
-//     return INFINI_STATUS_SUCCESS;
-// }

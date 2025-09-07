@@ -16,14 +16,12 @@ def torch_Topksoftmax(router_logits, top_k: int, norm_topk_prob: bool):
     routing_weights, selected_experts = torch.topk(routing_weights, top_k, dim=-1)
     if norm_topk_prob:  # only diff with mixtral sparse moe block!
         routing_weights /= routing_weights.sum(dim=-1, keepdim=True)
-
     routing_weights = routing_weights.to(torch.float)
     return routing_weights, selected_experts
 
 
 def python_Topksoftmax(router_logits, top_k: int, norm_topk_prob: bool):
     router_logits = torch.from_numpy(router_logits)
-
     lable_values, lable_indices = torch_Topksoftmax(router_logits, top_k, norm_topk_prob)
     return lable_values.numpy(), lable_indices.numpy()
 
@@ -33,8 +31,8 @@ class TopksoftmaxTestCase(InfiniopTestCase):
                  values: np.ndarray,  # 传出参数
                  indices: np.ndarray,  # 传出参数
                  x: np.ndarray,  # 传入参数
-                 topk: np.ndarray,  # 传入参数
-                 norm: bool,  # 传入参数
+                 topk: np.ndarray,
+                 norm: bool,
                  values_shape: List[int] | None,
                  values_strides: List[int] | None,
                  indices_shape: List[int] | None,
@@ -116,9 +114,10 @@ if __name__ == "__main__":
     _TEST_CASES_ = [
         # x_shape, x_strides, topk, norm
         ((1, 32), None, 4, True),
-        # ((2, 256), None, (256,), None, 2.5, 8),
+        ((8, 20), None, 8, False),
+        ((2, 128), None, 10, True)
     ]
-    _TENSOR_DTYPES_ = [np.float32]  # , np.float16
+    _TENSOR_DTYPES_ = [np.float32, np.float16]
     for dtype in _TENSOR_DTYPES_:
         for x_shape, x_strides, topk, norm in _TEST_CASES_:
             ntoken = x_shape[0]

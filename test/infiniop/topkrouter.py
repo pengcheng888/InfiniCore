@@ -27,14 +27,14 @@ from libinfiniop import (
 # ==============================================================================
 # These are not meant to be imported from other modules
 _TEST_CASES_ = [
-    # x_shape, x_stride, select_experts
-    ((1, 256), None, 8),
-    ((2, 256), None, 8),
+    # x_shape, x_stride, select_experts, routed_scaling_factor
+    ((1, 256), None, 8, 2.5),
+    ((2, 256), None, 8, 2.5),
 ]
 
 # w (weight) types
 # Note: 'None' means the same as input dtype
-_X_DTYPES = [InfiniDtype.F32 , InfiniDtype.BF16, InfiniDtype.F16]
+_X_DTYPES = [InfiniDtype.F32, InfiniDtype.BF16, InfiniDtype.F16]
 # x types used for testing
 _VALUE_DTYPES = [InfiniDtype.F32]
 
@@ -132,6 +132,7 @@ def test(
         x_shape,
         x_stride,
         topk,
+        routed_scaling_factor,
         x_dtype=InfiniDtype.F32,
         dtype=InfiniDtype.F16,
         sync=None,
@@ -175,8 +176,6 @@ def test(
     values = torch.zeros((N, topk), dtype=torch.float32, device=torch_device_map[x.device])
     indices = torch.zeros((N, topk), dtype=torch.int32, device=torch_device_map[x.device])
 
-    routed_scaling_factor = 2.5
-
     def lib_topkrouter():
         check_error(
             LIBINFINIOP.infiniopTopkrouter(
@@ -195,9 +194,7 @@ def test(
 
     lib_topkrouter()
 
-
     lable_values, lable_indices = torch_topkrouter(x.actual_tensor(), correction_bias.actual_tensor())
-
     atol, rtol = get_tolerance(_TOLERANCE_MAP, dtype)
     if DEBUG:
         debug(lable_values, values, atol=atol, rtol=rtol)

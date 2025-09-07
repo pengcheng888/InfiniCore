@@ -1,8 +1,8 @@
 #include "../../../devices/nvidia/nvidia_common.cuh"
 #include "topksoftmax_nvidia.cuh"
 
-#include <cub/block/block_reduce.cuh>
 #include "../../../devices/nvidia/nvidia_kernel_common.cuh"
+#include <cub/block/block_reduce.cuh>
 
 #include "../../../reduce/cuda/reduce.cuh"
 
@@ -20,7 +20,7 @@ Descriptor::~Descriptor() {
 
 infiniStatus_t Descriptor::create(
     infiniopHandle_t handle,
-    Descriptor** desc_ptr,
+    Descriptor **desc_ptr,
     infiniopTensorDescriptor_t x_desc) {
     auto result = TopksoftmaxInfo::create(x_desc);
     CHECK_RESULT(result);
@@ -31,7 +31,7 @@ infiniStatus_t Descriptor::create(
     }
 
     *desc_ptr = new Descriptor(
-        new Opaque{reinterpret_cast<device::nvidia::Handle*>(handle)->internal()},
+        new Opaque{reinterpret_cast<device::nvidia::Handle *>(handle)->internal()},
         std::move(info),
         0,
         handle->device, handle->device_id);
@@ -41,17 +41,17 @@ infiniStatus_t Descriptor::create(
 namespace {
 
 template <int BLOCK_SIZE = 128>
-infiniStatus_t launch_topksoftmax(float* d_values_out, int* d_indices_out, const void* d_input, const size_t N, const size_t width, const size_t topk, const bool norm, infiniDtype_t xtype, cudaStream_t stream) {
+infiniStatus_t launch_topksoftmax(float *d_values_out, int *d_indices_out, const void *d_input, const size_t N, const size_t width, const size_t topk, const bool norm, infiniDtype_t xtype, cudaStream_t stream) {
     const int block_threads = BLOCK_SIZE;
     dim3 blocks(N);
     dim3 threads(block_threads);
 
     if (xtype == INFINI_DTYPE_F32) {
-        softmax_topk_row_kernel<float, BLOCK_SIZE><<<blocks, threads, 0, stream>>>(d_values_out, d_indices_out, (float*)d_input, N, width, topk, norm);
+        softmax_topk_row_kernel<float, BLOCK_SIZE><<<blocks, threads, 0, stream>>>(d_values_out, d_indices_out, (float *)d_input, N, width, topk, norm);
     } else if (xtype == INFINI_DTYPE_F16) {
-        softmax_topk_row_kernel<half, BLOCK_SIZE><<<blocks, threads, 0, stream>>>(d_values_out, d_indices_out, (half*)d_input, N, width, topk, norm);
+        softmax_topk_row_kernel<half, BLOCK_SIZE><<<blocks, threads, 0, stream>>>(d_values_out, d_indices_out, (half *)d_input, N, width, topk, norm);
     } else if (xtype == INFINI_DTYPE_BF16) {
-        softmax_topk_row_kernel<__nv_bfloat16, BLOCK_SIZE><<<blocks, threads, 0, stream>>>(d_values_out, d_indices_out, (__nv_bfloat16*)d_input, N, width, topk, norm);
+        softmax_topk_row_kernel<__nv_bfloat16, BLOCK_SIZE><<<blocks, threads, 0, stream>>>(d_values_out, d_indices_out, (__nv_bfloat16 *)d_input, N, width, topk, norm);
     } else {
         return INFINI_STATUS_BAD_TENSOR_DTYPE;
     }
@@ -59,17 +59,17 @@ infiniStatus_t launch_topksoftmax(float* d_values_out, int* d_indices_out, const
     return INFINI_STATUS_SUCCESS;
 }
 
-};  // namespace
+}; // namespace
 
 infiniStatus_t Descriptor::calculate(
-    void* workspace,
+    void *workspace,
     size_t workspace_size,
-    float* values,
-    int* indices,
-    const void* x,
+    float *values,
+    int *indices,
+    const void *x,
     const size_t topk,
     const bool norm,
-    void* stream) const {
+    void *stream) const {
     if (workspace_size < _workspace_size) {
         return INFINI_STATUS_INSUFFICIENT_WORKSPACE;
     }
@@ -81,10 +81,12 @@ infiniStatus_t Descriptor::calculate(
         launch_topksoftmax<128>(values, indices, x, N, width, topk, norm, _info.xtype, cuda_stream);
     } else if (width <= 256) {
         launch_topksoftmax<256>(values, indices, x, N, width, topk, norm, _info.xtype, cuda_stream);
+    } else if (width <= 512) {
+        launch_topksoftmax<512>(values, indices, x, N, width, topk, norm, _info.xtype, cuda_stream);
     } else {
         return INFINI_STATUS_INTERNAL_ERROR;
     }
 
     return INFINI_STATUS_SUCCESS;
 }
-}  // namespace op::topksoftmax::nvidia
+} // namespace op::topksoftmax::nvidia
