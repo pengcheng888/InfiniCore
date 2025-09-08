@@ -150,7 +150,7 @@ __global__ void topkrouter_kernel(float *values_topk,             // 输出数�
             __shared__ typename WarpReduce::TempStorage temp_storage;
             float warp_sum = WarpReduce(temp_storage).Sum(value);
             if (0 == tid) {
-                share_sum = warp_sum + 1e-9;
+                share_sum = warp_sum + 1e-9f;
             }
         }
         __syncwarp();

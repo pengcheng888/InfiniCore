@@ -66,7 +66,7 @@ void topksoftmax_cpu_one_token(float *values_input,                             
     exp_sum = 0.0f;
     for (size_t i = 0; i < topk; ++i) {
         values_input[i] = value_index_arr[i].first;
-        indices_input[i] = value_index_arr[i].second;
+        indices_input[i] = static_cast<int>(value_index_arr[i].second);
         exp_sum += values_input[i];
     }
 

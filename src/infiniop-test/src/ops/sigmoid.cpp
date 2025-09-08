@@ -101,4 +101,3 @@ Test::~Test() {
 }
 
 } // namespace infiniop_test::sigmoid
-

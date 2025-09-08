@@ -43,7 +43,7 @@ namespace {
 template <int BLOCK_SIZE = 128>
 infiniStatus_t launch_topksoftmax(float *d_values_out, int *d_indices_out, const void *d_input, const size_t N, const size_t width, const size_t topk, const bool norm, infiniDtype_t xtype, cudaStream_t stream) {
     const int block_threads = BLOCK_SIZE;
-    dim3 blocks(N);
+    dim3 blocks(static_cast<unsigned int>(N));
     dim3 threads(block_threads);
 
     if (xtype == INFINI_DTYPE_F32) {

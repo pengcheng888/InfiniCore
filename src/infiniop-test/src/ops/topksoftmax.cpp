@@ -120,4 +120,3 @@ Test::~Test() {
 }
 
 } // namespace infiniop_test::topksoftmax
-

@@ -120,7 +120,7 @@ __global__ void softmax_topk_row_kernel(float *values_topk, // 输出数据, 形
             __shared__ typename WarpReduce::TempStorage temp_storage;
             float warp_sum = WarpReduce(temp_storage).Sum(value);
             if (0 == tid) {
-                shared_sum = warp_sum + 1e-9;
+                shared_sum = warp_sum + 1e-9f;
             }
         }
         __syncwarp();

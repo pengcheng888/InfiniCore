@@ -119,13 +119,13 @@ void topkrouter_cpu_one_token(float *values_input,                              
     // ----------------------------------------------------------- //
     //                取topk个数据                                  //
     // ----------------------------------------------------------- //
-    float exp_sum = 0.0f;
+    float exp_sum = 1e-9f;
     for (size_t i = 0; i < topk; ++i) {
-        int index = value_index_arr[i].second;
+        size_t index = value_index_arr[i].second;
         float exp_value = sigmoid_func(x_input[index]);
 
         values_input[i] = exp_value;
-        indices_input[i] = index;
+        indices_input[i] = static_cast<int>(index);
 
         exp_sum += exp_value;
     }
@@ -134,7 +134,6 @@ void topkrouter_cpu_one_token(float *values_input,                              
     //                    归一化                                    //
     // ----------------------------------------------------------- //
     if (norm_topk_prob) {
-        exp_sum += 1e-9;
         for (size_t i = 0; i < topk; ++i) {
             values_input[i] = routed_scaling_factor * values_input[i] / exp_sum;
         }
