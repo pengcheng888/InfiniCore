@@ -18,7 +18,7 @@ __C __export infiniStatus_t infiniopTopksoftmax(infiniopTopksoftmaxDescriptor_t 
                                                 void *indices,
                                                 const void *x,
                                                 const size_t topk,
-                                                const bool norm,
+                                                const int norm,
                                                 void *stream);
 
 __C __export infiniStatus_t infiniopDestroyTopksoftmaxDescriptor(infiniopTopksoftmaxDescriptor_t desc);

@@ -54,7 +54,7 @@ __C infiniStatus_t infiniopGetTopksoftmaxWorkspaceSize(infiniopTopksoftmaxDescri
 }
 
 __C infiniStatus_t infiniopTopksoftmax(infiniopTopksoftmaxDescriptor_t desc, void *workspace, size_t workspace_size,
-                                       void *values, void *indices, const void *x, const size_t topk, const bool norm,
+                                       void *values, void *indices, const void *x, const size_t topk, const int norm,
                                        void *stream) {
     if (topk > 32) {
         return INFINI_STATUS_BAD_PARAM;
@@ -63,7 +63,7 @@ __C infiniStatus_t infiniopTopksoftmax(infiniopTopksoftmaxDescriptor_t desc, voi
 #define CALCULATE(CASE, NAMESPACE)                                                          \
     case CASE:                                                                              \
         return reinterpret_cast<op::topksoftmax::NAMESPACE::Descriptor *>(desc)->calculate( \
-            workspace, workspace_size, (float *)values, (int *)indices, x, topk, norm, stream)
+            workspace, workspace_size, (float *)values, (int *)indices, x, topk, static_cast<bool>(norm), stream)
 
     switch (desc->device_type) {
 #ifdef ENABLE_CPU_API
