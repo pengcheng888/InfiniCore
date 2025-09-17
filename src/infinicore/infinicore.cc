@@ -26,11 +26,22 @@ PYBIND11_MODULE(infinicore, m) {
         .def("__repr__", static_cast<std::string (Device::*)() const>(&Device::to_string));
 
     py::class_<Tensor>(m, "Tensor")
-        .def(py::init<const Tensor::Shape &, const DataType &, const Device &>(),
-             py::arg("shape"), py::arg("dtype") = DataType::float32, py::arg("device") = Device{Device::Type::cpu})
-        .def_property_readonly("shape", &Tensor::get_shape)
-        .def_property_readonly("dtype", &Tensor::get_dtype)
-        .def_property_readonly("device", &Tensor::get_device);
+        .def_static("empty", &Tensor::empty,
+                    py::arg("shape"), py::arg("dtype"), py::arg("device"))
+        .def_static("zeros", &Tensor::zeros,
+                    py::arg("shape"), py::arg("dtype"), py::arg("device"))
+        .def_static("ones", &Tensor::ones,
+                    py::arg("shape"), py::arg("dtype"), py::arg("device"))
+
+        .def("shape", [](const Tensor &self) {
+            return self->shape();
+        })
+        .def("dtype", [](const Tensor &self) {
+            return self->dtype();
+        })
+        .def("device", [](const Tensor &self) {
+            return self->device();
+        });
 }
 
 } // namespace infinicore

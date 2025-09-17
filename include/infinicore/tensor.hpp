@@ -1,39 +1,78 @@
-#ifndef __INFINICORE_TENSOR_API_HPP__
-#define __INFINICORE_TENSOR_API_HPP__
-
-#include <vector>
+#pragma once
 
 #include "device.hpp"
 #include "dtype.hpp"
+#include "storage.hpp"
 
+#include <memory>
+#include <vector>
 namespace infinicore {
+
+using Size = std::size_t;
+using Stride = std::ptrdiff_t;
+using Shape = std::vector<Size>;
+using Strides = std::vector<Stride>;
+
+class TensorImpl;
+
+struct TensorMetaData {
+    Shape shape;
+    Strides strides;
+    DataType dtype;
+};
+
+struct TensorData {
+    size_t offset;
+    std::shared_ptr<Storage> storage;
+};
 
 class Tensor {
 public:
-    using Size = std::size_t;
+    static Tensor empty(const Shape &shape,
+                        const DataType &dtype,
+                        const Device &device);
 
-    using Stride = std::ptrdiff_t;
+    static Tensor zeros(const Shape &shape,
+                        const DataType &dtype,
+                        const Device &device);
 
-    using Shape = std::vector<Size>;
+    static Tensor ones(const Shape &shape,
+                       const DataType &dtype,
+                       const Device &device);
+    Tensor(const Tensor &) = default;
+    Tensor(Tensor &&) = default;
+    Tensor &operator=(const Tensor &) = default;
+    Tensor &operator=(Tensor &&) = default;
 
-    using Strides = std::vector<Stride>;
+    TensorImpl *operator->() { return _impl.get(); }
+    const TensorImpl *operator->() const { return _impl.get(); }
 
-    Tensor(const Shape &shape, const DataType &dtype, const Device &device);
+protected:
+    explicit Tensor(std::shared_ptr<TensorImpl> impl) : _impl(std::move(impl)) {}
+    std::shared_ptr<TensorImpl> _impl;
+    friend class TensorImpl;
+};
 
-    const Shape &get_shape() const;
+class TensorImpl {
 
-    const DataType &get_dtype() const;
+public:
+    const Shape &shape() const;
 
-    const Device &get_device() const;
+    DataType dtype() const;
+
+    Device device() const;
+
+protected:
+    static Tensor empty(const Shape &shape, const DataType &dtype, const Device &device);
+    static Tensor zeros(const Shape &shape, const DataType &dtype, const Device &device);
+    static Tensor ones(const Shape &shape, const DataType &dtype, const Device &device);
+
+    TensorImpl();
+    friend class Tensor;
 
 private:
-    Shape shape_;
-
-    DataType dtype_;
-
-    Device device_;
+    TensorMetaData _meta;
+    TensorData _data;
 };
 
 } // namespace infinicore
-
-#endif

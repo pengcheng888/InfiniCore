@@ -1,7 +1,7 @@
-#ifndef __INFINICORE_DTYPE_API_HPP__
-#define __INFINICORE_DTYPE_API_HPP__
+#pragma once
 
 #include <infinicore.h>
+#include <string>
 
 namespace infinicore {
 
@@ -18,5 +18,3 @@ enum class DataType {
 std::string to_string(const DataType &dtype);
 
 } // namespace infinicore
-
-#endif

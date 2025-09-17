@@ -1,5 +1,4 @@
-#ifndef __INFINICORE_DEVICE_API_HPP__
-#define __INFINICORE_DEVICE_API_HPP__
+#pragma once
 
 #include <cstdint>
 #include <string>
@@ -16,7 +15,7 @@ public:
         meta,
     };
 
-    Device(const Type &type, const Index &index = 0);
+    Device(const Type &type = Type::cpu, const Index &index = 0);
 
     const Type &get_type() const;
 
@@ -33,5 +32,3 @@ private:
 };
 
 } // namespace infinicore
-
-#endif
