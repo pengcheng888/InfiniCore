@@ -66,7 +66,7 @@ public:
 
     const Strides &strides() const;
 
-    Size shape(size_t dim) const;
+    Size size(size_t dim) const;
 
     Stride stride(size_t dim) const;
 

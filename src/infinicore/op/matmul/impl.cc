@@ -3,6 +3,9 @@
 #include <infiniop.h>
 
 namespace infinicore::op {
+
+common::OpDispatcher<Matmul::schema> Matmul::dispatcher;
+
 void Matmul::execute(Tensor c, Tensor a, Tensor b) {
     dispatcher.lookup(context::getDevice().getType())(c, a, b);
 }
@@ -34,7 +37,7 @@ static bool registered = []() {
 
 namespace infinicore::op {
 Tensor matmul(Tensor a, Tensor b) {
-    auto c = Tensor::empty({a->shape(0), b->shape(1)}, a->dtype(), a->device());
+    auto c = Tensor::empty({a->size(0), b->size(1)}, a->dtype(), a->device());
     matmul_(c, a, b);
     return c;
 }

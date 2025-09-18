@@ -24,8 +24,28 @@ Tensor Tensor::ones(const Shape &shape,
     return Tensor{TensorImpl::ones(shape, dtype, device)};
 }
 
+std::byte *TensorImpl::data() {
+    return data_.memory->data();
+}
+
+const std::byte *TensorImpl::data() const {
+    return data_.memory->data();
+}
+
 const Shape &TensorImpl::shape() const {
     return meta_.shape;
+}
+
+const Strides &TensorImpl::strides() const {
+    return meta_.strides;
+}
+
+Size TensorImpl::size(size_t dim) const {
+    return meta_.shape[dim];
+}
+
+Stride TensorImpl::stride(size_t dim) const {
+    return meta_.strides[dim];
 }
 
 DataType TensorImpl::dtype() const {
@@ -34,6 +54,11 @@ DataType TensorImpl::dtype() const {
 
 Device TensorImpl::device() const {
     return data_.memory->device();
+}
+
+infiniopTensorDescriptor_t TensorImpl::desc() const {
+    // TODO: Implement this.
+    return nullptr;
 }
 
 std::shared_ptr<TensorImpl> TensorImpl::empty(const Shape &shape,
