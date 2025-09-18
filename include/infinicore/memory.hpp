@@ -5,17 +5,21 @@
 #include <cstddef>
 
 namespace infinicore {
+
 class Memory {
+public:
+    using Deleter = void (*)(void *);
+
+    Memory(std::byte *data, size_t size, Device device, Deleter deleter);
+    std::byte *data();
+    Device device() const;
+    size_t size() const;
+
 private:
     std::byte *data_;
     size_t size_;
     Device device_;
-    void (*_deleter)(void *);
-
-public:
-    Memory(std::byte *data, size_t size, Device device, void (*deleter)(void *));
-    std::byte *data();
-    Device device() const;
-    size_t size() const;
+    Deleter deleter_;
 };
+
 } // namespace infinicore

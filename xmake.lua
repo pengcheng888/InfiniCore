@@ -326,6 +326,9 @@ target("infinicore")
     add_deps("infinicore_c_api")
 
     add_files("src/infinicore/*.cc")
+    add_files("src/infinicore/context/allocators/*.cc")
+    add_files("src/infinicore/context/runtime/*.cc")
+    add_files("src/infinicore/tensor/*.cc")
 
     set_installdir(os.getenv("INFINI_ROOT") or (os.getenv(is_host("windows") and "HOMEPATH" or "HOME") .. "/.infini"))
 target_end()

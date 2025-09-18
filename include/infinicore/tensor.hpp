@@ -64,9 +64,9 @@ public:
     Device device() const;
 
 protected:
-    static Tensor empty(const Shape &shape, const DataType &dtype, const Device &device);
-    static Tensor zeros(const Shape &shape, const DataType &dtype, const Device &device);
-    static Tensor ones(const Shape &shape, const DataType &dtype, const Device &device);
+    static std::shared_ptr<TensorImpl> empty(const Shape &shape, const DataType &dtype, const Device &device);
+    static std::shared_ptr<TensorImpl> zeros(const Shape &shape, const DataType &dtype, const Device &device);
+    static std::shared_ptr<TensorImpl> ones(const Shape &shape, const DataType &dtype, const Device &device);
 
     TensorImpl();
     friend class Tensor;
