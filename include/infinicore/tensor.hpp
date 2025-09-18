@@ -2,7 +2,7 @@
 
 #include "device.hpp"
 #include "dtype.hpp"
-#include "storage.hpp"
+#include "memory.hpp"
 
 #include <memory>
 #include <vector>
@@ -23,7 +23,7 @@ struct TensorMetaData {
 
 struct TensorData {
     size_t offset;
-    std::shared_ptr<Storage> storage;
+    std::shared_ptr<Memory> memory;
 };
 
 class Tensor {
@@ -39,17 +39,18 @@ public:
     static Tensor ones(const Shape &shape,
                        const DataType &dtype,
                        const Device &device);
+
     Tensor(const Tensor &) = default;
     Tensor(Tensor &&) = default;
     Tensor &operator=(const Tensor &) = default;
     Tensor &operator=(Tensor &&) = default;
 
-    TensorImpl *operator->() { return _impl.get(); }
-    const TensorImpl *operator->() const { return _impl.get(); }
+    TensorImpl *operator->();
+    const TensorImpl *operator->() const;
 
 protected:
-    explicit Tensor(std::shared_ptr<TensorImpl> impl) : _impl(std::move(impl)) {}
-    std::shared_ptr<TensorImpl> _impl;
+    explicit Tensor(std::shared_ptr<TensorImpl> impl) : impl_(std::move(impl)) {}
+    std::shared_ptr<TensorImpl> impl_;
     friend class TensorImpl;
 };
 
@@ -71,8 +72,8 @@ protected:
     friend class Tensor;
 
 private:
-    TensorMetaData _meta;
-    TensorData _data;
+    TensorMetaData meta_;
+    TensorData data_;
 };
 
 } // namespace infinicore

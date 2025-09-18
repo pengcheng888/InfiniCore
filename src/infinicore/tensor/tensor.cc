@@ -2,15 +2,19 @@
 
 namespace infinicore {
 
+TensorImpl *Tensor::operator->() { return impl_.get(); }
+
+const TensorImpl *Tensor::operator->() const { return impl_.get(); }
+
 const Shape &TensorImpl::shape() const {
-    return _meta.shape;
+    return meta_.shape;
 }
 
 DataType TensorImpl::dtype() const {
-    return _meta.dtype;
+    return meta_.dtype;
 }
 
 Device TensorImpl::device() const {
-    return _data.storage->device();
+    return data_.memory->device();
 }
 } // namespace infinicore
