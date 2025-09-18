@@ -6,7 +6,7 @@ void setDevice(Device device) {
 }
 
 Device getDevice() {
-    return Device(Device::Type::cpu, 0);
+    return Device(Device::Type::CPU, 0);
 }
 
 void syncStream() {
