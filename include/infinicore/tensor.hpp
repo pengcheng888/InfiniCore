@@ -6,6 +6,8 @@
 
 #include <memory>
 #include <vector>
+
+#include <infiniop.h>
 namespace infinicore {
 
 using Size = std::size_t;
@@ -57,11 +59,22 @@ protected:
 class TensorImpl {
 
 public:
+    std::byte *data();
+    const std::byte *data() const;
+
     const Shape &shape() const;
+
+    const Strides &strides() const;
+
+    Size shape(size_t dim) const;
+
+    Stride stride(size_t dim) const;
 
     DataType dtype() const;
 
     Device device() const;
+
+    infiniopTensorDescriptor_t desc() const;
 
 protected:
     static std::shared_ptr<TensorImpl> empty(const Shape &shape, const DataType &dtype, const Device &device);

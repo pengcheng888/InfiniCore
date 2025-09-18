@@ -3,6 +3,9 @@
 #include "../device.hpp"
 #include "../memory.hpp"
 
+#include <infiniop.h>
+#include <infinirt.h>
+
 #include <memory>
 
 namespace infinicore {
@@ -10,6 +13,9 @@ namespace infinicore {
 namespace context {
 void setDevice(Device device);
 Device getDevice();
+
+infinirtStream_t getStream();
+infiniopHandle_t getInfiniopHandle();
 
 void syncStream();
 void syncDevice();
