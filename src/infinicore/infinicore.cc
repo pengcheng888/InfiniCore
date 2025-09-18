@@ -8,15 +8,31 @@ namespace py = pybind11;
 namespace infinicore {
 
 PYBIND11_MODULE(infinicore, m) {
-    py::enum_<DataType>(m, "dtype")
-        .value("bfloat16", DataType::BF16)
-        .value("float16", DataType::F16)
-        .value("float32", DataType::F32)
-        .value("float64", DataType::F64)
-        .value("int32", DataType::I32)
-        .value("int64", DataType::I64)
-        .value("uint8", DataType::U8)
-        .export_values();
+    py::class_<DataTypePy>(m, "dtype")
+        .def("__repr__", DataTypePy::toString);
+
+    m.attr("float32") = DataTypePy{DataType::F32};
+    m.attr("float") = m.attr("float32");
+    m.attr("float64") = DataTypePy{DataType::F64};
+    m.attr("double") = m.attr("float64");
+    m.attr("complex32") = DataTypePy{DataType::C32};
+    m.attr("chalf") = m.attr("complex32");
+    m.attr("complex64") = DataTypePy{DataType::C64};
+    m.attr("cfloat") = m.attr("complex64");
+    m.attr("complex128") = DataTypePy{DataType::C128};
+    m.attr("cdouble") = m.attr("complex128");
+    m.attr("float16") = DataTypePy{DataType::F16};
+    m.attr("half") = m.attr("float16");
+    m.attr("bfloat16") = DataTypePy{DataType::BF16};
+    m.attr("uint8") = DataTypePy{DataType::U8};
+    m.attr("int8") = DataTypePy{DataType::I8};
+    m.attr("int16") = DataTypePy{DataType::I16};
+    m.attr("short") = m.attr("int16");
+    m.attr("int32") = DataTypePy{DataType::I32};
+    m.attr("int") = m.attr("int32");
+    m.attr("int64") = DataTypePy{DataType::I64};
+    m.attr("long") = m.attr("int64");
+    m.attr("bool") = DataTypePy{DataType::BOOL};
 
     py::class_<Device>(m, "Device")
         .def(py::init<const Device::Type &, const Device::Index &>(),

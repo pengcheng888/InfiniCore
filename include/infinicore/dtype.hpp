@@ -29,4 +29,14 @@ enum class DataType {
 
 std::string toString(const DataType &dtype);
 
+class DataTypePy {
+public:
+    DataTypePy(const DataType &dtype);
+
+    static std::string toString(const DataTypePy &dtype);
+
+private:
+    DataType dtype_;
+};
+
 } // namespace infinicore
