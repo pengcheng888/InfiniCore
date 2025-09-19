@@ -108,7 +108,7 @@ std::shared_ptr<TensorImpl> TensorImpl::ones(const Shape &shape,
 
 Tensor TensorImpl::narrow(const std::vector<SliceParams> &slices) const {
     // Create a new TensorImpl with narrowed view
-    auto tensor_impl = std::make_shared<TensorImpl>();
+    auto tensor_impl = std::shared_ptr<TensorImpl>(new TensorImpl());
 
     // Copy the metadata
     tensor_impl->meta_ = this->meta_;
@@ -139,7 +139,7 @@ Tensor TensorImpl::permute(const std::vector<size_t> &order) const {
         assert(std::find(order.begin(), order.end(), i) != order.end());
     }
 
-    auto tensor_impl = std::make_shared<TensorImpl>();
+    auto tensor_impl = std::shared_ptr<TensorImpl>(new TensorImpl());
 
     // Copy the original metadata
     tensor_impl->meta_ = this->meta_;
@@ -221,26 +221,8 @@ Tensor TensorImpl::view(const std::vector<size_t> &new_shape) const {
     return this->as_strided(new_shape, new_strides);
 }
 
-Tensor TensorImpl::as_contiguous(const std::vector<size_t> &new_shape) const {
-    auto tensor_impl = std::make_shared<TensorImpl>();
-    tensor_impl->meta_.dtype = meta_.dtype;
-    tensor_impl->meta_.shape = new_shape;
-
-    // Compute contiguous strides for the new shape
-    tensor_impl->meta_.strides.resize(new_shape.size());
-    ptrdiff_t stride = 1;
-    for (int i = new_shape.size() - 1; i >= 0; --i) {
-        tensor_impl->meta_.strides[i] = stride;
-        stride *= new_shape[i];
-    }
-
-    tensor_impl->data_ = data_;
-
-    return Tensor(tensor_impl);
-}
-
 Tensor TensorImpl::as_strided(const std::vector<size_t> &new_shape, const std::vector<Stride> &new_strides) const {
-    auto tensor_impl = std::make_shared<TensorImpl>();
+    auto tensor_impl = std::shared_ptr<TensorImpl>(new TensorImpl());
     tensor_impl->meta_.dtype = meta_.dtype;
     tensor_impl->meta_.shape = new_shape;
     tensor_impl->meta_.strides = new_strides;

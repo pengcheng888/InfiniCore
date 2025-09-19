@@ -137,19 +137,6 @@ public:
     Tensor view(const std::vector<size_t> &new_shape) const;
 
     /**
-     * Insecurely returns a new tensor with the specified shape and contiguous strides.
-     * The returned tensor shares the same underlying storage with the original tensor.
-     *
-     * @param new_shape The desired new shape
-     * @return A new tensor with the specified shape and contiguous strides
-     *
-     * Example:
-     *   // View a tensor as a new shape with contiguous memory layout
-     *   tensor->as_contiguous({4, 5});
-     */
-    Tensor as_contiguous(const std::vector<size_t> &new_shape) const;
-
-    /**
      * Insecurely returns a new tensor with the specified shape and strides.
      * The returned tensor shares the same underlying storage with the original tensor.
      *

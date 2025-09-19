@@ -17,6 +17,12 @@ protected:
 public:
     Runtime *getCurrentRuntime();
 
+    Runtime *getCpuRuntime();
+
+    void setDevice(Device);
+
     static ContextImpl &singleton();
+
+    friend class Runtime;
 };
 } // namespace infinicore

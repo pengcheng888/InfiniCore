@@ -19,6 +19,8 @@ public:
 
 private:
     Device owner_;
+
+    /// TODO: this is not thread-safe
     std::queue<std::byte *> gc_queue_;
 };
 

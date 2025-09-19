@@ -3,12 +3,13 @@
 #include "device.hpp"
 
 #include <cstddef>
+#include <functional>
 
 namespace infinicore {
 
 class Memory {
 public:
-    using Deleter = void (*)(void *);
+    using Deleter = std::function<void(std::byte *)>;
 
     Memory(std::byte *data, size_t size, Device device, Deleter deleter);
     std::byte *data();
