@@ -141,7 +141,7 @@ Tensor TensorImpl::narrow(const std::vector<TensorSliceParams> &slices) const {
     return Tensor(tensor_impl);
 }
 
-Tensor TensorImpl::permute(const std::vector<size_t> &order) const {
+Tensor TensorImpl::permute(const Shape &order) const {
     // Validate input
     assert(meta_.shape.size() == order.size());
 
@@ -165,15 +165,15 @@ Tensor TensorImpl::permute(const std::vector<size_t> &order) const {
     return Tensor(tensor_impl);
 }
 
-Tensor TensorImpl::view(const std::vector<size_t> &new_shape) const {
+Tensor TensorImpl::view(const Shape &new_shape) const {
     // Step 1: Validate total size
-    size_t numel = 1;
-    for (size_t dim : meta_.shape) {
+    Size numel = 1;
+    for (Size dim : meta_.shape) {
         numel *= dim;
     }
 
-    size_t new_numel = 1;
-    for (size_t dim : new_shape) {
+    Size new_numel = 1;
+    for (Size dim : new_shape) {
         new_numel *= dim;
     }
 
@@ -184,15 +184,15 @@ Tensor TensorImpl::view(const std::vector<size_t> &new_shape) const {
     const Strides &old_strides = meta_.strides;
 
     // Step 3: Create merged shape and strides
-    std::vector<size_t> merged_shape;
-    std::vector<ptrdiff_t> merged_strides;
+    Shape merged_shape;
+    Strides merged_strides;
 
     if (!old_shape.empty()) {
         merged_shape.push_back(old_shape[0]);
         merged_strides.push_back(old_strides[0]);
 
         for (size_t i = 1; i < old_shape.size(); ++i) {
-            if (old_strides[i] * static_cast<ptrdiff_t>(old_shape[i]) == merged_strides.back()) {
+            if (old_strides[i] * static_cast<Stride>(old_shape[i]) == merged_strides.back()) {
                 merged_shape.back() *= old_shape[i];
                 merged_strides.back() = old_strides[i];
             } else {
@@ -203,10 +203,10 @@ Tensor TensorImpl::view(const std::vector<size_t> &new_shape) const {
     }
 
     // Step 4: Compute new strides by splitting merged dimensions
-    std::vector<ptrdiff_t> new_strides(new_shape.size());
+    Strides new_strides(new_shape.size());
     size_t merged_idx = 0;
-    ptrdiff_t current_stride = merged_strides[0];
-    size_t remaining_size = merged_shape[0];
+    Stride current_stride = merged_strides[0];
+    Size remaining_size = merged_shape[0];
 
     for (size_t i = 0; i < new_shape.size(); ++i) {
         // Find which merged dimension contains this new dimension
@@ -225,7 +225,7 @@ Tensor TensorImpl::view(const std::vector<size_t> &new_shape) const {
     return this->as_strided(new_shape, new_strides);
 }
 
-Tensor TensorImpl::as_strided(const std::vector<size_t> &new_shape, const std::vector<Stride> &new_strides) const {
+Tensor TensorImpl::as_strided(const Shape &new_shape, const Strides &new_strides) const {
     auto tensor_impl = std::make_shared<TensorImpl>(new_shape, new_strides, meta_.dtype);
     tensor_impl->data_ = data_;
 

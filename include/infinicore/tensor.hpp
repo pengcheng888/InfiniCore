@@ -34,7 +34,7 @@ struct TensorData {
 struct TensorSliceParams {
     size_t dim;
     size_t start;
-    size_t len;
+    Size len;
 };
 
 class Tensor {
@@ -121,7 +121,7 @@ public:
      *   // This swaps the dimensions: dim0->dim2, dim1->dim0, dim2->dim1
      *   tensor->permute({2, 0, 1});
      */
-    Tensor permute(const std::vector<size_t> &order) const;
+    Tensor permute(const Shape &order) const;
 
     /**
      * Returns a new tensor with the same data but a different shape.
@@ -135,7 +135,7 @@ public:
      *   // Reshape a 2x3 tensor (6 elements) to a 3x2 tensor
      *   tensor->view({3, 2});
      */
-    Tensor view(const std::vector<size_t> &new_shape) const;
+    Tensor view(const Shape &new_shape) const;
 
     /**
      * Insecurely returns a new tensor with the specified shape and strides.
@@ -149,7 +149,7 @@ public:
      *   // Create a non-contiguous view with custom strides
      *   tensor->as_strided({2, 3}, {6, 2}); // Stride of 6 for dim0, 2 for dim1
      */
-    Tensor as_strided(const std::vector<size_t> &new_shape, const std::vector<Stride> &new_strides) const;
+    Tensor as_strided(const Shape &new_shape, const Strides &new_strides) const;
 
 protected:
     static std::shared_ptr<TensorImpl> empty(const Shape &shape, const DataType &dtype, const Device &device);
