@@ -68,6 +68,8 @@ protected:
 class TensorImpl {
 
 public:
+    TensorImpl();
+
     std::byte *data();
     const std::byte *data() const;
 
@@ -160,7 +162,6 @@ protected:
     static std::shared_ptr<TensorImpl> zeros(const Shape &shape, const DataType &dtype, const Device &device);
     static std::shared_ptr<TensorImpl> ones(const Shape &shape, const DataType &dtype, const Device &device);
 
-    TensorImpl();
     friend class Tensor;
 
 private:

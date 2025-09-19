@@ -38,10 +38,25 @@ Device getDevice() {
     return Device(Device::Type::CPU, 0);
 }
 
+infinirtStream_t getStream() {
+    // TODO: Implement this.
+    return nullptr;
+}
+
+infiniopHandle_t getInfiniopHandle() {
+    // TODO: Implement this.
+    return nullptr;
+}
+
 void syncStream() {
 }
 
 void syncDevice() {
+}
+
+std::shared_ptr<Memory> allocateMemory(size_t size) {
+    // TODO: Implement this.
+    return nullptr;
 }
 
 void memcpyH2D(void *dst, const void *src, size_t size) {

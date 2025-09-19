@@ -331,8 +331,8 @@ target("infinicore")
     add_links("infiniop", "infinirt", "infiniccl")
 
     add_files("src/infinicore/*.cc")
-    add_files("src/infinicore/context/allocators/*.cc")
-    add_files("src/infinicore/context/runtime/*.cc")
+    add_files("src/infinicore/context/*.cc")
+    add_files("src/infinicore/context/*/*.cc")
     add_files("src/infinicore/tensor/*.cc")
     add_files("src/infinicore/op/*/*.cc")
 

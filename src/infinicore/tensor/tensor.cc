@@ -25,6 +25,8 @@ Tensor Tensor::ones(const Shape &shape,
     return Tensor{TensorImpl::ones(shape, dtype, device)};
 }
 
+TensorImpl::TensorImpl() = default;
+
 std::byte *TensorImpl::data() {
     return data_.memory->data();
 }

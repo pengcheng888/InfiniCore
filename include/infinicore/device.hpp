@@ -42,4 +42,28 @@ private:
     Index index_;
 };
 
+class DevicePy {
+public:
+    using Index = Device::Index;
+
+    DevicePy(const Device &device);
+
+    DevicePy(const std::string &type, DevicePy::Index index);
+
+    const std::string &getType() const;
+
+    const DevicePy::Index &getIndex() const;
+
+    std::string toRepresentation() const;
+
+    std::string toString() const;
+
+private:
+    std::string type_;
+
+    DevicePy::Index index_;
+
+    Device device_;
+};
+
 } // namespace infinicore

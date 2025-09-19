@@ -13,11 +13,12 @@ private:
     std::unique_ptr<MemoryAllocator> _memory_allocator;
 
 protected:
-    Runtime(Device device);
-    ~Runtime();
     friend class ContextImpl;
 
 public:
+    Runtime(Device device);
+    ~Runtime();
+
     infinirtStream_t stream() const;
     std::shared_ptr<Memory> allocateMemory(size_t size);
 };

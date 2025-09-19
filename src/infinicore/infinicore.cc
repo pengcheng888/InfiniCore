@@ -34,12 +34,13 @@ PYBIND11_MODULE(infinicore, m) {
     m.attr("long") = m.attr("int64");
     m.attr("bool") = DataTypePy{DataType::BOOL};
 
-    py::class_<Device>(m, "Device")
-        .def(py::init<const Device::Type &, const Device::Index &>(),
-             py::arg("type"), py::arg("index") = 0)
-        .def_property_readonly("type", &Device::getType)
-        .def_property_readonly("index", &Device::getIndex)
-        .def("__repr__", static_cast<std::string (Device::*)() const>(&Device::toString));
+    py::class_<DevicePy>(m, "device")
+        .def(py::init<const std::string &, Device::Index>(),
+             py::arg("type"), py::arg("index"))
+        .def_property_readonly("type", &DevicePy::getType)
+        .def_property_readonly("index", &DevicePy::getIndex)
+        .def("__repr__", &DevicePy::toRepresentation)
+        .def("__str__", &DevicePy::toString);
 
     py::class_<Tensor>(m, "Tensor")
         .def_static("empty", &Tensor::empty,

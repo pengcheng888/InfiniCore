@@ -2,6 +2,7 @@
 #include "infinicore/context/context.hpp"
 #include "runtime/runtime.hpp"
 
+#include <array>
 #include <vector>
 
 namespace infinicore {
