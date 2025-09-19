@@ -31,7 +31,7 @@ struct TensorData {
     std::shared_ptr<Memory> memory;
 };
 
-struct SliceParams {
+struct TensorSliceParams {
     size_t dim;
     size_t start;
     size_t len;
@@ -68,7 +68,8 @@ protected:
 class TensorImpl {
 
 public:
-    TensorImpl();
+    TensorImpl(const Shape &shape, const DataType &dtype);
+    TensorImpl(const Shape &shape, const Strides &strides, const DataType &dtype);
 
     std::byte *data();
     const std::byte *data() const;
@@ -106,7 +107,7 @@ public:
      *   // and dimension 1 from index 1 to 3 (length 2)
      *   tensor.narrow({{0, 2, 3}, {1, 1, 2}});
      */
-    Tensor narrow(const std::vector<SliceParams> &slices) const;
+    Tensor narrow(const std::vector<TensorSliceParams> &slices) const;
 
     /**
      * Returns a new tensor with the dimensions permuted (reordered) according to the given order.

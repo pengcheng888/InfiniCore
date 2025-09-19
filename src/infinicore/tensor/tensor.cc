@@ -3,6 +3,17 @@
 
 namespace infinicore {
 
+// Helper function to calculate contiguous strides
+inline Strides calculate_contiguous_strides(const Shape &shape) {
+    Strides strides(shape.size());
+    Stride stride = 1;
+    for (int i = shape.size() - 1; i >= 0; --i) {
+        strides[i] = stride;
+        stride *= shape[i];
+    }
+    return strides;
+}
+
 TensorImpl *Tensor::operator->() { return impl_.get(); }
 
 const TensorImpl *Tensor::operator->() const { return impl_.get(); }
@@ -25,14 +36,18 @@ Tensor Tensor::ones(const Shape &shape,
     return Tensor{TensorImpl::ones(shape, dtype, device)};
 }
 
-TensorImpl::TensorImpl() = default;
+TensorImpl::TensorImpl(const Shape &shape, const DataType &dtype)
+    : meta_{shape, calculate_contiguous_strides(shape), dtype} {}
+
+TensorImpl::TensorImpl(const Shape &shape, const Strides &strides, const DataType &dtype)
+    : meta_{shape, strides, dtype} {}
 
 std::byte *TensorImpl::data() {
-    return data_.memory->data();
+    return data_.memory->data() + data_.offset;
 }
 
 const std::byte *TensorImpl::data() const {
-    return data_.memory->data();
+    return data_.memory->data() + data_.offset;
 }
 
 const Shape &TensorImpl::shape() const {
@@ -106,26 +121,22 @@ std::shared_ptr<TensorImpl> TensorImpl::ones(const Shape &shape,
     return nullptr;
 }
 
-Tensor TensorImpl::narrow(const std::vector<SliceParams> &slices) const {
-    // Create a new TensorImpl with narrowed view
-    auto tensor_impl = std::shared_ptr<TensorImpl>(new TensorImpl());
-
-    // Copy the metadata
-    tensor_impl->meta_ = this->meta_;
-
-    // Adjust shape and calculate offset
+Tensor TensorImpl::narrow(const std::vector<TensorSliceParams> &slices) const {
+    // Create new shape and calculate offset
+    Shape new_shape = meta_.shape;
     size_t offset = data_.offset;
 
     for (const auto &slice : slices) {
         assert(slice.len > 0);
-        assert(this->meta_.shape[slice.dim] >= slice.start + slice.len);
-        tensor_impl->meta_.shape[slice.dim] = slice.len;
-        offset += slice.start * this->meta_.strides[slice.dim] * dsize(this->meta_.dtype);
+        assert(meta_.shape[slice.dim] >= slice.start + slice.len);
+        new_shape[slice.dim] = slice.len;
+        offset += slice.start * meta_.strides[slice.dim] * dsize(meta_.dtype);
     }
 
-    // Set the data with adjusted offset (same memory, different offset)
+    // Create new tensor with the same strides but narrowed shape
+    auto tensor_impl = std::make_shared<TensorImpl>(new_shape, meta_.strides, meta_.dtype);
     tensor_impl->data_.offset = offset;
-    tensor_impl->data_.memory = this->data_.memory;
+    tensor_impl->data_.memory = data_.memory;
 
     return Tensor(tensor_impl);
 }
@@ -139,11 +150,6 @@ Tensor TensorImpl::permute(const std::vector<size_t> &order) const {
         assert(std::find(order.begin(), order.end(), i) != order.end());
     }
 
-    auto tensor_impl = std::shared_ptr<TensorImpl>(new TensorImpl());
-
-    // Copy the original metadata
-    tensor_impl->meta_ = this->meta_;
-
     // Permute shape and strides
     Shape new_shape(order.size());
     Strides new_strides(order.size());
@@ -153,10 +159,8 @@ Tensor TensorImpl::permute(const std::vector<size_t> &order) const {
         new_strides[i] = meta_.strides[order[i]];
     }
 
-    tensor_impl->meta_.shape = new_shape;
-    tensor_impl->meta_.strides = new_strides;
-
-    tensor_impl->data_ = this->data_;
+    auto tensor_impl = std::make_shared<TensorImpl>(new_shape, new_strides, meta_.dtype);
+    tensor_impl->data_ = data_;
 
     return Tensor(tensor_impl);
 }
@@ -222,11 +226,7 @@ Tensor TensorImpl::view(const std::vector<size_t> &new_shape) const {
 }
 
 Tensor TensorImpl::as_strided(const std::vector<size_t> &new_shape, const std::vector<Stride> &new_strides) const {
-    auto tensor_impl = std::shared_ptr<TensorImpl>(new TensorImpl());
-    tensor_impl->meta_.dtype = meta_.dtype;
-    tensor_impl->meta_.shape = new_shape;
-    tensor_impl->meta_.strides = new_strides;
-
+    auto tensor_impl = std::make_shared<TensorImpl>(new_shape, new_strides, meta_.dtype);
     tensor_impl->data_ = data_;
 
     return Tensor(tensor_impl);
