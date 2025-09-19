@@ -28,7 +28,7 @@ enum class DataType {
 };
 
 std::string toString(const DataType &dtype);
-
+size_t dsize(const DataType &dtype);
 class DataTypePy {
 public:
     DataTypePy(const DataType &dtype);
