@@ -77,6 +77,12 @@ public:
 
     const Strides &strides() const;
 
+    bool is_contiguous() const;
+
+    Size ndim() const;
+
+    Size numel() const;
+
     Size size(size_t dim) const;
 
     Stride stride(size_t dim) const;

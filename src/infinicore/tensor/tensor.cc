@@ -43,6 +43,29 @@ const Strides &TensorImpl::strides() const {
     return meta_.strides;
 }
 
+Size TensorImpl::ndim() const {
+    return meta_.shape.size();
+}
+
+bool TensorImpl::is_contiguous() const {
+    Stride expected_stride = 1;
+    for (int i = meta_.shape.size() - 1; i >= 0; --i) {
+        if (meta_.strides[i] != expected_stride) {
+            return false;
+        }
+        expected_stride *= meta_.shape[i];
+    }
+    return true;
+}
+
+Size TensorImpl::numel() const {
+    Size total = 1;
+    for (const auto &dim : meta_.shape) {
+        total *= dim;
+    }
+    return total;
+}
+
 Size TensorImpl::size(size_t dim) const {
     return meta_.shape[dim];
 }
