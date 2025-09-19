@@ -195,10 +195,10 @@ Tensor TensorImpl::view(const std::vector<size_t> &new_shape) const {
         remaining_size /= new_shape[i];
     }
 
-    return this->view_as(new_shape, new_strides);
+    return this->as_strided(new_shape, new_strides);
 }
 
-Tensor TensorImpl::view_as(const std::vector<size_t> &new_shape) const {
+Tensor TensorImpl::as_contiguous(const std::vector<size_t> &new_shape) const {
     auto tensor_impl = std::make_shared<TensorImpl>();
     tensor_impl->meta_.dtype = meta_.dtype;
     tensor_impl->meta_.shape = new_shape;
@@ -216,7 +216,7 @@ Tensor TensorImpl::view_as(const std::vector<size_t> &new_shape) const {
     return Tensor(tensor_impl);
 }
 
-Tensor TensorImpl::view_as(const std::vector<size_t> &new_shape, const std::vector<Stride> &new_strides) const {
+Tensor TensorImpl::as_strided(const std::vector<size_t> &new_shape, const std::vector<Stride> &new_strides) const {
     auto tensor_impl = std::make_shared<TensorImpl>();
     tensor_impl->meta_.dtype = meta_.dtype;
     tensor_impl->meta_.shape = new_shape;

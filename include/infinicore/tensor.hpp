@@ -139,9 +139,9 @@ public:
      *
      * Example:
      *   // View a tensor as a new shape with contiguous memory layout
-     *   tensor->view_as({4, 5});
+     *   tensor->as_contiguous({4, 5});
      */
-    Tensor view_as(const std::vector<size_t> &new_shape) const;
+    Tensor as_contiguous(const std::vector<size_t> &new_shape) const;
 
     /**
      * Insecurely returns a new tensor with the specified shape and strides.
@@ -153,9 +153,9 @@ public:
      *
      * Example:
      *   // Create a non-contiguous view with custom strides
-     *   tensor->view_as({2, 3}, {6, 2}); // Stride of 6 for dim0, 2 for dim1
+     *   tensor->as_strided({2, 3}, {6, 2}); // Stride of 6 for dim0, 2 for dim1
      */
-    Tensor view_as(const std::vector<size_t> &new_shape, const std::vector<Stride> &new_strides) const;
+    Tensor as_strided(const std::vector<size_t> &new_shape, const std::vector<Stride> &new_strides) const;
 
 protected:
     static std::shared_ptr<TensorImpl> empty(const Shape &shape, const DataType &dtype, const Device &device);
