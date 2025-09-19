@@ -34,6 +34,8 @@ public:
 
     static std::string toString(const Type &type);
 
+    bool operator==(const Device &other) const;
+
 private:
     Type type_;
 

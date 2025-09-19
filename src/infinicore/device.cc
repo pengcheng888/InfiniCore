@@ -42,4 +42,7 @@ std::string Device::toString(const Type &type) {
     return "";
 }
 
+bool Device::operator==(const Device &other) const {
+    return type_ == other.type_ && index_ == other.index_;
+}
 } // namespace infinicore

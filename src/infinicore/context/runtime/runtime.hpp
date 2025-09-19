@@ -15,9 +15,10 @@ private:
 protected:
     Runtime(Device device);
     ~Runtime();
-    friend class Context;
+    friend class ContextImpl;
 
 public:
+    infinirtStream_t stream() const;
     std::shared_ptr<Memory> allocateMemory(size_t size);
 };
 } // namespace infinicore

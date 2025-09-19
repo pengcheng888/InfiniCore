@@ -1,0 +1,21 @@
+#pragma once
+#include "infinicore/context/context.hpp"
+#include "runtime/runtime.hpp"
+
+#include <vector>
+
+namespace infinicore {
+class ContextImpl {
+private:
+    std::array<std::vector<std::unique_ptr<Runtime>>, size_t(Device::Type::COUNT)> runtime_table_;
+    Runtime *current_runtime_ = nullptr;
+
+protected:
+    ContextImpl();
+
+public:
+    Runtime *getCurrentRuntime();
+
+    static ContextImpl &singleton();
+};
+} // namespace infinicore
