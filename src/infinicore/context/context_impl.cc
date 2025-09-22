@@ -11,7 +11,13 @@ Runtime *ContextImpl::getCpuRuntime() {
 }
 
 void ContextImpl::setDevice(Device device) {
+    if (device == getCurrentRuntime()->device()) {
+        // Do nothing if the device is already set.
+        return;
+    }
+
     if (runtime_table_[int(device.getType())][device.getIndex()] == nullptr) {
+        // Lazy initialization of runtime if never set before.
         runtime_table_[int(device.getType())][device.getIndex()] = std::unique_ptr<Runtime>(new Runtime(device));
         current_runtime_ = runtime_table_[int(device.getType())][device.getIndex()].get();
     } else {

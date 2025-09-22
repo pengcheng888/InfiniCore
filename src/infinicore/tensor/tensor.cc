@@ -1,5 +1,8 @@
 #include "infinicore/tensor.hpp"
+#include "infinicore/context/context.hpp"
 #include "infinicore/dtype.hpp"
+
+#include <spdlog/spdlog.h>
 
 namespace infinicore {
 
@@ -20,20 +23,23 @@ const TensorImpl *Tensor::operator->() const { return impl_.get(); }
 
 Tensor Tensor::empty(const Shape &shape,
                      const DataType &dtype,
-                     const Device &device) {
-    return Tensor{TensorImpl::empty(shape, dtype, device)};
+                     const Device &device,
+                     bool pin_memory) {
+    return Tensor{TensorImpl::empty(shape, dtype, device, pin_memory)};
 }
 
 Tensor Tensor::zeros(const Shape &shape,
                      const DataType &dtype,
-                     const Device &device) {
-    return Tensor{TensorImpl::zeros(shape, dtype, device)};
+                     const Device &device,
+                     bool pin_memory) {
+    return Tensor{TensorImpl::zeros(shape, dtype, device, pin_memory)};
 }
 
 Tensor Tensor::ones(const Shape &shape,
                     const DataType &dtype,
-                    const Device &device) {
-    return Tensor{TensorImpl::ones(shape, dtype, device)};
+                    const Device &device,
+                    bool pin_memory) {
+    return Tensor{TensorImpl::ones(shape, dtype, device, pin_memory)};
 }
 
 TensorImpl::TensorImpl(const Shape &shape, const DataType &dtype)
@@ -104,21 +110,42 @@ infiniopTensorDescriptor_t TensorImpl::desc() const {
 
 std::shared_ptr<TensorImpl> TensorImpl::empty(const Shape &shape,
                                               const DataType &dtype,
-                                              const Device &device) {
-    // TODO: Implement this.
-    return nullptr;
+                                              const Device &device,
+                                              bool pin_memory) {
+    auto t = std::shared_ptr<TensorImpl>(new TensorImpl(shape, dtype));
+    t->data_.offset = 0;
+    if (device == Device::Type::CPU) {
+        if (pin_memory) {
+            if (context::getDevice() == Device::Type::CPU) {
+                spdlog::warn("Tensor memory is not pinned by any device with CPU runtime.");
+                t->data_.memory = context::allocateHostMemory(t->numel() * dsize(dtype));
+            } else {
+                t->data_.memory = context::allocatePinnedHostMemory(t->numel() * dsize(dtype));
+            }
+        } else {
+            t->data_.memory = context::allocateHostMemory(t->numel() * dsize(dtype));
+        }
+    } else {
+        context::setDevice(device);
+        t->data_.memory = context::allocateMemory(t->numel() * dsize(dtype));
+    }
+
+    return t;
 }
+
 std::shared_ptr<TensorImpl> TensorImpl::zeros(const Shape &shape,
                                               const DataType &dtype,
-                                              const Device &device) {
+                                              const Device &device,
+                                              bool pin_memory) {
     // TODO: Implement this.
-    return nullptr;
+    return empty(shape, dtype, device, pin_memory);
 }
 std::shared_ptr<TensorImpl> TensorImpl::ones(const Shape &shape,
                                              const DataType &dtype,
-                                             const Device &device) {
+                                             const Device &device,
+                                             bool pin_memory) {
     // TODO: Implement this.
-    return nullptr;
+    return empty(shape, dtype, device, pin_memory);
 }
 
 Tensor TensorImpl::narrow(const std::vector<TensorSliceParams> &slices) const {

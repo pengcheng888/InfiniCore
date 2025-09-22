@@ -41,15 +41,18 @@ class Tensor {
 public:
     static Tensor empty(const Shape &shape,
                         const DataType &dtype,
-                        const Device &device);
+                        const Device &device,
+                        bool pin_memory = false);
 
     static Tensor zeros(const Shape &shape,
                         const DataType &dtype,
-                        const Device &device);
+                        const Device &device,
+                        bool pin_memory = false);
 
     static Tensor ones(const Shape &shape,
                        const DataType &dtype,
-                       const Device &device);
+                       const Device &device,
+                       bool pin_memory = false);
 
     Tensor(const Tensor &) = default;
     Tensor(Tensor &&) = default;
@@ -152,9 +155,23 @@ public:
     Tensor as_strided(const Shape &new_shape, const Strides &new_strides) const;
 
 protected:
-    static std::shared_ptr<TensorImpl> empty(const Shape &shape, const DataType &dtype, const Device &device);
-    static std::shared_ptr<TensorImpl> zeros(const Shape &shape, const DataType &dtype, const Device &device);
-    static std::shared_ptr<TensorImpl> ones(const Shape &shape, const DataType &dtype, const Device &device);
+    static std::shared_ptr<TensorImpl> empty(
+        const Shape &shape,
+        const DataType &dtype,
+        const Device &device,
+        bool pin_memory = false);
+
+    static std::shared_ptr<TensorImpl> zeros(
+        const Shape &shape,
+        const DataType &dtype,
+        const Device &device,
+        bool pin_memory = false);
+
+    static std::shared_ptr<TensorImpl> ones(
+        const Shape &shape,
+        const DataType &dtype,
+        const Device &device,
+        bool pin_memory = false);
 
     friend class Tensor;
 

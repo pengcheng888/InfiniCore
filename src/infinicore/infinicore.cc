@@ -44,11 +44,11 @@ PYBIND11_MODULE(infinicore, m) {
 
     py::class_<Tensor>(m, "Tensor")
         .def_static("empty", &Tensor::empty,
-                    py::arg("shape"), py::arg("dtype"), py::arg("device"))
+                    py::arg("shape"), py::arg("dtype"), py::arg("device"), py::arg("pin_memory") = false)
         .def_static("zeros", &Tensor::zeros,
-                    py::arg("shape"), py::arg("dtype"), py::arg("device"))
+                    py::arg("shape"), py::arg("dtype"), py::arg("device"), py::arg("pin_memory") = false)
         .def_static("ones", &Tensor::ones,
-                    py::arg("shape"), py::arg("dtype"), py::arg("device"))
+                    py::arg("shape"), py::arg("dtype"), py::arg("device"), py::arg("pin_memory") = false)
 
         .def("shape", [](const Tensor &self) {
             return self->shape();
