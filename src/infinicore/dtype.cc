@@ -48,73 +48,77 @@ std::string toString(const DataType &dtype) {
     return "";
 }
 
-DataTypePy::DataTypePy(const DataType &dtype) : dtype_{dtype} {}
+namespace py {
 
-std::string DataTypePy::toString(const DataTypePy &dtype) {
+DataType::DataType(const infinicore::DataType &dtype) : dtype_{dtype} {}
+
+std::string DataType::toString(const DataType &dtype) {
     std::string str{"infinicore."};
 
     switch (dtype.dtype_) {
-    case DataType::BYTE:
+    case infinicore::DataType::BYTE:
         str += "uint8";
         break;
-    case DataType::BOOL:
+    case infinicore::DataType::BOOL:
         str += "bool";
         break;
-    case DataType::I8:
+    case infinicore::DataType::I8:
         str += "int8";
         break;
-    case DataType::I16:
+    case infinicore::DataType::I16:
         str += "int16";
         break;
-    case DataType::I32:
+    case infinicore::DataType::I32:
         str += "int32";
         break;
-    case DataType::I64:
+    case infinicore::DataType::I64:
         str += "int64";
         break;
-    case DataType::U8:
+    case infinicore::DataType::U8:
         str += "uint8";
         break;
-    case DataType::U16:
+    case infinicore::DataType::U16:
         str += "uint16";
         break;
-    case DataType::U32:
+    case infinicore::DataType::U32:
         str += "uint32";
         break;
-    case DataType::U64:
+    case infinicore::DataType::U64:
         str += "uint64";
         break;
-    case DataType::F8:
+    case infinicore::DataType::F8:
         str += "float8";
         break;
-    case DataType::F16:
+    case infinicore::DataType::F16:
         str += "float16";
         break;
-    case DataType::F32:
+    case infinicore::DataType::F32:
         str += "float32";
         break;
-    case DataType::F64:
+    case infinicore::DataType::F64:
         str += "float64";
         break;
-    case DataType::C16:
+    case infinicore::DataType::C16:
         str += "complex16";
         break;
-    case DataType::C32:
+    case infinicore::DataType::C32:
         str += "complex32";
         break;
-    case DataType::C64:
+    case infinicore::DataType::C64:
         str += "complex64";
         break;
-    case DataType::C128:
+    case infinicore::DataType::C128:
         str += "complex128";
         break;
-    case DataType::BF16:
+    case infinicore::DataType::BF16:
         str += "bfloat16";
         break;
     }
 
     // TODO: Add error handling.
     return str;
+}
+
 }
 
 size_t dsize(const DataType &dtype) {

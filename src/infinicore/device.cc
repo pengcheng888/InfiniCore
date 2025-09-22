@@ -48,7 +48,7 @@ std::string Device::toString(const Type &type) {
     return "";
 }
 
-std::pair<Device::Type, Device::Index> toInfiniDevice(std::string type, DevicePy::Index index) {
+std::pair<Device::Type, Device::Index> toInfiniDevice(std::string type, Device::Index index) {
     constexpr auto device_type_count{static_cast<std::size_t>(Device::Type::COUNT)};
 
     static const std::unordered_map<Device::Type, std::string> torch_device_map{
@@ -98,30 +98,34 @@ std::pair<Device::Type, Device::Index> toInfiniDevice(std::string type, DevicePy
     throw std::runtime_error("Internal error: Device mapping failed.");
 }
 
-DevicePy::DevicePy(const Device &device) : device_{device} {}
+namespace py {
 
-DevicePy::DevicePy(const std::string &type, DevicePy::Index index)
+Device::Device(const infinicore::Device &device) : device_{device} {}
+
+Device::Device(const std::string &type, Device::Index index)
     : type_{type}, index_{index} {
     const auto [infini_device_type, infini_device_index]{toInfiniDevice(type, index)};
 
-    device_ = Device{infini_device_type, infini_device_index};
+    device_ = infinicore::Device{infini_device_type, infini_device_index};
 }
 
-const std::string &DevicePy::getType() const {
+const std::string &Device::getType() const {
     return type_;
 }
 
-const DevicePy::Index &DevicePy::getIndex() const {
+const Device::Index &Device::getIndex() const {
     return index_;
 }
 
-std::string DevicePy::toRepresentation() const {
+std::string Device::toRepresentation() const {
     return "device(type='" + type_ + "', index=" + std::to_string(index_) + ")";
 }
 
-std::string DevicePy::toString() const {
+std::string Device::toString() const {
     return type_ + ':' + std::to_string(index_);
 }
+
+} // namespace py
 
 bool Device::operator==(const Device &other) const {
     return type_ == other.type_ && index_ == other.index_;

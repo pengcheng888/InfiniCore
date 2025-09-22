@@ -42,17 +42,19 @@ private:
     Index index_;
 };
 
-class DevicePy {
+namespace py {
+
+class Device {
 public:
-    using Index = Device::Index;
+    using Index = infinicore::Device::Index;
 
-    DevicePy(const Device &device);
+    Device(const infinicore::Device &device);
 
-    DevicePy(const std::string &type, DevicePy::Index index);
+    Device(const std::string &type, Index index);
 
     const std::string &getType() const;
 
-    const DevicePy::Index &getIndex() const;
+    const Index &getIndex() const;
 
     std::string toRepresentation() const;
 
@@ -61,9 +63,11 @@ public:
 private:
     std::string type_;
 
-    DevicePy::Index index_;
+    Index index_;
 
-    Device device_;
+    infinicore::Device device_;
 };
+
+} // namespace py
 
 } // namespace infinicore
