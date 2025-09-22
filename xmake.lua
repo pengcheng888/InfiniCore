@@ -1,4 +1,5 @@
 add_rules("mode.debug", "mode.release")
+add_requires("boost", {configs = {stacktrace = true}})
 add_requires("pybind11")
 
 -- Define color codes
@@ -320,6 +321,14 @@ target("infinicore_c_api")
 target_end()
 
 target("infinicore")
+    add_packages("boost")
+    if is_mode("debug") then
+        add_defines("BOOST_STACKTRACE_USE_BACKTRACE")
+        add_links("backtrace")
+    else
+        add_defines("BOOST_STACKTRACE_USE_NOOP")
+    end
+
     set_default(false)
     add_rules("python.library", {soabi = true})
     add_packages("pybind11")
