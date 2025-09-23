@@ -10,6 +10,10 @@ public:
 
     Device(const std::string &type, Index index);
 
+    operator infinicore::Device() const {
+        return device_;
+    }
+
     const std::string &getType() const;
 
     const Index &getIndex() const;

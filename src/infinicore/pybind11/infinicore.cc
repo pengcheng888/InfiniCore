@@ -1,8 +1,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
-#include "device.hpp"
-#include "dtype.hpp"
+#include "tensor.hpp"
 
 namespace infinicore {
 
@@ -41,23 +40,9 @@ PYBIND11_MODULE(infinicore, m) {
         .def("__repr__", &py::Device::toRepresentation)
         .def("__str__", &py::Device::toString);
 
-    pybind11::class_<Tensor>(m, "Tensor")
-        .def_static("empty", &Tensor::empty,
-                    pybind11::arg("shape"), pybind11::arg("dtype"), pybind11::arg("device"), pybind11::arg("pin_memory") = false)
-        .def_static("zeros", &Tensor::zeros,
-                    pybind11::arg("shape"), pybind11::arg("dtype"), pybind11::arg("device"), pybind11::arg("pin_memory") = false)
-        .def_static("ones", &Tensor::ones,
-                    pybind11::arg("shape"), pybind11::arg("dtype"), pybind11::arg("device"), pybind11::arg("pin_memory") = false)
+    pybind11::class_<py::Tensor>(m, "Tensor");
 
-        .def("shape", [](const Tensor &self) {
-            return self->shape();
-        })
-        .def("dtype", [](const Tensor &self) {
-            return self->dtype();
-        })
-        .def("device", [](const Tensor &self) {
-            return self->device();
-        });
+    m.def("empty", &py::empty, pybind11::arg("shape"), pybind11::arg("dtype"), pybind11::arg("device"), pybind11::arg("pin_memory") = false);
 }
 
 } // namespace infinicore
