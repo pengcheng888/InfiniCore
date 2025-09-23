@@ -42,11 +42,16 @@ Tensor Tensor::ones(const Shape &shape,
     return Tensor{TensorImpl::ones(shape, dtype, device, pin_memory)};
 }
 
+TensorMetaData::TensorMetaData(const Shape &_shape, const Strides &_strides, const DataType &_dtype)
+    : shape(_shape), strides(_strides), dtype(_dtype) {
+    infiniopCreateTensorDescriptor(&desc, shape.size(), shape.data(), strides.data(), (infiniDtype_t)dtype);
+}
+
 TensorImpl::TensorImpl(const Shape &shape, const DataType &dtype)
-    : meta_{shape, calculate_contiguous_strides(shape), dtype} {}
+    : meta_(TensorMetaData(shape, calculate_contiguous_strides(shape), dtype)) {}
 
 TensorImpl::TensorImpl(const Shape &shape, const Strides &strides, const DataType &dtype)
-    : meta_{shape, strides, dtype} {}
+    : meta_(TensorMetaData(shape, strides, dtype)) {}
 
 std::byte *TensorImpl::data() {
     return data_.memory->data() + data_.offset;
@@ -104,8 +109,7 @@ Device TensorImpl::device() const {
 }
 
 infiniopTensorDescriptor_t TensorImpl::desc() const {
-    // TODO: Implement this.
-    return nullptr;
+    return meta_.desc;
 }
 
 std::shared_ptr<TensorImpl> TensorImpl::empty(const Shape &shape,
@@ -146,6 +150,28 @@ std::shared_ptr<TensorImpl> TensorImpl::ones(const Shape &shape,
                                              bool pin_memory) {
     // TODO: Implement this.
     return empty(shape, dtype, device, pin_memory);
+}
+
+Tensor TensorImpl::to(Device device) const {
+    if (device == data_.memory->device()) {
+        auto _t = std::make_shared<TensorImpl>(meta_.shape, meta_.strides, meta_.dtype);
+        _t->data_ = data_;
+        return Tensor(_t);
+    } else {
+        if (!is_contiguous()) {
+            spdlog::error("Only contiguous tensors can be copied to another device.");
+            std::abort();
+        }
+        std::shared_ptr<TensorImpl> _t = empty(meta_.shape, meta_.dtype, device, true);
+        if (device == Device::Type::CPU) {
+            context::memcpyD2H(_t->data(), data(), _t->data_.memory->size());
+        } else if (this->device() == Device::Type::CPU) {
+            context::memcpyH2D(_t->data(), data(), _t->data_.memory->size());
+        } else {
+            context::memcpyD2D(_t->data(), data(), _t->data_.memory->size());
+        }
+        return Tensor(_t);
+    }
 }
 
 Tensor TensorImpl::narrow(const std::vector<TensorSliceParams> &slices) const {

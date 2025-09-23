@@ -24,6 +24,9 @@ struct TensorMetaData {
     Shape shape;
     Strides strides;
     DataType dtype;
+    infiniopTensorDescriptor_t desc;
+
+    TensorMetaData(const Shape &shape, const Strides &strides, const DataType &dtype);
 };
 
 struct TensorData {
@@ -96,6 +99,16 @@ public:
     Device device() const;
 
     infiniopTensorDescriptor_t desc() const;
+
+    /**
+     * Returns a new tensor with the same data on a different device.
+     * If the new device passed is same as the current device, the original tensor is returned.
+     *
+     * @param device The device of the new tensor
+     *
+     * @return A new tensor with the same data on the specified device
+     */
+    Tensor to(Device device) const;
 
     /**
      * Returns a new tensor that is a narrowed version of the current tensor.
