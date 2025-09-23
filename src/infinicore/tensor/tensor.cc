@@ -44,6 +44,10 @@ Tensor Tensor::ones(const Shape &shape,
     return Tensor{TensorImpl::ones(shape, dtype, device, pin_memory)};
 }
 
+Tensor Tensor::from_blob(void *raw_ptr, const Shape &shape, const DataType &dtype, const Device &device) {
+    return Tensor{TensorImpl::from_blob(raw_ptr, shape, dtype, device)};
+}
+
 TensorMetaData::TensorMetaData(const Shape &_shape, const Strides &_strides, const DataType &_dtype)
     : shape(_shape), strides(_strides), dtype(_dtype) {
     INFINICORE_CHECK_ERROR(infiniopCreateTensorDescriptor(&desc, shape.size(), shape.data(), strides.data(), (infiniDtype_t)dtype));
@@ -156,6 +160,17 @@ std::shared_ptr<TensorImpl> TensorImpl::ones(const Shape &shape,
                                              bool pin_memory) {
     // TODO: Implement this.
     return empty(shape, dtype, device, pin_memory);
+}
+
+std::shared_ptr<TensorImpl> TensorImpl::from_blob(
+    void *raw_ptr,
+    const Shape &shape,
+    const DataType &dtype,
+    const Device &device) {
+    auto t = std::shared_ptr<TensorImpl>(new TensorImpl(shape, dtype));
+    t->data_.offset = 0;
+    t->data_.memory = std::make_shared<Memory>((std::byte *)raw_ptr, t->numel() * dsize(dtype), device, nullptr);
+    return t;
 }
 
 } // namespace infinicore

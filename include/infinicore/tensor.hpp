@@ -57,6 +57,11 @@ public:
                        const Device &device,
                        bool pin_memory = false);
 
+    static Tensor from_blob(void *raw_ptr,
+                            const Shape &shape,
+                            const DataType &dtype,
+                            const Device &device);
+
     Tensor(const Tensor &) = default;
     Tensor(Tensor &&) = default;
     Tensor &operator=(const Tensor &) = default;
@@ -197,6 +202,12 @@ protected:
         const DataType &dtype,
         const Device &device,
         bool pin_memory = false);
+
+    static std::shared_ptr<TensorImpl> from_blob(
+        void *raw_ptr,
+        const Shape &shape,
+        const DataType &dtype,
+        const Device &device);
 
     friend class Tensor;
 

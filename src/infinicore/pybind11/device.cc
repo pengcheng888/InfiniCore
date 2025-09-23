@@ -2,8 +2,8 @@
 
 #include <stdexcept>
 
-#include "infinirt.h"
 #include "infinicore/common/utils.hpp"
+#include "infinirt.h"
 
 namespace infinicore {
 
