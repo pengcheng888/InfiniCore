@@ -3,6 +3,7 @@
 #include <stdexcept>
 
 #include "infinirt.h"
+#include "infinicore/common/utils.hpp"
 
 namespace infinicore {
 
@@ -33,10 +34,7 @@ std::pair<Device::Type, Device::Index> toInfiniDevice(std::string type, Device::
     }
 
     std::array<int, device_type_count> all_device_count;
-    auto status{infinirtGetAllDeviceCount(all_device_count.data())};
-    if (status != INFINI_STATUS_SUCCESS) {
-        throw std::runtime_error("Failed to get all device counts with error code: `" + std::to_string(status) + "`.");
-    }
+    INFINICORE_CHECK_ERROR(infinirtGetAllDeviceCount(all_device_count.data()));
 
     for (std::size_t i{0}; i < device_type_count; ++i) {
         const auto device_type{static_cast<Device::Type>(i)};

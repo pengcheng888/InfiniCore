@@ -1,5 +1,7 @@
 #include "context_impl.hpp"
 
+#include "infinicore/common/utils.hpp"
+
 namespace infinicore {
 
 Runtime *ContextImpl::getCurrentRuntime() {
@@ -32,7 +34,7 @@ ContextImpl &ContextImpl::singleton() {
 
 ContextImpl::ContextImpl() {
     std::vector<int> device_counter(size_t(Device::Type::COUNT));
-    infinirtGetAllDeviceCount(device_counter.data());
+    INFINICORE_CHECK_ERROR(infinirtGetAllDeviceCount(device_counter.data()));
 
     // Reserve runtime slot for all devices.
     // Context will try to use the first non-cpu available device as the default runtime.

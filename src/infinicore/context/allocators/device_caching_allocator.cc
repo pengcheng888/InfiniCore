@@ -2,14 +2,16 @@
 
 #include <infinirt.h>
 
+#include "infinicore/common/utils.hpp"
+
 namespace infinicore {
 std::byte *DeviceCachingAllocator::allocate(size_t size) {
     void *ptr = nullptr;
-    infinirtMallocAsync(&ptr, size, context::getStream());
+    INFINICORE_CHECK_ERROR(infinirtMallocAsync(&ptr, size, context::getStream()));
     return (std::byte *)ptr;
 }
 
 void DeviceCachingAllocator::deallocate(std::byte *ptr) {
-    infinirtFreeAsync(ptr, context::getStream());
+    INFINICORE_CHECK_ERROR(infinirtFreeAsync(ptr, context::getStream()));
 }
 } // namespace infinicore

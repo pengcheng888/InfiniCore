@@ -2,6 +2,8 @@
 
 #include <infiniop.h>
 
+#include "infinicore/common/utils.hpp"
+
 namespace infinicore::op {
 
 common::OpDispatcher<Matmul::schema> Matmul::dispatcher;
@@ -18,15 +20,15 @@ void infiniop(Tensor c, Tensor a, Tensor b) {
     //     RUN_INFINI(infiniopCreateGemmDescriptor(op_handle, &desc, c->desc(), a->desc(), b->desc()));
     //     cache_manager->putGemmDescriptor(key, desc);
     // }
-    infiniopCreateGemmDescriptor(context::getInfiniopHandle(), &desc, c->desc(), a->desc(), b->desc());
+    INFINICORE_CHECK_ERROR(infiniopCreateGemmDescriptor(context::getInfiniopHandle(), &desc, c->desc(), a->desc(), b->desc()));
 
     size_t workspace_size = 0;
-    infiniopGetGemmWorkspaceSize(desc, &workspace_size);
+    INFINICORE_CHECK_ERROR(infiniopGetGemmWorkspaceSize(desc, &workspace_size));
     std::shared_ptr<Memory> workspace = context::allocateMemory(workspace_size);
 
-    infiniopGemm(
+    INFINICORE_CHECK_ERROR(infiniopGemm(
         desc, workspace->data(), workspace_size,
-        c->data(), a->data(), b->data(), 1.f, 0.f, context::getStream());
+        c->data(), a->data(), b->data(), 1.f, 0.f, context::getStream()));
 }
 
 static bool registered = []() {

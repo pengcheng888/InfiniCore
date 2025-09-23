@@ -1,4 +1,7 @@
 #include "runtime.hpp"
+
+#include "infinicore/common/utils.hpp"
+
 #include "../allocators/device_caching_allocator.hpp"
 #include "../allocators/device_pinned_allocator.hpp"
 #include "../allocators/host_allocator.hpp"
@@ -6,8 +9,8 @@
 namespace infinicore {
 Runtime::Runtime(Device device) : device_(device) {
     activate();
-    infinirtStreamCreate(&stream_);
-    infiniopCreateHandle(&infiniop_handle_);
+    INFINICORE_CHECK_ERROR(infinirtStreamCreate(&stream_));
+    INFINICORE_CHECK_ERROR(infiniopCreateHandle(&infiniop_handle_));
     if (device_.getType() == Device::Type::CPU) {
         device_memory_allocator_ = std::make_unique<HostAllocator>();
     } else {
@@ -21,12 +24,12 @@ Runtime::~Runtime() {
         pinned_host_memory_allocator_.reset();
     }
     device_memory_allocator_.reset();
-    infiniopDestroyHandle(infiniop_handle_);
-    infinirtStreamDestroy(stream_);
+    INFINICORE_CHECK_ERROR(infiniopDestroyHandle(infiniop_handle_));
+    INFINICORE_CHECK_ERROR(infinirtStreamDestroy(stream_));
 }
 
 Runtime *Runtime::activate() {
-    infinirtSetDevice((infiniDevice_t)device_.getType(), (int)device_.getIndex());
+    INFINICORE_CHECK_ERROR(infinirtSetDevice((infiniDevice_t)device_.getType(), (int)device_.getIndex()));
     return this;
 }
 
@@ -43,11 +46,11 @@ infiniopHandle_t Runtime::infiniopHandle() const {
 }
 
 void Runtime::syncStream() {
-    infinirtStreamSynchronize(stream_);
+    INFINICORE_CHECK_ERROR(infinirtStreamSynchronize(stream_));
 }
 
 void Runtime::syncDevice() {
-    infinirtDeviceSynchronize();
+    INFINICORE_CHECK_ERROR(infinirtDeviceSynchronize());
 }
 
 std::shared_ptr<Memory> Runtime::allocateMemory(size_t size) {
@@ -70,15 +73,15 @@ std::shared_ptr<Memory> Runtime::allocatePinnedHostMemory(size_t size) {
 }
 
 void Runtime::memcpyH2D(void *dst, const void *src, size_t size) {
-    infinirtMemcpy(dst, src, size, INFINIRT_MEMCPY_H2D);
+    INFINICORE_CHECK_ERROR(infinirtMemcpy(dst, src, size, INFINIRT_MEMCPY_H2D));
 }
 
 void Runtime::memcpyD2H(void *dst, const void *src, size_t size) {
-    infinirtMemcpy(dst, src, size, INFINIRT_MEMCPY_D2H);
+    INFINICORE_CHECK_ERROR(infinirtMemcpy(dst, src, size, INFINIRT_MEMCPY_D2H));
 }
 
 void Runtime::memcpyD2D(void *dst, const void *src, size_t size) {
-    infinirtMemcpy(dst, src, size, INFINIRT_MEMCPY_D2D);
+    INFINICORE_CHECK_ERROR(infinirtMemcpy(dst, src, size, INFINIRT_MEMCPY_D2D));
 }
 
 } // namespace infinicore

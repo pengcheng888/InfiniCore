@@ -1,4 +1,5 @@
 #include "infinicore/tensor.hpp"
+#include "infinicore/common/utils.hpp"
 #include "infinicore/context/context.hpp"
 #include "infinicore/dtype.hpp"
 
@@ -44,7 +45,7 @@ Tensor Tensor::ones(const Shape &shape,
 
 TensorMetaData::TensorMetaData(const Shape &_shape, const Strides &_strides, const DataType &_dtype)
     : shape(_shape), strides(_strides), dtype(_dtype) {
-    infiniopCreateTensorDescriptor(&desc, shape.size(), shape.data(), strides.data(), (infiniDtype_t)dtype);
+    INFINICORE_CHECK_ERROR(infiniopCreateTensorDescriptor(&desc, shape.size(), shape.data(), strides.data(), (infiniDtype_t)dtype));
 }
 
 TensorImpl::TensorImpl(const Shape &shape, const DataType &dtype)
