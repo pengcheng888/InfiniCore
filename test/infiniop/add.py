@@ -138,6 +138,7 @@ def test(
             descriptor, ctypes.byref(workspace_size)
         )
     )
+
     workspace = TestWorkspace(workspace_size.value, c.device)
 
     def lib_add():

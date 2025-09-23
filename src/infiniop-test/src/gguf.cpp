@@ -149,19 +149,23 @@ T GGUFFileReader::read() {
 
 std::string GGUFFileReader::toString() const {
     std::ostringstream oss;
+    printf(" GGUFFileReader  11 \n");
     oss << "GGUF File Contents: " << std::endl;
     oss << "Version: " << _version << std::endl;
     oss << "Number of Meta KVs: " << _num_meta_kvs << std::endl;
     oss << "Number of Tensors: " << _num_tensors << std::endl
         << std::endl;
+    printf(" GGUFFileReader  11 \n");
     oss << "Meta KVs: " << std::endl;
     for (const auto &kv : _meta_kvs) {
         oss << kv->toString() << std::endl;
     }
+    printf(" GGUFFileReader  11 \n");
     oss << std::endl;
     oss << "Tensor INFOs: " << std::endl;
     for (const auto &info : _tensor_infos) {
         oss << info->toString() << std::endl;
     }
+    printf(" GGUFFileReader  11 \n");
     return oss.str();
 }

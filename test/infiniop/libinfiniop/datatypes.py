@@ -22,24 +22,24 @@ class InfiniDtype:
 
 
 InfiniDtypeNames = {
-    InfiniDtype.INVALID: "INVALID",
-    InfiniDtype.BYTE: "BYTE",
-    InfiniDtype.BOOL: "BOOL",
-    InfiniDtype.I8: "I8",
-    InfiniDtype.I16: "I16",
-    InfiniDtype.I32: "I32",
-    InfiniDtype.I64: "I64",
-    InfiniDtype.U8: "U8",
-    InfiniDtype.U16: "U16",
-    InfiniDtype.U32: "U32",
-    InfiniDtype.U64: "U64",
-    InfiniDtype.F8: "F8",
-    InfiniDtype.F16: "F16",
-    InfiniDtype.F32: "F32",
-    InfiniDtype.F64: "F64",
+    InfiniDtype.INVALID: "INVALID", # 0
+    InfiniDtype.BYTE: "BYTE",# 1
+    InfiniDtype.BOOL: "BOOL",# 2
+    InfiniDtype.I8: "I8",# 3
+    InfiniDtype.I16: "I16",# 4
+    InfiniDtype.I32: "I32",# 5
+    InfiniDtype.I64: "I64",# 6
+    InfiniDtype.U8: "U8",# 7
+    InfiniDtype.U16: "U16",# 8
+    InfiniDtype.U32: "U32",# 9
+    InfiniDtype.U64: "U64",# 10
+    InfiniDtype.F8: "F8",# 11
+    InfiniDtype.F16: "F16",# 12
+    InfiniDtype.F32: "F32",# 13
+    InfiniDtype.F64: "F64",# 14
     InfiniDtype.C8: "C8",
     InfiniDtype.C16: "C16",
     InfiniDtype.C32: "C32",
     InfiniDtype.C64: "C64",
-    InfiniDtype.BF16: "BF16",
+    InfiniDtype.BF16: "BF16",# 19
 }

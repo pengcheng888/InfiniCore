@@ -73,10 +73,16 @@ std::shared_ptr<Result> runTest(const GGUFFileReader &gguf_reader,
                                 infiniDevice_t device, int device_id,
                                 size_t warm_ups, size_t iterations,
                                 double rtol, double atol, size_t test_id) {
+
+    printf("---------------> 000 \n");
     auto meta = gguf_reader.getAttributeMap();
     auto tensor_info = gguf_reader.getTensorInfoMap();
     auto name_meta = meta.find("test." + std::to_string(test_id) + ".op_name");
+
+    printf("---------------> 111 \n");
+
     if (name_meta != meta.end()) {
+
         std::string op_name(name_meta->second->value.begin(), name_meta->second->value.end());
         auto builder = TEST_BUILDERS.find(op_name)->second;
         auto attrs = std::unordered_map<std::string, std::vector<uint8_t>>();
@@ -84,6 +90,7 @@ std::shared_ptr<Result> runTest(const GGUFFileReader &gguf_reader,
         infiniopHandle_t handle;
         CHECK_OR(infinirtSetDevice(device, device_id), throw std::runtime_error("Failed to set device"));
         CHECK_OR(infiniopCreateHandle(&handle), throw std::runtime_error("Failed to create handle"));
+
         for (auto attr_name : builder.attribute_names) {
             auto attr = meta.find("test." + std::to_string(test_id) + "." + attr_name);
             if (attr != meta.end()) {
@@ -94,9 +101,11 @@ std::shared_ptr<Result> runTest(const GGUFFileReader &gguf_reader,
         for (auto tensor_name : builder.tensor_names) {
             auto info = tensor_info.find("test." + std::to_string(test_id) + "." + tensor_name);
             if (info != tensor_info.end()) {
+
                 auto shape = meta.find("test." + std::to_string(test_id) + "." + tensor_name + ".shape");
                 auto strides = meta.find("test." + std::to_string(test_id) + "." + tensor_name + ".strides");
                 bool is_output = std::find(builder.output_names.begin(), builder.output_names.end(), tensor_name) != builder.output_names.end();
+
                 tensors[tensor_name] = std::make_shared<Tensor>(
                     info->second.get(),
                     gguf_reader.getGgmlStart(),
@@ -105,6 +114,7 @@ std::shared_ptr<Result> runTest(const GGUFFileReader &gguf_reader,
                     is_output);
             }
         }
+
         std::shared_ptr<infiniop_test::base::Test> test;
         try {
             test = builder.build(attrs, tensors, rtol, atol);

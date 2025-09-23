@@ -8,8 +8,10 @@
 #include "infiniop/ops/clip.h"
 #include "infiniop/ops/conv.h"
 #include "infiniop/ops/dequantize.h"
+// #include "infiniop/ops/eyes.h"
 #include "infiniop/ops/gemm.h"
 #include "infiniop/ops/mul.h"
+#include "infiniop/ops/ones.h"
 #include "infiniop/ops/random_sample.h"
 #include "infiniop/ops/rearrange.h"
 #include "infiniop/ops/relu.h"
@@ -19,6 +21,7 @@
 #include "infiniop/ops/sub.h"
 #include "infiniop/ops/swiglu.h"
 #include "infiniop/ops/topkrouter.h"
+#include "infiniop/ops/zeros.h"
 #include "infiniop/tensor_descriptor.h"
 
 #endif // __INFINIOP_API_H__
