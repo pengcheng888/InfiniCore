@@ -1,26 +1,48 @@
 #include "infinicore/op/matmul.h"
-
 #include <infiniop.h>
 
 #include "infinicore/common/utils.hpp"
 
 namespace infinicore::op {
 
+common::OpCache<size_t, infiniopGemmDescriptor_t> Matmul::caches(
+    100, // capacity
+    [](infiniopGemmDescriptor_t &desc) {
+        if (desc != nullptr) {
+            INFINICORE_CHECK_ERROR(infiniopDestroyGemmDescriptor(desc));
+            desc = nullptr;
+        }
+    });
+
 common::OpDispatcher<Matmul::schema> Matmul::dispatcher;
 
 void Matmul::execute(Tensor c, Tensor a, Tensor b) {
     dispatcher.lookup(context::getDevice().getType())(c, a, b);
 }
+
+void Matmul::destroyMatmul(Matmul &matmul) {
+    matmul.caches.clear();
+}
+
 } // namespace infinicore::op
 
 namespace infinicore::op::matmul_impl {
 void infiniop(Tensor c, Tensor a, Tensor b) {
-    infiniopGemmDescriptor_t desc;
-    // if (!cache_manager->getGemmDescriptor(key, desc)) {
-    //     RUN_INFINI(infiniopCreateGemmDescriptor(op_handle, &desc, c->desc(), a->desc(), b->desc()));
-    //     cache_manager->putGemmDescriptor(key, desc);
-    // }
-    INFINICORE_CHECK_ERROR(infiniopCreateGemmDescriptor(context::getInfiniopHandle(), &desc, c->desc(), a->desc(), b->desc()));
+    size_t seed = hash_combine(c, b, a);
+
+    auto device_type = context::getDevice().getType();
+    auto device_index = context::getDevice().getIndex();
+    auto &cache = Matmul::caches.getCache(device_type, device_index);
+
+    auto desc_opt = cache.get(seed);
+    infiniopGemmDescriptor_t desc = nullptr;
+
+    if (!desc_opt) {
+        INFINICORE_CHECK_ERROR(infiniopCreateGemmDescriptor(context::getInfiniopHandle(), &desc, c->desc(), a->desc(), b->desc()));
+        cache.put(seed, desc);
+    } else {
+        desc = *desc_opt;
+    }
 
     size_t workspace_size = 0;
     INFINICORE_CHECK_ERROR(infiniopGetGemmWorkspaceSize(desc, &workspace_size));
@@ -43,6 +65,7 @@ Tensor matmul(Tensor a, Tensor b) {
     matmul_(c, a, b);
     return c;
 }
+
 void matmul_(Tensor c, Tensor a, Tensor b) {
     Matmul::execute(c, a, b);
 }
