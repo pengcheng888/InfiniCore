@@ -1,8 +1,19 @@
 #include <stdexcept>
 
+#include <spdlog/cfg/env.h>
 #include <spdlog/spdlog.h>
 
 #include "infinicore.h"
+
+inline struct SpdlogInitializer {
+    SpdlogInitializer() {
+        if (!std::getenv("INFINICORE_LOG_LEVEL")) {
+            spdlog::set_level(spdlog::level::off);
+        } else {
+            spdlog::cfg::load_env_levels("INFINICORE_LOG_LEVEL");
+        }
+    }
+} spdlog_initializer;
 
 #define STRINGIZE_(x) #x
 #define STRINGIZE(x) STRINGIZE_(x)
