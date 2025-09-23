@@ -5,9 +5,7 @@
 #include "infinicore/common/utils.hpp"
 
 namespace infinicore {
-DevicePinnedHostAllocator::DevicePinnedHostAllocator() : MemoryAllocator() {
-    owner_ = context::getDevice();
-}
+DevicePinnedHostAllocator::DevicePinnedHostAllocator(Device device) : MemoryAllocator(), owner_(device) {}
 
 DevicePinnedHostAllocator::~DevicePinnedHostAllocator() {
     gc();

@@ -102,6 +102,10 @@ public:
 
     bool is_pinned() const;
 
+    ///
+    /// Data Transfer APIs
+    ///
+
     /**
      * Returns a new tensor with the same data on a different device.
      * If the new device passed is same as the current device, the original tensor is returned.
@@ -111,6 +115,12 @@ public:
      * @return A new tensor with the same data on the specified device
      */
     Tensor to(Device device) const;
+
+    void copy_from(Tensor src);
+
+    ///
+    /// View APIs
+    ///
 
     /**
      * Returns a new tensor that is a narrowed version of the current tensor.

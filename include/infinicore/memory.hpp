@@ -12,6 +12,8 @@ public:
     using Deleter = std::function<void(std::byte *)>;
 
     Memory(std::byte *data, size_t size, Device device, Deleter deleter, bool pin_memory = false);
+    ~Memory();
+
     std::byte *data();
     Device device() const;
     size_t size() const;

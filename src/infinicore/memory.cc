@@ -9,6 +9,12 @@ Memory::Memory(std::byte *data,
                bool pin_memory)
     : data_{data}, size_{size}, device_{device_}, deleter_{deleter}, is_pinned_(pin_memory) {}
 
+Memory::~Memory() {
+    if (deleter_) {
+        deleter_(data_);
+    }
+}
+
 std::byte *Memory::data() {
     return data_;
 }

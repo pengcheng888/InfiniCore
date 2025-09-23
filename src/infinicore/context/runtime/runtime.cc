@@ -14,8 +14,8 @@ Runtime::Runtime(Device device) : device_(device) {
     if (device_.getType() == Device::Type::CPU) {
         device_memory_allocator_ = std::make_unique<HostAllocator>();
     } else {
-        device_memory_allocator_ = std::make_unique<DeviceCachingAllocator>();
-        pinned_host_memory_allocator_ = std::make_unique<DevicePinnedHostAllocator>();
+        device_memory_allocator_ = std::make_unique<DeviceCachingAllocator>(device);
+        pinned_host_memory_allocator_ = std::make_unique<DevicePinnedHostAllocator>(device);
     }
 }
 Runtime::~Runtime() {
@@ -24,8 +24,8 @@ Runtime::~Runtime() {
         pinned_host_memory_allocator_.reset();
     }
     device_memory_allocator_.reset();
-    INFINICORE_CHECK_ERROR(infiniopDestroyHandle(infiniop_handle_));
-    INFINICORE_CHECK_ERROR(infinirtStreamDestroy(stream_));
+    infiniopDestroyHandle(infiniop_handle_);
+    infinirtStreamDestroy(stream_);
 }
 
 Runtime *Runtime::activate() {
@@ -73,7 +73,7 @@ std::shared_ptr<Memory> Runtime::allocatePinnedHostMemory(size_t size) {
 }
 
 void Runtime::memcpyH2D(void *dst, const void *src, size_t size) {
-    INFINICORE_CHECK_ERROR(infinirtMemcpy(dst, src, size, INFINIRT_MEMCPY_H2D));
+    INFINICORE_CHECK_ERROR(infinirtMemcpyAsync(dst, src, size, INFINIRT_MEMCPY_H2D, stream_));
 }
 
 void Runtime::memcpyD2H(void *dst, const void *src, size_t size) {
@@ -81,7 +81,7 @@ void Runtime::memcpyD2H(void *dst, const void *src, size_t size) {
 }
 
 void Runtime::memcpyD2D(void *dst, const void *src, size_t size) {
-    INFINICORE_CHECK_ERROR(infinirtMemcpy(dst, src, size, INFINIRT_MEMCPY_D2D));
+    INFINICORE_CHECK_ERROR(infinirtMemcpyAsync(dst, src, size, INFINIRT_MEMCPY_D2D, stream_));
 }
 
 } // namespace infinicore

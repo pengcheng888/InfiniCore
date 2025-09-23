@@ -5,6 +5,8 @@
 #include "infinicore/common/utils.hpp"
 
 namespace infinicore {
+DeviceCachingAllocator::DeviceCachingAllocator(Device device) : MemoryAllocator(), device_(device) {}
+
 std::byte *DeviceCachingAllocator::allocate(size_t size) {
     void *ptr = nullptr;
     INFINICORE_CHECK_ERROR(infinirtMallocAsync(&ptr, size, context::getStream()));

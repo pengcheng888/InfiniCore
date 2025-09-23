@@ -9,7 +9,7 @@
 namespace infinicore {
 class DevicePinnedHostAllocator : public MemoryAllocator {
 public:
-    DevicePinnedHostAllocator();
+    explicit DevicePinnedHostAllocator(Device device);
     ~DevicePinnedHostAllocator();
 
     std::byte *allocate(size_t size) override;
