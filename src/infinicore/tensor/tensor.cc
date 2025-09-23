@@ -112,6 +112,10 @@ infiniopTensorDescriptor_t TensorImpl::desc() const {
     return meta_.desc;
 }
 
+bool TensorImpl::is_pinned() const {
+    return data_.memory->is_pinned();
+}
+
 std::shared_ptr<TensorImpl> TensorImpl::empty(const Shape &shape,
                                               const DataType &dtype,
                                               const Device &device,

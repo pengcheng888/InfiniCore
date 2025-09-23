@@ -5,8 +5,9 @@ namespace infinicore {
 Memory::Memory(std::byte *data,
                size_t size,
                Device device,
-               Memory::Deleter deleter)
-    : data_{data}, size_{size}, device_{device_}, deleter_{deleter} {}
+               Memory::Deleter deleter,
+               bool pin_memory)
+    : data_{data}, size_{size}, device_{device_}, deleter_{deleter}, is_pinned_(pin_memory) {}
 
 std::byte *Memory::data() {
     return data_;
@@ -20,4 +21,7 @@ size_t Memory::size() const {
     return size_;
 }
 
+bool Memory::is_pinned() const {
+    return is_pinned_;
+}
 } // namespace infinicore

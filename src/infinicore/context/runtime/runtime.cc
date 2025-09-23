@@ -65,7 +65,8 @@ std::shared_ptr<Memory> Runtime::allocatePinnedHostMemory(size_t size) {
         data_ptr, size, device_,
         [alloc = pinned_host_memory_allocator_.get()](std::byte *p) {
             alloc->deallocate(p);
-        });
+        },
+        true);
 }
 
 void Runtime::memcpyH2D(void *dst, const void *src, size_t size) {

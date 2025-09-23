@@ -119,7 +119,7 @@ std::string DataType::toString(const DataType &dtype) {
     return str;
 }
 
-}
+} // namespace py
 
 size_t dsize(const DataType &dtype) {
     switch (dtype) {

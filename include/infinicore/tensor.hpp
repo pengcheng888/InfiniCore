@@ -100,6 +100,8 @@ public:
 
     infiniopTensorDescriptor_t desc() const;
 
+    bool is_pinned() const;
+
     /**
      * Returns a new tensor with the same data on a different device.
      * If the new device passed is same as the current device, the original tensor is returned.
