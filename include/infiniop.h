@@ -8,7 +8,6 @@
 #include "infiniop/ops/clip.h"
 #include "infiniop/ops/conv.h"
 #include "infiniop/ops/dequantize.h"
-// #include "infiniop/ops/eyes.h"
 #include "infiniop/ops/gemm.h"
 #include "infiniop/ops/mul.h"
 #include "infiniop/ops/ones.h"

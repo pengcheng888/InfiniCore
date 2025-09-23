@@ -1,19 +1,13 @@
 #ifndef __ZEROS_CUDA_H__
 #define __ZEROS_CUDA_H__
 
-#if defined(ENABLE_NVIDIA_API) || defined(ENABLE_ILUVATAR_API)
-#include <cuda_fp8.h>
-#endif
-#ifdef ENABLE_METAX_API
-#include <hpcc_fp8.h>
-#endif
-
 namespace op::zeros::cuda {
 typedef struct ZerosOp {
 public:
     static constexpr size_t num_inputs = 1;
     template <typename T>
     __device__ __forceinline__ T operator()(const T &x) const {
+
         if constexpr (std::is_same_v<T, uint8_t>) { // 1
             return 0;
         } else if constexpr (std::is_same_v<T, bool>) { // 2
