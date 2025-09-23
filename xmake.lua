@@ -345,6 +345,7 @@ target("infinicore")
     add_files("src/infinicore/context/*/*.cc")
     add_files("src/infinicore/tensor/*.cc")
     add_files("src/infinicore/op/*/*.cc")
+    add_files("src/infinicore/pybind11/*.cc")
 
 
     set_installdir(os.getenv("INFINI_ROOT") or (os.getenv(is_host("windows") and "HOMEPATH" or "HOME") .. "/.infini"))

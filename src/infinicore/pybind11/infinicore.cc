@@ -1,7 +1,8 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
-#include <infinicore.hpp>
+#include "device.hpp"
+#include "dtype.hpp"
 
 namespace infinicore {
 
