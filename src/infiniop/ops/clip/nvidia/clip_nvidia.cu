@@ -29,7 +29,7 @@ infiniStatus_t Descriptor::create(
     CHECK_SAME_SHAPE(out_shape, min_shape);
     CHECK_SAME_SHAPE(out_shape, max_shape);
 
-    CREATE_ELEMENTWISE_CUDA_DESCRIPTOR(handle, dtype, out_desc, input_desc_vec);
+    CREATE_ELEMENTWISE_CUDA_DESCRIPTOR(handle, dtype, out_desc, input_desc_vec)
 
     return INFINI_STATUS_SUCCESS;
 }

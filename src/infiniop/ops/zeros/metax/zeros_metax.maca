@@ -42,7 +42,7 @@ infiniStatus_t Descriptor::create(
     CHECK_SAME_SHAPE(y_shape, x_shape);
 
     // create CUDA elementwise descriptor
-    CREATE_ELEMENTWISE_CUDA_DESCRIPTOR(handle, dtype, out_desc, input_desc_vec)
+    CREATE_ELEMENTWISE_METAX_DESCRIPTOR(handle, dtype, out_desc, input_desc_vec)
 
     return INFINI_STATUS_SUCCESS;
 }
@@ -80,7 +80,7 @@ infiniStatus_t Descriptor::calculate(
     case INFINI_DTYPE_U64: // 10
         return _device_info->calculate<256, cuda::ZerosOp, uint64_t>(_info, workspace, output, inputs, stream);
     case INFINI_DTYPE_F8: // 11
-        return _device_info->calculate<256, cuda::ZerosOp, cuda_fp8_e4m3>(_info, workspace, output, inputs, stream);
+        return _device_info->calculate<256, cuda::ZerosOp, __nv_fp8_e4m3>(_info, workspace, output, inputs, stream);
     case INFINI_DTYPE_F16: // 12
         return _device_info->calculate<256, cuda::ZerosOp, half>(_info, workspace, output, inputs, stream);
     case INFINI_DTYPE_F32: // 13

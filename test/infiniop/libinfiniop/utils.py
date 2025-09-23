@@ -324,7 +324,7 @@ def get_args():
     )
     parser.add_argument(
         "--nvidia",
-        default=True,
+        action="store_true",
         help="Run NVIDIA GPU test",
     )
     parser.add_argument(
