@@ -1,7 +1,13 @@
 #ifndef __ZEROS_CUDA_H__
 #define __ZEROS_CUDA_H__
 
+#if defined(ENABLE_NVIDIA_API) || defined(ENABLE_ILUVATAR_API)
 #include <cuda_fp8.h>
+#endif
+#ifdef ENABLE_METAX_API
+#include <hpcc_fp8.h>
+#endif
+
 namespace op::zeros::cuda {
 typedef struct ZerosOp {
 public:
@@ -28,8 +34,8 @@ public:
             return 0;
         } else if constexpr (std::is_same_v<T, uint64_t>) { // 10
             return 0;
-        } else if constexpr (std::is_same_v<T, __nv_fp8_e4m3>) { // 11
-            return __nv_fp8_e4m3(0.0f);
+        } else if constexpr (std::is_same_v<T, cuda_fp8_e4m3>) { // 11
+            return cuda_fp8_e4m3(0.0f);
         } else if constexpr (std::is_same_v<T, half>) { // 12
             return __float2half(0.0f);
         } else if constexpr (std::is_same_v<T, float>) { // 13

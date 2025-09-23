@@ -28,8 +28,8 @@ public:
             return 0;
         } else if constexpr (std::is_same_v<T, uint64_t>) { // 10
             return 0;
-        } else if constexpr (std::is_same_v<T, __nv_fp8_e4m3>) { // 11
-            return __nv_fp8_e4m3(0.0f);
+        } else if constexpr (std::is_same_v<T, cuda_fp8_e4m3>) { // 11
+            return cuda_fp8_e4m3(0.0f);
         } else if constexpr (std::is_same_v<T, half>) { // 12
             return __float2half(0.0f);
         } else if constexpr (std::is_same_v<T, float>) { // 13
