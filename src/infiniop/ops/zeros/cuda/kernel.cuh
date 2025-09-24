@@ -7,7 +7,7 @@ public:
     static constexpr size_t num_inputs = 1;
     template <typename T>
     __device__ __forceinline__ T operator()(const T &x) const {
-
+        printf(" metax  ===>        cuda_fp8_e4m3 ");
         if constexpr (std::is_same_v<T, uint8_t>) { // 1
             return 0;
         } else if constexpr (std::is_same_v<T, bool>) { // 2
