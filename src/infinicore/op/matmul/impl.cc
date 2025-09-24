@@ -1,11 +1,21 @@
+#include "infinicore/common/utils.hpp"
+#include "infinicore/op/common/cache.hpp"
 #include "infinicore/op/matmul.h"
 #include <infiniop.h>
 
-#include "infinicore/common/utils.hpp"
-
 namespace infinicore::op {
 
-common::OpCache<size_t, infiniopGemmDescriptor_t> Matmul::caches(
+common::OpDispatcher<Matmul::schema> Matmul::dispatcher;
+
+void Matmul::execute(Tensor c, Tensor a, Tensor b) {
+    dispatcher.lookup(context::getDevice().getType())(c, a, b);
+}
+
+} // namespace infinicore::op
+
+namespace infinicore::op::matmul_impl {
+
+thread_local common::OpCache<size_t, infiniopGemmDescriptor_t> caches(
     100, // capacity
     [](infiniopGemmDescriptor_t &desc) {
         if (desc != nullptr) {
@@ -14,25 +24,13 @@ common::OpCache<size_t, infiniopGemmDescriptor_t> Matmul::caches(
         }
     });
 
-common::OpDispatcher<Matmul::schema> Matmul::dispatcher;
-
-void Matmul::execute(Tensor c, Tensor a, Tensor b) {
-    dispatcher.lookup(context::getDevice().getType())(c, a, b);
-}
-
-void Matmul::destroyMatmul(Matmul &matmul) {
-    matmul.caches.clear();
-}
-
-} // namespace infinicore::op
-
-namespace infinicore::op::matmul_impl {
 void infiniop(Tensor c, Tensor a, Tensor b) {
     size_t seed = hash_combine(c, b, a);
 
     auto device_type = context::getDevice().getType();
     auto device_index = context::getDevice().getIndex();
-    auto &cache = Matmul::caches.getCache(device_type, device_index);
+
+    auto &cache = caches.getCache(device_type, device_index);
 
     auto desc_opt = cache.get(seed);
     infiniopGemmDescriptor_t desc = nullptr;

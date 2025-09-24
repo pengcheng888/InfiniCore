@@ -36,6 +36,8 @@ public:
 
     bool operator==(const Device &other) const;
 
+    bool operator!=(const Device &other) const;
+
 private:
     Type type_;
 
