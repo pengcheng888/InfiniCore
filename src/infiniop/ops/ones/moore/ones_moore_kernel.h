@@ -1,17 +1,17 @@
-#ifndef __ONES_CUDA_H__
-#define __ONES_CUDA_H__
+#ifndef __ONES_MOORE_KERNEL_H__
+#define __ONES_MOORE_KERNEL_H__
 
+#include <cuda_fp8.h>
 namespace op::ones::cuda {
 typedef struct OnesOp {
 public:
     static constexpr size_t num_inputs = 1;
     template <typename T>
     __device__ __forceinline__ T operator()(const T &x) const {
-
-        if constexpr (std::is_same_v<T, uint8_t>) { // 1
-            return 1;
-        } else if constexpr (std::is_same_v<T, bool>) { // 2
+        if constexpr (std::is_same_v<T, bool>) { // 1
             return true;
+        } else if constexpr (std::is_same_v<T, uint8_t>) { // 2
+            return 1;
         } else if constexpr (std::is_same_v<T, int8_t>) { // 3
             return 1;
         } else if constexpr (std::is_same_v<T, int16_t>) { // 4
@@ -45,4 +45,4 @@ public:
 } OnesOp;
 } // namespace op::ones::cuda
 
-#endif // __ONES_CUDA_H__
+#endif // __ONES_MOORE_KERNEL_H__
