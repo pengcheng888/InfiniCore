@@ -21,6 +21,8 @@ public:
 
     void setDevice(Device);
 
+    size_t getDeviceCount(Device::Type type);
+
     static ContextImpl &singleton();
 
     friend class Runtime;

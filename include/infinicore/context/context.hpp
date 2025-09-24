@@ -13,6 +13,7 @@ namespace infinicore {
 namespace context {
 void setDevice(Device device);
 Device getDevice();
+size_t getDeviceCount(Device::Type type);
 
 infinirtStream_t getStream();
 infiniopHandle_t getInfiniopHandle();

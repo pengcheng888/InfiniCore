@@ -27,6 +27,10 @@ void ContextImpl::setDevice(Device device) {
     }
 }
 
+size_t ContextImpl::getDeviceCount(Device::Type type) {
+    return runtime_table_[int(type)].size();
+}
+
 ContextImpl &ContextImpl::singleton() {
     static ContextImpl instance;
     return instance;
@@ -52,11 +56,17 @@ ContextImpl::ContextImpl() {
 }
 
 namespace context {
+
 void setDevice(Device device) {
     ContextImpl::singleton().setDevice(device);
 }
+
 Device getDevice() {
     return ContextImpl::singleton().getCurrentRuntime()->device();
+}
+
+size_t getDeviceCount(Device::Type type) {
+    return ContextImpl::singleton().getDeviceCount(type);
 }
 
 infinirtStream_t getStream() {
