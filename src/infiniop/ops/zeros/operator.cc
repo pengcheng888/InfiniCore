@@ -12,7 +12,7 @@
 #include "metax/zeros_metax.h"
 #endif
 #ifdef ENABLE_MOORE_API
-#include "moore/zeros_norm_moore.h"
+#include "moore/zeros_moore.h"
 #endif
 
 __C infiniStatus_t infiniopCreateZerosDescriptor(
@@ -44,7 +44,7 @@ __C infiniStatus_t infiniopCreateZerosDescriptor(
         CREATE(INFINI_DEVICE_METAX, metax);
 #endif
 #ifdef ENABLE_MOORE_API
-        CREATE(INFINI_DEVICE_METAX, moore)
+        CREATE(INFINI_DEVICE_METAX, moore);
 #endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;

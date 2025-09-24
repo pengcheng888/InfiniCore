@@ -1,4 +1,4 @@
-#include "zeros_moore.cuh"
+#include "zeros_moore.h"
 #include "../../../elementwise/moore/elementwise_moore.h"
 #include "../cuda/kernel.cuh"
 
