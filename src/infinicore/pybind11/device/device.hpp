@@ -1,3 +1,4 @@
+#pragma once
 #include "infinicore.hpp"
 
 namespace infinicore::py {

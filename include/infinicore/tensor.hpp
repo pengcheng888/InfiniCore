@@ -121,6 +121,14 @@ public:
      */
     Tensor to(Device device) const;
 
+    /**
+     * Copy Data from another tensor to this tensor.
+     * Currently, only contigous tensors of the same dtype and shape are supported.
+     *
+     * @param src The source tensor to copy from
+     *
+     * @return A new tensor with the same data on the specified device
+     */
     void copy_from(Tensor src);
 
     ///
@@ -214,6 +222,8 @@ protected:
 private:
     TensorMetaData meta_;
     TensorData data_;
+
+    void copy_from(const TensorImpl *src);
 };
 
 } // namespace infinicore
