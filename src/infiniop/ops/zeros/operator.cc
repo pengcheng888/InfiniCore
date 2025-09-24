@@ -44,7 +44,7 @@ __C infiniStatus_t infiniopCreateZerosDescriptor(
         CREATE(INFINI_DEVICE_METAX, metax);
 #endif
 #ifdef ENABLE_MOORE_API
-        CREATE(INFINI_DEVICE_METAX, moore);
+        CREATE(INFINI_DEVICE_MOORE, moore);
 #endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
@@ -74,7 +74,7 @@ __C infiniStatus_t infiniopGetZerosWorkspaceSize(infiniopZerosDescriptor_t desc,
         GET(INFINI_DEVICE_METAX, metax);
 #endif
 #ifdef ENABLE_MOORE_API
-        GET(INFINI_DEVICE_METAX, moore);
+        GET(INFINI_DEVICE_MOORE, moore);
 #endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
@@ -112,7 +112,7 @@ __C infiniStatus_t infiniopZeros(
         CALCULATE(INFINI_DEVICE_METAX, metax);
 #endif
 #ifdef ENABLE_MOORE_API
-        CALCULATE(INFINI_DEVICE_METAX, moore);
+        CALCULATE(INFINI_DEVICE_MOORE, moore);
 #endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
@@ -144,7 +144,7 @@ infiniopDestroyZerosDescriptor(infiniopZerosDescriptor_t desc) {
         DELETE(INFINI_DEVICE_METAX, metax);
 #endif
 #ifdef ENABLE_MOORE_API
-        DELETE(INFINI_DEVICE_METAX, moore);
+        DELETE(INFINI_DEVICE_MOORE, moore);
 #endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;

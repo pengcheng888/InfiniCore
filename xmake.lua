@@ -1,5 +1,5 @@
 add_rules("mode.debug", "mode.release")
-add_requires("pybind11")
+-- add_requires("pybind11")
 
 -- Define color codes
 local GREEN = '\27[0;32m'
@@ -148,15 +148,15 @@ if has_config("kunlun-xpu") then
 end
 
 -- 九齿
-option("ninetoothed")
-    set_default(false)
-    set_showmenu(true)
-    set_description("Whether to complie NineToothed implementations")
-option_end()
+-- option("ninetoothed")
+--     set_default(false)
+--     set_showmenu(true)
+--     set_description("Whether to complie NineToothed implementations")
+-- option_end()
 
-if has_config("ninetoothed") then
-    add_defines("ENABLE_NINETOOTHED")
-end
+-- if has_config("ninetoothed") then
+--     add_defines("ENABLE_NINETOOTHED")
+-- end
 
 -- InfiniCCL
 option("ccl")
@@ -318,17 +318,17 @@ target("infinicore_c_api")
     after_build(function (target) print(YELLOW .. "[Congratulations!] Now you can install the libraries with \"xmake install\"" .. NC) end)
 target_end()
 
-target("infinicore")
-    add_rules("python.library", {soabi = true})
-    add_packages("pybind11")
+-- target("infinicore")
+--     add_rules("python.library", {soabi = true})
+--     -- add_packages("pybind11")
 
-    set_kind("shared")
-    add_deps("infinicore_c_api")
+--     set_kind("shared")
+--     add_deps("infinicore_c_api")
 
-    add_files("src/infinicore/*.cc")
+--     add_files("src/infinicore/*.cc")
 
-    set_installdir(os.getenv("INFINI_ROOT") or (os.getenv(is_host("windows") and "HOMEPATH" or "HOME") .. "/.infini"))
-target_end()
+--     set_installdir(os.getenv("INFINI_ROOT") or (os.getenv(is_host("windows") and "HOMEPATH" or "HOME") .. "/.infini"))
+-- target_end()
 
 -- Tests
 includes("xmake/test.lua")

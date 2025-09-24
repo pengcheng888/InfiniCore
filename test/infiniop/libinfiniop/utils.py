@@ -272,8 +272,13 @@ def rearrange_tensor(tensor, new_strides):
     offset = -left
     new_positions += offset
 
+
+
+
     # Copy the original data to the new tensor
-    if tensor.dtype in [torch.uint16, torch.uint32, torch.uint64]:
+    if tensor.dtype in [torch.bool, torch.uint8, torch.int8, torch.int16, torch.int32,torch.int64, torch.float16,torch.bfloat16,torch.float32,torch.float64 ]:
+        new_tensor.view(-1).index_add_(0, new_positions, tensor.view(-1))
+    elif tensor.dtype in [torch.uint16, torch.uint32, torch.uint64]:
         new_tensor_int64 = new_tensor.to(dtype=torch.int64)
         tensor_int64 = tensor.to(dtype=torch.int64)
         new_tensor_int64.view(-1).index_add_(0, new_positions, tensor_int64.view(-1))
@@ -284,7 +289,7 @@ def rearrange_tensor(tensor, new_strides):
         new_tensor_float64.view(-1).index_add_(0, new_positions, tensor_float64.view(-1))
         new_tensor = new_tensor_float64.to(dtype=tensor.dtype)
     else:
-        new_tensor.view(-1).index_add_(0, new_positions, tensor.view(-1))
+        raise ValueError("Unsupported data type")
 
     new_tensor.set_(new_tensor.untyped_storage(), offset, shape, tuple(new_strides))
 

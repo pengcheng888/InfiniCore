@@ -63,10 +63,10 @@ _TENSOR_DTYPES = [InfiniDtype.BYTE,  # 1
                   InfiniDtype.I32,  # 5
                   InfiniDtype.I64,  # 6
                   InfiniDtype.U8,  # 7
-                  InfiniDtype.U16,  # 8
-                  InfiniDtype.U32,  # 9
-                  InfiniDtype.U64,  # 10
-                  InfiniDtype.F8,  # 11
+                #   InfiniDtype.U16,  # 8
+                #   InfiniDtype.U32,  # 9
+                #   InfiniDtype.U64,  # 10
+                #   InfiniDtype.F8,  # 11
                   InfiniDtype.F16,  # 12
                   InfiniDtype.F32,  # 13
                   InfiniDtype.F64,  # 14
