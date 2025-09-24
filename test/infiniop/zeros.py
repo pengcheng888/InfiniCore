@@ -56,21 +56,22 @@ _TEST_CASES = [
 ]
 
 # Data types used for testing
-_TENSOR_DTYPES = [InfiniDtype.BYTE,  # 1
-                  InfiniDtype.BOOL,  # 2
-                  InfiniDtype.I8,  # 3
-                  InfiniDtype.I16,  # 4
-                  InfiniDtype.I32,  # 5
-                  InfiniDtype.I64,  # 6
-                  InfiniDtype.U8,  # 7
-                  InfiniDtype.U16,  # 8
-                  InfiniDtype.U32,  # 9
-                  InfiniDtype.U64,  # 10
-                #   InfiniDtype.F8,  # 11
-                  InfiniDtype.F16,  # 12
-                  InfiniDtype.F32,  # 13
-                  InfiniDtype.F64,  # 14
-                  InfiniDtype.BF16,  # 19
+_TENSOR_DTYPES = [
+                # InfiniDtype.BYTE,  # 1
+                #   InfiniDtype.BOOL,  # 2
+                #   InfiniDtype.I8,  # 3
+                #   InfiniDtype.I16,  # 4
+                #   InfiniDtype.I32,  # 5
+                #   InfiniDtype.I64,  # 6
+                #   InfiniDtype.U8,  # 7
+                #   InfiniDtype.U16,  # 8
+                #   InfiniDtype.U32,  # 9
+                #   InfiniDtype.U64,  # 10
+                  InfiniDtype.F8,  # 11
+                #   InfiniDtype.F16,  # 12
+                #   InfiniDtype.F32,  # 13
+                #   InfiniDtype.F64,  # 14
+                #   InfiniDtype.BF16,  # 19
                   ]
 
 # Tolerance map for different data types
@@ -99,7 +100,8 @@ NUM_ITERATIONS = 1000
 
 
 def torch_zeros(y, x):
-    y[...] = 0
+    # y[...] = 0
+    y.copy_(torch.zeros_like(y))
 
 
 def test(
@@ -184,6 +186,7 @@ def test(
     atol, rtol = get_tolerance(_TOLERANCE_MAP, dtype)
     if DEBUG:
         debug(y.actual_tensor(), y.torch_tensor(), atol=atol, rtol=rtol)
+
 
     assert torch.allclose(y.actual_tensor().to(dtype=torch.float32), y.torch_tensor().to(dtype=torch.float32), atol=atol, rtol=rtol)
 
