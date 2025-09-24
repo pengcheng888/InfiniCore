@@ -6,7 +6,7 @@
 struct CustomFloat16 {
     uint16_t _v;
 };
-typedef struct CustomFloat16 fp16_t;
+typedef struct CustomFloat16  fp16_t;
 
 struct CustomBFloat16 {
     uint16_t _v;

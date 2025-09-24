@@ -11,7 +11,7 @@ public:
     static constexpr size_t num_inputs = 1;
     template <typename T>
     T operator()(const T &x) const {
-        return 0.0f;
+        return 0.0;
     }
 } ZerosOp;
 } // namespace op::zeros::cpu

@@ -11,7 +11,7 @@ public:
     static constexpr size_t num_inputs = 1;
     template <typename T>
     T operator()(const T &x) const {
-        return 0.0f;
+        return 1.0;
     }
 } OnesOp;
 } // namespace op::ones::cpu
