@@ -12,6 +12,9 @@ public:
     Tensor to(const Device &device) const;
     void copy_(const Tensor &src);
 
+    const infinicore::Tensor &get() const { return tensor_; }
+    infinicore::Tensor &get() { return tensor_; }
+
 private:
     infinicore::Tensor tensor_;
 };
