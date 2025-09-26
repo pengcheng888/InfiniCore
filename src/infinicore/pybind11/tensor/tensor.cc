@@ -12,6 +12,10 @@ void Tensor::copy_(const Tensor &src) {
     return tensor_->copy_from(src.tensor_);
 }
 
+Tensor Tensor::permute(const Shape &shape) {
+    return Tensor{tensor_->permute(shape)};
+}
+
 Tensor empty(const Shape &shape,
              const DataType &dtype,
              const Device &device,

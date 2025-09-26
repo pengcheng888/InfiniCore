@@ -15,6 +15,8 @@ public:
     const infinicore::Tensor &get() const { return tensor_; }
     infinicore::Tensor &get() { return tensor_; }
 
+    Tensor permute(const Shape &shape);
+
 private:
     infinicore::Tensor tensor_;
 };

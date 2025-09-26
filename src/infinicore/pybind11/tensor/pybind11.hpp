@@ -8,7 +8,8 @@ namespace infinicore::py::tensor {
 inline void bind(pybind11::module &m) {
     pybind11::class_<py::Tensor>(m, "Tensor")
         .def("copy_", &py::Tensor::copy_, pybind11::arg("src"))
-        .def("to", &py::Tensor::to, pybind11::arg("device"));
+        .def("to", &py::Tensor::to, pybind11::arg("device"))
+        .def("permute", &py::Tensor::permute, pybind11::arg("shape"));
 
     m.def("empty", &py::empty,
           pybind11::arg("shape"),
