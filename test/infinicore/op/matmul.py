@@ -151,9 +151,9 @@ def test_matmul_gpu():
     )
     temp_tensor.copy_(infini_result)
 
-    assert torch.allclose(torch_result, torch_result_from_infini, rtol=1e-5), (
-        "GPU matmul test failed"
-    )
+    assert torch.allclose(
+        torch_result, torch_result_from_infini, rtol=1e-5
+    ), "GPU matmul test failed"
     print("✓ GPU matmul test passed")
 
 
@@ -255,8 +255,7 @@ def run_all_tests():
     try:
         test_matmul_basic()
         test_matmul_inplace()
-        # TODO: Uncomment the following line.
-        # test_matmul_batch()
+        test_matmul_batch()
         test_matmul_large()
         test_matmul_gpu()
 

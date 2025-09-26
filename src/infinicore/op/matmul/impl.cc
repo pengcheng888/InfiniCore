@@ -61,7 +61,10 @@ inline struct MatmulRegistrar {
 
 namespace infinicore::op {
 Tensor matmul(Tensor a, Tensor b) {
-    auto c = Tensor::empty({a->size(0), b->size(1)}, a->dtype(), a->device());
+    Shape shape = a->shape();
+    Size size = a->ndim();
+    shape[size - 1] = b->size(size - 1);
+    auto c = Tensor::empty(shape, a->dtype(), a->device());
     matmul_(c, a, b);
     return c;
 }
