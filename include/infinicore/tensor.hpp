@@ -107,6 +107,8 @@ public:
 
     bool is_pinned() const;
 
+    std::string info() const;
+
     ///
     /// Data Transfer APIs
     ///

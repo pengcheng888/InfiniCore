@@ -122,6 +122,23 @@ bool TensorImpl::is_pinned() const {
     return data_.memory->is_pinned();
 }
 
+std::string TensorImpl::info() const {
+    std::stringstream ss;
+
+    ss << "Tensor: "
+       << "shape[ ";
+    for (auto s : this->shape()) {
+        ss << s << " ";
+    }
+    ss << "] strides[ ";
+    for (auto s : this->strides()) {
+        ss << s << " ";
+    }
+    ss << "] dtype=" << toString(this->dtype());
+
+    return ss.str();
+}
+
 std::shared_ptr<TensorImpl> TensorImpl::empty(const Shape &shape,
                                               const DataType &dtype,
                                               const Device &device,
