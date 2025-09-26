@@ -51,10 +51,12 @@ void infiniop(Tensor c, Tensor a, Tensor b) {
         c->data(), a->data(), b->data(), 1.f, 0.f, context::getStream()));
 }
 
-static bool registered = []() {
-    Matmul::dispatcher.registerAll(infiniop);
-    return true;
-};
+inline struct MatmulRegistrar {
+    MatmulRegistrar() {
+        Matmul::dispatcher.registerAll(infiniop);
+    }
+} matmul_registrar;
+
 } // namespace infinicore::op::matmul_impl
 
 namespace infinicore::op {

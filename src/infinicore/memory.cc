@@ -7,7 +7,7 @@ Memory::Memory(std::byte *data,
                Device device,
                Memory::Deleter deleter,
                bool pin_memory)
-    : data_{data}, size_{size}, device_{device_}, deleter_{deleter}, is_pinned_(pin_memory) {}
+    : data_{data}, size_{size}, device_{device}, deleter_{deleter}, is_pinned_(pin_memory) {}
 
 Memory::~Memory() {
     if (deleter_) {

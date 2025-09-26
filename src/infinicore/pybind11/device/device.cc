@@ -7,7 +7,7 @@
 
 namespace infinicore {
 
-std::pair<Device::Type, Device::Index> toInfiniDevice(std::string type, Device::Index index) {
+infinicore::Device toInfiniDevice(std::string type, Device::Index index) {
     constexpr auto device_type_count{static_cast<std::size_t>(Device::Type::COUNT)};
 
     static const std::unordered_map<Device::Type, std::string> torch_device_map{
@@ -61,11 +61,7 @@ namespace infinicore::py {
 Device::Device(const infinicore::Device &device) : device_{device} {}
 
 Device::Device(const std::string &type, Device::Index index)
-    : type_{type}, index_{index} {
-    const auto [infini_device_type, infini_device_index]{toInfiniDevice(type, index)};
-
-    device_ = infinicore::Device{infini_device_type, infini_device_index};
-}
+    : type_{type}, index_{index}, device_{toInfiniDevice(type, index)} {}
 
 const std::string &Device::getType() const {
     return type_;
