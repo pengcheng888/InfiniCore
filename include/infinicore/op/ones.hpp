@@ -8,7 +8,7 @@ class Ones {
 public:
     using schema = void (*)(Tensor);
     static void execute(Tensor output);
-    static common::OpDispatcher<schema> dispatcher;
+    static common::OpDispatcher<schema> &dispatcher();
 };
 
 Tensor ones();

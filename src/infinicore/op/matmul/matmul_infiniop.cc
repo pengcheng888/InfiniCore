@@ -1,19 +1,9 @@
 #include "infinicore/common/utils.hpp"
 #include "infinicore/op/common/cache.hpp"
-#include "infinicore/op/matmul.h"
+#include "infinicore/op/matmul.hpp"
 #include <infiniop.h>
 
-namespace infinicore::op {
-
-common::OpDispatcher<Matmul::schema> Matmul::dispatcher;
-
-void Matmul::execute(Tensor c, Tensor a, Tensor b) {
-    dispatcher.lookup(context::getDevice().getType())(c, a, b);
-}
-
-} // namespace infinicore::op
-
-namespace infinicore::op::matmul_impl {
+namespace infinicore::op::matmul_impl::infiniop {
 
 thread_local common::OpCache<size_t, infiniopGemmDescriptor_t> caches(
     100, // capacity
@@ -24,7 +14,7 @@ thread_local common::OpCache<size_t, infiniopGemmDescriptor_t> caches(
         }
     });
 
-void infiniop(Tensor c, Tensor a, Tensor b) {
+void calculate(Tensor c, Tensor a, Tensor b) {
     size_t seed = hash_combine(c, b, a);
 
     auto device_type = context::getDevice().getType();
@@ -51,25 +41,9 @@ void infiniop(Tensor c, Tensor a, Tensor b) {
         c->data(), a->data(), b->data(), 1.f, 0.f, context::getStream()));
 }
 
-inline struct MatmulRegistrar {
-    MatmulRegistrar() {
-        Matmul::dispatcher.registerAll(infiniop);
-    }
-} matmul_registrar;
+static bool registered = []() {
+    Matmul::dispatcher().registerAll(&calculate, false);
+    return true;
+}();
 
-} // namespace infinicore::op::matmul_impl
-
-namespace infinicore::op {
-Tensor matmul(Tensor a, Tensor b) {
-    Shape shape = a->shape();
-    Size size = a->ndim();
-    shape[size - 1] = b->size(size - 1);
-    auto c = Tensor::empty(shape, a->dtype(), a->device());
-    matmul_(c, a, b);
-    return c;
-}
-
-void matmul_(Tensor c, Tensor a, Tensor b) {
-    Matmul::execute(c, a, b);
-}
-} // namespace infinicore::op
+} // namespace infinicore::op::matmul_impl::infiniop

@@ -9,7 +9,7 @@ class Matmul {
 public:
     using schema = void (*)(Tensor, Tensor, Tensor);
     static void execute(Tensor c, Tensor a, Tensor b);
-    static common::OpDispatcher<schema> dispatcher;
+    static common::OpDispatcher<schema> &dispatcher();
 };
 
 Tensor matmul(Tensor a, Tensor b);
