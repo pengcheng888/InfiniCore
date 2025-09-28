@@ -13,12 +13,24 @@ void Tensor::copy_(const Tensor &src) {
 }
 
 // Query methods
+std::uintptr_t Tensor::data() const {
+    return reinterpret_cast<std::uintptr_t>(tensor_->data());
+}
+
 Shape Tensor::shape() const {
     return tensor_->shape();
 }
 
 Strides Tensor::strides() const {
     return tensor_->strides();
+}
+
+Size Tensor::size(size_t dim) const {
+    return tensor_->shape()[dim];
+}
+
+Stride Tensor::stride(size_t dim) const {
+    return tensor_->strides()[dim];
 }
 
 DataType Tensor::dtype() const {

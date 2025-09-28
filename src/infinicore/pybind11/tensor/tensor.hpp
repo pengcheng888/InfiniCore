@@ -15,8 +15,11 @@ public:
     const infinicore::Tensor &get() const { return tensor_; }
     infinicore::Tensor &get() { return tensor_; }
 
+    std::uintptr_t data() const;
     Shape shape() const;
     Strides strides() const;
+    Size size(size_t dim) const;
+    Stride stride(size_t dim) const;
     DataType dtype() const;
     Device device() const;
     bool is_contiguous() const;
