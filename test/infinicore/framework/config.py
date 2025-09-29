@@ -75,15 +75,20 @@ def get_test_devices(args):
             print("Warning: torch_mlu not available, skipping Cambricon tests")
     if args.ascend:
         try:
+            import torch
             import torch_npu
 
+            torch.npu.set_device(0)  # Ascend NPU needs explicit device initialization
             devices_to_test.append(InfiniDeviceEnum.ASCEND)
         except ImportError:
             print("Warning: torch_npu not available, skipping Ascend tests")
     if args.metax:
+        import torch
+
         devices_to_test.append(InfiniDeviceEnum.METAX)
     if args.moore:
         try:
+            import torch
             import torch_musa
 
             devices_to_test.append(InfiniDeviceEnum.MOORE)

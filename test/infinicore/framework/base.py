@@ -50,10 +50,6 @@ class TestRunner:
             print(f"Testing on {InfiniDeviceNames[device]}")
             print(f"{'='*60}")
 
-            # TODO: implement the following interface
-            # 设置设备
-            # infinicore.set_device(device, 0)
-
             # filter unsupported data types
             tensor_dtypes = self._filter_tensor_dtypes_by_device(
                 device, self.config.tensor_dtypes
