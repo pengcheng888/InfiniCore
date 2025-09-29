@@ -40,16 +40,17 @@ ContextImpl::ContextImpl() {
     std::vector<int> device_counter(size_t(Device::Type::COUNT));
     INFINICORE_CHECK_ERROR(infinirtGetAllDeviceCount(device_counter.data()));
 
+    runtime_table_[0].resize(device_counter[0]);
+    runtime_table_[0][0] = std::unique_ptr<Runtime>(new Runtime(Device(Device::Type::CPU, 0)));
+
     // Reserve runtime slot for all devices.
     // Context will try to use the first non-cpu available device as the default runtime.
-    for (int i = int(Device::Type::COUNT) - 1; i >= 0; i--) {
+    for (int i = int(Device::Type::COUNT) - 1; i > 0; i--) {
         if (device_counter[i] > 0) {
             runtime_table_[i].resize(device_counter[i]);
             if (current_runtime_ == nullptr) {
                 runtime_table_[i][0] = std::unique_ptr<Runtime>(new Runtime(Device(Device::Type(i), 0)));
                 current_runtime_ = runtime_table_[i][0].get();
-            } else if (i == 0) {
-                runtime_table_[i][0] = std::unique_ptr<Runtime>(new Runtime(Device(Device::Type(i), 0)));
             }
         }
     }
