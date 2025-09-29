@@ -2,7 +2,6 @@ import torch
 import infinicore
 from .devices import InfiniDeviceNames, torch_device_map
 from .utils import synchronize_device
-from .datatypes import to_infinicore_dtype
 
 
 class TestCase:
@@ -93,16 +92,3 @@ class TestRunner:
         else:
             print("\n\033[92mAll tests passed!\033[0m")
             return True
-
-
-def create_infinicore_tensor(torch_tensor, device_enum):
-    """Create infinicore tensor from PyTorch tensor"""
-    device_str = torch_device_map[device_enum]
-    infini_device = infinicore.device(device_str, 0)
-
-    return infinicore.from_blob(
-        torch_tensor.data_ptr(),
-        list(torch_tensor.shape),
-        to_infinicore_dtype(torch_tensor.dtype),
-        infini_device,
-    )

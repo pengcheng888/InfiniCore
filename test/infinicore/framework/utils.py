@@ -1,6 +1,21 @@
 import torch
 import time
-import sys
+import infinicore
+from .datatypes import to_infinicore_dtype, to_torch_dtype
+from .devices import torch_device_map
+
+
+def create_infinicore_tensor(torch_tensor, device_enum):
+    """Create infinicore tensor from PyTorch tensor"""
+    device_str = torch_device_map[device_enum]
+    infini_device = infinicore.device(device_str, 0)
+
+    return infinicore.from_blob(
+        torch_tensor.data_ptr(),
+        list(torch_tensor.shape),
+        to_infinicore_dtype(torch_tensor.dtype),
+        infini_device,
+    )
 
 
 def synchronize_device(torch_device):
@@ -134,3 +149,41 @@ def get_tolerance(tolerance_map, tensor_dtype, default_atol=0, default_rtol=1e-3
         tensor_dtype, {"atol": default_atol, "rtol": default_rtol}
     )
     return tolerance["atol"], tolerance["rtol"]
+
+
+def compare_results(
+    infini_result, torch_result, dtype, config, device_str, device, tolerance_map=None
+):
+    """
+    Compare infinicore result with PyTorch reference result
+
+    Args:
+        infini_result: infinicore tensor result
+        torch_result: PyTorch tensor reference result
+        dtype: infinicore data type
+        config: test config
+        device_str: torch device string
+        device: device enum
+        tolerance_map: optional tolerance map (defaults to config's tolerance_map)
+
+    Returns:
+        bool: True if results match within tolerance
+    """
+    # Convert infinicore result to PyTorch tensor for comparison
+    torch_result_from_infini = torch.zeros(
+        torch_result.shape, dtype=to_torch_dtype(dtype), device=device_str
+    )
+    temp_tensor = create_infinicore_tensor(torch_result_from_infini, device)
+    temp_tensor.copy_(infini_result)
+
+    # Retrieve tolerance - use provided map or config's map
+    if tolerance_map is None:
+        tolerance_map = config.tolerance_map
+    atol, rtol = get_tolerance(tolerance_map, dtype)
+
+    # Debug mode: detailed comparison
+    if config.debug:
+        debug(torch_result_from_infini, torch_result, atol=atol, rtol=rtol)
+
+    # Check if results match within tolerance
+    return torch.allclose(torch_result_from_infini, torch_result, atol=atol, rtol=rtol)

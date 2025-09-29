@@ -1,5 +1,11 @@
-from .base import TestConfig, TestRunner, TestCase, create_infinicore_tensor
-from .utils import debug, get_tolerance, profile_operation
+from .base import TestConfig, TestRunner, TestCase
+from .utils import (
+    create_infinicore_tensor,
+    compare_results,
+    debug,
+    get_tolerance,
+    profile_operation,
+)
 from .config import get_test_devices, get_args
 from .devices import InfiniDeviceEnum, InfiniDeviceNames, torch_device_map
 from .datatypes import to_torch_dtype, to_infinicore_dtype
@@ -9,6 +15,7 @@ __all__ = [
     "TestRunner",
     "TestCase",
     "create_infinicore_tensor",
+    "compare_results",
     "debug",
     "get_tolerance",
     "profile_operation",

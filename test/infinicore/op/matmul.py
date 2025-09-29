@@ -10,16 +10,14 @@ from framework import (
     TestConfig,
     TestRunner,
     TestCase,
-    debug,
-    get_tolerance,
-    profile_operation,
-    get_test_devices,
-    get_args,
     create_infinicore_tensor,
+    compare_results,
+    get_args,
+    get_test_devices,
+    profile_operation,
+    to_torch_dtype,
     InfiniDeviceNames,
     torch_device_map,
-    InfiniDeviceEnum,
-    to_torch_dtype,
 )
 
 # ==============================================================================
@@ -94,22 +92,11 @@ def test_matmul(device, test_case, dtype, config):
 
     infini_result = infini_matmul()
 
-    # Validate results
-    torch_result_from_infini = torch.zeros(
-        result_shape, dtype=torch_dtype, device=device_str
+    # Validate results using common method
+    is_valid = compare_results(
+        infini_result, torch_result, dtype, config, device_str, device
     )
-    temp_tensor = create_infinicore_tensor(torch_result_from_infini, device)
-    temp_tensor.copy_(infini_result)
-
-    # Retrieve tolerance
-    atol, rtol = get_tolerance(_TOLERANCE_MAP, dtype)
-
-    if config.debug:
-        debug(torch_result_from_infini, torch_result, atol=atol, rtol=rtol)
-
-    assert torch.allclose(
-        torch_result_from_infini, torch_result, atol=atol, rtol=rtol
-    ), "Matmul test failed"
+    assert is_valid, "Matmul test failed"
 
     # Performance test
     if config.bench:
@@ -178,22 +165,11 @@ def test_matmul_inplace(device, test_case, dtype, config):
     # Execute in-place operation
     infini_matmul_inplace()
 
-    # Validate results - compare torch_preallocated with infini_c
-    torch_result_from_infini = torch.zeros(
-        result_shape, dtype=torch_dtype, device=device_str
+    # Validate results using common method
+    is_valid = compare_results(
+        infini_c, torch_preallocated, dtype, config, device_str, device
     )
-    temp_tensor = create_infinicore_tensor(torch_result_from_infini, device)
-    temp_tensor.copy_(infini_c)
-
-    # Retrieve tolerance
-    atol, rtol = get_tolerance(_TOLERANCE_MAP, dtype)
-
-    if config.debug:
-        debug(torch_result_from_infini, torch_preallocated, atol=atol, rtol=rtol)
-
-    assert torch.allclose(
-        torch_result_from_infini, torch_preallocated, atol=atol, rtol=rtol
-    ), "In-place matmul test failed"
+    assert is_valid, "In-place matmul test failed"
 
     # Performance test
     if config.bench:
