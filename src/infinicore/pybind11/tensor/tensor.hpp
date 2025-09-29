@@ -32,6 +32,7 @@ public:
     Tensor permute(const Shape &shape);
     Tensor view(const Shape &new_shape) const;
     Tensor as_strided(const Shape &new_shape, const Strides &new_strides) const;
+    Tensor contiguous() const;
 
 private:
     infinicore::Tensor tensor_;

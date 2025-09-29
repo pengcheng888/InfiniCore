@@ -76,7 +76,7 @@ protected:
     friend class TensorImpl;
 };
 
-class TensorImpl {
+class TensorImpl : public std::enable_shared_from_this<TensorImpl> {
 
 public:
     TensorImpl(const Shape &shape, const DataType &dtype);
@@ -132,6 +132,14 @@ public:
      * @return A new tensor with the same data on the specified device
      */
     void copy_from(Tensor src);
+
+    /**
+     * Return a tensor with the same data in contiguous arrangement as current tensor.
+     * If this tensor is already contiguous, the original tensor is returned.
+     *
+     * @return A new tensor with the same data on the specified device
+     */
+    Tensor contiguous() const;
 
     ///
     /// View APIs
@@ -224,8 +232,6 @@ protected:
 private:
     TensorMetaData meta_;
     TensorData data_;
-
-    void copy_from(const TensorImpl *src);
 };
 
 } // namespace infinicore

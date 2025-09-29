@@ -77,6 +77,10 @@ Tensor Tensor::as_strided(const Shape &new_shape, const Strides &new_strides) co
     return Tensor{tensor_->as_strided(new_shape, new_strides)};
 }
 
+Tensor Tensor::contiguous() const {
+    return Tensor{tensor_->contiguous()};
+}
+
 Tensor empty(const Shape &shape,
              const DataType &dtype,
              const Device &device,

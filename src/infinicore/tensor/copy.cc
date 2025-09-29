@@ -1,5 +1,6 @@
 #include "infinicore/context/context.hpp"
 #include "infinicore/dtype.hpp"
+#include "infinicore/ops.hpp"
 #include "infinicore/tensor.hpp"
 
 #include <spdlog/spdlog.h>
@@ -7,33 +8,49 @@
 namespace infinicore {
 Tensor TensorImpl::to(Device device) const {
     if (device == data_.memory->device()) {
-        auto _t = std::make_shared<TensorImpl>(meta_.shape, meta_.strides, meta_.dtype);
-        _t->data_ = data_;
-        return Tensor(_t);
+        return Tensor(const_cast<TensorImpl *>(this)->shared_from_this());
     } else {
         std::shared_ptr<TensorImpl> _t = empty(meta_.shape, meta_.dtype, device, true);
-        _t->copy_from(this);
+        _t->copy_from(Tensor(const_cast<TensorImpl *>(this)->shared_from_this()));
         return Tensor(_t);
     }
 }
 
 void TensorImpl::copy_from(Tensor src) {
-    copy_from(src.impl_.get());
+    if (src->shape() != this->shape()) {
+        throw std::runtime_error("Cannot copy from tensor with different shape");
+    }
+    if (this->device().getType() == src->device().getType()) {
+        op::rearrange_(Tensor(const_cast<TensorImpl *>(this)->shared_from_this()), src);
+    } else {
+        if (!src->is_contiguous()) {
+            src = src->contiguous();
+        }
+        if (this->device().getType() == Device::Type::CPU) {
+            if (this->is_contiguous()) {
+                context::memcpyD2H(this->data(), src->data(), this->data_.memory->size());
+            } else {
+                auto local_src = Tensor::empty(this->shape(), this->dtype(), this->device());
+                context::memcpyD2H(local_src->data(), src->data(), this->data_.memory->size());
+                op::rearrange_(Tensor(const_cast<TensorImpl *>(this)->shared_from_this()), local_src);
+            }
+        } else if (src->device().getType() == Device::Type::CPU) {
+            if (this->is_contiguous()) {
+                context::memcpyH2D(this->data(), src->data(), this->data_.memory->size());
+            } else {
+                auto local_src = Tensor::empty(this->shape(), this->dtype(), this->device());
+                context::memcpyH2D(local_src->data(), src->data(), this->data_.memory->size());
+                op::rearrange_(Tensor(const_cast<TensorImpl *>(this)->shared_from_this()), local_src);
+            }
+        }
+    }
 }
 
-void TensorImpl::copy_from(const TensorImpl *src) {
-    if (!(this->is_contiguous() && src->is_contiguous())) {
-        spdlog::error("Only contiguous tensors are supported for copy.");
-        std::abort();
-    }
-    if (this->device() == Device::Type::CPU && src->device() == Device::Type::CPU) {
-        context::memcpyH2H(this->data(), src->data(), this->data_.memory->size());
-    } else if (this->device() == Device::Type::CPU) {
-        context::memcpyD2H(this->data(), src->data(), this->data_.memory->size());
-    } else if (src->device() == Device::Type::CPU) {
-        context::memcpyH2D(this->data(), src->data(), this->data_.memory->size());
+Tensor TensorImpl::contiguous() const {
+    if (is_contiguous()) {
+        return Tensor(const_cast<TensorImpl *>(this)->shared_from_this());
     } else {
-        context::memcpyD2D(this->data(), src->data(), this->data_.memory->size());
+        return op::rearrange(Tensor(const_cast<TensorImpl *>(this)->shared_from_this()));
     }
 }
 

@@ -34,7 +34,8 @@ inline void bind(pybind11::module &m) {
         .def("permute", &py::Tensor::permute, pybind11::arg("order"))
         .def("view", &py::Tensor::view, pybind11::arg("new_shape"))
         .def("as_strided", &py::Tensor::as_strided,
-             pybind11::arg("new_shape"), pybind11::arg("new_strides"));
+             pybind11::arg("new_shape"), pybind11::arg("new_strides"))
+        .def("contiguous", &py::Tensor::contiguous);
 
     m.def("empty", &py::empty,
           pybind11::arg("shape"),
