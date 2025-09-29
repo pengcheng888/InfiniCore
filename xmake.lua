@@ -321,6 +321,7 @@ target("infinicore_c_api")
 target_end()
 
 target("infinicore")
+    set_languages("cxx17")
     add_packages("boost")
     if is_mode("debug") then
         add_defines("BOOST_STACKTRACE_USE_BACKTRACE")

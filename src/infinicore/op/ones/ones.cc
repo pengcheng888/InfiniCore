@@ -7,7 +7,18 @@ common::OpDispatcher<Ones::schema> &Ones::dispatcher() {
     return dispatcher_;
 };
 
-void Ones::execute(Tensor output) {
+void Ones::execute(Tensor y, Tensor x) {
+    dispatcher().lookup(context::getDevice().getType())(y, x);
+}
+
+Tensor ones(Tensor x) {
+    auto y = Tensor::empty(x->shape(), x->dtype(), x->device());
+    ones_(y, x);
+    return y;
+}
+
+void ones_(Tensor y, Tensor x) {
+    Ones::execute(y, x);
 }
 
 } // namespace infinicore::op
