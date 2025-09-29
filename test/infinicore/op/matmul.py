@@ -1,270 +1,260 @@
-import infinicore
 import torch
-import numpy as np
+import infinicore
+import sys
+import os
+
+# Framework path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
+
+from framework import (
+    TestConfig,
+    TestRunner,
+    TestCase,
+    debug,
+    get_tolerance,
+    profile_operation,
+    get_test_devices,
+    get_args,
+    create_infinicore_tensor,
+    InfiniDeviceNames,
+    torch_device_map,
+    InfiniDeviceEnum,
+    to_torch_dtype,
+)
+
+# ==============================================================================
+# Test Setup
+# ==============================================================================
+
+# Test cases
+_TEST_CASES = [
+    # (a_shape, b_shape, result_shape, a_stride, b_stride, c_stride)
+    TestCase((2, 3), (3, 4), (2, 4), None, None, None),
+    TestCase((128, 256), (256, 64), (128, 64), None, None, None),
+    TestCase((2, 4, 2048), (2, 2048, 2048), (2, 4, 2048), None, None, None),
+    TestCase((1, 2048), (2048, 2048), (1, 2048), (4096, 1), (4096, 1), (4096, 1)),
+    TestCase((6, 2048), (2048, 2560), (6, 2560), (2048, 1), (1, 2048), (2560, 1)),
+    TestCase((4, 8 * 6, 64), (4, 64, 6), (4, 8 * 6, 6), None, None, None),
+]
+
+# Data types - now using infinicore native types
+_TENSOR_DTYPES = [infinicore.float16, infinicore.bfloat16, infinicore.float32]
+
+# Tolerance
+_TOLERANCE_MAP = {
+    infinicore.float16: {"atol": 0, "rtol": 1e-2},
+    infinicore.float32: {"atol": 0, "rtol": 1e-3},
+    infinicore.bfloat16: {"atol": 0, "rtol": 5e-2},
+}
+
+# ==============================================================================
+# Test Method
+# ==============================================================================
 
 
-def test_matmul_basic():
-    """测试基本的矩阵乘法"""
-    print("Testing basic matmul...")
+def test_matmul(device, test_case, dtype, config):
+    """
+    Test matmul operation
 
-    # 创建测试数据
-    a_shape = [2, 3]
-    b_shape = [3, 4]
-    result_shape = [2, 4]
+    Args:
+        device: device enum
+        test_case: test case
+        dtype: infinicore data type
+        config: test config
+    """
+    a_shape, b_shape, result_shape, a_stride, b_stride, c_stride = test_case.args
 
-    # 创建PyTorch张量作为参考
-    torch_a = torch.rand(a_shape, dtype=torch.float32, device="cpu")
-    torch_b = torch.rand(b_shape, dtype=torch.float32, device="cpu")
-    torch_result = torch.matmul(torch_a, torch_b)
-
-    # 创建infinicore张量
-    infini_a = infinicore.from_blob(
-        torch_a.data_ptr(),
-        a_shape,
-        infinicore.float32,
-        infinicore.device("cpu", 0),
+    print(
+        f"Testing Matmul on {InfiniDeviceNames[device]} with "
+        f"a_shape:{a_shape}, b_shape:{b_shape}, result_shape:{result_shape}, "
+        f"a_stride:{a_stride}, b_stride:{b_stride}, c_stride:{c_stride}, "
+        f"dtype:{dtype}"
     )
 
-    infini_b = infinicore.from_blob(
-        torch_b.data_ptr(),
-        b_shape,
-        infinicore.float32,
-        infinicore.device("cpu", 0),
-    )
+    # Create PyTorch tensors
+    device_str = torch_device_map[device]
+    torch_dtype = to_torch_dtype(dtype)
 
-    # 测试out-of-place matmul
-    infini_result = infinicore.matmul(infini_a, infini_b)
+    torch_a = torch.rand(a_shape, dtype=torch_dtype, device=device_str)
+    torch_b = torch.rand(b_shape, dtype=torch_dtype, device=device_str)
 
-    # 验证结果
+    # Calculate PyTorch reference result
+    def torch_matmul():
+        return torch.matmul(torch_a, torch_b)
+
+    torch_result = torch_matmul()
+
+    # Create infinicore tensors
+    infini_a = create_infinicore_tensor(torch_a, device)
+    infini_b = create_infinicore_tensor(torch_b, device)
+
+    # Out-of-place matmul
+    def infini_matmul():
+        return infinicore.matmul(infini_a, infini_b)
+
+    infini_result = infini_matmul()
+
+    # Validate results
     torch_result_from_infini = torch.zeros(
-        result_shape, dtype=torch.float32, device="cpu"
+        result_shape, dtype=torch_dtype, device=device_str
     )
-    temp_tensor = infinicore.from_blob(
-        torch_result_from_infini.data_ptr(),
-        result_shape,
-        infinicore.float32,
-        infinicore.device("cpu", 0),
-    )
+    temp_tensor = create_infinicore_tensor(torch_result_from_infini, device)
     temp_tensor.copy_(infini_result)
 
-    assert torch.allclose(
-        torch_result, torch_result_from_infini, rtol=1e-5
-    ), "Basic matmul test failed"
-    print("✓ Basic matmul test passed")
+    # Retrieve tolerance
+    atol, rtol = get_tolerance(_TOLERANCE_MAP, dtype)
 
-
-def test_matmul_inplace():
-    """测试原地矩阵乘法"""
-    print("Testing in-place matmul...")
-
-    a_shape = [2, 3]
-    b_shape = [3, 4]
-    result_shape = [2, 4]
-
-    torch_a = torch.rand(a_shape, dtype=torch.float32, device="cpu")
-    torch_b = torch.rand(b_shape, dtype=torch.float32, device="cpu")
-    torch_result = torch.matmul(torch_a, torch_b)
-
-    # 创建预分配的结果张量
-    torch_preallocated = torch.zeros(result_shape, dtype=torch.float32, device="cpu")
-
-    infini_a = infinicore.from_blob(
-        torch_a.data_ptr(),
-        a_shape,
-        infinicore.float32,
-        infinicore.device("cpu", 0),
-    )
-
-    infini_b = infinicore.from_blob(
-        torch_b.data_ptr(),
-        b_shape,
-        infinicore.float32,
-        infinicore.device("cpu", 0),
-    )
-
-    infini_c = infinicore.from_blob(
-        torch_preallocated.data_ptr(),
-        result_shape,
-        infinicore.float32,
-        infinicore.device("cpu", 0),
-    )
-
-    # 测试in-place matmul
-    infinicore.matmul_(infini_c, infini_a, infini_b)
+    if config.debug:
+        debug(torch_result_from_infini, torch_result, atol=atol, rtol=rtol)
 
     assert torch.allclose(
-        torch_result, torch_preallocated, rtol=1e-5
+        torch_result_from_infini, torch_result, atol=atol, rtol=rtol
+    ), "Matmul test failed"
+
+    # Performance test
+    if config.bench:
+        profile_operation(
+            "PyTorch",
+            torch_matmul,
+            device_str,
+            config.num_prerun,
+            config.num_iterations,
+        )
+        profile_operation(
+            "Infinicore",
+            infini_matmul,
+            device_str,
+            config.num_prerun,
+            config.num_iterations,
+        )
+
+
+def test_matmul_inplace(device, test_case, dtype, config):
+    """
+    Test in-place matmul operation
+
+    Args:
+        device: device enum
+        test_case: test case
+        dtype: infinicore data type
+        config: test config
+    """
+    a_shape, b_shape, result_shape, a_stride, b_stride, c_stride = test_case.args
+
+    print(
+        f"Testing In-place Matmul on {InfiniDeviceNames[device]} with "
+        f"a_shape:{a_shape}, b_shape:{b_shape}, result_shape:{result_shape}, "
+        f"dtype:{dtype}"
+    )
+
+    device_str = torch_device_map[device]
+    torch_dtype = to_torch_dtype(dtype)
+
+    # Create PyTorch tensors
+    torch_a = torch.rand(a_shape, dtype=torch_dtype, device=device_str)
+    torch_b = torch.rand(b_shape, dtype=torch_dtype, device=device_str)
+
+    # Create pre-allocated result tensor
+    torch_preallocated = torch.zeros(result_shape, dtype=torch_dtype, device=device_str)
+
+    # Calculate PyTorch reference result using in-place operation
+    def torch_matmul_inplace():
+        torch.matmul(torch_a, torch_b, out=torch_preallocated)
+
+    # Execute in-place operation
+    torch_matmul_inplace()
+
+    # Create infinicore tensors
+    infini_a = create_infinicore_tensor(torch_a, device)
+    infini_b = create_infinicore_tensor(torch_b, device)
+    infini_c = infinicore.empty(
+        result_shape, dtype, infinicore.device(device_str, 0), False
+    )
+
+    # Test in-place matmul
+    def infini_matmul_inplace():
+        infinicore.matmul_(infini_c, infini_a, infini_b)
+
+    # Execute in-place operation
+    infini_matmul_inplace()
+
+    # Validate results - compare torch_preallocated with infini_c
+    torch_result_from_infini = torch.zeros(
+        result_shape, dtype=torch_dtype, device=device_str
+    )
+    temp_tensor = create_infinicore_tensor(torch_result_from_infini, device)
+    temp_tensor.copy_(infini_c)
+
+    # Retrieve tolerance
+    atol, rtol = get_tolerance(_TOLERANCE_MAP, dtype)
+
+    if config.debug:
+        debug(torch_result_from_infini, torch_preallocated, atol=atol, rtol=rtol)
+
+    assert torch.allclose(
+        torch_result_from_infini, torch_preallocated, atol=atol, rtol=rtol
     ), "In-place matmul test failed"
-    print("✓ In-place matmul test passed")
+
+    # Performance test
+    if config.bench:
+        profile_operation(
+            "PyTorch In-place",
+            torch_matmul_inplace,
+            device_str,
+            config.num_prerun,
+            config.num_iterations,
+        )
+        profile_operation(
+            "Infinicore In-place",
+            infini_matmul_inplace,
+            device_str,
+            config.num_prerun,
+            config.num_iterations,
+        )
 
 
-def test_matmul_gpu():
-    """测试GPU上的矩阵乘法"""
-    print("Testing GPU matmul...")
+# ==============================================================================
+# Main Execution Function
+# ==============================================================================
 
-    if not torch.cuda.is_available():
-        print("⏭️  GPU not available, skipping GPU test")
-        return
 
-    a_shape = [3, 4]
-    b_shape = [4, 5]
-    result_shape = [3, 5]
+def main():
+    args = get_args()
 
-    # 创建CPU张量
-    torch_a_cpu = torch.rand(a_shape, dtype=torch.float32, device="cuda")
-    torch_b_cpu = torch.rand(b_shape, dtype=torch.float32, device="cuda")
-    torch_result = torch.matmul(torch_a_cpu, torch_b_cpu)
-
-    # 转移到GPU
-    torch_a_gpu = torch_a_cpu.cuda()
-    torch_b_gpu = torch_b_cpu.cuda()
-
-    # 创建infinicore GPU张量
-    infini_a_gpu = infinicore.from_blob(
-        torch_a_gpu.data_ptr(),
-        a_shape,
-        infinicore.float32,
-        infinicore.device("cuda", 0),
+    # Create test configuration
+    config = TestConfig(
+        tensor_dtypes=_TENSOR_DTYPES,
+        tolerance_map=_TOLERANCE_MAP,
+        debug=args.debug,
+        bench=args.bench,
+        num_prerun=args.num_prerun,
+        num_iterations=args.num_iterations,
     )
 
-    infini_b_gpu = infinicore.from_blob(
-        torch_b_gpu.data_ptr(),
-        b_shape,
-        infinicore.float32,
-        infinicore.device("cuda", 0),
-    )
+    # Create test runner
+    runner = TestRunner(_TEST_CASES, config)
 
-    # 在GPU上执行matmul
-    infini_result = infinicore.matmul(infini_a_gpu, infini_b_gpu)
+    # Get test devices
+    devices = get_test_devices(args)
 
-    # 将结果转移回CPU验证
-    infini_result = infinicore.matmul(infini_a_gpu, infini_b_gpu)
+    print("Starting matmul tests...")
 
-    torch_result_from_infini = torch.zeros(
-        result_shape, dtype=torch.float32, device="cuda"
-    )
-    temp_tensor = infinicore.from_blob(
-        torch_result_from_infini.data_ptr(),
-        result_shape,
-        infinicore.float32,
-        infinicore.device("cuda", 0),
-    )
-    temp_tensor.copy_(infini_result)
+    all_passed = True
 
-    assert torch.allclose(
-        torch_result, torch_result_from_infini, rtol=1e-5
-    ), "GPU matmul test failed"
-    print("✓ GPU matmul test passed")
+    # Run out-of-place tests
+    print("\n--- Testing Out-of-place Matmul ---")
+    out_of_place_passed = runner.run_tests(devices, test_matmul)
+    all_passed = all_passed and out_of_place_passed
 
+    # Run in-place tests
+    print("\n--- Testing In-place Matmul ---")
+    in_place_passed = runner.run_tests(devices, test_matmul_inplace)
+    all_passed = all_passed and in_place_passed
 
-def test_matmul_batch():
-    """测试批量矩阵乘法"""
-    print("Testing batch matmul...")
+    runner.print_summary()
 
-    batch_size = 2
-    a_shape = [batch_size, 3, 4]
-    b_shape = [batch_size, 4, 5]
-    result_shape = [batch_size, 3, 5]
-
-    torch_a = torch.rand(a_shape, dtype=torch.float32, device="cpu")
-    torch_b = torch.rand(b_shape, dtype=torch.float32, device="cpu")
-    torch_result = torch.bmm(torch_a, torch_b)  # 批量矩阵乘法
-
-    infini_a = infinicore.from_blob(
-        torch_a.data_ptr(),
-        a_shape,
-        infinicore.float32,
-        infinicore.device("cpu", 0),
-    )
-
-    infini_b = infinicore.from_blob(
-        torch_b.data_ptr(),
-        b_shape,
-        infinicore.float32,
-        infinicore.device("cpu", 0),
-    )
-
-    infini_result = infinicore.matmul(infini_a, infini_b)
-
-    torch_result_from_infini = torch.zeros(
-        result_shape, dtype=torch.float32, device="cpu"
-    )
-    temp_tensor = infinicore.from_blob(
-        torch_result_from_infini.data_ptr(),
-        result_shape,
-        infinicore.float32,
-        infinicore.device("cpu", 0),
-    )
-    temp_tensor.copy_(infini_result)
-
-    assert torch.allclose(
-        torch_result, torch_result_from_infini, rtol=1e-5
-    ), "Batch matmul test failed"
-    print("✓ Batch matmul test passed")
-
-
-def test_matmul_large():
-    """测试大矩阵乘法"""
-    print("Testing large matmul...")
-
-    a_shape = [128, 256]
-    b_shape = [256, 64]
-    result_shape = [128, 64]
-
-    torch_a = torch.rand(a_shape, dtype=torch.float32, device="cpu")
-    torch_b = torch.rand(b_shape, dtype=torch.float32, device="cpu")
-    torch_result = torch.matmul(torch_a, torch_b)
-
-    infini_a = infinicore.from_blob(
-        torch_a.data_ptr(),
-        a_shape,
-        infinicore.float32,
-        infinicore.device("cpu", 0),
-    )
-
-    infini_b = infinicore.from_blob(
-        torch_b.data_ptr(),
-        b_shape,
-        infinicore.float32,
-        infinicore.device("cpu", 0),
-    )
-
-    infini_result = infinicore.matmul(infini_a, infini_b)
-
-    torch_result_from_infini = torch.zeros(
-        result_shape, dtype=torch.float32, device="cpu"
-    )
-    temp_tensor = infinicore.from_blob(
-        torch_result_from_infini.data_ptr(),
-        result_shape,
-        infinicore.float32,
-        infinicore.device("cpu", 0),
-    )
-    temp_tensor.copy_(infini_result)
-
-    assert torch.allclose(
-        torch_result, torch_result_from_infini, rtol=1e-5
-    ), "Large matmul test failed"
-    print("✓ Large matmul test passed")
-
-
-def run_all_tests():
-    """运行所有测试"""
-    print("Starting matmul tests...\n")
-
-    try:
-        test_matmul_basic()
-        test_matmul_inplace()
-        test_matmul_batch()
-        test_matmul_large()
-        test_matmul_gpu()
-
-        print("\n🎉 All matmul tests passed!")
-
-    except Exception as e:
-        print(f"\n❌ Test failed with error: {e}")
-        raise
+    sys.exit(0 if all_passed else 1)
 
 
 if __name__ == "__main__":
-    run_all_tests()
+    main()
