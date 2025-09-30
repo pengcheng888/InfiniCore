@@ -1,6 +1,6 @@
 import torch
 import infinicore
-from .devices import InfiniDeviceNames, torch_device_map
+from .devices import InfiniDeviceNames
 from .utils import synchronize_device
 
 

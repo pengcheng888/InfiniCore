@@ -2,12 +2,10 @@ import torch
 import time
 import infinicore
 from .datatypes import to_infinicore_dtype, to_torch_dtype
-from .devices import torch_device_map
 
 
-def create_infinicore_tensor(torch_tensor, device_enum):
+def create_infinicore_tensor(torch_tensor, device_str):
     """Create infinicore tensor from PyTorch tensor"""
-    device_str = torch_device_map[device_enum]
     infini_device = infinicore.device(device_str, 0)
 
     return infinicore.from_blob(
@@ -152,7 +150,7 @@ def get_tolerance(tolerance_map, tensor_dtype, default_atol=0, default_rtol=1e-3
 
 
 def compare_results(
-    infini_result, torch_result, dtype, config, device_str, device, tolerance_map=None
+    infini_result, torch_result, dtype, config, device_str, tolerance_map=None
 ):
     """
     Compare infinicore result with PyTorch reference result
@@ -173,7 +171,7 @@ def compare_results(
     torch_result_from_infini = torch.zeros(
         torch_result.shape, dtype=to_torch_dtype(dtype), device=device_str
     )
-    temp_tensor = create_infinicore_tensor(torch_result_from_infini, device)
+    temp_tensor = create_infinicore_tensor(torch_result_from_infini, device_str)
     temp_tensor.copy_(infini_result)
 
     # Retrieve tolerance - use provided map or config's map

@@ -83,8 +83,8 @@ def test_matmul(device, test_case, dtype, config):
     torch_result = torch_matmul()
 
     # Create infinicore tensors
-    infini_a = create_infinicore_tensor(torch_a, device)
-    infini_b = create_infinicore_tensor(torch_b, device)
+    infini_a = create_infinicore_tensor(torch_a, device_str)
+    infini_b = create_infinicore_tensor(torch_b, device_str)
 
     # Out-of-place matmul
     def infini_matmul():
@@ -93,9 +93,7 @@ def test_matmul(device, test_case, dtype, config):
     infini_result = infini_matmul()
 
     # Validate results using common method
-    is_valid = compare_results(
-        infini_result, torch_result, dtype, config, device_str, device
-    )
+    is_valid = compare_results(infini_result, torch_result, dtype, config, device_str)
     assert is_valid, "Matmul test failed"
 
     # Performance test
@@ -152,8 +150,8 @@ def test_matmul_inplace(device, test_case, dtype, config):
     torch_matmul_inplace()
 
     # Create infinicore tensors
-    infini_a = create_infinicore_tensor(torch_a, device)
-    infini_b = create_infinicore_tensor(torch_b, device)
+    infini_a = create_infinicore_tensor(torch_a, device_str)
+    infini_b = create_infinicore_tensor(torch_b, device_str)
     infini_c = infinicore.empty(
         result_shape, dtype=dtype, device=infinicore.device(device_str, 0)
     )
@@ -166,9 +164,7 @@ def test_matmul_inplace(device, test_case, dtype, config):
     infini_matmul_inplace()
 
     # Validate results using common method
-    is_valid = compare_results(
-        infini_c, torch_preallocated, dtype, config, device_str, device
-    )
+    is_valid = compare_results(infini_c, torch_preallocated, dtype, config, device_str)
     assert is_valid, "In-place matmul test failed"
 
     # Performance test
