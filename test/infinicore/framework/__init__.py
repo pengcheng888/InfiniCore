@@ -5,6 +5,7 @@ from .utils import (
     debug,
     get_tolerance,
     profile_operation,
+    rearrange_tensor,
 )
 from .config import get_test_devices, get_args
 from .devices import InfiniDeviceEnum, InfiniDeviceNames, torch_device_map
@@ -19,6 +20,7 @@ __all__ = [
     "debug",
     "get_tolerance",
     "profile_operation",
+    "rearrange_tensor",
     "get_test_devices",
     "get_args",
     "InfiniDeviceEnum",
