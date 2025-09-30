@@ -320,7 +320,7 @@ target("infinicore_c_api")
     after_build(function (target) print(YELLOW .. "[Congratulations!] Now you can install the libraries with \"xmake install\"" .. NC) end)
 target_end()
 
-target("infinicore")
+target("_infinicore")
     add_packages("boost")
     if is_mode("debug") then
         add_defines("BOOST_STACKTRACE_USE_BACKTRACE")
@@ -347,8 +347,12 @@ target("infinicore")
     add_files("src/infinicore/op/*/*.cc")
     add_files("src/infinicore/pybind11/**.cc")
 
-
     set_installdir(os.getenv("INFINI_ROOT") or (os.getenv(is_host("windows") and "HOMEPATH" or "HOME") .. "/.infini"))
+target_end()
+
+target("infinicore")
+    set_kind("phony")
+    add_deps("_infinicore")
 target_end()
 
 -- Tests

@@ -11,8 +11,8 @@ def test():
     t_cpu = infinicore.from_blob(
         torch_tensor_ans.data_ptr(),
         shape,
-        infinicore.float32,
-        infinicore.device("cpu", 0),
+        dtype=infinicore.float32,
+        device=infinicore.device("cpu", 0),
     )
 
     t_gpu = t_cpu.to(infinicore.device("cuda", 0))
@@ -20,7 +20,7 @@ def test():
     t_gpu = t_gpu.permute([1, 2, 0])
 
     t_gpu2 = infinicore.empty(
-        shape2, infinicore.float32, infinicore.device("cuda", 0), False
+        shape2, dtype=infinicore.float32, device=infinicore.device("cuda", 0)
     )
 
     t_gpu2.copy_(t_gpu)
@@ -30,8 +30,8 @@ def test():
     t_result = infinicore.from_blob(
         torch_tensor_result.data_ptr(),
         shape,
-        infinicore.float32,
-        infinicore.device("cpu", 0),
+        dtype=infinicore.float32,
+        device=infinicore.device("cpu", 0),
     )
 
     t_result.copy_(t_gpu2)

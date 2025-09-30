@@ -155,12 +155,12 @@ def test_matmul_inplace(device, test_case, dtype, config):
     infini_a = create_infinicore_tensor(torch_a, device)
     infini_b = create_infinicore_tensor(torch_b, device)
     infini_c = infinicore.empty(
-        result_shape, dtype, infinicore.device(device_str, 0), False
+        result_shape, dtype=dtype, device=infinicore.device(device_str, 0)
     )
 
     # Test in-place matmul
     def infini_matmul_inplace():
-        infinicore.matmul_(infini_c, infini_a, infini_b)
+        infinicore.matmul(infini_a, infini_b, out=infini_c)
 
     # Execute in-place operation
     infini_matmul_inplace()

@@ -13,8 +13,8 @@ def create_infinicore_tensor(torch_tensor, device_enum):
     return infinicore.from_blob(
         torch_tensor.data_ptr(),
         list(torch_tensor.shape),
-        to_infinicore_dtype(torch_tensor.dtype),
-        infini_device,
+        dtype=to_infinicore_dtype(torch_tensor.dtype),
+        device=infini_device,
     )
 
 

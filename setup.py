@@ -1,5 +1,5 @@
-import glob
 import os
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -10,9 +10,9 @@ INSTALLATION_DIR = os.getenv("INFINI_ROOT", str(Path.home() / ".infini"))
 
 LIB_DIR = os.path.join(INSTALLATION_DIR, "lib")
 
-PACKAGE_NAME = "infinicore"
+PYTHON_PACKAGE_DIR = os.path.join("python", "infinicore")
 
-PACKAGE_DIR = os.path.join(INSTALLATION_DIR, PACKAGE_NAME)
+LIB_PACKAGE_DIR = os.path.join(LIB_DIR, "infinicore")
 
 
 class BuildPy(build_py):
@@ -21,12 +21,11 @@ class BuildPy(build_py):
         subprocess.run(["xmake", "install"])
         subprocess.run(["xmake", "build", "-y", "infinicore"])
         subprocess.run(["xmake", "install", "infinicore"])
-        built_lib = glob.glob(os.path.join(LIB_DIR, f"{PACKAGE_NAME}.*"))[0]
-        os.makedirs(PACKAGE_DIR, exist_ok=True)
-        self.copy_file(built_lib, PACKAGE_DIR)
+
+        if os.path.exists(LIB_PACKAGE_DIR):
+            shutil.rmtree(LIB_PACKAGE_DIR)
+
+        shutil.copytree(PYTHON_PACKAGE_DIR, LIB_PACKAGE_DIR)
 
 
-setup(
-    cmdclass={"build_py": BuildPy},
-    package_dir={"": "."},
-)
+setup(cmdclass={"build_py": BuildPy})

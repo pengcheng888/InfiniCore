@@ -1,18 +1,20 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
-#include "device/pybind11.hpp"
-#include "dtype/pybind11.hpp"
-#include "op/pybind11.hpp"
-#include "tensor/pybind11.hpp"
+#include "context.hpp"
+#include "device.hpp"
+#include "dtype.hpp"
+#include "op.hpp"
+#include "tensor.hpp"
 
 namespace infinicore {
 
-PYBIND11_MODULE(infinicore, m) {
-    py::device::bind(m);
-    py::dtype::bind(m);
-    py::tensor::bind(m);
-    py::op::bind(m);
+PYBIND11_MODULE(_infinicore, m) {
+    context::bind(m);
+    device::bind(m);
+    dtype::bind(m);
+    op::bind(m);
+    tensor::bind(m);
 }
 
 } // namespace infinicore
