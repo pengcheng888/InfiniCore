@@ -3,6 +3,7 @@
 #include "./ascend/infiniccl_ascend.h"
 #include "./cambricon/infiniccl_cambricon.h"
 #include "./cuda/infiniccl_cuda.h"
+#include "./kunlun/infiniccl_kunlun.h"
 #include "./metax/infiniccl_metax.h"
 #include "./moore/infiniccl_moore.h"
 
@@ -19,10 +20,12 @@ __C infiniStatus_t infinicclCommInitAll(
     switch (device_type) {
         COMM_INIT_ALL(INFINI_DEVICE_NVIDIA, cuda);
         COMM_INIT_ALL(INFINI_DEVICE_ILUVATAR, cuda);
+        COMM_INIT_ALL(INFINI_DEVICE_HYGON, cuda);
         COMM_INIT_ALL(INFINI_DEVICE_ASCEND, ascend);
         COMM_INIT_ALL(INFINI_DEVICE_CAMBRICON, cambricon);
         COMM_INIT_ALL(INFINI_DEVICE_METAX, metax);
         COMM_INIT_ALL(INFINI_DEVICE_MOORE, moore);
+        COMM_INIT_ALL(INFINI_DEVICE_KUNLUN, kunlun);
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
@@ -42,11 +45,12 @@ __C infiniStatus_t infinicclCommDestroy(infinicclComm_t comm) {
     switch (comm->device_type) {
         COMM_DESTROY(INFINI_DEVICE_NVIDIA, cuda);
         COMM_DESTROY(INFINI_DEVICE_ILUVATAR, cuda);
+        COMM_DESTROY(INFINI_DEVICE_HYGON, cuda);
         COMM_DESTROY(INFINI_DEVICE_ASCEND, ascend);
         COMM_DESTROY(INFINI_DEVICE_CAMBRICON, cambricon);
         COMM_DESTROY(INFINI_DEVICE_METAX, metax);
         COMM_DESTROY(INFINI_DEVICE_MOORE, moore);
-
+        COMM_DESTROY(INFINI_DEVICE_KUNLUN, kunlun);
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
@@ -73,10 +77,12 @@ __C infiniStatus_t infinicclAllReduce(
     switch (comm->device_type) {
         ALL_REDUCE(INFINI_DEVICE_NVIDIA, cuda);
         ALL_REDUCE(INFINI_DEVICE_ILUVATAR, cuda);
+        ALL_REDUCE(INFINI_DEVICE_HYGON, cuda);
         ALL_REDUCE(INFINI_DEVICE_ASCEND, ascend);
         ALL_REDUCE(INFINI_DEVICE_CAMBRICON, cambricon);
         ALL_REDUCE(INFINI_DEVICE_METAX, metax);
         ALL_REDUCE(INFINI_DEVICE_MOORE, moore);
+        ALL_REDUCE(INFINI_DEVICE_KUNLUN, kunlun);
 
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;

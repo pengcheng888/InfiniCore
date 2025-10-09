@@ -12,7 +12,7 @@
 
 namespace device::kunlun::kernel {
 
-#define SM_SIZE 10240
+#define SM_SIZE 40960
 
 /**
  * @brief Define ptrdiff_t and size_t for kunlun xpu

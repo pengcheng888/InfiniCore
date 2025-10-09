@@ -97,7 +97,6 @@ def rotary_embedding(ans, t, sin, cos, device, algo):
 
         return t_out_1, t_out_2
 
-
     dh = t.shape[-1]
     dt = t.dtype
     assert dh % 2 == 0, "Embedding dimension must be even."
@@ -111,7 +110,7 @@ def rotary_embedding(ans, t, sin, cos, device, algo):
         ans[..., 0::2] = t_out_even.to(dt)
         ans[..., 1::2] = t_out_odd.to(dt)
     else:
-        half_dim = dh // 2   
+        half_dim = dh // 2
         t_first = t[..., :half_dim]
         t_second = t[..., half_dim:]
 
@@ -232,6 +231,7 @@ def test(
                 sin_table.torch_tensor(),
                 cos_table.torch_tensor(),
                 device,
+                algo,
             ),
             device,
             NUM_PRERUN,

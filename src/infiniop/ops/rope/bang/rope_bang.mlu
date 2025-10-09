@@ -21,10 +21,6 @@ infiniStatus_t Descriptor::create(
     auto info = RoPEInfo::createRoPEInfo(y_desc, x_desc, pos_desc, sin_desc, cos_desc, algo);
     CHECK_RESULT(info);
 
-    if (algo != INFINIOP_ROPE_ALGO_GPT_J) {
-        return INFINI_STATUS_NOT_IMPLEMENTED;
-    }
-
     // Create descriptor
     *desc_ptr = new Descriptor(
         info.take(),
@@ -62,7 +58,8 @@ infiniStatus_t calculateRoPE(const RoPEInfo &info,
         y, x, pos_ids, sin_table, cos_table,
         dimx, dimy, table_dim,
         info.y_stride_seqlen, info.y_stride_nhead,
-        info.x_stride_seqlen, info.x_stride_nhead);
+        info.x_stride_seqlen, info.x_stride_nhead,
+        info.algo);
 
     cnrtQueueSync(queue);
 
