@@ -5,7 +5,7 @@
 #include "infinicore/common/utils.hpp"
 
 namespace infinicore::op {
-class Ones {
+class Zeros {
 
 public:
     using schema = void (*)(Tensor, Tensor);
@@ -13,5 +13,5 @@ public:
     static common::OpDispatcher<schema> &dispatcher();
 };
 
-Tensor ones(Tensor y, Tensor x);
+Tensor zeros(Tensor y, Tensor x);
 } // namespace infinicore::op

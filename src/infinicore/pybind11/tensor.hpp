@@ -37,16 +37,18 @@ inline void bind(py::module &m) {
           py::arg("dtype"),
           py::arg("device"),
           py::arg("pin_memory") = false);
-    m.def("zeros", &Tensor::zeros,
-          py::arg("shape"),
-          py::arg("dtype"),
-          py::arg("device"),
-          py::arg("pin_memory") = false);
-    m.def("ones", &Tensor::ones,
-          py::arg("shape"),
-          py::arg("dtype"),
-          py::arg("device"),
-          py::arg("pin_memory") = false);
+
+    //     m.def("zeros", &Tensor::zeros,
+    //           py::arg("shape"),
+    //           py::arg("dtype"),
+    //           py::arg("device"),
+    //           py::arg("pin_memory") = false);
+
+    //     m.def("ones", &Tensor::ones,
+    //           py::arg("shape"),
+    //           py::arg("dtype"),
+    //           py::arg("device"),
+    //           py::arg("pin_memory") = false);
 
     m.def("from_blob", [](uintptr_t raw_ptr, Shape &shape, const DataType &dtype, const Device &device) { return Tensor{infinicore::Tensor::from_blob(reinterpret_cast<void *>(raw_ptr), shape, dtype, device)}; }, pybind11::arg("raw_ptr"), pybind11::arg("shape"), pybind11::arg("dtype"), pybind11::arg("device"));
 }

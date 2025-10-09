@@ -9,6 +9,7 @@
 
 #include <cuda_bf16.h>
 #include <cuda_fp16.h>
+#include <cuda_fp8.h>
 
 // Posible maximum number of threads per block for CUDA architectures
 // Used for picking correct kernel launch configuration
@@ -22,9 +23,11 @@
 // Hygon DCU uses different bfloat16 type definitions
 using cuda_bfloat16 = __nv_bfloat16;
 using cuda_bfloat162 = __nv_bfloat162;
+
 #else
 using cuda_bfloat16 = nv_bfloat16;
 using cuda_bfloat162 = nv_bfloat162;
+using cuda_fp8_e4m3 = __nv_fp8_e4m3;
 #endif
 
 namespace device::nvidia {

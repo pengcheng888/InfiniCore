@@ -47,15 +47,15 @@ public:
                         const Device &device,
                         bool pin_memory = false);
 
-    static Tensor zeros(const Shape &shape,
-                        const DataType &dtype,
-                        const Device &device,
-                        bool pin_memory = false);
+    // static Tensor zeros(const Shape &shape,
+    //                     const DataType &dtype,
+    //                     const Device &device,
+    //                     bool pin_memory = false);
 
-    static Tensor ones(const Shape &shape,
-                       const DataType &dtype,
-                       const Device &device,
-                       bool pin_memory = false);
+    // static Tensor ones(const Shape &shape,
+    //                    const DataType &dtype,
+    //                    const Device &device,
+    //                    bool pin_memory = false);
 
     static Tensor from_blob(void *raw_ptr,
                             const Shape &shape,

@@ -30,19 +30,19 @@ Tensor Tensor::empty(const Shape &shape,
     return Tensor{TensorImpl::empty(shape, dtype, device, pin_memory)};
 }
 
-Tensor Tensor::zeros(const Shape &shape,
-                     const DataType &dtype,
-                     const Device &device,
-                     bool pin_memory) {
-    return Tensor{TensorImpl::zeros(shape, dtype, device, pin_memory)};
-}
+// Tensor Tensor::zeros(const Shape &shape,
+//                      const DataType &dtype,
+//                      const Device &device,
+//                      bool pin_memory) {
+//     return Tensor{TensorImpl::zeros(shape, dtype, device, pin_memory)};
+// }
 
-Tensor Tensor::ones(const Shape &shape,
-                    const DataType &dtype,
-                    const Device &device,
-                    bool pin_memory) {
-    return Tensor{TensorImpl::ones(shape, dtype, device, pin_memory)};
-}
+// Tensor Tensor::ones(const Shape &shape,
+//                     const DataType &dtype,
+//                     const Device &device,
+//                     bool pin_memory) {
+//     return Tensor{TensorImpl::ones(shape, dtype, device, pin_memory)};
+// }
 
 Tensor Tensor::from_blob(void *raw_ptr, const Shape &shape, const DataType &dtype, const Device &device) {
     return Tensor{TensorImpl::from_blob(raw_ptr, shape, dtype, device)};
