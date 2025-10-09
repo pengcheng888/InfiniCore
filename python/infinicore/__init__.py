@@ -24,7 +24,9 @@ from infinicore.dtype import (
     uint8,
 )
 from infinicore.ops.matmul import matmul
-from infinicore.tensor import empty, from_blob, ones, zeros
+from infinicore.ops.zeros import zeros
+from infinicore.ops.ones import ones
+from infinicore.tensor import empty, from_blob #, ones, zeros
 
 __all__ = [
     "device",
@@ -53,6 +55,6 @@ __all__ = [
     "matmul",
     "empty",
     "from_blob",
-    "ones",
-    "zeros",
+    # "ones",
+    # "zeros",
 ]
