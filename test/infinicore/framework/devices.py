@@ -1,13 +1,27 @@
-class InfiniDeviceEnum:
-    CPU = 0
-    NVIDIA = 1
-    CAMBRICON = 2
-    ASCEND = 3
-    METAX = 4
-    MOORE = 5
-    ILUVATAR = 6
-    KUNLUN = 7
-    SUGON = 8
+# class InfiniDeviceEnum:
+#     CPU = 0
+#     NVIDIA = 1
+#     CAMBRICON = 2
+#     ASCEND = 3
+#     METAX = 4
+#     MOORE = 5
+#     ILUVATAR = 6
+#     KUNLUN = 7
+#     SUGON = 8
+
+from enum import Enum
+
+
+class InfiniDeviceEnum(Enum):
+    CPU = (0, "CPU")
+    NVIDIA = (1, "NVIDIA")
+    CAMBRICON = (2, "CAMBRICON")
+    ASCEND = (3, "ASCEND")
+    METAX = (4, "METAX")
+    MOORE = (5, "MOORE")
+    ILUVATAR = (6, "ILUVATAR")
+    KUNLUN = (7, "KUNLUN")
+    SUGON = (8, "SUGON")
 
 
 InfiniDeviceNames = {

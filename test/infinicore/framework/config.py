@@ -32,7 +32,7 @@ def get_args():
     device_group = parser.add_argument_group("Device options")
     device_group.add_argument("--cpu", action="store_true", help="Run CPU test")
     device_group.add_argument(
-        "--nvidia", action="store_true", help="Run NVIDIA GPU test"
+        "--nvidia", default=True, help="Run NVIDIA GPU test"
     )
     device_group.add_argument(
         "--cambricon", action="store_true", help="Run Cambricon MLU test"
