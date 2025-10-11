@@ -75,5 +75,84 @@ def func4():
     '''
 
 
+def func_net():
+    def test_TorchNet():
+        import torch
+        from torch import nn
+        class TorchNet(nn.Module):
+            def __init__(self):
+                super(TorchNet, self).__init__()
+                self.fc1 = nn.Linear(10, 6, bias=False)
+                # self.relu = nn.ReLU()
+                self.fc2 = nn.Linear(6, 1, bias=False)
+
+            def forward(self, x):
+                x = x.view((1, 10))
+                output = self.fc2(self.fc1(x))
+                return output
+
+            def test(self):
+                model = TorchNet()
+                print(model)
+                # torch.save(model.state_dict(), "model.pt")
+                # print("-----> before \n", model.state_dict())
+
+                model_param = torch.load("model.pt")
+                model.load_state_dict(model_param)
+                print("-----> after \n", model.state_dict())
+
+                print('----------- caculate ------------>')
+                x = torch.ones((1, 10), dtype=torch.float32)
+                out = model.forward(x)
+                print(out)
+
+        TorchNet().test()
+
+    def test_InfiniNet():
+        import infinicore
+
+        from infinicore import nn
+        class InfiniNet(infinicore.nn.Module):
+            def __init__(self):
+                super(InfiniNet, self).__init__()
+                self.fc1 = nn.Linear(10, 6, bias=False)
+                self.fc2 = nn.Linear(6, 1, bias=False)
+
+            def forward(self, x):
+                x = x.view((1, 10))
+                output = self.fc2(self.fc1(x))
+                return output
+
+            def test(self):
+                model = InfiniNet()
+                print(model)
+                # torch.save(model.state_dict(), "model.pt")
+                # print("-----> before \n", model.state_dict())
+                import torch
+                model_param = torch.load("model.pt")
+                model.load_state_dict(model_param)
+                print("-----> after \n", model.state_dict())
+
+                print('----------- caculate ------------>')
+                from infinicore.nn.modules.linear import create_infinicore_tensor, print_infini_tensor
+                device_str = "cpu"
+                x = torch.ones((1, 10), dtype=torch.float32)
+
+                out = model.forward(x)
+                print(out)
+
+                infini_x = create_infinicore_tensor(x, device_str)
+
+                out = model.forward(infini_x)
+                print_infini_tensor(out)
+
+
+
+        InfiniNet().test()
+
+    # test_TorchNet()
+    test_InfiniNet()
+
+
 if __name__ == '__main__':
-    func4()
+    func_net()

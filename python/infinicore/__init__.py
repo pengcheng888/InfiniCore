@@ -26,7 +26,7 @@ from infinicore.dtype import (
 from infinicore.ops.matmul import matmul
 from infinicore.ops.zeros import zeros
 from infinicore.ops.ones import ones
-from infinicore.tensor import empty, from_blob #, ones, zeros
+from infinicore.tensor import Tensor, empty, from_blob  # , ones, zeros
 
 __all__ = [
     "device",

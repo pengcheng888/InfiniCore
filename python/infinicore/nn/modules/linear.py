@@ -1,5 +1,6 @@
 import torch
 import infinicore
+from typing import Union  # Callable, Optional,
 
 
 def to_infinicore_dtype(torch_dtype):
@@ -63,9 +64,7 @@ class Linear(torch.nn.Linear):
                          bias=False,
                          device=device,
                          dtype=dtype)
-        device_str = "cpu"
-        self.weight_transpose = self.weight.T.contiguous()
-        self.weight_infini = create_infinicore_tensor(self.weight_transpose, device_str)
+        pass
 
     def forward_torch(self, input: torch.Tensor) -> torch.Tensor:
         print('forward_torch')
@@ -75,7 +74,28 @@ class Linear(torch.nn.Linear):
         # F.linear(input, self.weight, self.bias) # size([128,in_features]),size([out_features,in_features]) ==> size([128,out_features])
         return super().forward(input)
 
-    def forward(self, input: infinicore.tensor) -> infinicore.tensor:
+    def forward_infinicore(self, input: infinicore.Tensor) -> infinicore.Tensor:
+        device_str = "cpu"
+        self.weight_transpose = self.weight.T.contiguous()
+        self.weight_infini = create_infinicore_tensor(self.weight_transpose, device_str)
+
         print('forward_infinicore')
         # size([128,in_features]), size([in_features,out_features]) ==> size([128,out_features])
         return infinicore.matmul(input, self.weight_infini)
+
+    def forward(self,
+                input: Union[infinicore.Tensor, torch.Tensor]
+                ) -> Union[infinicore.Tensor, torch.Tensor]:
+        if isinstance(input, torch.Tensor):
+            return self.forward_torch(input)
+        return self.forward_infinicore(input)
+
+    # def __repr__(self):
+    #     print(" __repr__  TODO!!!")
+    #     return ""
+
+    def extra_repr(self) -> str:
+        return f" infinicore op : in_features={self.in_features}, out_features={self.out_features}, bias={self.bias is not None}"
+
+    def testOP(self):
+        pass
