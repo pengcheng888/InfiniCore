@@ -79,6 +79,7 @@ def func_net():
     def test_TorchNet():
         import torch
         from torch import nn
+
         class TorchNet(nn.Module):
             def __init__(self):
                 super(TorchNet, self).__init__()
@@ -146,13 +147,17 @@ def func_net():
                 out = model.forward(infini_x)
                 print_infini_tensor(out)
 
-
-
         InfiniNet().test()
 
     # test_TorchNet()
     test_InfiniNet()
 
 
+def test6():
+    import infinicore
+    from infinicore import nn
+    infinicore.nn.RMSNorm.testop()
+
+
 if __name__ == '__main__':
-    func_net()
+    test6()

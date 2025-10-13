@@ -1,3 +1,3 @@
-import torch.nn
+import torch
 
 Module = torch.nn.Module

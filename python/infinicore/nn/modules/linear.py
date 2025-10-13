@@ -1,6 +1,6 @@
 import torch
 import infinicore
-from typing import Union  # Callable, Optional,
+from typing import Union
 
 
 def to_infinicore_dtype(torch_dtype):
@@ -89,10 +89,6 @@ class Linear(torch.nn.Linear):
         if isinstance(input, torch.Tensor):
             return self.forward_torch(input)
         return self.forward_infinicore(input)
-
-    # def __repr__(self):
-    #     print(" __repr__  TODO!!!")
-    #     return ""
 
     def extra_repr(self) -> str:
         return f" infinicore op : in_features={self.in_features}, out_features={self.out_features}, bias={self.bias is not None}"
