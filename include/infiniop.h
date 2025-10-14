@@ -18,6 +18,7 @@
 #include "infiniop/ops/softplus.h"
 #include "infiniop/ops/sub.h"
 #include "infiniop/ops/swiglu.h"
+#include "infiniop/ops/topksoftmax.h"
 #include "infiniop/ops/topkrouter.h"
 #include "infiniop/tensor_descriptor.h"
 
