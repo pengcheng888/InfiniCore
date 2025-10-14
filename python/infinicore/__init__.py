@@ -27,6 +27,7 @@ from infinicore.dtype import (
 from infinicore.ops.matmul import matmul
 from infinicore.ops.rearrange import rearrange
 from infinicore.tensor import (
+    Tensor,
     empty,
     from_blob,
     ones,
