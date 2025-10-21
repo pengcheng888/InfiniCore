@@ -1,8 +1,7 @@
 import os
 import torch
 
-import transformers_v2
-
+# import transformers_v2
 
 
 
@@ -11,14 +10,14 @@ def func(Folder):
     # ------------------------------------------------------------------------------------------ #
     # ------------------------------------------------------------------------------------------ #
 
-    from transformers_v2 import LlamaForCausalLM
+    from transformers import LlamaForCausalLM
     model = LlamaForCausalLM.from_pretrained(Folder,
                                              dtype=torch.bfloat16, device_map="auto",
                                              attn_implementation="sdpa")
     # ------------------------------------------------------------------------------------------ #
     # ------------------------------------------------------------------------------------------ #
     # ------------------------------------------------------------------------------------------ #
-    from transformers_v2 import AutoTokenizer
+    from transformers import AutoTokenizer
     tokenizer = AutoTokenizer.from_pretrained(Folder)
 
     # ------------------------------------------------------------------------------------------ #
