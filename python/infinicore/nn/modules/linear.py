@@ -46,10 +46,18 @@ def to_torch_dtype(infini_dtype):
 
 
 def print_infini_tensor(infini_tensor, device_str="cpu"):
-    torch_tensor = torch.rand(infini_tensor.shape, dtype=torch.float32, device=device_str)
+    torch_tensor = torch.rand(infini_tensor.shape, dtype= to_infinicore_dtype(infini_tensor.dtype) , device=device_str)
     temp_tensor = create_infinicore_tensor(torch_tensor, device_str)
     temp_tensor.copy_(infini_tensor)
+
     print(torch_tensor)
+
+def infini_tensor_2_torch_tensor(infini_tensor, device_str="cpu"):
+    torch_tensor = torch.rand(infini_tensor.shape, dtype= to_infinicore_dtype(infini_tensor.dtype) , device=device_str)
+    temp_tensor = create_infinicore_tensor(torch_tensor, device_str)
+    temp_tensor.copy_(infini_tensor)
+    return torch_tensor
+
 
 
 class Linear(torch.nn.Linear):
@@ -90,9 +98,12 @@ class Linear(torch.nn.Linear):
         if isinstance(input, torch.Tensor):
             if not use_infinicore:
                 return self.forward_torch(input)
-
-            input_infinicore = create_infinicore_tensor(input, "cuda")
-            return self.forward_infinicore(input_infinicore)
+            
+            device_str = "cuda"
+            input_infinicore = create_infinicore_tensor(input, device_str)
+            output_infinicore = self.forward_infinicore(input_infinicore)
+            output_torch = infini_tensor_2_torch_tensor(output_infinicore)
+            return output_torch
 
         return self.forward_infinicore(input)
 

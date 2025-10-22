@@ -139,6 +139,34 @@ def apply_rotary_pos_emb(q, k, cos, sin, position_ids=None, unsqueeze_dim=1):
     k_embed = (k * cos) + (rotate_half(k) * sin)
     return q_embed, k_embed
 
+import infinicore
+
+class LlamaMLP_infinicore(infinicore.nn.Module):
+    def __init__(self, config):
+        super().__init__()
+
+        import infinicore
+        from infinicore import nn
+
+        self.config = config
+        self.hidden_size = config.hidden_size
+        self.intermediate_size = config.intermediate_size
+
+        self.gate_proj = infinicore.nn.Linear(self.hidden_size, self.intermediate_size, bias=config.mlp_bias)
+        self.up_proj = infinicore.nn.Linear(self.hidden_size, self.intermediate_size, bias=config.mlp_bias)
+        self.down_proj = infinicore.nn.Linear(self.intermediate_size, self.hidden_size, bias=config.mlp_bias)
+        
+        self.act_fn = ACT2FN[config.hidden_act]
+
+    def forward(self, x):
+        gate_output = self.gate_proj(x,  use_infinicore= True)
+        up_output = self.up_proj(x)
+        act_output = self.act_fn(gate_output)
+
+        down_input = act_output * up_output
+        down_output = self.down_proj(down_input)
+        return down_output
+
 
 class LlamaMLP(nn.Module):
     def __init__(self, config):
@@ -272,7 +300,9 @@ class LlamaDecoderLayer(GradientCheckpointingLayer):
 
         self.self_attn = LlamaAttention(config=config, layer_idx=layer_idx)
 
-        self.mlp = LlamaMLP(config)
+        # self.mlp = LlamaMLP(config)
+        self.mlp = LlamaMLP_infinicore(config)
+ 
         self.input_layernorm = LlamaRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
         self.post_attention_layernorm = LlamaRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
 

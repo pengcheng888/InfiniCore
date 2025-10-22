@@ -40,6 +40,8 @@ from infinicore.tensor import (
     zeros,
 )
 
+from infinicore import nn as nn
+
 __all__ = [
     # Classes.
     "device",
