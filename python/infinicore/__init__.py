@@ -31,6 +31,7 @@ from infinicore.ops.matmul import matmul
 from infinicore.ops.rearrange import rearrange
 from infinicore.ops.rms_norm import rms_norm
 from infinicore.tensor import (
+    Tensor,
     empty,
     from_blob,
     ones,
