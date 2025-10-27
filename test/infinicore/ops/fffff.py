@@ -77,7 +77,7 @@ def func4():
 
 def func_net():
 
-    modelpath =  r"/home/ubuntu/Music/InfiniCore/test/infinicore/ops/model.pt"
+    modelpath =  r"/home/ubuntu/workspace_nn/InfiniCore/test/infinicore/ops/model.pt"
     def test_TorchNet():
         import torch
         from torch import nn
@@ -161,5 +161,33 @@ def test6():
     infinicore.nn.RMSNorm.testop()
 
 
+def func7_mul():
+    import infinicore
+    from infinicore.nn.modules.linear import torch_tensor_2_infini_tensor
+    import torch
+    x = torch.ones((2,3))*2
+    y = torch.ones((2,3))
+    x_infini = torch_tensor_2_infini_tensor(x, device_str="cpu")
+    y_infini = torch_tensor_2_infini_tensor(y, device_str="cpu")
+
+    z_infini = x_infini * y_infini
+    print(y_infini)
+    print(y_infini)
+    print(z_infini)
+
+def func8_test():
+    import infinicore
+    from infinicore.nn.modules.linear import torch_tensor_2_infini_tensor,print_infini_tensor
+    import torch
+
+    data = torch.ones((2,3))
+
+    data_infini = torch_tensor_2_infini_tensor(data, device_str="cpu")
+    print(data_infini)
+
+    print_infini_tensor(data_infini)
+    
+
 if __name__ == '__main__':
-    func_net()
+    func7_mul()
+

@@ -85,7 +85,27 @@ class Tensor:
             self._underlying.debug()
         else:
             self._underlying.debug(filename)
-
+    
+    # wpc
+    def __mul__(self, other):
+        from infinicore.nn.modules.linear import create_infinicore_tensor,infini_tensor_2_torch_tensor
+        device_str="cpu"
+        # 
+        self_torch = infini_tensor_2_torch_tensor(self,device_str)
+        other_torch = infini_tensor_2_torch_tensor(other,device_str)
+        # 先暂时使用 pytorch 实现逐元素相乘
+        output_torch =  self_torch * other_torch
+        # 
+        output_infinicore = create_infinicore_tensor(output_torch, device_str)
+        return output_infinicore
+    
+    # wpc    
+    def __str__(self):
+        from infinicore.nn.modules.linear import infini_tensor_2_torch_tensor
+        device_str = "cpu"
+        self_torch = infini_tensor_2_torch_tensor(self, device_str=device_str)
+        return "infinicore." + self_torch.__str__()
+    
 
 def empty(size, *, dtype=None, device=None, pin_memory=False):
     return Tensor(

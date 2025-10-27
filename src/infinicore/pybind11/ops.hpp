@@ -7,6 +7,7 @@
 #include "ops/matmul.hpp"
 #include "ops/rearrange.hpp"
 #include "ops/rms_norm.hpp"
+#include "ops/rope.hpp"
 
 namespace py = pybind11;
 
@@ -18,6 +19,7 @@ inline void bind(py::module &m) {
     bind_matmul(m);
     bind_rearrange(m);
     bind_rms_norm(m);
+    bind_rope(m);
 }
 
 } // namespace infinicore::ops

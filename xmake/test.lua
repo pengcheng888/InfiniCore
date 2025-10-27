@@ -85,7 +85,7 @@ target("infinicore-test")
     add_files(os.projectdir().."/src/infinicore/context/*.cc")
     add_files(os.projectdir().."/src/infinicore/context/*/*.cc")
     add_files(os.projectdir().."/src/infinicore/tensor/*.cc")
-    add_files(os.projectdir().."/src/infinicore/op/*/*.cc")
+    add_files(os.projectdir().."/src/infinicore/ops/*/*.cc")
 
     add_files(os.projectdir().."/src/infinicore-test/*.cc")
 

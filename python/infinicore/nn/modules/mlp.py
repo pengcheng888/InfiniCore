@@ -3,7 +3,7 @@ import infinicore
 from typing import Union
 from .module import Module
 from .linear import Linear
-from .activation import SiLU
+from .activation import InfiniSiLU as SiLU
 
 
 class MLP(Module):

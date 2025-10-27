@@ -6,3 +6,4 @@
 #include "ops/ones.hpp"
 #include "ops/rearrange.hpp"
 #include "ops/rms_norm.hpp"
+#include "ops/rope.hpp"

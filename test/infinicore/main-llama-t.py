@@ -1,7 +1,7 @@
 import os
 import torch
 
-import   transformers_v2
+import   transformers
 
 
 
@@ -10,7 +10,7 @@ def func(Folder):
     # ------------------------------------------------------------------------------------------ #
     # ------------------------------------------------------------------------------------------ #
 
-    from transformers_v2 import LlamaForCausalLM
+    from transformers import LlamaForCausalLM
     # model = LlamaForCausalLM.from_pretrained(Folder,
     #                                          dtype=torch.bfloat16, device_map="auto",
     #                                          attn_implementation="sdpa")
@@ -22,7 +22,7 @@ def func(Folder):
     # ------------------------------------------------------------------------------------------ #
     # ------------------------------------------------------------------------------------------ #
     # ------------------------------------------------------------------------------------------ #
-    from transformers_v2 import AutoTokenizer
+    from transformers import AutoTokenizer
     tokenizer = AutoTokenizer.from_pretrained(Folder)
 
     # ------------------------------------------------------------------------------------------ #
@@ -30,7 +30,7 @@ def func(Folder):
     # ------------------------------------------------------------------------------------------ #
     prompt = "How are you,"
     input_ids = tokenizer(prompt, return_tensors="pt").to(model.device)
-    print(input_ids)
+    print("input_ids: ",input_ids)
 
     output = model.generate(**input_ids, cache_implementation="static", max_new_tokens=5)
     print(tokenizer.decode(output[0], skip_special_tokens=True))

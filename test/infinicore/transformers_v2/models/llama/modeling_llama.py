@@ -48,13 +48,46 @@ from .configuration_llama import LlamaConfig
 
 logger = logging.get_logger(__name__)
 
+import infinicore
+import torch
+class LlamaRMSNorm_infinicore(infinicore.nn.Module):
+    def __init__(self, hidden_size, eps=1e-6):
+        """
+        LlamaRMSNorm_infinicore is equivalent to LlamaRMSNorm
+        """
+        super().__init__()
+        self.weight = nn.Parameter(torch.ones(hidden_size))
+        self.variance_epsilon = eps
+
+    def forward_torch(self, hidden_states:torch.Tensor):
+        print(" LlamaRMSNorm_infinicore :: forward_infinicore ")
+        input_dtype = hidden_states.dtype
+        hidden_states = hidden_states.to(torch.float32)
+        variance = hidden_states.pow(2).mean(-1, keepdim=True)
+        hidden_states = hidden_states * torch.rsqrt(variance + self.variance_epsilon)
+        return self.weight * hidden_states.to(input_dtype)
+
+    def forward_infinicore(self, hidden_states:infinicore.Tensor):
+        from infinicore.nn.modules.linear import torch_tensor_2_infini_tensor
+        print(" LlamaRMSNorm_infinicore :: forward_infinicore ")
+
+        weight_infini = torch_tensor_2_infini_tensor(self.weight)
+        output_infini = infinicore.rms_norm(hidden_states, weight_infini, self.variance_epsilon)
+        return output_infini
+    
+    def forward(self,  hidden_states: Union[infinicore.Tensor, torch.Tensor]
+                      )-> Union[infinicore.Tensor, torch.Tensor]:
+        if isinstance(hidden_states, infinicore.Tensor):
+            return  self.forward_infinicore(hidden_states)
+        
+        return  self.forward_torch(hidden_states)   
+    
+    def extra_repr(self):
+        return f"infinicore op: {tuple(self.weight.shape)}, eps={self.variance_epsilon}"
 
 @use_kernel_forward_from_hub("RMSNorm")
 class LlamaRMSNorm(nn.Module):
     def __init__(self, hidden_size, eps=1e-6):
-        """
-        LlamaRMSNorm is equivalent to T5LayerNorm
-        """
         super().__init__()
         self.weight = nn.Parameter(torch.ones(hidden_size))
         self.variance_epsilon = eps
@@ -144,6 +177,107 @@ import infinicore
 class LlamaMLP_infinicore(infinicore.nn.Module):
     def __init__(self, config):
         super().__init__()
+        '''
+        nn.Linear 使用的是  infinicore.nn.Linear
+        nn.Silu 使用的是  infinicore.nn.Silu
+
+        整体的的输入是 touch.tensor，输出是 torch.tensor 
+        '''
+        import infinicore
+        from infinicore import nn
+
+        self.config = config
+        self.hidden_size = config.hidden_size
+        self.intermediate_size = config.intermediate_size
+
+        self.gate_proj = infinicore.nn.Linear(self.hidden_size, self.intermediate_size, bias=config.mlp_bias)
+        self.up_proj = infinicore.nn.Linear(self.hidden_size, self.intermediate_size, bias=config.mlp_bias)
+        self.down_proj = infinicore.nn.Linear(self.intermediate_size, self.hidden_size, bias=config.mlp_bias)
+        
+        self.act_fn = ACT2FN[config.hidden_act]
+
+    def forward_infini(self, x:infinicore.Tensor
+                       )->infinicore.Tensor:
+        #  infinicore计算 
+        down_proj = self.down_proj(self.act_fn(self.gate_proj(x)) * self.up_proj(x))
+        return down_proj
+    
+    def forward_torch(self, x:torch.Tensor):
+        down_proj = self.down_proj(self.act_fn(self.gate_proj(x)) * self.up_proj(x))
+        return down_proj
+
+    def forward(self, x: Union[infinicore.Tensor, torch.Tensor]
+                ):
+        if isinstance(x, infinicore.Tensor):
+            from infinicore.nn.modules.linear import create_infinicore_tensor, infini_tensor_2_torch_tensor
+            device_str = "cpu"
+
+            # 1
+            x_shape  = x.shape
+            x_torch = x.reshape((-1, x_shape[-1]))
+            x_infinicore = create_infinicore_tensor(x_torch, device_str)
+            
+            # 2
+            output_infinicore = self.forward_infini(x_infinicore)
+            
+            # 3
+            output_torch = infini_tensor_2_torch_tensor(output_infinicore)
+            output_torch = output_torch.reshape((x_shape[0],x_shape[1],-1))
+            return output_torch
+        
+        return self.forward_torch(x)
+    
+class LlamaMLP_infinicore_v2(infinicore.nn.Module):
+    def __init__(self, config):
+        super().__init__()
+        '''
+        nn.Linear 使用的是  infinicore.nn.Linear
+        nn.Silu 使用的是  infinicore.nn.Silu
+
+        整体的的输入是 touch.tensor，输出是 torch.tensor 
+        '''
+        import infinicore
+        from infinicore import nn
+
+        self.config = config
+        self.hidden_size = config.hidden_size
+        self.intermediate_size = config.intermediate_size
+
+        self.gate_proj = infinicore.nn.Linear(self.hidden_size, self.intermediate_size, bias=config.mlp_bias)
+        self.up_proj = infinicore.nn.Linear(self.hidden_size, self.intermediate_size, bias=config.mlp_bias)
+        self.down_proj = infinicore.nn.Linear(self.intermediate_size, self.hidden_size, bias=config.mlp_bias)
+        
+        self.act_fn = ACT2FN[config.hidden_act]
+
+    def forward(self, x):
+        from infinicore.nn.modules.linear import create_infinicore_tensor, infini_tensor_2_torch_tensor
+        device_str = "cpu"
+        x_shape  = x.shape
+        x_torch = x.reshape((-1, x_shape[-1]))
+        x_infinicore = create_infinicore_tensor(x_torch, device_str)
+        
+        # infinicore计算 
+        gate_output = self.gate_proj(x_infinicore)
+        up_output = self.up_proj(x_infinicore)
+        act_output = self.act_fn(gate_output)
+        down_input = act_output * up_output
+        down_output = self.down_proj(down_input)
+
+        ##
+        output_torch = infini_tensor_2_torch_tensor(down_output)
+        output = output_torch.reshape((x_shape[0],x_shape[1],-1))
+        return output
+    
+    
+class LlamaMLP_infinicore_v1(infinicore.nn.Module):
+    def __init__(self, config):
+        super().__init__()
+        '''
+        nn.Linear 使用的是  infinicore.nn.Linear
+        nn.Silu 使用的是  infinicore.nn.Silu
+
+        每个算子的输入是 touch.tensor，输出是 torch.tensor 。
+        '''
 
         import infinicore
         from infinicore import nn
@@ -159,12 +293,11 @@ class LlamaMLP_infinicore(infinicore.nn.Module):
         self.act_fn = ACT2FN[config.hidden_act]
 
     def forward(self, x):
-        gate_output = self.gate_proj(x,  use_infinicore= True)
-        up_output = self.up_proj(x)
+        gate_output = self.gate_proj(x, use_infinicore= True)
+        up_output = self.up_proj(x, use_infinicore= True)
         act_output = self.act_fn(gate_output)
-
         down_input = act_output * up_output
-        down_output = self.down_proj(down_input)
+        down_output = self.down_proj(down_input, use_infinicore= True)
         return down_output
 
 
@@ -266,6 +399,7 @@ class LlamaAttention(nn.Module):
         value_states = self.v_proj(hidden_states).view(hidden_shape).transpose(1, 2)
 
         cos, sin = position_embeddings
+        print("apply_rotary_pos_emb: ",query_states.shape, key_states.shape, cos.shape,sin.shape)
         query_states, key_states = apply_rotary_pos_emb(query_states, key_states, cos, sin)
 
         if past_key_values is not None:
@@ -300,11 +434,14 @@ class LlamaDecoderLayer(GradientCheckpointingLayer):
 
         self.self_attn = LlamaAttention(config=config, layer_idx=layer_idx)
 
-        # self.mlp = LlamaMLP(config)
-        self.mlp = LlamaMLP_infinicore(config)
+        self.mlp = LlamaMLP(config)
+        # self.mlp = LlamaMLP_infinicore(config)
  
         self.input_layernorm = LlamaRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
+        #self.input_layernorm =LlamaRMSNorm_infinicore(config.hidden_size, eps=config.rms_norm_eps)
+
         self.post_attention_layernorm = LlamaRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
+        #self.post_attention_layernorm = LlamaRMSNorm_infinicore(config.hidden_size, eps=config.rms_norm_eps)
 
     @deprecate_kwarg("past_key_value", new_name="past_key_values", version="4.58")
     def forward(
@@ -319,7 +456,26 @@ class LlamaDecoderLayer(GradientCheckpointingLayer):
         **kwargs: Unpack[TransformersKwargs],
     ) -> torch.Tensor:
         residual = hidden_states
+        # ---->
+        if False:
+            from infinicore.nn.modules.linear import create_infinicore_tensor, infini_tensor_2_torch_tensor
+            device_str = "cpu"
+
+            hidden_states_shape = hidden_states.shape
+            hidden_states_torch = hidden_states.reshape((-1, hidden_states_shape[-1]))
+            hidden_states_infinicore = create_infinicore_tensor(hidden_states_torch, device_str)
+        
+            #
+            hidden_states_infinicore = self.input_layernorm(hidden_states_infinicore)
+
+            hidden_states_output_torch = infini_tensor_2_torch_tensor(hidden_states_infinicore, device_str)
+        
+            hidden_states_output_torch = hidden_states_output_torch.reshape((hidden_states_shape[0],hidden_states_shape[1],-1))
+            hidden_states = hidden_states_output_torch
+            # ----<
+        
         hidden_states = self.input_layernorm(hidden_states)
+
         # Self Attention
         hidden_states, _ = self.self_attn(
             hidden_states=hidden_states,
@@ -419,9 +575,10 @@ class LlamaModel(LlamaPreTrainedModel):
         )
 
         hidden_states = inputs_embeds
+        print("position_ids: ",position_ids)
         position_embeddings = self.rotary_emb(hidden_states, position_ids)
 
-        for decoder_layer in self.layers[: self.config.num_hidden_layers]:
+        for decoder_layer in self.layers[:self.config.num_hidden_layers]:
             hidden_states = decoder_layer(
                 hidden_states,
                 attention_mask=causal_mask,

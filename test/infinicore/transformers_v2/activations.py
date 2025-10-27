@@ -279,7 +279,32 @@ class XIELUActivation(nn.Module):
                 logger.warning_once("torch._dynamo is compiling, using Python version of xIELU.")
         return self._xielu_python(input)
 
+# 原版的
+# ACT2CLS = {
+#     "gelu": GELUActivation,
+#     "gelu_10": (ClippedGELUActivation, {"min": -10, "max": 10}),
+#     "gelu_fast": FastGELUActivation,
+#     "gelu_new": NewGELUActivation,
+#     "gelu_python": (GELUActivation, {"use_gelu_python": True}),
+#     "gelu_pytorch_tanh": PytorchGELUTanh,
+#     "gelu_accurate": AccurateGELUActivation,
+#     "laplace": LaplaceActivation,
+#     "leaky_relu": nn.LeakyReLU,
+#     "linear": LinearActivation,
+#     "mish": MishActivation,
+#     "quick_gelu": QuickGELUActivation,
+#     "relu": nn.ReLU,
+#     "relu2": ReLUSquaredActivation,
+#     "relu6": nn.ReLU6,
+#     "sigmoid": nn.Sigmoid,
+#     "silu": nn.SiLU,
+#     "swish": nn.SiLU,
+#     "tanh": nn.Tanh,
+#     "prelu": nn.PReLU,
+#     "xielu": XIELUActivation,
+# }
 
+import infinicore
 ACT2CLS = {
     "gelu": GELUActivation,
     "gelu_10": (ClippedGELUActivation, {"min": -10, "max": 10}),
@@ -297,7 +322,7 @@ ACT2CLS = {
     "relu2": ReLUSquaredActivation,
     "relu6": nn.ReLU6,
     "sigmoid": nn.Sigmoid,
-    "silu": nn.SiLU,
+    "silu": infinicore.nn.SiLU, # 替换为 infinicore的激活函数了
     "swish": nn.SiLU,
     "tanh": nn.Tanh,
     "prelu": nn.PReLU,
