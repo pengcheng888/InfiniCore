@@ -29,7 +29,7 @@ void calculate(Tensor y, Tensor x, Tensor pos_ids, Tensor sin_table, Tensor cos_
     if (!desc_opt) {
         INFINICORE_CHECK_ERROR(infiniopCreateRoPEDescriptor(
             context::getInfiniopHandle(), &desc,
-            y->desc(), x->desc(), pos_ids->desc(), sin_table->desc(), cos_table->desc(), INFINIOP_ROPE_ALGO_GPT_J));
+            y->desc(), x->desc(), pos_ids->desc(), sin_table->desc(), cos_table->desc(), INFINIOP_ROPE_ALGO_GPT_NEOX));
         cache.put(seed, desc);
     } else {
         desc = *desc_opt;

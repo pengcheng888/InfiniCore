@@ -30,6 +30,7 @@ from infinicore.ops.attention import attention
 from infinicore.ops.matmul import matmul
 from infinicore.ops.rearrange import rearrange
 from infinicore.ops.rms_norm import rms_norm
+from infinicore.ops.rope import rope
 from infinicore.tensor import (
     Tensor,
     empty,

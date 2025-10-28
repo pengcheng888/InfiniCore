@@ -289,6 +289,8 @@ class BaseOperatorTest(ABC):
 
     def _run_single_test(self, device, test_case, dtype_config, config, mode_name):
         """Run a single test with specified operation mode"""
+
+       
         device_str = torch_device_map[device]
 
         inputs, kwargs = self.prepare_inputs(test_case, device, dtype_config)
@@ -301,19 +303,19 @@ class BaseOperatorTest(ABC):
             else:
                 infini_inputs.append(inp)
 
+    
         if test_case.operation_mode == TestCase.OUT_OF_PLACE:
-
             def torch_op():
                 return self.torch_operator(*inputs, **kwargs)
-
+    
             torch_result = torch_op()
-
+    
             if (
                 isinstance(torch_result, torch.Tensor)
                 and not torch_result.is_contiguous()
             ):
                 torch_result = torch_result.contiguous()
-
+        
             def infini_op():
                 return self.infinicore_operator(*infini_inputs, **kwargs)
 
@@ -323,13 +325,13 @@ class BaseOperatorTest(ABC):
             comparison_dtype = self.get_output_dtype(
                 test_case, dtype_config, torch_result
             )
-
+     
             compare_fn = create_test_comparator(
                 config, comparison_dtype, mode_name=f"{self.operator_name} {mode_name}"
             )
             is_valid = compare_fn(infini_result, torch_result)
             assert is_valid, f"{self.operator_name} {mode_name} test failed"
-
+          
             if config.bench:
                 profile_operation(
                     f"PyTorch {self.operator_name} {mode_name}",
@@ -345,7 +347,6 @@ class BaseOperatorTest(ABC):
                     config.num_prerun,
                     config.num_iterations,
                 )
-
         else:
             if not test_case.output:
                 raise ValueError("IN_PLACE test requires output specification")

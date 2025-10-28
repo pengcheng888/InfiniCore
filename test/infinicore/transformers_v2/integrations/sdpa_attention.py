@@ -5,9 +5,7 @@ import torch
 from ..utils import is_torch_xpu_available, logging
 from ..utils.import_utils import is_torch_greater_or_equal
 
-
 logger = logging.get_logger(__name__)
-
 
 _is_torch_greater_or_equal_than_2_5 = is_torch_greater_or_equal("2.5", accept_dev=True)
 _is_torch_greater_or_equal_than_2_8 = is_torch_greater_or_equal("2.8", accept_dev=True)
@@ -41,15 +39,15 @@ def use_gqa_in_sdpa(attention_mask: Optional[torch.Tensor], key: torch.Tensor) -
 
 
 def sdpa_attention_forward(
-    module: torch.nn.Module,
-    query: torch.Tensor,
-    key: torch.Tensor,
-    value: torch.Tensor,
-    attention_mask: Optional[torch.Tensor],
-    dropout: float = 0.0,
-    scaling: Optional[float] = None,
-    is_causal: Optional[bool] = None,
-    **kwargs,
+        module: torch.nn.Module,
+        query: torch.Tensor,
+        key: torch.Tensor,
+        value: torch.Tensor,
+        attention_mask: Optional[torch.Tensor],
+        dropout: float = 0.0,
+        scaling: Optional[float] = None,
+        is_causal: Optional[bool] = None,
+        **kwargs,
 ) -> tuple[torch.Tensor, None]:
     if kwargs.get("output_attentions", False) or kwargs.get("head_mask") is not None:
         logger.warning_once(
@@ -59,7 +57,7 @@ def sdpa_attention_forward(
     sdpa_kwargs = {}
     if hasattr(module, "num_key_value_groups"):
         if not use_gqa_in_sdpa(attention_mask, key):
-            key = repeat_kv(key, module.num_key_value_groups)
+            key = repeat_kv(key, module.num_key_value_groups)  # (1,4,9,64) => (1,4*8,9,64)
             value = repeat_kv(value, module.num_key_value_groups)
         else:
             sdpa_kwargs = {"enable_gqa": True}
@@ -81,15 +79,15 @@ def sdpa_attention_forward(
         is_causal = is_causal.item()
 
     attn_output = torch.nn.functional.scaled_dot_product_attention(
-        query,
-        key,
-        value,
-        attn_mask=attention_mask,
-        dropout_p=dropout,
-        scale=scaling,
-        is_causal=is_causal,
-        **sdpa_kwargs,
+        query,  # (1,32,5,64)
+        key,  # (1,4*8,9,64)
+        value,  # (1,4*8,9,64)
+        attn_mask=attention_mask,  # (1,1,5,9)
+        dropout_p=dropout,  # 0.0
+        scale=scaling,  # 0.125
+        is_causal=is_causal,  # False
+        **sdpa_kwargs,  # {}
     )
-    attn_output = attn_output.transpose(1, 2).contiguous()
+    attn_output = attn_output.transpose(1, 2).contiguous()  # (1,32,5,64)  =>  (1,5,32,64)
 
     return attn_output, None

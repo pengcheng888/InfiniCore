@@ -67,6 +67,7 @@ class BinaryOperatorTest(BaseOperatorTest):
     def torch_operator(self, *inputs, **kwargs):
         """Generic torch operator dispatch"""
         # Support both functional and method calls
+      
         if hasattr(torch, self._operator_name):
             op = getattr(torch, self._operator_name)
         else:

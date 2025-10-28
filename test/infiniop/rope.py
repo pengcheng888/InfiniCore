@@ -61,7 +61,6 @@ _INPLACE = [
     Inplace.INPLACE_X,
 ]
 
-
 _ALGO = [
     Algorithm.GPT_J,
     Algorithm.GPT_NEOX,
@@ -93,7 +92,7 @@ def rotary_embedding(ans, t, sin, cos, device, algo):
             )
 
         t_out_1 = t1 * cos - t2 * sin
-        t_out_2 = t1 * sin + t2 * cos
+        t_out_2 = t2 * cos + t1 * sin
 
         return t_out_1, t_out_2
 
@@ -131,15 +130,15 @@ def sin_cos_table(pos, dim, device, theta, dtype):
 
 
 def test(
-    handle,
-    device,
-    shape,
-    x_strides=None,
-    y_strides=None,
-    inplace=Inplace.OUT_OF_PLACE,
-    algo=Algorithm.GPT_J,
-    dtype=torch.float32,
-    sync=None,
+        handle,
+        device,
+        shape,
+        x_strides=None,
+        y_strides=None,
+        inplace=Inplace.OUT_OF_PLACE,
+        algo=Algorithm.GPT_J,
+        dtype=torch.float32,
+        sync=None,
 ):
     x = TestTensor(shape, x_strides, dtype, device)
     if inplace == Inplace.INPLACE_X:
@@ -154,6 +153,7 @@ def test(
     )
     theta = 1e5
     pos = TestTensor.from_torch(torch.arange(0, x.shape[0]), InfiniDtype.I32, device)
+    print(dtype)
     sin_table, cos_table = sin_cos_table(
         pos.torch_tensor(), x.shape[2], x.device, theta, dtype
     )

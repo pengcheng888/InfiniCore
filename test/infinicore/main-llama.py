@@ -37,6 +37,6 @@ def func(Folder):
 
 
 if __name__ == '__main__':
-    # Folder = r'/home/ubuntu/workspace_aisys/tensorRT_quantization-main/Llama/Llama2-TinyLlama-1.1B-Chat-v1.0/'
-    Folder = r'/home/ubuntu/models/TinyLlama-1.1B-Chat-v1.0/'
+    Folder = r'/home/ubuntu/workspace_aisys/tensorRT_quantization-main/Llama/Llama2-TinyLlama-1.1B-Chat-v1.0/'
+    # Folder = r'/home/ubuntu/models/TinyLlama-1.1B-Chat-v1.0/'
     func(Folder)
