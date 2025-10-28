@@ -99,7 +99,7 @@ class Tensor:
         output_infinicore = create_infinicore_tensor(output_torch, device_str)
         return output_infinicore
     
-    # wpc    
+    # wpc
     def __str__(self):
         from infinicore.nn.modules.linear import infini_tensor_2_torch_tensor
         device_str = "cpu"

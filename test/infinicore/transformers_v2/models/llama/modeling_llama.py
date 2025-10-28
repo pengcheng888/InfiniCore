@@ -259,7 +259,7 @@ class RoPE_infinicore():
                                   )
 
         out_torch = infini_tensor_2_torch_tensor(out)
-        #print(out_torch.shape)
+        # print(out_torch.shape)
 
         out_torch = out_torch.reshape(-1, ntok, num_attention_heads, head_dim).transpose(1, 2).contiguous()
 
@@ -506,18 +506,14 @@ class LlamaAttention(nn.Module):
         value_states = self.v_proj(hidden_states).view(hidden_shape).transpose(1, 2)
 
         cos, sin = position_embeddings
-        print("apply_rotary_pos_emb: ", query_states.shape, key_states.shape, cos.shape, sin.shape)
+        #print("apply_rotary_pos_emb: ", query_states.shape, key_states.shape, cos.shape, sin.shape)
         query_states, key_states = apply_rotary_pos_emb(query_states, key_states, cos, sin)
 
-   
         if False:
             rope = RoPE_infinicore()
             query_states = rope.forward(query_states, sin, cos)
-            # print("query_states: ", query_states)
-
             key_states = rope.forward(key_states, sin, cos)
 
-        # exit(-1)
         if past_key_values is not None:
             # sin and cos are specific to RoPE models; cache_position needed for the static cache
             cache_kwargs = {"sin": sin, "cos": cos, "cache_position": cache_position}
@@ -527,15 +523,15 @@ class LlamaAttention(nn.Module):
         if self.config._attn_implementation != "eager":
             attention_interface = ALL_ATTENTION_FUNCTIONS[self.config._attn_implementation]
 
-        attn_output, attn_weights = attention_interface( # sdpa_attention_forward
+        attn_output, attn_weights = attention_interface( 
             self,
-            query_states,
-            key_states,
-            value_states,
-            attention_mask,
-            dropout=0.0 if not self.training else self.attention_dropout,
-            scaling=self.scaling,
-            **kwargs,
+            query_states,  # [bs, num_attention_heads, ntok, head_dim]
+            key_states,  # [bs, num_key_value_heads, all_tok, head_dim]
+            value_states,  # [bs, num_key_value_heads, all_tok, head_dim]
+            attention_mask,  # [1, 1, ntok,all_tok]
+            dropout=0.0,  #
+            scaling=self.scaling,  # 缩放系数 0.125
+            **kwargs,  # 'position_ids': tensor([[0, 1, 2, 3, 4]])
         )
 
         attn_output = attn_output.reshape(*input_shape, -1).contiguous()
@@ -667,7 +663,7 @@ class LlamaModel(LlamaPreTrainedModel):
             raise ValueError("You must specify exactly one of input_ids or inputs_embeds")
 
         if inputs_embeds is None:
-            inputs_embeds: torch.Tensor = self.embed_tokens(input_ids)
+            inputs_embeds: torch.Tensor = self.embed_tokens(input_ids)  # input_ids:[ 100, 105]   shape(2,64)
 
         if use_cache and past_key_values is None:
             past_key_values = DynamicCache(config=self.config)
