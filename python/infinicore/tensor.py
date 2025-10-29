@@ -73,6 +73,7 @@ class Tensor:
         return Tensor(self._underlying.permute(dims))
 
     def view(self, shape):
+        
         return Tensor(self._underlying.view(shape))
 
     def debug(self, filename=None):
@@ -104,7 +105,7 @@ class Tensor:
         from infinicore.nn.modules.linear import infini_tensor_2_torch_tensor
         device_str = "cpu"
         self_torch = infini_tensor_2_torch_tensor(self, device_str=device_str)
-        return "infinicore." + self_torch.__str__()
+        return "infinicore::\n" + self_torch.__str__()
     
 
 def empty(size, *, dtype=None, device=None, pin_memory=False):

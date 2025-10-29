@@ -76,8 +76,8 @@ def func4():
 
 
 def func_net():
-
-    modelpath =  r"/home/ubuntu/workspace_nn/InfiniCore/test/infinicore/ops/model.pt"
+    
+    modelpath =  r"/home/ubuntu/Music/worksapce_nn/InfiniCore/test/infinicore/ops/model.pt"
     def test_TorchNet():
         import torch
         from torch import nn
@@ -134,7 +134,7 @@ def func_net():
                 import torch
                 model_param = torch.load(modelpath)
                 model.load_state_dict(model_param)
-                print("-----> after \n", model.state_dict())
+                # print("-----> after \n", model.state_dict())
 
                 print('----------- caculate ------------>')
                 from infinicore.nn.modules.linear import create_infinicore_tensor, print_infini_tensor
@@ -147,7 +147,8 @@ def func_net():
                 infini_x = create_infinicore_tensor(x, device_str)
 
                 out = model.forward(infini_x)
-                print_infini_tensor(out)
+                print("==============>")
+                print(out)
 
         InfiniNet().test()
 
@@ -189,5 +190,5 @@ def func8_test():
     
 
 if __name__ == '__main__':
-    func7_mul()
+    func_net()
 

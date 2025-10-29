@@ -28,6 +28,7 @@ from infinicore.ntops import use_ntops
 from infinicore.ops.add import add
 from infinicore.ops.attention import attention
 from infinicore.ops.matmul import matmul
+from infinicore.ops.linear import linear
 from infinicore.ops.rearrange import rearrange
 from infinicore.ops.rms_norm import rms_norm
 from infinicore.ops.rope import rope

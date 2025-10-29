@@ -22,11 +22,16 @@ void calculate(Tensor c, Tensor a, Tensor b) {
     auto device_index = context::getDevice().getIndex();
 
     auto &cache = caches.getCache(device_type, device_index);
-
+    ;
     auto desc_opt = cache.get(seed);
     infiniopGemmDescriptor_t desc = nullptr;
 
     if (!desc_opt) {
+
+        // printf("c: %s \n", c->info().c_str());
+        // printf("a: %s \n", a->info().c_str());
+        // printf("b: %s \n", b->info().c_str());
+
         INFINICORE_CHECK_ERROR(infiniopCreateGemmDescriptor(
             context::getInfiniopHandle(), &desc,
             c->desc(), a->desc(), b->desc()));

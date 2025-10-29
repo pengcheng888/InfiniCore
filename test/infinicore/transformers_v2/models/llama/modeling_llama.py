@@ -141,7 +141,7 @@ class LlamaRotaryEmbedding(nn.Module):
 
         return cos.to(dtype=x.dtype), sin.to(dtype=x.dtype)
 
-    def sin_cos_table(self):
+    def sin_cos_table(self, pos, dim, device, theta, dtype):
         dim = 64
         theta = 10000.0
         pos = torch.Tensor([0, 1, 2, 3, 4])
@@ -225,7 +225,69 @@ def rotary_embedding(ans, t, sin, cos, algo=Algorithm.GPT_NEOX):
         ans[..., half_dim:] = t_out_second.to(dt)
 
 
+import infinicore
+
+
+class RoPE_infinicore_v2():
+    sin_table: Union[infinicore.Tensor, None] = None  # sin_table: (max_position_embeddings, head_dim//2)
+    cos_table: Union[infinicore.Tensor, None] = None  # cos_table: (max_position_embeddings, head_dim//2)
+
+    def __init__(self, config):
+        self.max_position_embeddings = config.max_position_embeddings
+        self.rope_theta = config.rope_theta
+        self.head_dim = getattr(config, "head_dim", None) or config.hidden_size // config.num_attention_heads
+
+        if self.get_sin_table() is None:
+            sin_table, cos_table = self.create_sin_cos_table(self.max_position_embeddings, head_dim=self.head_dim, theta=self.rope_theta)
+
+            from infinicore.nn.modules.linear import create_infinicore_tensor, infini_tensor_2_torch_tensor
+            device_str = "cpu"
+            RoPE_infinicore_v2.sin_table = create_infinicore_tensor(sin_table.to(dtype=torch.float16), device_str)
+            RoPE_infinicore_v2.cos_table = create_infinicore_tensor(cos_table.to(dtype=torch.float16), device_str)
+
+        print(id(RoPE_infinicore_v2.sin_table))
+        print(id(self.get_sin_table()))
+
+    def forward(self, states: torch.Tensor,
+                position_ids: torch.Tensor,
+                algo=Algorithm.GPT_NEOX):
+
+        print("RoPE_infinicore_v2:: forward")
+        from infinicore.nn.modules.linear import torch_tensor_2_infini_tensor, infini_tensor_2_torch_tensor
+        bs, num_attention_heads, ntok, head_dim = states.shape
+
+        states = states.transpose(1, 2).reshape(-1, num_attention_heads, head_dim).contiguous()
+
+        if algo == Algorithm.GPT_J:
+            raise ValueError("RoPE_infinicore not support")
+        else:
+            out = infinicore.rope(torch_tensor_2_infini_tensor(states),
+                                  torch_tensor_2_infini_tensor(position_ids),
+                                  self.get_sin_table(),
+                                  self.get_cos_table(),
+                                  )
+
+        out_torch = infini_tensor_2_torch_tensor(out)
+        out_torch = out_torch.reshape(-1, ntok, num_attention_heads, head_dim).transpose(1, 2).contiguous()
+        return out_torch
+
+    def get_sin_table(self):
+        return RoPE_infinicore_v2.sin_table
+
+    def get_cos_table(self):
+        return RoPE_infinicore_v2.cos_table
+
+    def create_sin_cos_table(self, max_position, head_dim=64, theta=10000.0):
+        assert head_dim % 2 == 0, "Embedding dimension must be even."
+        pos = torch.arange(0, max_position)
+        freqs = 1.0 / (theta ** (torch.arange(0, head_dim, 2)[: (head_dim // 2)].float() / head_dim))
+        angles = torch.outer(pos, freqs)
+        return torch.sin(angles), torch.cos(angles)
+
+
 class RoPE_infinicore():
+    shared_count = 0
+
     def __init__(self, config=None):
         pass
 
@@ -236,11 +298,37 @@ class RoPE_infinicore():
         rotary_embedding(x, x, sin_table, cos_table)
         return x
 
-    def forward_infini(self, x: torch.Tensor,
-                       sin_table,
-                       cos_table,
-                       algo=Algorithm.GPT_NEOX):
+    def forward_infini_huai(self, x: torch.Tensor,
+                            sin_table: torch.Tensor,
+                            cos_table: torch.Tensor,
+                            algo=Algorithm.GPT_NEOX):
+        print("----------> RoPE_infinicore:: forward_infini")
+        from infinicore.nn.modules.linear import torch_tensor_2_infini_tensor, infini_tensor_2_torch_tensor
+        bs, num_attention_heads, ntok, head_dim = x.shape
+        #
 
+        half_dim = head_dim // 2
+        pos = ntok
+
+        pos_ids = torch.arange(0, pos, dtype=torch.int32)
+        if algo == Algorithm.GPT_J:
+            raise ValueError("RoPE_infinicore not support")
+        else:
+            out = infinicore.rope(torch_tensor_2_infini_tensor(x),
+                                  torch_tensor_2_infini_tensor(pos_ids),
+                                  torch_tensor_2_infini_tensor(sin_table.reshape(-1, head_dim)[..., 0:half_dim].contiguous()),
+                                  torch_tensor_2_infini_tensor(cos_table.reshape(-1, head_dim)[..., 0:half_dim].contiguous()),
+                                  )
+
+        out_torch = infini_tensor_2_torch_tensor(out)
+
+        return out_torch
+
+    def forward_torch_infini(self, x: torch.Tensor,
+                             sin_table,
+                             cos_table,
+                             algo=Algorithm.GPT_NEOX):
+        print("----------> RoPE_infinicore:: forward_infini")
         from infinicore.nn.modules.linear import torch_tensor_2_infini_tensor, infini_tensor_2_torch_tensor
         bs, num_attention_heads, ntok, head_dim = x.shape
 
@@ -259,11 +347,9 @@ class RoPE_infinicore():
                                   )
 
         out_torch = infini_tensor_2_torch_tensor(out)
-        # print(out_torch.shape)
 
         out_torch = out_torch.reshape(-1, ntok, num_attention_heads, head_dim).transpose(1, 2).contiguous()
 
-        # print(out_torch.shape)
         # exit()
         return out_torch
 
@@ -271,8 +357,9 @@ class RoPE_infinicore():
                 sin_table,
                 cos_table,
                 ):
-        # if isinstance(x, torch.Tensor):
-        #     return self.forward_torch(x, sin_table, cos_table)
+        if isinstance(x, torch.Tensor):
+            # return self.forward_torch(x, sin_table, cos_table)
+            return self.forward_torch_infini(x, sin_table, cos_table)
 
         return self.forward_infini(x, sin_table, cos_table)
 
@@ -302,9 +389,7 @@ class LlamaMLP_infinicore(infinicore.nn.Module):
 
         self.act_fn = ACT2FN[config.hidden_act]
 
-    def forward_infini(self, x: infinicore.Tensor
-                       ) -> infinicore.Tensor:
-        #  infinicore计算 
+    def forward_infini(self, x: infinicore.Tensor) -> infinicore.Tensor:
         down_proj = self.down_proj(self.act_fn(self.gate_proj(x)) * self.up_proj(x))
         return down_proj
 
@@ -312,26 +397,79 @@ class LlamaMLP_infinicore(infinicore.nn.Module):
         down_proj = self.down_proj(self.act_fn(self.gate_proj(x)) * self.up_proj(x))
         return down_proj
 
-    def forward(self, x: Union[infinicore.Tensor, torch.Tensor]
-                ):
-        if isinstance(x, infinicore.Tensor):
-            from infinicore.nn.modules.linear import create_infinicore_tensor, infini_tensor_2_torch_tensor
-            device_str = "cpu"
+    def forward(self, x: Union[infinicore.Tensor, torch.Tensor]):
+        if isinstance(x, torch.Tensor):
+            return self.forward_torch(x)
 
-            # 1
-            x_shape = x.shape
-            x_torch = x.reshape((-1, x_shape[-1]))
-            x_infinicore = create_infinicore_tensor(x_torch, device_str)
+        return self.forward_infini(x)
 
-            # 2
-            output_infinicore = self.forward_infini(x_infinicore)
+        from infinicore.nn.modules.linear import create_infinicore_tensor, infini_tensor_2_torch_tensor
+        device_str = "cpu"
 
-            # 3
-            output_torch = infini_tensor_2_torch_tensor(output_infinicore)
-            output_torch = output_torch.reshape((x_shape[0], x_shape[1], -1))
-            return output_torch
+        # 1
+        x_shape = x.shape
+        x_torch = x.reshape((-1, x_shape[-1]))
+        x_infinicore = create_infinicore_tensor(x_torch, device_str)
 
-        return self.forward_torch(x)
+        # 2
+        output_infinicore = self.forward_infini(x_infinicore)
+
+        # 3
+        output_torch = infini_tensor_2_torch_tensor(output_infinicore)
+        output_torch = output_torch.reshape((x_shape[0], x_shape[1], -1))
+        return output_torch
+
+
+class LlamaMLP_infinicore1029(infinicore.nn.Module):
+    def __init__(self, config):
+        super().__init__()
+        '''
+        nn.Linear 使用的是  infinicore.nn.Linear
+        nn.Silu 使用的是  infinicore.nn.Silu
+
+        整体的的输入是 touch.tensor，输出是 torch.tensor 
+        '''
+        import infinicore
+        from infinicore import nn
+
+        self.config = config
+        self.hidden_size = config.hidden_size
+        self.intermediate_size = config.intermediate_size
+
+        self.gate_proj = infinicore.nn.Linear(self.hidden_size, self.intermediate_size, bias=config.mlp_bias)
+        self.up_proj = infinicore.nn.Linear(self.hidden_size, self.intermediate_size, bias=config.mlp_bias)
+        self.down_proj = infinicore.nn.Linear(self.intermediate_size, self.hidden_size, bias=config.mlp_bias)
+
+        self.act_fn = ACT2FN[config.hidden_act]
+
+    def forward_infini(self, x: infinicore.Tensor) -> infinicore.Tensor:
+        # infinicore计算 
+        down_proj = self.down_proj(self.act_fn(self.gate_proj(x)) * self.up_proj(x))
+        return down_proj
+
+    def forward_torch(self, x: torch.Tensor):
+        down_proj = self.down_proj(self.act_fn(self.gate_proj(x)) * self.up_proj(x))
+        return down_proj
+
+    def forward(self, x: Union[infinicore.Tensor, torch.Tensor]):
+        if isinstance(x, torch.Tensor):
+            return self.forward_torch(x)
+
+        from infinicore.nn.modules.linear import create_infinicore_tensor, infini_tensor_2_torch_tensor
+        device_str = "cpu"
+
+        # 1
+        x_shape = x.shape
+        x_torch = x.reshape((-1, x_shape[-1]))
+        x_infinicore = create_infinicore_tensor(x_torch, device_str)
+
+        # 2
+        output_infinicore = self.forward_infini(x_infinicore)
+
+        # 3
+        output_torch = infini_tensor_2_torch_tensor(output_infinicore)
+        output_torch = output_torch.reshape((x_shape[0], x_shape[1], -1))
+        return output_torch
 
 
 class LlamaMLP_infinicore_v2(infinicore.nn.Module):
@@ -462,6 +600,112 @@ def eager_attention_forward(
     return attn_output, attn_weights
 
 
+class LlamaAttention_infinicore(nn.Module):
+    """Multi-headed attention from 'Attention Is All You Need' paper"""
+
+    def __init__(self, config: LlamaConfig, layer_idx: int):
+        super().__init__()
+        self.config = config
+        self.layer_idx = layer_idx
+        self.head_dim = getattr(config, "head_dim", config.hidden_size // config.num_attention_heads)
+        self.num_key_value_groups = config.num_attention_heads // config.num_key_value_heads
+        self.scaling = self.head_dim ** -0.5
+        self.attention_dropout = config.attention_dropout
+        self.is_causal = True
+
+        self.num_attention_heads = config.num_attention_heads
+        self.num_key_value_heads = config.num_key_value_heads
+        self.hidden_size = config.hidden_size
+
+        self.rope_infinicore = RoPE_infinicore_v2(config)
+
+        import infinicore
+        self.q_proj = infinicore.nn.Linear(
+            config.hidden_size, config.num_attention_heads * self.head_dim, bias=config.attention_bias
+        )
+        self.k_proj = infinicore.nn.Linear(
+            config.hidden_size, config.num_key_value_heads * self.head_dim, bias=config.attention_bias
+        )
+        self.v_proj = infinicore.nn.Linear(
+            config.hidden_size, config.num_key_value_heads * self.head_dim, bias=config.attention_bias
+        )
+        self.o_proj = torch.nn.Linear(
+            config.num_attention_heads * self.head_dim, config.hidden_size, bias=config.attention_bias
+        )
+
+    def forward(
+            self,
+            hidden_states: torch.Tensor,
+            position_embeddings: tuple[torch.Tensor, torch.Tensor],
+            attention_mask: Optional[torch.Tensor],
+            past_key_values: Optional[Cache] = None,
+            cache_position: Optional[torch.LongTensor] = None,
+            **kwargs: Unpack[TransformersKwargs],
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+
+        input_shape = hidden_states.shape[:-1]
+        hidden_shape = (*input_shape, -1, self.head_dim)
+
+        if False:
+            from infinicore.nn.modules.linear import create_infinicore_tensor, infini_tensor_2_torch_tensor
+            device_str = "cpu"
+            query_hidden_shape = (*input_shape, self.num_attention_heads, self.head_dim)
+            key_hidden_shape = (*input_shape, self.num_key_value_heads, self.head_dim)
+            value_hidden_shape = (*input_shape, self.num_key_value_heads, self.head_dim)
+
+            hidden_states_infinicore = create_infinicore_tensor(hidden_states, device_str)
+
+            query_states_infinicore = self.q_proj(hidden_states_infinicore).view(query_hidden_shape).permute((0, 2, 1, 3))
+            key_states_infinicore = self.k_proj(hidden_states_infinicore).view(key_hidden_shape).permute((0, 2, 1, 3))
+            value_states_infinicore = self.v_proj(hidden_states_infinicore).view(value_hidden_shape).permute((0, 2, 1, 3))
+
+            query_states = infini_tensor_2_torch_tensor(query_states_infinicore)
+            key_states = infini_tensor_2_torch_tensor(key_states_infinicore)
+            value_states = infini_tensor_2_torch_tensor(value_states_infinicore)
+
+        else:
+            query_states = self.q_proj(hidden_states).view(hidden_shape).transpose(1, 2)
+            key_states = self.k_proj(hidden_states).view(hidden_shape).transpose(1, 2)
+            value_states = self.v_proj(hidden_states).view(hidden_shape).transpose(1, 2)
+
+        cos, sin = position_embeddings
+        # print("apply_rotary_pos_emb: ", query_states.shape, key_states.shape, cos.shape, sin.shape)
+
+        # if True:
+        #     rope = RoPE_infinicore()
+        #     query_states = rope.forward(query_states, sin, cos)
+        #     key_states = rope.forward(key_states, sin, cos)
+        # else:
+        #     query_states, key_states = apply_rotary_pos_emb(query_states, key_states, cos, sin)
+
+        if True:
+            query_states = self.rope_infinicore.forward(query_states, cache_position)
+            key_states = self.rope_infinicore.forward(key_states, cache_position)
+
+        if past_key_values is not None:
+            # sin and cos are specific to RoPE models; cache_position needed for the static cache
+            cache_kwargs = {"sin": sin, "cos": cos, "cache_position": cache_position}
+            key_states, value_states = past_key_values.update(key_states, value_states, self.layer_idx, cache_kwargs)
+
+        attention_interface: Callable = eager_attention_forward
+        if self.config._attn_implementation != "eager":
+            attention_interface = ALL_ATTENTION_FUNCTIONS[self.config._attn_implementation]
+        attn_output, attn_weights = attention_interface(
+            self,
+            query_states,  # [bs, num_attention_heads, ntok, head_dim]
+            key_states,  # [bs, num_key_value_heads, all_tok, head_dim]
+            value_states,  # [bs, num_key_value_heads, all_tok, head_dim]
+            attention_mask,  # [1, 1, ntok,all_tok]
+            dropout=0.0,  #
+            scaling=self.scaling,  # 缩放系数 0.125
+            **kwargs,  # 'position_ids': tensor([[0, 1, 2, 3, 4]])
+        )
+
+        attn_output = attn_output.reshape(*input_shape, -1).contiguous()
+        attn_output = self.o_proj(attn_output)
+        return attn_output, attn_weights
+
+
 class LlamaAttention(nn.Module):
     """Multi-headed attention from 'Attention Is All You Need' paper"""
 
@@ -506,7 +750,7 @@ class LlamaAttention(nn.Module):
         value_states = self.v_proj(hidden_states).view(hidden_shape).transpose(1, 2)
 
         cos, sin = position_embeddings
-        #print("apply_rotary_pos_emb: ", query_states.shape, key_states.shape, cos.shape, sin.shape)
+        # print("apply_rotary_pos_emb: ", query_states.shape, key_states.shape, cos.shape, sin.shape)
         query_states, key_states = apply_rotary_pos_emb(query_states, key_states, cos, sin)
 
         if False:
@@ -522,8 +766,7 @@ class LlamaAttention(nn.Module):
         attention_interface: Callable = eager_attention_forward
         if self.config._attn_implementation != "eager":
             attention_interface = ALL_ATTENTION_FUNCTIONS[self.config._attn_implementation]
-
-        attn_output, attn_weights = attention_interface( 
+        attn_output, attn_weights = attention_interface(
             self,
             query_states,  # [bs, num_attention_heads, ntok, head_dim]
             key_states,  # [bs, num_key_value_heads, all_tok, head_dim]
@@ -544,7 +787,8 @@ class LlamaDecoderLayer(GradientCheckpointingLayer):
         super().__init__()
         self.hidden_size = config.hidden_size
 
-        self.self_attn = LlamaAttention(config=config, layer_idx=layer_idx)
+        # self.self_attn = LlamaAttention(config=config, layer_idx=layer_idx)
+        self.self_attn = LlamaAttention_infinicore(config=config, layer_idx=layer_idx)
 
         self.mlp = LlamaMLP(config)
         # self.mlp = LlamaMLP_infinicore(config)
@@ -568,7 +812,7 @@ class LlamaDecoderLayer(GradientCheckpointingLayer):
             **kwargs: Unpack[TransformersKwargs],
     ) -> torch.Tensor:
         residual = hidden_states
-        # ---->
+
         if False:
             from infinicore.nn.modules.linear import create_infinicore_tensor, infini_tensor_2_torch_tensor
             device_str = "cpu"
@@ -604,7 +848,19 @@ class LlamaDecoderLayer(GradientCheckpointingLayer):
         # Fully Connected
         residual = hidden_states
         hidden_states = self.post_attention_layernorm(hidden_states)
+
         hidden_states = self.mlp(hidden_states)
+        if False:
+            from infinicore.nn.modules.linear import create_infinicore_tensor, infini_tensor_2_torch_tensor
+            device_str = "cpu"
+            hidden_states_shape = hidden_states.shape
+            hidden_states_infinicore = create_infinicore_tensor(hidden_states, device_str)
+
+            hidden_states_infinicore = self.mlp(hidden_states_infinicore)
+
+            hidden_states_output_torch = infini_tensor_2_torch_tensor(hidden_states_infinicore, device_str)
+            hidden_states = hidden_states_output_torch
+
         hidden_states = residual + hidden_states
         return hidden_states
 
