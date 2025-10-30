@@ -36,7 +36,7 @@ from ...utils import (
     logging,
 )
 from ...utils.deprecation import deprecate_kwarg
-from ..llama.modeling_llama import (
+from ..llama.modeling_llama_torch import (
     LlamaForCausalLM,
     LlamaForQuestionAnswering,
     LlamaForSequenceClassification,

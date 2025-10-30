@@ -19,7 +19,7 @@ from torch import nn
 from ...modeling_rope_utils import dynamic_rope_update
 from ...utils import auto_docstring, can_return_tuple
 from ..glm.modeling_glm import rotate_half
-from ..llama.modeling_llama import (
+from ..llama.modeling_llama_torch import (
     LlamaAttention,
     LlamaForCausalLM,
     LlamaMLP,

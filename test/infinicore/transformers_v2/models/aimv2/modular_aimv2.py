@@ -31,7 +31,7 @@ from ...utils import (
     can_return_tuple,
 )
 from ..clip.modeling_clip import CLIPModel, CLIPTextEmbeddings, _get_vector_norm
-from ..llama.modeling_llama import LlamaMLP, LlamaRMSNorm
+from ..llama.modeling_llama_torch import LlamaMLP, LlamaRMSNorm
 from ..siglip.configuration_siglip import SiglipConfig, SiglipTextConfig, SiglipVisionConfig
 from ..siglip.modeling_siglip import SiglipAttention, SiglipEncoder, SiglipOutput
 

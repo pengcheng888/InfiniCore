@@ -20,7 +20,7 @@ import torch.nn as nn
 import torch.utils.checkpoint
 
 from ...utils import logging
-from ..llama.modeling_llama import (
+from ..llama.modeling_llama_torch import (
     LlamaAttention,
     LlamaForCausalLM,
     LlamaForSequenceClassification,

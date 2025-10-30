@@ -34,7 +34,7 @@ from ...utils import (
 )
 from ...utils.deprecation import deprecate_kwarg
 from ...utils.generic import OutputRecorder, check_model_inputs
-from ..llama.modeling_llama import (
+from ..llama.modeling_llama_torch import (
     LlamaDecoderLayer,
     LlamaPreTrainedModel,
     LlamaRMSNorm,

@@ -27,7 +27,7 @@ from ...utils import (
 )
 from ...utils.deprecation import deprecate_kwarg
 from ..llama.configuration_llama import LlamaConfig
-from ..llama.modeling_llama import (
+from ..llama.modeling_llama_torch import (
     LlamaDecoderLayer,
     LlamaForCausalLM,
     LlamaForSequenceClassification,

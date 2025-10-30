@@ -18,7 +18,7 @@ from ...utils import TransformersKwargs, auto_docstring, logging
 from ...utils.deprecation import deprecate_kwarg
 from ...utils.generic import check_model_inputs
 from ...utils.import_utils import get_torch_version
-from ..llama.modeling_llama import (
+from ..llama.modeling_llama_torch import (
     LlamaAttention,
     LlamaDecoderLayer,
     LlamaForCausalLM,

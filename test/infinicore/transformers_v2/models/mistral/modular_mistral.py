@@ -16,7 +16,7 @@ from ...modeling_utils import ALL_ATTENTION_FUNCTIONS
 from ...processing_utils import Unpack
 from ...utils import TransformersKwargs, auto_docstring, logging
 from ...utils.deprecation import deprecate_kwarg
-from ..llama.modeling_llama import (
+from ..llama.modeling_llama_torch import (
     LlamaAttention,
     LlamaDecoderLayer,
     LlamaForCausalLM,

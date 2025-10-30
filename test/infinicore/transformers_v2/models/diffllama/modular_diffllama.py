@@ -27,7 +27,7 @@ from ...modeling_utils import PreTrainedModel
 from ...utils import logging
 from ...utils.deprecation import deprecate_kwarg
 from ..gemma.modeling_gemma import GemmaForCausalLM
-from ..llama.modeling_llama import (
+from ..llama.modeling_llama_torch import (
     LlamaDecoderLayer,
     LlamaForQuestionAnswering,
     LlamaForSequenceClassification,

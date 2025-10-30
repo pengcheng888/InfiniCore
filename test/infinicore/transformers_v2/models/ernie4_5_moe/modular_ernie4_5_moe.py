@@ -27,7 +27,7 @@ from ...processing_utils import Unpack
 from ...utils import TransformersKwargs, auto_docstring, can_return_tuple, logging
 from ...utils.generic import OutputRecorder, check_model_inputs
 from ..ernie4_5.modeling_ernie4_5 import Ernie4_5RotaryEmbedding, apply_rotary_pos_emb, rotate_half  # noqa: F401
-from ..llama.modeling_llama import LlamaAttention, LlamaRMSNorm
+from ..llama.modeling_llama_torch import LlamaAttention, LlamaRMSNorm
 from ..mixtral.modeling_mixtral import (
     MixtralForCausalLM,
     MixtralPreTrainedModel,

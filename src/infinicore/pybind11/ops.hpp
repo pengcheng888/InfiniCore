@@ -4,12 +4,12 @@
 
 #include "ops/add.hpp"
 #include "ops/attention.hpp"
+#include "ops/embedding.hpp"
 #include "ops/linear.hpp"
 #include "ops/matmul.hpp"
 #include "ops/rearrange.hpp"
 #include "ops/rms_norm.hpp"
 #include "ops/rope.hpp"
-
 namespace py = pybind11;
 
 namespace infinicore::ops {
@@ -22,6 +22,7 @@ inline void bind(py::module &m) {
     bind_rms_norm(m);
     bind_rope(m);
     bind_linear(m);
+    bind_embedding(m);
 }
 
 } // namespace infinicore::ops

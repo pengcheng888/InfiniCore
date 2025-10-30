@@ -97,6 +97,8 @@ public:
 
     std::byte *data();
     const std::byte *data() const;
+    // wpc
+    std::byte *data(ptrdiff_t offset) const;
 
     const Shape &shape() const;
 

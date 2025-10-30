@@ -14,7 +14,7 @@ from ...processing_utils import Unpack
 from ...utils import TransformersKwargs, logging
 from ...utils.deprecation import deprecate_kwarg
 from ..clip.modeling_clip import CLIPMLP
-from ..llama.modeling_llama import (
+from ..llama.modeling_llama_torch import (
     LlamaAttention,
     LlamaForCausalLM,
     LlamaForSequenceClassification,

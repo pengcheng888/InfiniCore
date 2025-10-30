@@ -162,7 +162,7 @@ class BitLinear(nn.Module):
         # Optional RMSNorm (applied on the activations before quantization).
         self.rms_norm = None
         if use_rms_norm:
-            from ..models.llama.modeling_llama import LlamaRMSNorm
+            from ..models.llama.modeling_llama_torch import LlamaRMSNorm
 
             self.rms_norm = LlamaRMSNorm(in_features, eps=rms_norm_eps)
 
@@ -273,7 +273,7 @@ class AutoBitLinear(nn.Linear):
         # Optional RMSNorm
         self.rms_norm = None
         if use_rms_norm:
-            from ..models.llama.modeling_llama import LlamaRMSNorm
+            from ..models.llama.modeling_llama_torch import LlamaRMSNorm
 
             self.rms_norm = LlamaRMSNorm(in_features, eps=rms_norm_eps)
         if not online_quant:

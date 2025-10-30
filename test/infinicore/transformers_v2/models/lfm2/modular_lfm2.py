@@ -26,7 +26,7 @@ from ...utils import TransformersKwargs, logging
 from ...utils.deprecation import deprecate_kwarg
 from ...utils.import_utils import is_causal_conv1d_available
 from ..bamba.modeling_bamba import apply_mask_to_padding_states
-from ..llama.modeling_llama import (
+from ..llama.modeling_llama_torch import (
     LlamaAttention,
     LlamaForCausalLM,
     LlamaModel,

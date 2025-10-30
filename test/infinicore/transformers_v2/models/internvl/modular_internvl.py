@@ -32,7 +32,7 @@ from ...processing_utils import Unpack
 from ...utils import auto_docstring, can_return_tuple, logging, torch_int
 from ..clip.modeling_clip import CLIPMLP
 from ..janus.modeling_janus import JanusVisionAttention
-from ..llama.modeling_llama import LlamaRMSNorm
+from ..llama.modeling_llama_torch import LlamaRMSNorm
 from ..llava.modeling_llava import (
     LlavaCausalLMOutputWithPast,
     LlavaForConditionalGeneration,

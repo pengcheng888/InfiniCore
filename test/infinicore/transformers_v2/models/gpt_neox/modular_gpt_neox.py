@@ -20,7 +20,7 @@ from ...modeling_outputs import (
 from ...modeling_utils import ALL_ATTENTION_FUNCTIONS, PreTrainedModel
 from ...processing_utils import Unpack
 from ...utils import TransformersKwargs, auto_docstring, can_return_tuple, logging
-from ..llama.modeling_llama import LlamaModel, LlamaPreTrainedModel, LlamaRotaryEmbedding, rotate_half
+from ..llama.modeling_llama_torch import LlamaModel, LlamaPreTrainedModel, LlamaRotaryEmbedding, rotate_half
 
 
 logger = logging.get_logger(__name__)

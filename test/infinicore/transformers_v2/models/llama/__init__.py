@@ -20,7 +20,7 @@ from ...utils.import_utils import define_import_structure
 if TYPE_CHECKING:
     from .configuration_llama import *
     from .modeling_flax_llama import *
-    from .modeling_llama import *
+    from .modeling_llama_torch import *
     from .tokenization_llama import *
     from .tokenization_llama_fast import *
 else:

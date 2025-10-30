@@ -25,7 +25,7 @@ from ...processing_utils import Unpack
 from ...utils import logging
 from ...utils.deprecation import deprecate_kwarg
 from ..gemma.modeling_gemma import GemmaMLP
-from ..llama.modeling_llama import (
+from ..llama.modeling_llama_torch import (
     LlamaAttention,
     LlamaDecoderLayer,
     LlamaForCausalLM,

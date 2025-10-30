@@ -42,7 +42,7 @@ from ...utils import TensorType, TransformersKwargs, auto_docstring, can_return_
 from ...utils.import_utils import is_torch_available
 from ..auto import CONFIG_MAPPING, AutoConfig, AutoTokenizer
 from ..llama.configuration_llama import LlamaConfig
-from ..llama.modeling_llama import (
+from ..llama.modeling_llama_torch import (
     LlamaAttention,
     LlamaDecoderLayer,
     LlamaForCausalLM,

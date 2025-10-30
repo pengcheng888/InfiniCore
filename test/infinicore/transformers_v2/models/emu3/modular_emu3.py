@@ -34,7 +34,7 @@ from ..chameleon.modeling_chameleon import (
     ChameleonPreTrainedModel,
     ChameleonVQVAEEncoderConvDownsample,
 )
-from ..llama.modeling_llama import LlamaAttention, LlamaDecoderLayer, LlamaForCausalLM, LlamaModel, TransformersKwargs
+from ..llama.modeling_llama_torch import LlamaAttention, LlamaDecoderLayer, LlamaForCausalLM, LlamaModel, TransformersKwargs
 from ..siglip.modeling_siglip import SiglipAttention
 from .configuration_emu3 import Emu3Config, Emu3TextConfig, Emu3VQVAEConfig
 

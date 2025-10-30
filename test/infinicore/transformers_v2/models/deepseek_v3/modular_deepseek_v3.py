@@ -14,7 +14,7 @@ from ...modeling_utils import ALL_ATTENTION_FUNCTIONS, PreTrainedModel
 from ...processing_utils import Unpack
 from ...utils import logging
 from ...utils.deprecation import deprecate_kwarg
-from ..llama.modeling_llama import (
+from ..llama.modeling_llama_torch import (
     LlamaDecoderLayer,
     LlamaForCausalLM,
     LlamaModel,

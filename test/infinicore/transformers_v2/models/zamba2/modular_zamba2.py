@@ -35,7 +35,7 @@ from ...utils.import_utils import (
     is_causal_conv1d_available,
     is_mamba_ssm_available,
 )
-from ..llama.modeling_llama import LlamaRotaryEmbedding, apply_rotary_pos_emb
+from ..llama.modeling_llama_torch import LlamaRotaryEmbedding, apply_rotary_pos_emb
 from ..mamba2.modeling_mamba2 import pad_tensor_by_size, reshape_into_chunks, segment_sum
 from ..zamba.modeling_zamba import (
     ZambaAttention,

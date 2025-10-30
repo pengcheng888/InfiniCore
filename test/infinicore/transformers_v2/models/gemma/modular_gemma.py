@@ -26,7 +26,7 @@ from ...modeling_outputs import BaseModelOutputWithPast
 from ...processing_utils import Unpack
 from ...tokenization_utils import AddedToken, PreTrainedTokenizer
 from ...utils import TransformersKwargs, logging
-from ..llama.modeling_llama import (
+from ..llama.modeling_llama_torch import (
     LlamaForCausalLM,
     LlamaForSequenceClassification,
     LlamaForTokenClassification,

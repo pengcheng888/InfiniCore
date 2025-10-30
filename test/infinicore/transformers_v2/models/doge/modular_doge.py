@@ -35,7 +35,7 @@ from ...processing_utils import Unpack
 from ...utils import TransformersKwargs, is_torch_flex_attn_available
 from ...utils.deprecation import deprecate_kwarg
 from ...utils.generic import OutputRecorder
-from ..llama.modeling_llama import (
+from ..llama.modeling_llama_torch import (
     LlamaForSequenceClassification,
     LlamaMLP,
     LlamaPreTrainedModel,

@@ -17,7 +17,7 @@
 from transformers.utils import auto_docstring, logging
 
 from ..llama.configuration_llama import LlamaConfig
-from ..llama.modeling_llama import (
+from ..llama.modeling_llama_torch import (
     LlamaForCausalLM,
     LlamaForQuestionAnswering,
     LlamaForSequenceClassification,

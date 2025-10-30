@@ -25,12 +25,3 @@ inline void bind_linear(py::module &m) {
 
 } // namespace infinicore::ops
 
-/*
-    m.def("linear",
-          &op::linear,
-          py::arg("input"),
-          py::arg("weight"),
-          //   py::arg("bias"),
-          //   py::arg("has_bias"),
-          R"doc(Matrix multiplication of two tensors.)doc");
-*/

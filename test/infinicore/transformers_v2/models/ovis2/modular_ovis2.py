@@ -25,7 +25,7 @@ from ...modeling_utils import PreTrainedModel
 from ...utils import auto_docstring, can_return_tuple
 from ..aimv2.modeling_aimv2 import Aimv2Attention, Aimv2EncoderLayer
 from ..auto import AutoModel
-from ..llama.modeling_llama import LlamaMLP, LlamaRMSNorm
+from ..llama.modeling_llama_torch import LlamaMLP, LlamaRMSNorm
 from ..llava.modeling_llava import LlavaForConditionalGeneration, LlavaModel
 from ..llava_next.modeling_llava_next import LlavaNextCausalLMOutputWithPast, LlavaNextModelOutputWithPast
 from ..siglip.modeling_siglip import SiglipEncoder, SiglipVisionEmbeddings

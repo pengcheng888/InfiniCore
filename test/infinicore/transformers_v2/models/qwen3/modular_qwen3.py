@@ -26,7 +26,7 @@ from ...processing_utils import Unpack
 from ...utils import TransformersKwargs, logging
 from ...utils.deprecation import deprecate_kwarg
 from ..gemma.modeling_gemma import GemmaMLP
-from ..llama.modeling_llama import (
+from ..llama.modeling_llama_torch import (
     LlamaAttention,
 )
 from ..qwen2.modeling_qwen2 import (

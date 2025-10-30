@@ -49,7 +49,7 @@ from ..esm.modeling_esm import (
     EsmSelfAttention,
     EsmSelfOutput,
 )
-from ..llama.modeling_llama import (
+from ..llama.modeling_llama_torch import (
     LlamaAttention,
     LlamaDecoderLayer,
     LlamaMLP,

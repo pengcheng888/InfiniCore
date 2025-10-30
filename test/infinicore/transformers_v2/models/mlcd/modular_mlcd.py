@@ -32,7 +32,7 @@ from ..clip.modeling_clip import (
     CLIPVisionModel,
     CLIPVisionTransformer,
 )
-from ..llama.modeling_llama import eager_attention_forward
+from ..llama.modeling_llama_torch import eager_attention_forward
 from ..qwen2_vl.modeling_qwen2_vl import VisionRotaryEmbedding, apply_rotary_pos_emb_vision
 
 

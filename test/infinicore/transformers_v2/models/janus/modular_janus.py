@@ -61,7 +61,7 @@ from ..chameleon.modeling_chameleon import (
     ChameleonVQVAEVectorQuantizer,
 )
 from ..idefics.modeling_idefics import IdeficsBaseModelOutputWithPast, IdeficsCausalLMOutputWithPast
-from ..llama.modeling_llama import eager_attention_forward
+from ..llama.modeling_llama_torch import eager_attention_forward
 from ..siglip.configuration_siglip import SiglipVisionConfig
 from ..siglip.modeling_siglip import SiglipEncoder, SiglipEncoderLayer, SiglipVisionEmbeddings
 

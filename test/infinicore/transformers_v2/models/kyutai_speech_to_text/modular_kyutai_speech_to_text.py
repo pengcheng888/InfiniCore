@@ -27,7 +27,7 @@ from ...modeling_utils import PreTrainedModel
 from ...utils import PaddingStrategy, TensorType, logging
 from ..auto import AutoModel
 from ..encodec.feature_extraction_encodec import EncodecFeatureExtractor
-from ..llama.modeling_llama import LlamaForCausalLM
+from ..llama.modeling_llama_torch import LlamaForCausalLM
 from ..mimi.modeling_mimi import MimiConv1dPaddingCache
 from ..moshi.modeling_moshi import MoshiModel, MoshiPreTrainedModel
 

@@ -10,7 +10,7 @@ from ...modeling_utils import ALL_ATTENTION_FUNCTIONS
 from ...processing_utils import Unpack
 from ...utils import logging
 from ...utils.deprecation import deprecate_kwarg
-from ..llama.modeling_llama import LlamaPreTrainedModel, LlamaRMSNorm, eager_attention_forward
+from ..llama.modeling_llama_torch import LlamaPreTrainedModel, LlamaRMSNorm, eager_attention_forward
 from ..olmo.configuration_olmo import OlmoConfig
 from ..olmo.modeling_olmo import (
     OlmoAttention,
