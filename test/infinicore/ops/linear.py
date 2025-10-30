@@ -95,55 +95,15 @@ def func9():
 
 def func10():
     import infinicore
-    from typing import Callable, Optional, Union
-    class RoPE_infinicore_v2():
-        sin_table: Union[infinicore.Tensor, None] = None
-        cos_table: Union[infinicore.Tensor, None] = None
 
-        def __init__(self, config):
-            self.max_position_embeddings = config.max_position_embeddings
-            self.rope_theta = config.rope_theta
-            self.head_dim = getattr(config, "head_dim", None) or config.hidden_size // config.num_attention_heads
-
-            if self.get_sin_table() is None:
-                print("create")
-
-                sin_table, cos_table = self.create_sin_cos_table(self.max_position_embeddings, head_dim=self.head_dim, theta=self.rope_theta)
-                print(sin_table.shape)
-                print(cos_table.shape)
-
-                from infinicore.nn.modules.linear import create_infinicore_tensor, infini_tensor_2_torch_tensor
-                device_str = "cpu"
-                RoPE_infinicore_v2.sin_table = create_infinicore_tensor(sin_table, device_str)
-                RoPE_infinicore_v2.cos_table = create_infinicore_tensor(cos_table, device_str)
-
-            print(id(RoPE_infinicore_v2.sin_table))
-
-            print(id(self.get_sin_table()))
-
-        def get_sin_table(self):
-            return RoPE_infinicore_v2.sin_table
-
-        def get_cos_table(self):
-            return RoPE_infinicore_v2.cos_table
-
-        def create_sin_cos_table(self, max_position, head_dim=64, theta=10000.0):
-            import torch
-
-            assert head_dim % 2 == 0, "Embedding dimension must be even."
-            pos = torch.arange(0, max_position)
-            freqs = 1.0 / (theta ** (torch.arange(0, head_dim, 2)[: (head_dim // 2)].float() / head_dim))
-            angles = torch.outer(pos, freqs)
-            return torch.sin(angles), torch.cos(angles)
 
     class config:
         head_dim = 64
         max_position_embeddings = 10
         rope_theta = 10000.0
 
-    a = RoPE_infinicore_v2(config())
-    b = RoPE_infinicore_v2(config())
-    b = RoPE_infinicore_v2(config())
+    a = infinicore.nn.RoPE(config())
+    b = infinicore.nn.RoPE(config())
 
 
 if __name__ == "__main__":

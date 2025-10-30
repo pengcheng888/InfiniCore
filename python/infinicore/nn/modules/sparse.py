@@ -75,7 +75,8 @@ class Embedding(Module):
         if _weight is None:
             self.weight = Parameter(torch.empty((num_embeddings, embedding_dim), **factory_kwargs), requires_grad=False)
         else:
-            assert list(_weight.shape) == [num_embeddings, embedding_dim, ], "Shape of weight does not match num_embeddings and embedding_dim"
+            assert list(_weight.shape) == [num_embeddings,
+                                           embedding_dim, ], "Shape of weight does not match num_embeddings and embedding_dim"
             self.weight = Parameter(_weight, requires_grad=False)
 
     def forward(self,

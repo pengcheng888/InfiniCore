@@ -20,21 +20,20 @@ class InfiniSiLU(Module):
 
     def forward_torch(self, input: torch.Tensor) -> torch.Tensor:
         InfiniSiLU.shared_count += 1
-        #print('InfiniSiLU forward_torch ',  InfiniSiLU.shared_count )
+        # print('InfiniSiLU forward_torch ',  InfiniSiLU.shared_count )
         return F.silu(input, inplace=self.inplace)
 
     def forward_infinicore(self, input: infinicore.Tensor, device_str="cpu"):
-    
         InfiniSiLU.shared_count += 1
-        #print('InfiniSiLU forward_infinicore ', InfiniSiLU.shared_count )
+        # print('InfiniSiLU forward_infinicore ', InfiniSiLU.shared_count )
 
         # 转为 torch 计算
-        from .linear import create_infinicore_tensor,infini_tensor_2_torch_tensor
+        from .linear import create_infinicore_tensor, infini_tensor_2_torch_tensor
 
         input_torch = infini_tensor_2_torch_tensor(input, device_str=device_str)
         output_torch = F.silu(input_torch, inplace=self.inplace)
         output_infinicore = create_infinicore_tensor(output_torch, device_str)
-        
+
         # raise Exception('SiLU forward_infinicore not support !!!')
         return output_infinicore
 
@@ -43,7 +42,7 @@ class InfiniSiLU(Module):
                 ) -> Union[infinicore.Tensor, torch.Tensor]:
         if isinstance(input, torch.Tensor):
             return self.forward_torch(input)
-            
+
         return self.forward_infinicore(input)
 
     def extra_repr(self) -> str:
