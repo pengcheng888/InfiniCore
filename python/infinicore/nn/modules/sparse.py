@@ -93,6 +93,8 @@ class Embedding(Module):
         device_str = "cpu"
         if self.weight_infini is None:
             self.weight_infini = create_infinicore_tensor(self.weight, device_str)
+
+        print("self.weight: ",self.weight.dtype)
         return infinicore.embedding(input, self.weight_infini)
 
     def forward_torch2torch(self,
@@ -109,7 +111,8 @@ class Embedding(Module):
         device_str = "cpu"
         input_infini = create_infinicore_tensor(input, device_str)
         weight_infini = create_infinicore_tensor(self.weight, device_str)
-
+  
+        
         inputs_embeds_infini = infinicore.embedding(input_infini, weight_infini)
         inputs_embeds_torch = infini_tensor_2_torch_tensor(inputs_embeds_infini)
 

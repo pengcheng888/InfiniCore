@@ -86,12 +86,6 @@ class RoPE():  # Module
         if algo == Algorithm.GPT_J:
             raise ValueError("RoPE not support")
         else:
-            print(states.dtype)
-            print(_sin_table.dtype)
-            print(_cos_table.dtype)
-            print(position_ids)
-            print(type(position_ids),position_ids.dtype)
-
             out = infinicore.rope(states,
                                   torch_tensor_2_infini_tensor(position_ids),
                                   _sin_table,

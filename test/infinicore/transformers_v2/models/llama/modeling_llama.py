@@ -32,7 +32,7 @@ from ...modeling_outputs import (
     CausalLMOutputWithPast,
 )
 from ...activations import ACT2FN
-from ...modeling_utils import ALL_ATTENTION_FUNCTIONS, PreTrainedModel
+from ...modeling_utils_wpc import ALL_ATTENTION_FUNCTIONS, PreTrainedModel
 from ...processing_utils import Unpack
 from ...utils import TransformersKwargs, auto_docstring, can_return_tuple, logging
 
@@ -45,7 +45,6 @@ import infinicore
 import torch
 
 from enum import Enum, auto
-
 
 class LlamaRMSNorm(infinicore.nn.Module):
     def __init__(self, hidden_size, eps=1e-6):
@@ -324,13 +323,14 @@ class LlamaModel(torch.nn.Module):  # LlamaPreTrainedModel  torch.nn.Module
         if inputs_embeds is None:
             # input_ids :     {1,5}       tensor([[    1,  1128,   526,   366, 29892]])
             # inputs_embeds : {1,5,2048}  tensor([[[...]]])
-            input_ids = input_ids.to(dtype=torch.int32)
+            # input_ids = input_ids.to(dtype=torch.int32)
             if True:
                 from infinicore.nn.modules.linear import create_infinicore_tensor, infini_tensor_2_torch_tensor
 
                 input_ids_infini = create_infinicore_tensor(input_ids, "cpu")
 
                 inputs_embeds_infini = self.embed_tokens(input_ids_infini)
+        
                 inputs_embeds = infini_tensor_2_torch_tensor(inputs_embeds_infini)
 
             else:
