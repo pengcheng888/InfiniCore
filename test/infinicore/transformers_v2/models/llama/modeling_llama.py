@@ -33,6 +33,7 @@ from ...modeling_outputs import (
     BaseModelOutputWithPast,
     CausalLMOutputWithPast,
 )
+from ...activations import ACT2FN
 from ...modeling_utils import ALL_ATTENTION_FUNCTIONS, PreTrainedModel
 from ...processing_utils import Unpack
 from ...utils import TransformersKwargs, auto_docstring, can_return_tuple, logging
@@ -46,7 +47,42 @@ import infinicore
 import torch
 
 from enum import Enum, auto
-import infinicore
+
+
+
+class LlamaRMSNorm(infinicore.nn.Module):
+    def __init__(self, hidden_size, eps=1e-6):
+        super().__init__()
+        self.weight = torch.nn.Parameter(torch.ones(hidden_size))
+        self.variance_epsilon = eps
+        self.weight_infini = None
+
+    def forward(self, hidden_states: infinicore.Tensor) -> infinicore.Tensor:
+        from infinicore.nn.modules.linear import torch_tensor_2_infini_tensor
+        if self.weight_infini is None:
+            self.weight_infini = torch_tensor_2_infini_tensor(self.weight)
+        return infinicore.rms_norm(hidden_states, self.weight_infini, self.variance_epsilon)
+
+
+
+class LlamaMLP(infinicore.nn.Module):
+    def __init__(self, config):
+        super().__init__()
+        
+        self.config = config
+        self.hidden_size = config.hidden_size
+        self.intermediate_size = config.intermediate_size
+
+        self.gate_proj = infinicore.nn.Linear(self.hidden_size, self.intermediate_size, bias=config.mlp_bias)
+        self.up_proj = infinicore.nn.Linear(self.hidden_size, self.intermediate_size, bias=config.mlp_bias)
+        self.down_proj = infinicore.nn.Linear(self.intermediate_size, self.hidden_size, bias=config.mlp_bias)
+        self.act_fn =  ACT2FN[config.hidden_act]
+
+    def forward(self, x: infinicore.Tensor) -> infinicore.Tensor:
+        down_proj = self.down_proj(self.act_fn(self.gate_proj(x)) * self.up_proj(x))
+        return down_proj
+
+
 
 
 def eager_attention_forward(
@@ -183,9 +219,9 @@ class LlamaDecoderLayer(GradientCheckpointingLayer):
         self.hidden_size = config.hidden_size
 
         self.self_attn = LlamaAttention(config=config, layer_idx=layer_idx)
-        self.mlp = infinicore.nn.MLP(config)
-        self.input_layernorm = infinicore.nn.RMSNorm(config.hidden_size, eps=config.rms_norm_eps)
-        self.post_attention_layernorm = infinicore.nn.RMSNorm(config.hidden_size, eps=config.rms_norm_eps)
+        self.mlp = LlamaMLP(config)
+        self.input_layernorm = LlamaRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
+        self.post_attention_layernorm = LlamaRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
 
     def forward(self,
                 hidden_states: infinicore.Tensor,  # [bs, ntok, hidden_size]
@@ -248,10 +284,10 @@ class LlamaModel(LlamaPreTrainedModel):
 
         self.embed_tokens = infinicore.nn.Embedding(config.vocab_size, config.hidden_size)
 
-        self.layers = nn.ModuleList(
+        self.layers = torch.nn.ModuleList(
             [LlamaDecoderLayer(config, layer_idx) for layer_idx in range(config.num_hidden_layers)]
         )
-        self.norm = infinicore.nn.RMSNorm(config.hidden_size, eps=config.rms_norm_eps)
+        self.norm = LlamaRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
 
         self.gradient_checkpointing = False
 
@@ -278,7 +314,6 @@ class LlamaModel(LlamaPreTrainedModel):
             # inputs_embeds : {1,5,2048}  tensor([[[...]]])
             input_ids = input_ids.to(dtype=torch.int32)
             if True:
-                import infinicore
                 from infinicore.nn.modules.linear import create_infinicore_tensor, infini_tensor_2_torch_tensor
 
                 input_ids_infini = create_infinicore_tensor(input_ids, "cpu")
