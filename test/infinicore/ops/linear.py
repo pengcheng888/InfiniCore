@@ -74,6 +74,7 @@ def func8_mul():
     print("============================>", y)
 
     print(torch.nn.functional.linear(a, b, bias))
+    print(torch.nn.functional.linear(a, b))
 
 
 def func9():
@@ -107,21 +108,4 @@ def func10():
 
 
 if __name__ == "__main__":
-    # func8_mul()
-    func10()
-    exit()
-
-
-    def create_sin_cos_table(max_position, dim=64, theta=10000.0):
-        import torch
-        pos = torch.range(0, max_position)
-        print(pos)
-        assert dim % 2 == 0, "Embedding dimension must be even."
-        freqs = 1.0 / (theta ** (torch.arange(0, dim, 2)[: (dim // 2)].float() / dim))
-        angles = torch.outer(pos, freqs)
-        return torch.sin(angles), torch.cos(angles)
-
-
-    sin_table, cos_table = create_sin_cos_table(10)
-    print(sin_table.shape)
-    print(cos_table.shape)
+    func8_mul()

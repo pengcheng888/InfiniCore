@@ -18,17 +18,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from typing import Callable, Optional, Union
-
+import os
 import torch
 from torch import nn
 
 from ...cache_utils import Cache, DynamicCache
 from ...generation import GenerationMixin
-from ...integrations import use_kernel_forward_from_hub
+
 from ...masking_utils import create_causal_mask
-from ...modeling_layers import (
-    GradientCheckpointingLayer,
-)
+
 from ...modeling_outputs import (
     BaseModelOutputWithPast,
     CausalLMOutputWithPast,
@@ -37,7 +35,7 @@ from ...activations import ACT2FN
 from ...modeling_utils import ALL_ATTENTION_FUNCTIONS, PreTrainedModel
 from ...processing_utils import Unpack
 from ...utils import TransformersKwargs, auto_docstring, can_return_tuple, logging
-from ...utils.deprecation import deprecate_kwarg
+
 from ...utils.generic import check_model_inputs
 from .configuration_llama import LlamaConfig
 
@@ -49,11 +47,11 @@ import torch
 from enum import Enum, auto
 
 
-
 class LlamaRMSNorm(infinicore.nn.Module):
     def __init__(self, hidden_size, eps=1e-6):
         super().__init__()
-        self.weight = torch.nn.Parameter(torch.ones(hidden_size))
+        self.training = False
+        self.weight = torch.nn.Parameter(torch.ones(hidden_size), requires_grad=False)
         self.variance_epsilon = eps
         self.weight_infini = None
 
@@ -64,11 +62,10 @@ class LlamaRMSNorm(infinicore.nn.Module):
         return infinicore.rms_norm(hidden_states, self.weight_infini, self.variance_epsilon)
 
 
-
 class LlamaMLP(infinicore.nn.Module):
     def __init__(self, config):
         super().__init__()
-        
+
         self.config = config
         self.hidden_size = config.hidden_size
         self.intermediate_size = config.intermediate_size
@@ -76,13 +73,11 @@ class LlamaMLP(infinicore.nn.Module):
         self.gate_proj = infinicore.nn.Linear(self.hidden_size, self.intermediate_size, bias=config.mlp_bias)
         self.up_proj = infinicore.nn.Linear(self.hidden_size, self.intermediate_size, bias=config.mlp_bias)
         self.down_proj = infinicore.nn.Linear(self.intermediate_size, self.hidden_size, bias=config.mlp_bias)
-        self.act_fn =  ACT2FN[config.hidden_act]
+        self.act_fn = ACT2FN[config.hidden_act]
 
     def forward(self, x: infinicore.Tensor) -> infinicore.Tensor:
         down_proj = self.down_proj(self.act_fn(self.gate_proj(x)) * self.up_proj(x))
         return down_proj
-
-
 
 
 def eager_attention_forward(
@@ -213,7 +208,9 @@ class LlamaAttention(infinicore.nn.Module):
         return attn_output
 
 
-class LlamaDecoderLayer(GradientCheckpointingLayer):
+# class LlamaDecoderLayer(GradientCheckpointingLayer):
+
+class LlamaDecoderLayer(infinicore.nn.Module):
     def __init__(self, config: LlamaConfig, layer_idx: int):
         super().__init__()
         self.hidden_size = config.hidden_size
@@ -275,10 +272,31 @@ class LlamaPreTrainedModel(PreTrainedModel):
     }
 
 
-@auto_docstring
-class LlamaModel(LlamaPreTrainedModel):
+VLMS = [
+    "aria",
+    "ayavision",
+    "colpali",
+    "emu3",
+    "fuyu",
+    "gotocr2",
+    "gemma3",
+    "internvl",
+    "llava",  # all llava prefixed models fall under this check
+    "mistral3",
+    "mllama",
+    "paligemma",
+    "shieldgemma2",
+    "qwen2vl",
+    "qwen2_5_vl",
+    "videollava",
+    "vipllava",
+]
+
+
+class LlamaModel(torch.nn.Module):  # LlamaPreTrainedModel  torch.nn.Module
     def __init__(self, config: LlamaConfig):
-        super().__init__(config)
+        super().__init__()
+        self.config = config
         self.padding_idx = config.pad_token_id
         self.vocab_size = config.vocab_size
 
@@ -289,12 +307,6 @@ class LlamaModel(LlamaPreTrainedModel):
         )
         self.norm = LlamaRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
 
-        self.gradient_checkpointing = False
-
-        self.post_init()
-
-    @check_model_inputs
-    @auto_docstring
     def forward(
             self,
             input_ids: Optional[torch.LongTensor] = None,
@@ -379,8 +391,47 @@ class LlamaModel(LlamaPreTrainedModel):
                                        past_key_values=past_key_values)
 
 
-@auto_docstring
-class LlamaForCausalLM(LlamaPreTrainedModel, GenerationMixin):
+SAFE_WEIGHTS_NAME = "model.safetensors"
+
+
+def _add_variant(weights_name: str, variant: Optional[str] = None) -> str:
+    if variant is not None:
+        path, name = weights_name.rsplit(".", 1)
+        weights_name = f"{path}.{variant}.{name}"
+    return weights_name
+
+
+def _get_resolved_checkpoint_files_wpc(
+        pretrained_model_name_or_path: Optional[Union[str, os.PathLike]],
+) -> tuple[Optional[list[str]], Optional[dict]]:
+    """Get all the checkpoint filenames based on `pretrained_model_name_or_path`, and optional metadata if the checkpoints are sharded.
+    """
+
+    if pretrained_model_name_or_path is None:
+        return None, None
+
+    pretrained_model_name_or_path = str(pretrained_model_name_or_path)
+    if os.path.isdir(pretrained_model_name_or_path):
+        if os.path.isfile(
+                os.path.join(pretrained_model_name_or_path, _add_variant(SAFE_WEIGHTS_NAME))
+        ):
+            # Load from a safetensors checkpoint
+            archive_file = os.path.join(
+                pretrained_model_name_or_path, _add_variant(SAFE_WEIGHTS_NAME)
+            )
+        else:
+            raise OSError(f"{pretrained_model_name_or_path} not found")
+    else:
+        raise OSError(f"{pretrained_model_name_or_path} not found")
+
+    logger.info(f"loading weights file {archive_file}")
+    resolved_archive_file = archive_file
+
+    checkpoint_files = [resolved_archive_file] if pretrained_model_name_or_path is not None else None
+    return checkpoint_files, None
+
+
+class LlamaForCausalLM(LlamaPreTrainedModel, GenerationMixin):  # torch.nn.Module LlamaPreTrainedModel,
     _tied_weights_keys = ["lm_head.weight"]
     _tp_plan = {"lm_head": "colwise_rep"}
     _pp_plan = {"lm_head": (["hidden_states"], ["logits"])}
@@ -453,6 +504,7 @@ class LlamaForCausalLM(LlamaPreTrainedModel, GenerationMixin):
             hidden_states=outputs.hidden_states,
             attentions=outputs.attentions,
         )
+
 
 
 __all__ = [

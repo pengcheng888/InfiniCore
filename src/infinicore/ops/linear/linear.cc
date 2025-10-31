@@ -13,9 +13,27 @@ void print(Shape &shape) {
     printf("\n");
 }
 
-Tensor linear(Tensor input,
-              Tensor weight) {
+Tensor linear(Tensor input,  // (∗,in_features) where * means any number of additional dimensions, including none
+              Tensor weight) //(out_features, in_features)
+{
+    Size ndim = input->ndim();
+    Shape input_shape = input->shape();
+    Shape weight_shape = weight->shape();
 
+    Size num = input_shape[0];
+    Size in_features = input_shape[ndim - 1];
+    Size out_features = weight_shape[1];
+
+    // y 是 (∗,out_features)
+    auto y = Tensor::empty({num, out_features}, DataType::F64, input->device());
+    y = Tensor::empty({num, out_features}, input->dtype(), input->device());
+
+    matmul_(y, input, rearrange(weight));
+    return y;
+}
+
+Tensor linear_bk(Tensor input,
+                 Tensor weight) {
     Size ndim = input->ndim();
     Shape input_shape = input->shape();
     Shape weight_shape = weight->shape();
