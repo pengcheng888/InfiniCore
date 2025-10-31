@@ -32,7 +32,9 @@ from ...modeling_outputs import (
     CausalLMOutputWithPast,
 )
 from ...activations import ACT2FN
+
 from ...modeling_utils_wpc import ALL_ATTENTION_FUNCTIONS, PreTrainedModel
+
 from ...processing_utils import Unpack
 from ...utils import TransformersKwargs, auto_docstring, can_return_tuple, logging
 
@@ -207,8 +209,6 @@ class LlamaAttention(infinicore.nn.Module):
         return attn_output
 
 
-# class LlamaDecoderLayer(GradientCheckpointingLayer):
-
 class LlamaDecoderLayer(infinicore.nn.Module):
     def __init__(self, config: LlamaConfig, layer_idx: int):
         super().__init__()
@@ -252,44 +252,6 @@ class LlamaDecoderLayer(infinicore.nn.Module):
         return hidden_states
 
 
-@auto_docstring
-class LlamaPreTrainedModel(PreTrainedModel):
-    config: LlamaConfig
-    base_model_prefix = "model"
-    supports_gradient_checkpointing = True
-    _no_split_modules = ["LlamaDecoderLayer"]
-    _skip_keys_device_placement = ["past_key_values"]
-    _supports_flash_attn = True
-    _supports_sdpa = True
-    _supports_flex_attn = True
-
-    _can_compile_fullgraph = True
-    _supports_attention_backend = True
-    _can_record_outputs = {
-        "hidden_states": LlamaDecoderLayer,
-        "attentions": LlamaAttention,
-    }
-
-
-VLMS = [
-    "aria",
-    "ayavision",
-    "colpali",
-    "emu3",
-    "fuyu",
-    "gotocr2",
-    "gemma3",
-    "internvl",
-    "llava",  # all llava prefixed models fall under this check
-    "mistral3",
-    "mllama",
-    "paligemma",
-    "shieldgemma2",
-    "qwen2vl",
-    "qwen2_5_vl",
-    "videollava",
-    "vipllava",
-]
 
 
 class LlamaModel(torch.nn.Module):  # LlamaPreTrainedModel  torch.nn.Module
@@ -391,44 +353,14 @@ class LlamaModel(torch.nn.Module):  # LlamaPreTrainedModel  torch.nn.Module
                                        past_key_values=past_key_values)
 
 
-SAFE_WEIGHTS_NAME = "model.safetensors"
+class LlamaPreTrainedModel(PreTrainedModel):
+    config: LlamaConfig
+    base_model_prefix = "model"
 
-
-def _add_variant(weights_name: str, variant: Optional[str] = None) -> str:
-    if variant is not None:
-        path, name = weights_name.rsplit(".", 1)
-        weights_name = f"{path}.{variant}.{name}"
-    return weights_name
-
-
-def _get_resolved_checkpoint_files_wpc(
-        pretrained_model_name_or_path: Optional[Union[str, os.PathLike]],
-) -> tuple[Optional[list[str]], Optional[dict]]:
-    """Get all the checkpoint filenames based on `pretrained_model_name_or_path`, and optional metadata if the checkpoints are sharded.
-    """
-
-    if pretrained_model_name_or_path is None:
-        return None, None
-
-    pretrained_model_name_or_path = str(pretrained_model_name_or_path)
-    if os.path.isdir(pretrained_model_name_or_path):
-        if os.path.isfile(
-                os.path.join(pretrained_model_name_or_path, _add_variant(SAFE_WEIGHTS_NAME))
-        ):
-            # Load from a safetensors checkpoint
-            archive_file = os.path.join(
-                pretrained_model_name_or_path, _add_variant(SAFE_WEIGHTS_NAME)
-            )
-        else:
-            raise OSError(f"{pretrained_model_name_or_path} not found")
-    else:
-        raise OSError(f"{pretrained_model_name_or_path} not found")
-
-    logger.info(f"loading weights file {archive_file}")
-    resolved_archive_file = archive_file
-
-    checkpoint_files = [resolved_archive_file] if pretrained_model_name_or_path is not None else None
-    return checkpoint_files, None
+    _no_split_modules = ["LlamaDecoderLayer"]
+    _skip_keys_device_placement = ["past_key_values"]
+    _supports_flash_attn = True
+    _supports_sdpa = True
 
 
 class LlamaForCausalLM(LlamaPreTrainedModel, GenerationMixin):  # torch.nn.Module LlamaPreTrainedModel,
@@ -442,8 +374,7 @@ class LlamaForCausalLM(LlamaPreTrainedModel, GenerationMixin):  # torch.nn.Modul
         self.vocab_size = config.vocab_size
         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
 
-        # Initialize weights and apply final processing
-        self.post_init()
+    
 
     @can_return_tuple
     @auto_docstring
