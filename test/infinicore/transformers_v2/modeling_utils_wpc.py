@@ -13,45 +13,29 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import collections
+
 import copy
 import functools
-import gc
 import importlib.metadata
 import inspect
-import itertools
-import json
 import os
 import re
-import shutil
-import sys
 import copy
-import tempfile
-import warnings
-from abc import abstractmethod
-from collections import defaultdict
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import contextmanager
-from enum import Enum
 from functools import partial, wraps
-from threading import Thread
 from typing import Any, Callable, Optional, TypeVar, Union, get_type_hints
 from zipfile import is_zipfile
 
 import torch
-from huggingface_hub import split_torch_state_dict_into_shards
 from packaging import version
 from torch import Tensor, nn
-from torch.distributions import constraints
-from torch.utils.checkpoint import checkpoint
+
 
 from .configuration_utils import PretrainedConfig
-from .distributed import DistributedConfig
-from .dynamic_module_utils import custom_object_save
+
 from .generation import CompileConfig, GenerationConfig
 from .integrations import PeftAdapterMixin, deepspeed_config, is_deepspeed_zero3_enabled, is_fsdp_enabled
 from .integrations.accelerate import find_tied_parameters, init_empty_weights
-from .integrations.deepspeed import _load_state_dict_into_zero3_model
 from .integrations.eager_paged import eager_paged_attention_forward
 from .integrations.flash_attention import flash_attention_forward
 from .integrations.flash_paged import paged_attention_forward
@@ -60,106 +44,47 @@ from .integrations.hub_kernels import is_kernel, load_and_register_kernel
 from .integrations.sdpa_attention import sdpa_attention_forward
 from .integrations.sdpa_paged import sdpa_attention_paged_forward
 from .integrations.tensor_parallel import (
-    _get_parameter_tp_plan,
-    distribute_model,
-    initialize_tensor_parallelism,
-    repack_weights,
-    replace_state_dict_local_with_dtensor,
-    shard_and_distribute_module,
     verify_tp_plan,
 )
-from .loss.loss_utils import LOSS_MAPPING
+
 from .modeling_flash_attention_utils import lazy_import_flash_attention
-from .pytorch_utils import id_tensor_storage
 from .quantizers import HfQuantizer
-from .quantizers.auto import get_hf_quantizer
 from .quantizers.quantizers_utils import get_module_from_name
-from .safetensors_conversion import auto_conversion
+
 from .utils import (
-    ADAPTER_SAFE_WEIGHTS_NAME,
-    ADAPTER_WEIGHTS_NAME,
-    CONFIG_NAME,
-    DUMMY_INPUTS,
-    FLAX_WEIGHTS_NAME,
-    SAFE_WEIGHTS_INDEX_NAME,
     SAFE_WEIGHTS_NAME,
-    TF2_WEIGHTS_NAME,
-    TF_WEIGHTS_NAME,
-    WEIGHTS_INDEX_NAME,
-    WEIGHTS_NAME,
     ContextManagers,
-    PushToHubMixin,
-    cached_file,
     check_torch_load_is_safe,
-    copy_func,
-    download_url,
-    extract_commit_hash,
-    has_file,
     is_accelerate_available,
-    is_bitsandbytes_available,
     is_flash_attn_2_available,
-    is_flash_attn_3_available,
     is_kernels_available,
-    is_offline_mode,
-    is_optimum_available,
-    is_peft_available,
-    is_remote_url,
     is_safetensors_available,
-    is_torch_flex_attn_available,
     is_torch_greater_or_equal,
-    is_torch_mlu_available,
-    is_torch_npu_available,
     is_torch_xla_available,
     is_torch_xpu_available,
-    is_torchao_available,
     logging,
 )
-from .utils.generic import _CAN_RECORD_REGISTRY, GeneralInterface, OutputRecorder
-from .utils.hub import create_and_tag_model_card, get_checkpoint_shard_files
+from .utils.generic import _CAN_RECORD_REGISTRY, GeneralInterface
 from .utils.import_utils import (
     ENV_VARS_TRUE_VALUES,
-    is_huggingface_hub_greater_or_equal,
     is_sagemaker_mp_enabled,
-    is_torch_fx_proxy,
-    is_torchdynamo_compiling,
 )
-from .utils.quantization_config import BitsAndBytesConfig, QuantizationMethod
-
-if is_torchao_available():
-    from torchao.quantization import Int4WeightOnlyConfig
+from .utils.quantization_config import  QuantizationMethod
 
 if is_accelerate_available():
     from accelerate import dispatch_model, infer_auto_device_map
-    from accelerate.hooks import add_hook_to_module
     from accelerate.utils import (
         check_tied_parameters_on_same_device,
-        extract_model_from_parallel,
         get_balanced_memory,
-        get_max_memory,
-        load_offloaded_weights,
-        offload_weight,
-        save_offload_index,
+        get_max_memory
     )
-
-    accelerate_version = version.parse(importlib.metadata.version("accelerate"))
-    if accelerate_version >= version.parse("0.31"):
-        from accelerate.utils.modeling import get_state_dict_from_offload
-
 if is_safetensors_available():
     from safetensors import safe_open
     from safetensors.torch import load_file as safe_load_file
     from safetensors.torch import save_file as safe_save_file
-
-if is_peft_available():
-    from .utils import find_adapter_config_file
-
 _torch_distributed_available = torch.distributed.is_available()
-_is_dtensor_available = _torch_distributed_available and is_torch_greater_or_equal("2.5")
-if _is_dtensor_available:
-    from torch.distributed.tensor import DTensor
 
 if is_sagemaker_mp_enabled():
-    import smdistributed.modelparallel.torch as smp
     from smdistributed.modelparallel import __version__ as SMP_VERSION
 
     IS_SAGEMAKER_MP_POST_1_10 = version.parse(SMP_VERSION) >= version.parse("1.10")
@@ -172,8 +97,6 @@ XLA_USE_BF16 = os.environ.get("XLA_USE_BF16", "0").upper()
 XLA_DOWNCAST_BF16 = os.environ.get("XLA_DOWNCAST_BF16", "0").upper()
 SpecificPreTrainedModelType = TypeVar("SpecificPreTrainedModelType", bound="PreTrainedModel")
 _init_weights = True
-_is_quantized = False
-_is_ds_init_called = False
 
 
 TORCH_INIT_FUNCTIONS = {

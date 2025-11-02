@@ -18,35 +18,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from typing import Callable, Optional, Union
-import os
-import torch
-from torch import nn
 
 from ...cache_utils import Cache, DynamicCache
-from ...generation import GenerationMixin
-
+from ...generation.utils_wpc import GenerationMixin
 from ...masking_utils import create_causal_mask
+from ...modeling_outputs_wpc import  BaseModelOutputWithPast,CausalLMOutputWithPast
 
-from ...modeling_outputs import (
-    BaseModelOutputWithPast,
-    CausalLMOutputWithPast,
-)
 from ...activations import ACT2FN
-
 from ...modeling_utils_wpc import ALL_ATTENTION_FUNCTIONS, PreTrainedModel
-
 from ...processing_utils import Unpack
 from ...utils import TransformersKwargs, auto_docstring, can_return_tuple, logging
-
-from ...utils.generic import check_model_inputs
 from .configuration_llama import LlamaConfig
 
 logger = logging.get_logger(__name__)
 
 import infinicore
 import torch
-
-from enum import Enum, auto
+from torch import nn
 
 class LlamaRMSNorm(infinicore.nn.Module):
     def __init__(self, hidden_size, eps=1e-6):
@@ -252,8 +240,6 @@ class LlamaDecoderLayer(infinicore.nn.Module):
         return hidden_states
 
 
-
-
 class LlamaModel(torch.nn.Module):  # LlamaPreTrainedModel  torch.nn.Module
     def __init__(self, config: LlamaConfig):
         super().__init__()
@@ -288,13 +274,9 @@ class LlamaModel(torch.nn.Module):  # LlamaPreTrainedModel  torch.nn.Module
             # input_ids = input_ids.to(dtype=torch.int32)
             if True:
                 from infinicore.nn.modules.linear import create_infinicore_tensor, infini_tensor_2_torch_tensor
-
                 input_ids_infini = create_infinicore_tensor(input_ids, "cpu")
-
                 inputs_embeds_infini = self.embed_tokens(input_ids_infini)
-        
                 inputs_embeds = infini_tensor_2_torch_tensor(inputs_embeds_infini)
-
             else:
                 inputs_embeds: torch.Tensor = self.embed_tokens(input_ids)
 
@@ -316,7 +298,6 @@ class LlamaModel(torch.nn.Module):  # LlamaPreTrainedModel  torch.nn.Module
                                          cache_position=cache_position,
                                          past_key_values=past_key_values,
                                          position_ids=position_ids)
-
         hidden_states = inputs_embeds
 
         if True:
@@ -356,7 +337,6 @@ class LlamaModel(torch.nn.Module):  # LlamaPreTrainedModel  torch.nn.Module
 class LlamaPreTrainedModel(PreTrainedModel):
     config: LlamaConfig
     base_model_prefix = "model"
-
     _no_split_modules = ["LlamaDecoderLayer"]
     _skip_keys_device_placement = ["past_key_values"]
     _supports_flash_attn = True
@@ -375,7 +355,6 @@ class LlamaForCausalLM(LlamaPreTrainedModel, GenerationMixin):  # torch.nn.Modul
         self.lm_head = nn.Linear(config.hidden_size, config.vocab_size, bias=False)
 
     
-
     @can_return_tuple
     @auto_docstring
     def forward(
@@ -385,7 +364,6 @@ class LlamaForCausalLM(LlamaPreTrainedModel, GenerationMixin):  # torch.nn.Modul
             position_ids: Optional[torch.LongTensor] = None,
             past_key_values: Optional[Cache] = None,
             inputs_embeds: Optional[torch.FloatTensor] = None,
-            labels: Optional[torch.LongTensor] = None,
             use_cache: Optional[bool] = None,
             cache_position: Optional[torch.LongTensor] = None,
             logits_to_keep: Union[int, torch.Tensor] = 0,
@@ -420,22 +398,16 @@ class LlamaForCausalLM(LlamaPreTrainedModel, GenerationMixin):  # torch.nn.Modul
         )
 
         hidden_states = outputs.last_hidden_state
+        
         # Only compute necessary logits, and do not upcast them to float if we are not computing the loss
         slice_indices = slice(-logits_to_keep, None) if isinstance(logits_to_keep, int) else logits_to_keep
+
         logits = self.lm_head(hidden_states[:, slice_indices, :])
 
-        loss = None
-        if labels is not None:
-            loss = self.loss_function(logits=logits, labels=labels, vocab_size=self.config.vocab_size, **kwargs)
-
         return CausalLMOutputWithPast(
-            loss=loss,
             logits=logits,
-            past_key_values=outputs.past_key_values,
-            hidden_states=outputs.hidden_states,
-            attentions=outputs.attentions,
+            past_key_values=outputs.past_key_values
         )
-
 
 
 __all__ = [
