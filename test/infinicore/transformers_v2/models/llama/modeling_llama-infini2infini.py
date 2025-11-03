@@ -201,6 +201,7 @@ class LlamaDecoderLayer(infinicore.nn.Module):
     def __init__(self, config: LlamaConfig, layer_idx: int):
         super().__init__()
         self.hidden_size = config.hidden_size
+
         self.self_attn = LlamaAttention(config=config, layer_idx=layer_idx)
         self.mlp = LlamaMLP(config)
         self.input_layernorm = LlamaRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
@@ -237,6 +238,103 @@ class LlamaDecoderLayer(infinicore.nn.Module):
         hidden_states = residual + hidden_states
 
         return hidden_states
+
+'''
+
+class LlamaModel(torch.nn.Module):  # LlamaPreTrainedModel  torch.nn.Module
+    def __init__(self, config: LlamaConfig):
+        super().__init__()
+        self.config = config
+        self.padding_idx = config.pad_token_id
+        self.vocab_size = config.vocab_size
+
+        self.embed_tokens = infinicore.nn.Embedding(config.vocab_size, config.hidden_size)
+
+        self.layers = torch.nn.ModuleList(
+            [LlamaDecoderLayer(config, layer_idx) for layer_idx in range(config.num_hidden_layers)]
+        )
+        self.norm = LlamaRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
+
+    def forward(
+            self,
+            input_ids: Optional[torch.LongTensor] = None,
+            attention_mask: Optional[torch.Tensor] = None,
+            position_ids: Optional[torch.LongTensor] = None,
+            past_key_values: Optional[Cache] = None,
+            inputs_embeds: Optional[torch.FloatTensor] = None,
+            cache_position: Optional[torch.LongTensor] = None,
+            use_cache: Optional[bool] = None,
+            **kwargs: Unpack[TransformersKwargs],
+    ) -> BaseModelOutputWithPast:
+        if (input_ids is None) ^ (inputs_embeds is not None):
+            raise ValueError("You must specify exactly one of input_ids or inputs_embeds")
+
+        if inputs_embeds is None:
+            # input_ids :     {1,5}       tensor([[    1,  1128,   526,   366, 29892]])
+            # inputs_embeds : {1,5,2048}  tensor([[[...]]])
+            # input_ids = input_ids.to(dtype=torch.int32)
+            if True:
+                from infinicore.nn.modules.linear import create_infinicore_tensor, infini_tensor_2_torch_tensor
+                input_ids_infini = create_infinicore_tensor(input_ids, "cpu")
+                inputs_embeds_infini = self.embed_tokens(input_ids_infini)
+                inputs_embeds = infini_tensor_2_torch_tensor(inputs_embeds_infini)
+            else:
+                inputs_embeds: torch.Tensor = self.embed_tokens(input_ids)
+
+        if use_cache and past_key_values is None:
+            past_key_values = DynamicCache(config=self.config)
+
+        if cache_position is None:
+            past_seen_tokens = past_key_values.get_seq_length() if past_key_values is not None else 0
+            cache_position: torch.Tensor = torch.arange(
+                past_seen_tokens, past_seen_tokens + inputs_embeds.shape[1], device=inputs_embeds.device
+            )
+
+        if position_ids is None:
+            position_ids = cache_position.unsqueeze(0)
+
+        causal_mask = create_causal_mask(config=self.config,
+                                         input_embeds=inputs_embeds,
+                                         attention_mask=attention_mask,
+                                         cache_position=cache_position,
+                                         past_key_values=past_key_values,
+                                         position_ids=position_ids)
+        hidden_states = inputs_embeds
+
+        if True:
+            from infinicore.nn.modules.linear import create_infinicore_tensor, infini_tensor_2_torch_tensor
+            device_str = "cpu"
+            hidden_states = create_infinicore_tensor(hidden_states, device_str)
+
+            for decoder_layer in self.layers[:self.config.num_hidden_layers]:
+                hidden_states = decoder_layer(
+                    hidden_states,
+                    attention_mask=causal_mask,
+                    position_ids=position_ids,
+                    past_key_values=past_key_values,
+                    cache_position=cache_position,
+                    **kwargs,
+                )
+            hidden_states = self.norm(hidden_states)
+            hidden_states = infini_tensor_2_torch_tensor(hidden_states)
+
+        else:
+            for decoder_layer in self.layers[:self.config.num_hidden_layers]:
+                hidden_states = decoder_layer(
+                    hidden_states,
+                    attention_mask=causal_mask,
+                    position_ids=position_ids,
+                    past_key_values=past_key_values,
+                    cache_position=cache_position,
+                    **kwargs,
+                )
+
+            hidden_states = self.norm(hidden_states)
+
+        return BaseModelOutputWithPast(last_hidden_state=hidden_states,
+                                       past_key_values=past_key_values)
+
+'''
 
 
 class LlamaModel(torch.nn.Module):  # LlamaPreTrainedModel  torch.nn.Module
@@ -314,6 +412,9 @@ class LlamaModel(torch.nn.Module):  # LlamaPreTrainedModel  torch.nn.Module
             )
         hidden_states = self.norm(hidden_states)
         hidden_states = infini_tensor_2_torch_tensor(hidden_states)
+
+
+   
        
         return BaseModelOutputWithPast(last_hidden_state=hidden_states,
                                        past_key_values=past_key_values,
