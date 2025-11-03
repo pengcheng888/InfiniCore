@@ -176,59 +176,31 @@ def get_tolerance(tolerance_map, tensor_dtype, default_atol=0, default_rtol=1e-3
     return tolerance["atol"], tolerance["rtol"]
 
 
-# def infinicore_tensor_from_torch(torch_tensor):
-#     infini_device = infinicore.device(torch_tensor.device.type, 0)
-#     if torch_tensor.is_contiguous():
-#         return infinicore.from_blob(
-#             torch_tensor.data_ptr(),
-#             list(torch_tensor.shape),
-#             dtype=to_infinicore_dtype(torch_tensor.dtype),
-#             device=infini_device,
-#         )
-#     else:
-#         return infinicore.strided_from_blob(
-#             torch_tensor.data_ptr(),
-#             list(torch_tensor.shape),
-#             list(torch_tensor.stride()),
-#             dtype=to_infinicore_dtype(torch_tensor.dtype),
-#             device=infini_device,
-#         )
-
 def infinicore_tensor_from_torch(torch_tensor):
     infini_device = infinicore.device(torch_tensor.device.type, 0)
     if torch_tensor.is_contiguous():
-        infini_temp = infinicore.from_blob(
+        temp =  infinicore.from_blob(
             torch_tensor.data_ptr(),
             list(torch_tensor.shape),
             dtype=to_infinicore_dtype(torch_tensor.dtype),
             device=infini_device,
         )
-        
-        infini_tensor = infinicore.empty(torch_tensor.shape,
-                                     dtype=to_infinicore_dtype(torch_tensor.dtype),
-                                     device=infinicore.device(device_str, 0)
-                             )
-        infini_tensor.copy_(infini_temp)
-        return infini_tensor
-
     else:
-        infini_temp =  infinicore.strided_from_blob(
+        temp = infinicore.strided_from_blob(
             torch_tensor.data_ptr(),
             list(torch_tensor.shape),
             list(torch_tensor.stride()),
             dtype=to_infinicore_dtype(torch_tensor.dtype),
             device=infini_device,
         )
-        
-        infini_tensor = infinicore.empty(torch_tensor.shape,
-                                dtype=to_infinicore_dtype(torch_tensor.dtype),
-                                device=infinicore.device(device_str, 0)
-                        )
-        infini_tensor.copy_(infini_temp)
-        return infini_tensor
+
+    
 
 
-def convert_infinicore_to_torch(infini_result, torch_reference):
+    return temp
+
+
+def convert_infinicore_to_torch(infini_result, torch_reference = None):
     """
     Convert infinicore tensor to PyTorch tensor for comparison
 
@@ -240,7 +212,7 @@ def convert_infinicore_to_torch(infini_result, torch_reference):
         torch.Tensor: PyTorch tensor with infinicore data
     """
     torch_result_from_infini = torch.zeros(
-        torch_reference.shape,
+        infini_result.shape,
         dtype=to_torch_dtype(infini_result.dtype),
         device=infini_result.device.type,
     )
