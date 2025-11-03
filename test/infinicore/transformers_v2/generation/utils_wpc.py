@@ -752,7 +752,6 @@ class GenerationMixin(ContinuousMixin):
 
         # 8. determine generation mode
         generation_mode = generation_config.get_generation_mode(None)
-        print(generation_mode)
 
         if self.device.type != input_ids.device.type:
             warnings.warn(
@@ -869,11 +868,14 @@ class GenerationMixin(ContinuousMixin):
                 model_kwargs,
                 is_encoder_decoder=self.config.is_encoder_decoder,
             )
-         
 
             # Copy is needed to avoid keeping a hanging ref to outputs.logits which may be very large for first iteration
             # (the clone itself is always small)
-            next_token_logits = outputs.logits[:, -1, :].to(copy=True, dtype=torch.float32, device=input_ids.device)
+            if  outputs.next_token_logits is not None:
+                next_token_logits =  outputs.next_token_logits[:, 0, :].to(copy=True, dtype=torch.float32, device=input_ids.device)
+            else:
+                next_token_logits = outputs.logits[:, -1, :].to(copy=True, dtype=torch.float32, device=input_ids.device)
+
 
             # pre-process distribution
             next_token_scores = logits_processor(input_ids, next_token_logits)
