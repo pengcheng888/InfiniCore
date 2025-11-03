@@ -9,6 +9,9 @@ python/infinicore/lib/*.so
 # Vscode
 .vscode/
 
+# Pycharm
+.idea/
+
 # Python
 __pycache__/
 *.egg-info/

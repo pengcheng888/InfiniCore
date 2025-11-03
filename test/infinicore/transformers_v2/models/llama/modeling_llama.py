@@ -303,7 +303,12 @@ class LlamaModel(torch.nn.Module):  # LlamaPreTrainedModel  torch.nn.Module
         device_str = "cpu"
         hidden_states = create_infinicore_tensor(hidden_states, device_str)
 
+        ilayer = 0
         for decoder_layer in self.layers[:self.config.num_hidden_layers]:
+
+            print("ilayer: ",ilayer)
+            ilayer +=1
+
             hidden_states = decoder_layer(
                 hidden_states,
                 attention_mask=causal_mask,

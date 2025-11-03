@@ -82,6 +82,11 @@ std::byte *TensorImpl::data() {
     return data_.memory->data() + data_.offset;
 }
 
+// wpc
+std::byte *TensorImpl::data(ptrdiff_t offset) const {
+    return (data_.memory->data()) + data_.offset + offset * dsize(meta_.dtype);
+}
+
 const std::byte *TensorImpl::data() const {
     return data_.memory->data() + data_.offset;
 }

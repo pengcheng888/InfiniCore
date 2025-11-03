@@ -29,11 +29,15 @@ from infinicore.ops.add import add
 from infinicore.ops.attention import attention
 from infinicore.ops.causal_softmax import causal_softmax
 from infinicore.ops.matmul import matmul
+from infinicore.ops.linear import linear
+from infinicore.ops.embedding import embedding
 from infinicore.ops.rearrange import rearrange
 from infinicore.ops.rms_norm import rms_norm
+from infinicore.ops.rope import rope
 from infinicore.ops.silu import silu
 from infinicore.ops.swiglu import swiglu
 from infinicore.tensor import (
+    Tensor,
     empty,
     from_blob,
     ones,
@@ -41,6 +45,8 @@ from infinicore.tensor import (
     strided_from_blob,
     zeros,
 )
+
+from infinicore import nn as nn
 
 __all__ = [
     # Classes.
@@ -75,9 +81,12 @@ __all__ = [
     "add",
     "attention",
     "causal_softmax",
+    "embedding",
+    "linear",
     "matmul",
     "rearrange",
     "rms_norm",
+    "rope",
     "silu",
     "swiglu",
     "empty",
