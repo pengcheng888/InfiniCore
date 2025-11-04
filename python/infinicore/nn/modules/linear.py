@@ -74,17 +74,17 @@ def infini_tensor_2_torch_tensor(infini_tensor: infinicore.Tensor, device_str="c
     return torch_tensor
 
 
-def print_infini_tensor(infini_tensor, device_str="cpu"):
-    torch_tensor = torch.rand(infini_tensor.shape, dtype=to_torch_dtype(infini_tensor.dtype), device=device_str)
+# def print_infini_tensor(infini_tensor, device_str="cpu"):
+#     torch_tensor = torch.rand(infini_tensor.shape, dtype=to_torch_dtype(infini_tensor.dtype), device=device_str)
 
-    # temp_tensor = create_infinicore_tensor(torch_tensor, device_str)
-    temp_tensor = infinicore.from_blob(
-        torch_tensor.data_ptr(),
-        list(torch_tensor.shape),
-        dtype=to_infinicore_dtype(torch_tensor.dtype),
-        device=infinicore.device(device_str, 0),
-    )
-    temp_tensor.copy_(infini_tensor)
+#     # temp_tensor = create_infinicore_tensor(torch_tensor, device_str)
+#     temp_tensor = infinicore.from_blob(
+#         torch_tensor.data_ptr(),
+#         list(torch_tensor.shape),
+#         dtype=to_infinicore_dtype(torch_tensor.dtype),
+#         device=infinicore.device(device_str, 0),
+#     )
+#     temp_tensor.copy_(infini_tensor)
 
 
 class Linear(torch.nn.Linear):

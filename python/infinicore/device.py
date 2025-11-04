@@ -26,7 +26,7 @@ class device:
         self.index = index
 
         _type, _index = device._to_infinicore_device(type, index if index else 0)
-
+    
         self._underlying = _infinicore.Device(_type, _index)
 
     def __repr__(self):
@@ -37,11 +37,12 @@ class device:
 
     @staticmethod
     def _to_infinicore_device(type, index):
+  
         all_device_types = tuple(_infinicore.Device.Type.__members__.values())[:-1]
         all_device_count = tuple(
             _infinicore.get_device_count(device) for device in all_device_types
         )
-
+ 
         torch_devices = {
             torch_type: {
                 infinicore_type: 0
@@ -50,17 +51,15 @@ class device:
             }
             for torch_type in _TORCH_DEVICE_MAP.values()
         }
-
+     
         for i, count in enumerate(all_device_count):
             infinicore_device_type = _infinicore.Device.Type(i)
             torch_devices[_TORCH_DEVICE_MAP[infinicore_device_type]][
                 infinicore_device_type
             ] += count
 
-        for infinicore_device_type, infinicore_device_count in torch_devices[
-            type
-        ].items():
-            for i in range(infinicore_device_count):
+        for infinicore_device_type, infinicore_device_count in torch_devices[type].items():
+            for i in range(infinicore_device_count+1):
                 if index == 0:
                     return infinicore_device_type, i
 

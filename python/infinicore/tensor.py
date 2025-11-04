@@ -90,15 +90,17 @@ class Tensor:
 
     # wpc
     def __mul__(self, other):
-        from infinicore.nn.modules.linear import create_infinicore_tensor,infini_tensor_2_torch_tensor
-        device_str="cpu"
+ 
         # 
-        self_torch = infini_tensor_2_torch_tensor(self,device_str)
-        other_torch = infini_tensor_2_torch_tensor(other,device_str)
+        print("----- 11")
+        self_torch = infinicore.convert_infini_to_torch_tensor(self)
+        other_torch =  infinicore.convert_infini_to_torch_tensor(other)
+
+        print("----- 33")
         # 先暂时使用 pytorch 实现逐元素相乘
         output_torch =  self_torch * other_torch
         # 
-        output_infinicore = create_infinicore_tensor(output_torch, device_str)
+        output_infinicore =  infinicore.convert_torch_to_infini_tensor(output_torch)
         return output_infinicore
     
     def __add__(self, other):

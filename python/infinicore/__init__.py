@@ -36,6 +36,7 @@ from infinicore.ops.rms_norm import rms_norm
 from infinicore.ops.rope import rope
 from infinicore.ops.silu import silu
 from infinicore.ops.swiglu import swiglu
+from infinicore.tensor_utils import convert_infini_to_torch_tensor, convert_torch_to_infini_tensor
 from infinicore.tensor import (
     Tensor,
     empty,

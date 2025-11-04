@@ -164,31 +164,28 @@ def test6():
 
 def func7_mul():
     import infinicore
-    from infinicore.nn.modules.linear import torch_tensor_2_infini_tensor
+
     import torch
-    x = torch.ones((2,3))*2
-    y = torch.ones((2,3))
-    x_infini = torch_tensor_2_infini_tensor(x, device_str="cpu")
-    y_infini = torch_tensor_2_infini_tensor(y, device_str="cpu")
+    x = torch.ones((2,3),device="cpu")*2
+    y = torch.ones((2,3),device="cpu")
+    x_infini = infinicore.convert_torch_to_infini_tensor(x)
+    y_infini = infinicore.convert_torch_to_infini_tensor(y)
 
     z_infini = x_infini * y_infini
-    print(y_infini)
     print(y_infini)
     print(z_infini)
 
 def func8_test():
     import infinicore
-    from infinicore.nn.modules.linear import torch_tensor_2_infini_tensor,print_infini_tensor
+
     import torch
 
     data = torch.ones((2,3))
 
-    data_infini = torch_tensor_2_infini_tensor(data, device_str="cpu")
+    data_infini = infinicore.convert_torch_to_infini_tensor(data)
     print(data_infini)
 
-    print_infini_tensor(data_infini)
-    
 
 if __name__ == '__main__':
-    func_net()
+    func7_mul()
 
