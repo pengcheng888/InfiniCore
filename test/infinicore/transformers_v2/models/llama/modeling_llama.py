@@ -274,6 +274,7 @@ class LlamaModel(torch.nn.Module):  # LlamaPreTrainedModel  torch.nn.Module
       
             from infinicore.nn.modules.linear import create_infinicore_tensor, infini_tensor_2_torch_tensor
             input_ids_infini = create_infinicore_tensor(input_ids, "cpu")
+
             inputs_embeds_infini = self.embed_tokens(input_ids_infini)
             inputs_embeds = infini_tensor_2_torch_tensor(inputs_embeds_infini)
     
@@ -317,6 +318,7 @@ class LlamaModel(torch.nn.Module):  # LlamaPreTrainedModel  torch.nn.Module
                 cache_position=cache_position,
                 **kwargs,
             )
+
         hidden_states = self.norm(hidden_states)
         hidden_states = infini_tensor_2_torch_tensor(hidden_states)
        

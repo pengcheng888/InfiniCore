@@ -90,13 +90,9 @@ class Tensor:
 
     # wpc
     def __mul__(self, other):
- 
-        # 
-        print("----- 11")
         self_torch = infinicore.convert_infini_to_torch_tensor(self)
         other_torch =  infinicore.convert_infini_to_torch_tensor(other)
-
-        print("----- 33")
+        
         # 先暂时使用 pytorch 实现逐元素相乘
         output_torch =  self_torch * other_torch
         # 

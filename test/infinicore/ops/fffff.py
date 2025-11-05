@@ -24,12 +24,12 @@ def func2():
     )
 
     # -----------------------------------
-    from infinicore.nn.modules.linear import create_infinicore_tensor, print_infini_tensor
+    from infinicore.nn.modules.linear import create_infinicore_tensor
 
     input_infini = create_infinicore_tensor(input, device_str)
 
     output = m.forward(input_infini)
-    print_infini_tensor(output)
+    print(output)
 
 
 def func3():
@@ -46,14 +46,14 @@ def func3():
 
     print('=============================')
     # -----------------------------------
-    from infinicore.nn.modules.linear import create_infinicore_tensor, print_infini_tensor
+    from infinicore.nn.modules.linear import create_infinicore_tensor
     device_str = "cpu"
     input_infini = create_infinicore_tensor(input, device_str)
 
     output = m.forward(input_infini)
-    # print_infini_tensor(m.weight_infini)
-    # print_infini_tensor(input_infini)
-    print_infini_tensor(output)
+    # print(m.weight_infini)
+    # print(input_infini)
+    print(output)
 
 
 def func4():
@@ -137,7 +137,7 @@ def func_net():
                 # print("-----> after \n", model.state_dict())
 
                 print('----------- caculate ------------>')
-                from infinicore.nn.modules.linear import create_infinicore_tensor, print_infini_tensor
+                from infinicore.nn.modules.linear import create_infinicore_tensor
                 device_str = "cpu"
                 x = torch.ones((1, 10), dtype=torch.float32)
 
@@ -172,8 +172,8 @@ def func7_mul():
     y_infini = infinicore.convert_torch_to_infini_tensor(y)
 
     z_infini = x_infini * y_infini
-    print(y_infini)
-    print(z_infini)
+    print("z_infini: ",z_infini)
+
 
 def func8_test():
     import infinicore
@@ -187,5 +187,7 @@ def func8_test():
 
 
 if __name__ == '__main__':
-    func7_mul()
+    func_net()
+    from infinicore import nn
+    nn.functional.relu()
 

@@ -1,7 +1,6 @@
 from typing import Optional
 
 import torch
-from torch.nn import functional as F
 from torch.nn.parameter import Parameter
 from typing import Union
 from .module import Module
@@ -85,8 +84,6 @@ class Embedding(Module):
         if isinstance(input, torch.Tensor):
             return self.forward_torch2torch(input)
 
-        # self.forward_infini2infini(input)
-        # self.forward_torch2infini2torch(input)
         return self.forward_infini2infini(input)
 
     def forward_infini2infini(self, input: infinicore.Tensor) -> infinicore.Tensor:
@@ -99,7 +96,7 @@ class Embedding(Module):
     def forward_torch2torch(self,
                             input: torch.Tensor
                             ) -> torch.Tensor:
-        return F.embedding(input, self.weight)
+        return torch.nn.functional.embedding(input, self.weight)
 
     def forward_torch2infini2torch(self, input: torch.Tensor) -> torch.Tensor:
         input = input.to(dtype=torch.int32)
@@ -120,35 +117,3 @@ class Embedding(Module):
     def extra_repr(self) -> str:
         s = "{num_embeddings}, {embedding_dim}"
         return s.format(**self.__dict__)
-
-    @classmethod
-    def from_pretrained(
-            cls,
-            embeddings,
-    ):
-        r"""Create Embedding instance from given 2-dimensional FloatTensor.
-
-        Args:
-            embeddings (Tensor): FloatTensor containing weights for the Embedding.
-                First dimension is being passed to Embedding as ``num_embeddings``, second as ``embedding_dim``.
-
-        Examples::
-
-            >>> # FloatTensor containing pretrained weights
-            >>> weight = torch.FloatTensor([[1, 2.3, 3], [4, 5.1, 6.3]])
-            >>> embedding = nn.Embedding.from_pretrained(weight)
-            >>> # Get embeddings for index 1
-            >>> input = torch.LongTensor([1])
-            >>> # xdoctest: +IGNORE_WANT("non-deterministic")
-            >>> embedding(input)
-            tensor([[ 4.0000,  5.1000,  6.3000]])
-        """
-
-        assert (embeddings.dim() == 2), "Embeddings parameter is expected to be 2-dimensional"
-        rows, cols = embeddings.shape
-        embedding = cls(
-            num_embeddings=rows,
-            embedding_dim=cols,
-            _weight=embeddings,
-        )
-        return embedding

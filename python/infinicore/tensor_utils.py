@@ -63,18 +63,16 @@ def is_float_dtype(dtype):
 
 
 def convert_torch_to_infini_tensor(torch_tensor):
-
-
     infini_device = infinicore.device(torch_tensor.device.type, 0)
     if torch_tensor.is_contiguous():
-        temp =  infinicore.from_blob(
+        ref =  infinicore.from_blob(
             torch_tensor.data_ptr(),
             list(torch_tensor.shape),
             dtype=to_infinicore_dtype(torch_tensor.dtype),
             device=infini_device,
         )
     else:
-        temp = infinicore.strided_from_blob(
+        ref = infinicore.strided_from_blob(
             torch_tensor.data_ptr(),
             list(torch_tensor.shape),
             list(torch_tensor.stride()),
@@ -82,7 +80,13 @@ def convert_torch_to_infini_tensor(torch_tensor):
             device=infini_device,
         )
 
-    return temp
+    
+    infini_tensor = infinicore.empty(torch_tensor.shape,
+                                    dtype=to_infinicore_dtype(torch_tensor.dtype),
+                                    device=infini_device
+                                    )
+    infini_tensor.copy_(ref)
+    return infini_tensor
 
 
 def convert_infini_to_torch_tensor(infini_result, torch_reference = None):
@@ -96,18 +100,22 @@ def convert_infini_to_torch_tensor(infini_result, torch_reference = None):
     Returns:
         torch.Tensor: PyTorch tensor with infinicore data
     """
-    print("----- 555")
     
-    torch_result_from_infini = torch.zeros(
+    torch_tensor = torch.zeros(
         infini_result.shape,
         dtype=to_torch_dtype(infini_result.dtype),
         device=infini_result.device.type,
     )
-    print("----- 666")
-    temp_tensor = convert_torch_to_infini_tensor(torch_result_from_infini)
+
+    infini_device = infinicore.device(torch_tensor.device.type, 0)
+    temp_tensor = infinicore.from_blob(
+        torch_tensor.data_ptr(),
+        list(torch_tensor.shape),
+        dtype=to_infinicore_dtype(torch_tensor.dtype),
+        device=infini_device,
+    )
     temp_tensor.copy_(infini_result)
-    print("----- 777")
-    return torch_result_from_infini
+    return torch_tensor
 
 
 def rearrange_tensor(tensor, new_strides):
