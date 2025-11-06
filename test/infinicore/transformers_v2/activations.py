@@ -322,7 +322,7 @@ ACT2CLS = {
     "relu2": ReLUSquaredActivation,
     "relu6": nn.ReLU6,
     "sigmoid": nn.Sigmoid,
-    "silu": infinicore.nn.SiLU, # 替换为 infinicore的激活函数了
+    "silu": nn.SiLU, 
     "swish": nn.SiLU,
     "tanh": nn.Tanh,
     "prelu": nn.PReLU,

@@ -1,8 +1,89 @@
 import infinicore
+import math
 from infinicore.lib import _infinicore
 from typing import Callable, Optional, TYPE_CHECKING, Union
 
-__all__ = ["embedding", "rms_norm","silu","swiglu","causal_softmax" ]
+__all__ = ["causal_softmax", # _
+            "linear",
+            "embedding", 
+            "rms_norm",
+              "rope", # _
+              "silu", 
+              "swiglu" , # _
+              ]
+
+
+def causal_softmax(
+    input: infinicore.Tensor,
+    dim: Optional[int] = None,
+    _stacklevel: int = 3,
+    dtype: Optional[infinicore.dtype] = None,
+) -> infinicore.Tensor:
+    r"""Apply a causal softmax function.
+
+    It is applied to all slices along dim, and will re-scale them so that the elements
+    lie in the range `[0, 1]` and sum to 1.
+
+    See :class:`~infinicore.nn.Softmax` for more details.
+
+    Args:
+        input (Tensor): input
+        dim (int): Unsupported parameters..
+        dtype (:class:`infinicore.dtype`, optional): Unsupported parameters.
+    """
+    
+    assert (dim == None) and (dtype == None), "Unsupported parameters."
+    return infinicore.Tensor(_infinicore.causal_softmax(input._underlying))
+
+
+
+def linear(input: infinicore.Tensor,  
+           weight: infinicore.Tensor,  
+           bias: Optional[infinicore.Tensor] = None,
+           ) -> infinicore.Tensor:
+    """
+    linear(input, weight, bias=None) -> Tensor
+    
+    Applies a linear transformation to the incoming data: :math:`y = xA^T + b`.
+    
+    This operation supports 2-D :attr:`weight` with :ref:`sparse layout<sparse-docs>`
+    
+    .. warning::
+        Sparse support is a beta feature and some layout(s)/dtype/device combinations may not be supported,
+        or may not have autograd support. If you notice missing functionality please
+        open a feature request.
+    
+    This operator supports :ref:`TensorFloat32<tf32_on_ampere>`.
+    
+    Shape:
+    
+        - Input: :math:`(*, in\_features)` where `*` means any number of
+          additional dimensions, including none
+        - Weight: :math:`(out\_features, in\_features)` or :math:`(in\_features)`
+        - Bias: :math:`(out\_features)` or :math:`()`
+        - Output: :math:`(*, out\_features)` or :math:`(*)`, based on the shape of the weight
+    """
+
+    input_shape = input.shape
+    out_features, in_features = weight.shape
+    assert in_features == input_shape[-1]
+
+    N = math.prod(input_shape[0:-1])
+    input_dims = len(input_shape)
+
+    output_shape = (*input_shape[0:-1], out_features)
+    if bias is None:
+        y =  infinicore.Tensor(_infinicore.linear(input.view((N, in_features))._underlying,
+                                      weight.permute((1, 0))._underlying))
+    else:
+        assert out_features == bias.shape[0]
+        bias_shape = output_shape
+        bias_strided = (0, 1)
+        y =  infinicore.Tensor(_infinicore.linear_bias(input.view((N, in_features))._underlying,
+                                           weight.permute((1, 0))._underlying,
+                                           bias.as_strided(bias_shape, bias_strided)._underlying))
+    return y.view(output_shape)
+
 
 def embedding(
     input: infinicore.Tensor,
@@ -53,15 +134,19 @@ def rms_norm(
     normalized_shape: list[int],
     weight: infinicore.Tensor,
     eps: float = 1e-5,
+    out=None
 ) -> infinicore.Tensor:
     r"""Apply Root Mean Square Layer Normalization.
 
     See :class:`~infinicore.nn.RMSNorm` for details.
     """
     assert normalized_shape == weight.shape, "normalized_shape  does not match weight.shape."
-    return  infinicore.Tensor(
-            _infinicore.rms_norm(input._underlying, weight._underlying, eps)
-        )
+    
+    if out is None:
+        return  infinicore.Tensor( _infinicore.rms_norm(input._underlying, weight._underlying, eps))
+    
+    _infinicore.rms_norm( out._underlying, input._underlying, weight._underlying, eps)
+
 
 
 def silu(input:  infinicore.Tensor, inplace: bool = False) ->  infinicore.Tensor:
@@ -77,12 +162,12 @@ def silu(input:  infinicore.Tensor, inplace: bool = False) ->  infinicore.Tensor
 
     if inplace:
         return  _infinicore.silu_(input._underlying, input._underlying)
+    
     return infinicore.Tensor(_infinicore.silu(input._underlying))
 
 
 
-
-def swiglu(input, other, out=None):
+def swiglu(input:  infinicore.Tensor, other:  infinicore.Tensor, out=None):
     r"""Apply the Swish-Gated Linear Unit (SwiGLU) function, element-wise.
     See :class:`~infinicore.nn.SwiGLU` for more details.
     """
@@ -93,26 +178,19 @@ def swiglu(input, other, out=None):
 
 
 
-def causal_softmax(
-    input: infinicore.Tensor,
-    dim: Optional[int] = None,
-    _stacklevel: int = 3,
-    dtype: Optional[infinicore.dtype] = None,
-) -> infinicore.Tensor:
-    r"""Apply a causal softmax function.
+def rope(x:  infinicore.Tensor, 
+         pos_ids:  infinicore.Tensor, 
+         sin_table:  infinicore.Tensor, 
+         cos_table:  infinicore.Tensor,
+        out=None):
+    r"""
 
-    It is applied to all slices along dim, and will re-scale them so that the elements
-    lie in the range `[0, 1]` and sum to 1.
-
-    See :class:`~infinicore.nn.Softmax` for more details.
-
-    Args:
-        input (Tensor): input
-        dim (int): Unsupported parameters..
-        dtype (:class:`infinicore.dtype`, optional): Unsupported parameters.
     """
-    
-    assert (dim == None) and (dtype == None), "Unsupported parameters."
-    return infinicore.Tensor(_infinicore.causal_softmax(input._underlying))
+    if out is None:
+        return infinicore.Tensor(
+            _infinicore.rope(x._underlying, pos_ids._underlying, sin_table._underlying, cos_table._underlying)
+        )
 
-
+    _infinicore.rope_(
+        out._underlying, x._underlying, pos_ids._underlying, sin_table._underlying, cos_table._underlying
+    )

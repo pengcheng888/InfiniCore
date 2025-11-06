@@ -44,28 +44,12 @@ def to_infinicore_dtype(torch_dtype):
         return infinicore.uint8
     else:
         raise ValueError(f"Unsupported torch dtype: {torch_dtype}")
-    
-
-def is_integer_dtype(dtype):
-    """Check if dtype is integer type"""
-    return dtype in [
-        infinicore.int8,
-        infinicore.int16,
-        infinicore.int32,
-        infinicore.int64,
-        infinicore.uint8,
-    ]
-
-
-def is_float_dtype(dtype):
-    """Check if dtype is floating point type"""
-    return dtype in [infinicore.float16, infinicore.float32, infinicore.bfloat16]
 
 
 def convert_torch_to_infini_tensor(torch_tensor):
     infini_device = infinicore.device(torch_tensor.device.type, 0)
     if torch_tensor.is_contiguous():
-        ref =  infinicore.from_blob(
+        ref = infinicore.from_blob(
             torch_tensor.data_ptr(),
             list(torch_tensor.shape),
             dtype=to_infinicore_dtype(torch_tensor.dtype),
@@ -80,16 +64,16 @@ def convert_torch_to_infini_tensor(torch_tensor):
             device=infini_device,
         )
 
-    
     infini_tensor = infinicore.empty(torch_tensor.shape,
-                                    dtype=to_infinicore_dtype(torch_tensor.dtype),
-                                    device=infini_device
-                                    )
+                                     dtype=to_infinicore_dtype(torch_tensor.dtype),
+                                     device=infini_device
+                                     )
     infini_tensor.copy_(ref)
+
     return infini_tensor
 
 
-def convert_infini_to_torch_tensor(infini_result, torch_reference = None):
+def convert_infini_to_torch_tensor(infini_result, torch_reference=None):
     """
     Convert infinicore tensor to PyTorch tensor for comparison
 
@@ -100,7 +84,7 @@ def convert_infini_to_torch_tensor(infini_result, torch_reference = None):
     Returns:
         torch.Tensor: PyTorch tensor with infinicore data
     """
-    
+
     torch_tensor = torch.zeros(
         infini_result.shape,
         dtype=to_torch_dtype(infini_result.dtype),
@@ -118,47 +102,30 @@ def convert_infini_to_torch_tensor(infini_result, torch_reference = None):
     return torch_tensor
 
 
-def rearrange_tensor(tensor, new_strides):
-    """
-    Given a PyTorch tensor and a list of new strides, return a new PyTorch tensor with the given strides.
-    """
-    import torch
+def infini__str__(self):
+    self_torch = infinicore.convert_infini_to_torch_tensor(self)
+    return "infinicore::\n" + self_torch.__str__()
 
-    shape = tensor.shape
 
-    new_size = [0] * len(shape)
-    left = 0
-    right = 0
-    for i in range(len(shape)):
-        if new_strides[i] > 0:
-            new_size[i] = (shape[i] - 1) * new_strides[i] + 1
-            right += new_strides[i] * (shape[i] - 1)
-        else:  # TODO: Support negative strides in the future
-            # new_size[i] = (shape[i] - 1) * (-new_strides[i]) + 1
-            # left += new_strides[i] * (shape[i] - 1)
-            raise ValueError("Negative strides are not supported yet")
+infinicore.Tensor.__str__ = infini__str__
 
-    # Create a new tensor with zeros
-    new_tensor = torch.zeros(
-        (right - left + 1,), dtype=tensor.dtype, device=tensor.device
-    )
 
-    # Generate indices for original tensor based on original strides
-    indices = [torch.arange(s) for s in shape]
-    mesh = torch.meshgrid(*indices, indexing="ij")
+def infini__mul__(self, other):
+    self_torch = infinicore.convert_infini_to_torch_tensor(self)
+    other_torch = infinicore.convert_infini_to_torch_tensor(other)
 
-    # Flatten indices for linear indexing
-    linear_indices = [m.flatten() for m in mesh]
+    # 先暂时使用 pytorch 实现逐元素相乘
+    output_torch = self_torch * other_torch
+    # 
+    output_infinicore = infinicore.convert_torch_to_infini_tensor(output_torch)
+    return output_infinicore
 
-    # Calculate new positions based on new strides
-    new_positions = sum(
-        linear_indices[i] * new_strides[i] for i in range(len(shape))
-    ).to(tensor.device)
-    offset = -left
-    new_positions += offset
 
-    # Copy the original data to the new tensor
-    new_tensor.view(-1).index_add_(0, new_positions, tensor.view(-1))
-    new_tensor.set_(new_tensor.untyped_storage(), offset, shape, tuple(new_strides))
+infinicore.Tensor.__mul__ = infini__mul__
 
-    return new_tensor
+
+def infini__add__(self, other):
+    return infinicore.add(self, other)
+
+
+infinicore.Tensor.__add__ = infini__add__

@@ -170,14 +170,14 @@ def func7_mul():
     y = torch.ones((2,3),device="cpu")
     x_infini = infinicore.convert_torch_to_infini_tensor(x)
     y_infini = infinicore.convert_torch_to_infini_tensor(y)
-
-    z_infini = x_infini * y_infini
+    print("x_infini: ",x_infini)
+    print("y_infini: ",y_infini)
+    z_infini = x_infini + y_infini
     print("z_infini: ",z_infini)
 
 
 def func8_test():
     import infinicore
-
     import torch
 
     data = torch.ones((2,3))
@@ -187,7 +187,5 @@ def func8_test():
 
 
 if __name__ == '__main__':
-    func_net()
-    from infinicore import nn
-    nn.functional.relu()
+    func7_mul()
 

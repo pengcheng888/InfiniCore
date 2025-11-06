@@ -1,155 +1,90 @@
 import torch
 import infinicore
 from typing import Union
+from .module import Module
 
+class Linear(Module):
+    r"""Applies an affine linear transformation to the incoming data: :math:`y = xA^T + b`.
 
+    Args:
+        in_features: size of each input sample
+        out_features: size of each output sample
+        bias: If set to ``False``, the layer will not learn an additive bias.
+            Default: ``True``
 
-def to_infinicore_dtype(torch_dtype):
-    """Convert PyTorch data type to infinicore data type"""
+    Shape:
+        - Input: :math:`(*, H_\text{in})` where :math:`*` means any number of
+          dimensions including none and :math:`H_\text{in} = \text{in\_features}`.
+        - Output: :math:`(*, H_\text{out})` where all but the last dimension
+          are the same shape as the input and :math:`H_\text{out} = \text{out\_features}`.
 
-    if torch_dtype == torch.float32:
-        return infinicore.float32
-    elif torch_dtype == torch.float16:
-        return infinicore.float16
-    elif torch_dtype == torch.bfloat16:
-        return infinicore.bfloat16
-    elif torch_dtype == torch.int32:
-        return infinicore.int32
-    elif torch_dtype == torch.int64:
-        return infinicore.int64
-    else:
-        raise ValueError(f"Unsupported torch dtype: {torch_dtype}")
+    Attributes:
+        weight: the learnable weights of the module of shape
+            :math:`(\text{out\_features}, \text{in\_features})`. The values are
+            initialized from :math:`\mathcal{U}(-\sqrt{k}, \sqrt{k})`, where
+            :math:`k = \frac{1}{\text{in\_features}}`
+        bias:   the learnable bias of the module of shape :math:`(\text{out\_features})`.
+                If :attr:`bias` is ``True``, the values are initialized from
+                :math:`\mathcal{U}(-\sqrt{k}, \sqrt{k})` where
+                :math:`k = \frac{1}{\text{in\_features}}`
+    """
 
+    __constants__ = ["in_features", "out_features"]
+    in_features: int
+    out_features: int
+    weight: torch.Tensor
 
-def to_torch_dtype(infini_dtype):
-    """Convert infinicore data type to PyTorch data type"""
-    if infini_dtype == infinicore.float16:
-        return torch.float16
-    elif infini_dtype == infinicore.float32:
-        return torch.float32
-    elif infini_dtype == infinicore.bfloat16:
-        return torch.bfloat16
-    elif infini_dtype == infinicore.int32:
-        return torch.int32
-    elif infini_dtype == infinicore.int64:
-        return torch.int64
-    else:
-        raise ValueError(f"Unsupported infinicore dtype: {infini_dtype}")
+    def __init__(
+        self,
+        in_features: int,
+        out_features: int,
+        bias: bool = True,
+        device=None,
+        dtype=None,
+    ) -> None:
+        factory_kwargs = {"device": device, "dtype": dtype}
+        super().__init__()
+        self.in_features = in_features
+        self.out_features = out_features
+        self.weight = torch.nn.Parameter(
+            torch.empty((out_features, in_features), **factory_kwargs)
+        )
+        if bias:
+            self.bias = torch.nn.Parameter(torch.empty(out_features, **factory_kwargs))
+        else:
+            self.register_parameter("bias", None)
 
+        self.weight_infini = None
+        self.bias_infini = None
 
-def create_infinicore_tensor(torch_tensor: torch.Tensor, device_str="cpu"):
-    """Create infinicore tensor from PyTorch tensor"""
+    def forward(self,
+                input: Union[infinicore.Tensor, torch.Tensor],
+                ) -> Union[infinicore.Tensor, torch.Tensor]:
+        if isinstance(input, torch.Tensor):
+            return self.forward_torch(input)
 
-    infini_temp = infinicore.from_blob(
-        torch_tensor.data_ptr(),
-        list(torch_tensor.shape),
-        dtype=to_infinicore_dtype(torch_tensor.dtype),
-        device=infinicore.device(device_str, 0),
-    )
+        return self.forward_infini(input)
 
-    infini_tensor = infinicore.empty(torch_tensor.shape,
-                                     dtype=to_infinicore_dtype(torch_tensor.dtype),
-                                     device=infinicore.device(device_str, 0)
-                                     )
-    infini_tensor.copy_(infini_temp)
-    return infini_tensor
-
-
-def torch_tensor_2_infini_tensor(torch_tensor: torch.Tensor, device_str="cpu"):
-    """Create infinicore tensor from PyTorch tensor"""
-
-    return create_infinicore_tensor(torch_tensor, device_str)
-
-
-def infini_tensor_2_torch_tensor(infini_tensor: infinicore.Tensor, device_str="cpu"):
-    torch_tensor = torch.rand(infini_tensor.shape, dtype=to_torch_dtype(infini_tensor.dtype), device=device_str)
-
-    temp_tensor = infinicore.from_blob(
-        torch_tensor.data_ptr(),
-        list(torch_tensor.shape),
-        dtype=to_infinicore_dtype(torch_tensor.dtype),
-        device=infinicore.device(device_str, 0),
-    )
-    temp_tensor.copy_(infini_tensor)
-    return torch_tensor
-
-
-# def print_infini_tensor(infini_tensor, device_str="cpu"):
-#     torch_tensor = torch.rand(infini_tensor.shape, dtype=to_torch_dtype(infini_tensor.dtype), device=device_str)
-
-#     # temp_tensor = create_infinicore_tensor(torch_tensor, device_str)
-#     temp_tensor = infinicore.from_blob(
-#         torch_tensor.data_ptr(),
-#         list(torch_tensor.shape),
-#         dtype=to_infinicore_dtype(torch_tensor.dtype),
-#         device=infinicore.device(device_str, 0),
-#     )
-#     temp_tensor.copy_(infini_tensor)
-
-
-class Linear(torch.nn.Linear):
-    shared_count = 0
-
-    def __init__(self,
-                 in_features: int,
-                 out_features: int,
-                 bias: bool = False,
-                 device=None,
-                 dtype=None) -> None:
-        super().__init__(in_features=in_features,
-                         out_features=out_features,
-                         bias=False,
-                         device=device,
-                         dtype=dtype)
-        pass
-
-    def forward_torch(self, input: torch.Tensor) -> torch.Tensor:
-        # print(' Linear :: forward_torch ')
+    def forward_torch(self, input:  torch.Tensor) ->  torch.Tensor:
 
         # in_features 是 20
         # out_features 是 30
         # 将输入的维度从 in_features 变成 out_features
         # F.linear(input, self.weight, self.bias) # size([128,in_features]),size([out_features,in_features]) ==> size([128,out_features])
-        return super().forward(input)
+        return  torch.nn.functional.linear(input, self.weight, self.bias)
+    
+    def forward_infini(self, input: infinicore.Tensor) ->  infinicore.Tensor:
 
-    def forward_infinicore(self, input: infinicore.Tensor) -> infinicore.Tensor:
-        device_str = "cpu"
-        self.weight_infini = create_infinicore_tensor(self.weight.clone(), device_str)
+        # in_features 是 20
+        # out_features 是 30
+        # 将输入的维度从 in_features 变成 out_features
+        # F.linear(input, self.weight, self.bias) # size([128,in_features]),size([out_features,in_features]) ==> size([128,out_features])
+        if self.weight_infini is None:
+            self.weight_infini = infinicore.convert_torch_to_infini_tensor(self.weight)
+        if (self.bias_infini is None) and (self.bias is not None):
+            self.bias_infini = infinicore.convert_torch_to_infini_tensor(self.bias)
 
-        # print(' Linear :: forward_infinicore ')
-
-        Linear.shared_count += 1
-        # print('Linear forward_infinicore ', Linear.shared_count)
-        # size([128,in_features]), size([in_features,out_features]) ==> size([128,out_features]) 
-        return infinicore.linear(input, self.weight_infini)
-
-    def forward(self,
-                input: Union[infinicore.Tensor, torch.Tensor],
-                use_infinicore: bool = False
-                ) -> Union[infinicore.Tensor, torch.Tensor]:
-        if isinstance(input, torch.Tensor):
-            # ----------------------------------------------- #
-            # 输入是 torch.Tensor，使用 torch 算子计算 
-            # ----------------------------------------------- #
-            if not use_infinicore:
-                return self.forward_torch(input)
-
-            # ----------------------------------------------- #
-            # 输入是 torch.Tensor，使用 infinicore 算子计算 
-            # ----------------------------------------------- #
-            input_shape = input.shape
-            input_torch = input.reshape((-1, input_shape[-1]))
-            device_str = "cpu"
-            input_infinicore = create_infinicore_tensor(input_torch, device_str)
-            output_infinicore = self.forward_infinicore(input_infinicore)
-            output_torch = infini_tensor_2_torch_tensor(output_infinicore)
-
-            output = output_torch.reshape((input_shape[0], input_shape[1], -1))
-            return output
-        # ----------------------------------------------- #
-        # 输入是 infinicore.Tensor，使用 infinicore 算子计算  
-        # ----------------------------------------------- #
-        return self.forward_infinicore(input)
-
+        return  infinicore.nn.functional.linear(input, self.weight_infini, self.bias_infini)
+    
     def extra_repr(self) -> str:
-        return f" infinicore op : in_features={self.in_features}, out_features={self.out_features}, bias={self.bias is not None}"
+        return f"in_features={self.in_features}, out_features={self.out_features}, bias={self.bias is not None}"
