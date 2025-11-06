@@ -86,6 +86,10 @@ const std::byte *TensorImpl::data() const {
     return data_.memory->data() + data_.offset;
 }
 
+std::byte *TensorImpl::data(ptrdiff_t offset) const {
+    return (data_.memory->data()) + data_.offset + offset * dsize(meta_.dtype);
+}
+
 const Shape &TensorImpl::shape() const {
     return meta_.shape;
 }

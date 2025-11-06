@@ -119,7 +119,7 @@ class OpTest(BaseOperatorTest):
             return result
 
     def infinicore_operator(self, x, weight, out=None, **kwargs):
-        return infinicore.rms_norm(x, weight, _EPSILON, out=out)
+        return infinicore.nn.functional.rms_norm(x, weight.shape, weight, eps=_EPSILON, out=out)
 
 
 def main():

@@ -88,20 +88,20 @@ class OpTest(BaseOperatorTest):
     def torch_operator(self, input, out=None, **kwargs):
         # Causal softmax implementation: apply causal mask then softmax
         dtype = input.dtype
-        
+
         # Create causal mask
         mask = torch.tril(torch.ones_like(input), diagonal=-1).flip(dims=[-2, -1])
         masked = torch.where(mask == 1, -torch.inf, input.to(torch.float32))
-        
+
         result = torch.nn.functional.softmax(masked, dim=-1, dtype=dtype)
-        
+
         if out is not None:
             out.copy_(result)
             return out
         return result
 
     def infinicore_operator(self, input, out=None, **kwargs):
-        return infinicore.causal_softmax(input, out=out)
+        return infinicore.nn.functional.causal_softmax(input, out=out)
 
 
 def main():

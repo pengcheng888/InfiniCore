@@ -99,7 +99,7 @@ class OpTest(BaseOperatorTest):
         return result
 
     def infinicore_operator(self, input, out=None, **kwargs):
-        return infinicore.silu(input, out=out)
+        return infinicore.nn.functional.silu(input, out=out)
 
 
 def main():

@@ -24,16 +24,15 @@ from infinicore.dtype import (
     short,
     uint8,
 )
+
 from infinicore.ntops import use_ntops
 from infinicore.ops.add import add
 from infinicore.ops.attention import attention
-from infinicore.ops.causal_softmax import causal_softmax
 from infinicore.ops.matmul import matmul
 from infinicore.ops.rearrange import rearrange
-from infinicore.ops.rms_norm import rms_norm
-from infinicore.ops.silu import silu
-from infinicore.ops.swiglu import swiglu
+
 from infinicore.tensor import (
+    Tensor,
     empty,
     from_blob,
     ones,
@@ -41,6 +40,9 @@ from infinicore.tensor import (
     strided_from_blob,
     zeros,
 )
+
+from infinicore import nn as nn
+from infinicore.experimental import convert_infini_to_torch_tensor, convert_torch_to_infini_tensor
 
 __all__ = [
     # Classes.
@@ -74,12 +76,8 @@ __all__ = [
     # Operations.
     "add",
     "attention",
-    "causal_softmax",
     "matmul",
     "rearrange",
-    "rms_norm",
-    "silu",
-    "swiglu",
     "empty",
     "from_blob",
     "ones",

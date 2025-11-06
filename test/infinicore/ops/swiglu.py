@@ -106,7 +106,7 @@ class OpTest(BaseOperatorTest):
         return result
 
     def infinicore_operator(self, a, b, out=None, **kwargs):
-        return infinicore.swiglu(a, b, out=out)
+        return infinicore.nn.functional.swiglu(a, b, out=out)
 
 
 def main():
