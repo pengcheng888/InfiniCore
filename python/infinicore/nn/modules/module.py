@@ -105,7 +105,7 @@ class InfiniCoreModule:
             self.register_parameter(name, value)
         else:
             modules = self.__dict__.get("_modules")
-            if isinstance(value, (torch.nn.Module)):
+            if isinstance(value, (torch.nn.Module, InfiniCoreModule)):
                 if modules is None:
                     raise AttributeError(
                         "cannot assign module before Module.__init__() call"
@@ -180,6 +180,33 @@ class InfiniCoreModule:
             else:
                 self._non_persistent_buffers_set.add(name)
 
+
+    def add_module(self, name: str, module: Optional[torch.nn.Module]) -> None:
+        r"""Add a child module to the current module.
+
+        The module can be accessed as an attribute using the given name.
+
+        Args:
+            name (str): name of the child module. The child module can be
+                accessed from this module using the given name
+            module (Module or None): child module to be added to the module. If
+                ``None``, then operations that run on modules, such as :attr:`eval`,
+                are ignored. If ``None``, the module is **not** included in the
+                module's :attr:`children`.
+        """
+        if not isinstance(name, str):
+            raise TypeError(f"module name should be a string. Got {torch.typename(name)}")
+        elif '.' in name:
+            raise KeyError(f"module name can't contain \".\", got: {name}")
+        elif name == '':
+            raise KeyError("module name can't be empty string \"\"")
+        elif hasattr(self, name) and name not in self._modules:
+            raise KeyError(f"attribute '{name}' already exists")
+        
+        if module is not None and not isinstance(module, (torch.nn.Module, InfiniCoreModule)):
+            raise TypeError(f"{torch.typename(module)} is not a Module subclass")
+        
+        self._modules[name] = module
 
     def register_parameter(self, name: str, param: Optional[torch.nn.Parameter]) -> None:
         r"""Add a parameter to the module.
@@ -526,16 +553,212 @@ class InfiniCoreModule:
                                self.__class__.__name__, "\n\t".join(error_msgs)))
         return _IncompatibleKeys(missing_keys, unexpected_keys)
 
-    def children(self) -> Iterator['InfiniCoreModule']:
+    def parameters(self, recurse: bool = True) -> Iterator[torch.nn.Parameter]:
+        r"""Returns an iterator over module parameters.
+
+        Args:
+            recurse (bool): if True, then yields parameters of this module
+                and all submodules. Otherwise, yields only parameters that
+                are direct members of this module.
+
+        Yields:
+            Parameter: module parameter
+
+        Example::
+
+            >>> # xdoctest: +SKIP("undefined vars")
+            >>> for param in model.parameters():
+            ...     print(type(param), param.size())
+
+        """
+        for name, param in self.named_parameters(recurse=recurse):
+            yield param
+
+    def named_parameters(self, prefix: str = '', recurse: bool = True) -> Iterator[Tuple[str, torch.nn.Parameter]]:
+        r"""Returns an iterator over module parameters, yielding both the
+        name of the parameter as well as the parameter itself.
+
+        Args:
+            prefix (str): prefix to prepend to all parameter names.
+            recurse (bool): if True, then yields parameters of this module
+                and all submodules. Otherwise, yields only parameters that
+                are direct members of this module.
+
+        Yields:
+            (str, Parameter): Tuple containing the name and parameter
+
+        Example::
+
+            >>> # xdoctest: +SKIP("undefined vars")
+            >>> for name, param in self.named_parameters():
+            ...     if name in ['bias']:
+            ...         print(param.size())
+
+        """
+        gen = self._named_members(
+            lambda module: module._parameters.items(),
+            prefix=prefix, recurse=recurse)
+        for elem in gen:
+            yield elem
+
+    def buffers(self, recurse: bool = True) -> Iterator[torch.Tensor]:
+        r"""Returns an iterator over module buffers.
+
+        Args:
+            recurse (bool): if True, then yields buffers of this module
+                and all submodules. Otherwise, yields only buffers that
+                are direct members of this module.
+
+        Yields:
+            torch.Tensor: module buffer
+
+        Example::
+
+            >>> # xdoctest: +SKIP("undefined vars")
+            >>> for buf in model.buffers():
+            ...     print(type(buf), buf.size())
+
+        """
+        for name, buf in self.named_buffers(recurse=recurse):
+            yield buf
+
+    def named_buffers(self, prefix: str = '', recurse: bool = True) -> Iterator[Tuple[str, torch.Tensor]]:
+        r"""Returns an iterator over module buffers, yielding both the
+        name of the buffer as well as the buffer itself.
+
+        Args:
+            prefix (str): prefix to prepend to all buffer names.
+            recurse (bool): if True, then yields buffers of this module
+                and all submodules. Otherwise, yields only buffers that
+                are direct members of this module.
+
+        Yields:
+            (str, torch.Tensor): Tuple containing the name and buffer
+
+        Example::
+
+            >>> # xdoctest: +SKIP("undefined vars")
+            >>> for name, buf in self.named_buffers():
+            ...     if name in ['running_mean']:
+            ...         print(buf.size())
+
+        """
+        memo = set()
+        modules = self.named_modules(prefix=prefix) if recurse else [(prefix, self)]
+        for module_prefix, module in modules:
+            for k, v in module._buffers.items():
+                if v is None or v in memo:
+                    continue
+                if k in module._non_persistent_buffers_set:
+                    continue
+                memo.add(v)
+                name = module_prefix + ('.' if module_prefix else '') + k
+                yield (name, v)
+
+    def _named_members(self, get_members_fn, prefix='', recurse=True):
+        r"""Helper method to yield members with their names."""
+        memo = set()
+        modules = self.named_modules(prefix=prefix) if recurse else [(prefix, self)]
+        for module_prefix, module in modules:
+            members = get_members_fn(module)
+            for k, v in members:
+                if v is None or v in memo:
+                    continue
+                memo.add(v)
+                name = module_prefix + ('.' if module_prefix else '') + k
+                yield (name, v)
+
+    def modules(self) -> Iterator['InfiniCoreModule']:
+        r"""Returns an iterator over all modules in the network.
+
+        Yields:
+            Module: a module in the network
+
+        Note:
+            Duplicate modules are returned only once. In the following
+            example, ``l`` will be returned only once.
+
+        Example::
+
+            >>> # xdoctest: +SKIP("undefined vars")
+            >>> l = nn.Linear(2, 2)
+            >>> net = nn.Sequential(l, l)
+            >>> for idx, m in enumerate(net.modules()):
+            ...     print(idx, '->', m)
+
+            0 -> Sequential(
+              (0): Linear(in_features=2, out_features=2, bias=True)
+              (1): Linear(in_features=2, out_features=2, bias=True)
+            )
+            1 -> Linear(in_features=2, out_features=2, bias=True)
+
+        """
+        for name, module in self.named_modules():
+            yield module
+
+    def named_modules(self, memo: Optional[Set['InfiniCoreModule']] = None, prefix: str = '', remove_duplicate: bool = True):
+        r"""Returns an iterator over all modules in the network, yielding
+        both the name of the module as well as the module itself.
+
+        Args:
+            memo: a memo to store the set of modules already added to the result
+            prefix: a prefix that will be added to the name of the module
+            remove_duplicate: whether to remove the duplicated module instances in the result
+                or not
+
+        Yields:
+            (str, Module): Tuple of name and module
+
+        Note:
+            Duplicate modules are returned only once. In the following
+            example, ``l`` will be returned only once.
+
+        Example::
+
+            >>> # xdoctest: +SKIP("undefined vars")
+            >>> l = nn.Linear(2, 2)
+            >>> net = nn.Sequential(l, l)
+            >>> for idx, m in enumerate(net.named_modules()):
+            ...     print(idx, '->', m)
+
+            0 -> ('', Sequential(
+              (0): Linear(in_features=2, out_features=2, bias=True)
+              (1): Linear(in_features=2, out_features=2, bias=True)
+            ))
+            1 -> ('0', Linear(in_features=2, out_features=2, bias=True))
+
+        """
+        if memo is None:
+            memo = set()
+        if remove_duplicate:
+            if self in memo:
+                return
+            memo.add(self)
+        yield prefix, self
+        for name, module in self._modules.items():
+            if module is None:
+                continue
+            submodule_prefix = prefix + ('.' if prefix else '') + name
+            # Handle both InfiniCoreModule and torch.nn.Module
+            if isinstance(module, InfiniCoreModule):
+                for m in module.named_modules(memo, submodule_prefix, remove_duplicate):
+                    yield m
+            elif isinstance(module, torch.nn.Module):
+                # For torch.nn.Module, use its named_modules method
+                # torch.nn.Module.named_modules returns (name, module) tuples
+                for sub_name, sub_module in module.named_modules(prefix=submodule_prefix, remove_duplicate=remove_duplicate):
+                    yield (sub_name, sub_module)
+
+    def children(self) -> Iterator[Union['InfiniCoreModule', torch.nn.Module]]:
         r"""Returns an iterator over immediate children modules.
 
         Yields:
-            Module: a child module
+            Module: a child module (can be InfiniCoreModule or torch.nn.Module)
         """
         for name, module in self.named_children():
             yield module
 
-    def named_children(self) -> Iterator[Tuple[str, 'InfiniCoreModule']]:
+    def named_children(self) -> Iterator[Tuple[str, Union['InfiniCoreModule', torch.nn.Module]]]:
         r"""Returns an iterator over immediate children modules, yielding both
         the name of the module as well as the module itself.
 
