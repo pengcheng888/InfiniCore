@@ -118,6 +118,7 @@ def embedding(
         - Output: `(*, embedding_dim)`, where `*` is the input shape
     """
     assert (padding_idx == None) and (max_norm == None) and (scale_grad_by_freq == False) and (sparse == False), "Unsupported parameters."
+    
     return infinicore.Tensor(_infinicore.embedding(input._underlying, weight._underlying))
 
 
@@ -135,10 +136,12 @@ def rms_norm(
         return infinicore.Tensor(
             _infinicore.rms_norm(input._underlying, weight._underlying, eps)
         )
+    
+    _infinicore.rms_norm(out._underlying, input._underlying, weight._underlying, eps)
+    
 
-    infinicore.Tensor(
-        _infinicore.rms_norm(out._underlying, input._underlying, weight._underlying, eps)
-    )
+
+
 
 
 def silu(input: infinicore.Tensor, inplace: bool = False, out=None) -> infinicore.Tensor:
