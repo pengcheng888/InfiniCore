@@ -46,7 +46,7 @@ class InfiniCoreModule:
     _version: int = 1
 
     training: bool
-    _parameters: Dict[str, Optional[torch.nn.Parameter]]
+    _parameters: Dict[str, Optional[Union[torch.nn.Parameter, 'InfiniCoreParameter']]]
     _buffers: Dict[str, Optional[torch.Tensor]]
     _non_persistent_buffers_set: Set[str]
     _modules: Dict[str, Optional['InfiniCoreModule']]
@@ -84,7 +84,9 @@ class InfiniCoreModule:
                         d.discard(name)
 
         params = self.__dict__.get("_parameters")
-        if isinstance(value, torch.nn.Parameter):
+        # Support both torch.nn.Parameter and InfiniCoreParameter
+        from .parameter import InfiniCoreParameter
+        if isinstance(value, (torch.nn.Parameter, InfiniCoreParameter)):
             if params is None:
                 raise AttributeError(
                     "cannot assign parameters before Module.__init__() call"
@@ -100,7 +102,7 @@ class InfiniCoreModule:
             if value is not None:
                 raise TypeError(
                     f"cannot assign '{torch.typename(value)}' as parameter '{name}' "
-                    "(torch.nn.Parameter or None expected)"
+                    "(torch.nn.Parameter, InfiniCoreParameter or None expected)"
                 )
             self.register_parameter(name, value)
         else:
@@ -239,12 +241,14 @@ class InfiniCoreModule:
 
         if param is None:
             self._parameters[name] = None
-        elif not isinstance(param, torch.nn.Parameter):
-            raise TypeError(
-                f"cannot assign '{torch.typename(param)}' object to parameter '{name}' "
-                "(torch.nn.Parameter or None required)"
-            )
         else:
+            # Support both torch.nn.Parameter and InfiniCoreParameter
+            from .parameter import InfiniCoreParameter
+            if not isinstance(param, (torch.nn.Parameter, InfiniCoreParameter)):
+                raise TypeError(
+                    f"cannot assign '{torch.typename(param)}' object to parameter '{name}' "
+                    "(torch.nn.Parameter, InfiniCoreParameter or None required)"
+                )
             self._parameters[name] = param
 
     def get_extra_state(self) -> Any:
