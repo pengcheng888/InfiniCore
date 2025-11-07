@@ -12,29 +12,17 @@ __all__ = ["causal_softmax",  # _
            "swiglu",  # _
            ]
 
-
 def causal_softmax(
         input: infinicore.Tensor,
-        dim: Optional[int] = None,
-        _stacklevel: int = 3,
-        dtype: Optional[infinicore.dtype] = None,
         out=None
 ) -> infinicore.Tensor:
     r"""Apply a causal softmax function.
 
-    It is applied to all slices along dim, and will re-scale them so that the elements
-    lie in the range `[0, 1]` and sum to 1.
-
     Args:
-        input (Tensor): input
-        dim (int): Unsupported parameters..
-        dtype (:class:`infinicore.dtype`, optional): Unsupported parameters.
+        input (infinicore.Tensor): Three-dimensional or two-dimensional, requiring the last dimension to be continuous.
     """
-
-    assert (dim == None) and (dtype == None), "Unsupported parameters."
     if out is None:
         return infinicore.Tensor(_infinicore.causal_softmax(input._underlying))
-
     _infinicore.causal_softmax_(out._underlying, input._underlying)
 
 
@@ -126,12 +114,12 @@ def rms_norm(
         input: infinicore.Tensor,
         normalized_shape: list[int],
         weight: infinicore.Tensor,
-        eps: float = 1e-5,
+        eps: float = 1e-6,
         out=None
 ) -> infinicore.Tensor:
     r"""Apply Root Mean Square Layer Normalization.
     """
-    assert normalized_shape == weight.shape, "normalized_shape  does not match weight.shape."
+    assert normalized_shape == weight.shape, "normalized_shape does not match weight.shape."
     if out is None:
         return infinicore.Tensor(
             _infinicore.rms_norm(input._underlying, weight._underlying, eps)
@@ -141,34 +129,25 @@ def rms_norm(
     
 
 
-
-
-
 def silu(input: infinicore.Tensor, inplace: bool = False, out=None) -> infinicore.Tensor:
     r"""Apply the Sigmoid Linear Unit (SiLU) function, element-wise.
-
-    The SiLU function is also known as the swish function.
-
-    .. math::
-        \text{silu}(x) = x * \sigma(x), \text{where } \sigma(x) \text{ is the logistic sigmoid.}
     """
-
-    if inplace:
-        return _infinicore.silu_(input._underlying, input._underlying)
-
     if out is None:
         return infinicore.Tensor(_infinicore.silu(input._underlying))
     
+    if inplace:
+        return _infinicore.silu_(input._underlying, input._underlying)
+
     _infinicore.silu_(out._underlying, input._underlying)
+
 
 
 def swiglu(input: infinicore.Tensor, other: infinicore.Tensor, out=None):
     r"""Apply the Swish-Gated Linear Unit (SwiGLU) function, element-wise.
-    See :class:`~infinicore.nn.SwiGLU` for more details.
     """
-
     if out is None:
         return infinicore.Tensor(_infinicore.swiglu(input._underlying, other._underlying))
+    
     _infinicore.swiglu_(out._underlying, input._underlying, other._underlying)
 
 
