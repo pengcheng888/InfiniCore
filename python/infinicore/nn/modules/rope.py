@@ -41,7 +41,7 @@ class RoPE():  # Module
 
 
     def forward(self, states: infinicore.Tensor,
-                              position_ids: torch.Tensor,
+                              position_ids: infinicore.Tensor,
                               algo=Algorithm.GPT_NEOX
                               ):
         global _sin_table
@@ -68,7 +68,7 @@ class RoPE():  # Module
             raise ValueError(" Algorithm.GPT_J not support")
         else:
             out = infinicore.nn.functional.rope(states,
-                                   infinicore.convert_torch_to_infini_tensor(position_ids),
+                                   position_ids,
                                   _sin_table,
                                   _cos_table)
         out_torch = out.view((bs, ntok, num_attention_heads, head_dim))

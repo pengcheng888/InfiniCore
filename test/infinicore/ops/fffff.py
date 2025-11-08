@@ -1,3 +1,6 @@
+import torch
+
+
 def func1():
     import torch
     from torch import nn
@@ -76,8 +79,8 @@ def func4():
 
 
 def func_net():
-    
-    modelpath =  r"/home/ubuntu/Music/worksapce_nn/InfiniCore/test/infinicore/ops/model.pt"
+    modelpath = r"/home/ubuntu/Music/worksapce_nn/InfiniCore/test/infinicore/ops/model.pt"
+
     def test_TorchNet():
         import torch
         from torch import nn
@@ -139,7 +142,7 @@ def func_net():
                 print('----------- caculate ------------>')
 
                 device_str = "cuda"
-                model.to(device = device_str)
+                model.to(device=device_str)
                 x = torch.ones((1, 10), dtype=torch.float32, device=device_str)
 
                 out = model.forward(x)
@@ -153,11 +156,8 @@ def func_net():
 
         InfiniNet().test()
 
-    #test_TorchNet()
+    # test_TorchNet()
     test_InfiniNet()
-
-
-
 
 
 def func7_mul():
@@ -169,36 +169,82 @@ def func7_mul():
     # x_infini = infinicore.convert_torch_to_infini_tensor(x)
     # y_infini = infinicore.convert_torch_to_infini_tensor(y)
 
+    x_infini = infinicore.empty((2, 3), dtype=infinicore.float32, device=infinicore.device("cuda", 0))
+    y_infini = infinicore.empty((2, 3), dtype=infinicore.float32, device=infinicore.device("cuda", 0))
 
-    x_infini = infinicore.empty( (2,3), dtype=infinicore.float32, device=infinicore.device("cuda", 0))
-    y_infini = infinicore.empty( (2,3), dtype=infinicore.float32, device=infinicore.device("cuda", 0))
-
-    print("x_infini: ",x_infini)
-    print("y_infini: ",y_infini)
+    print("x_infini: ", x_infini)
+    print("y_infini: ", y_infini)
     x_torch = infinicore.convert_infini_to_torch_tensor(x_infini)
     y_torch = infinicore.convert_infini_to_torch_tensor(y_infini)
 
-    print("x_torch: ",x_torch)
-    print("y_torch: ",y_torch)
+    print("x_torch: ", x_torch)
+    print("y_torch: ", y_torch)
     x_torch = torch.tensor([], dtype=x_torch.dtype, device=x_torch.device)
-    xy_torch = torch.cat([x_torch,y_torch],-1)
-    print("xy_torch: ",xy_torch)
+    xy_torch = torch.cat([x_torch, y_torch], -1)
+    print("xy_torch: ", xy_torch)
 
     z_infini = x_infini + y_infini
-    print("z_infini: ",z_infini)
+    print("z_infini: ", z_infini)
 
 
 def func8_test():
     import infinicore
     import torch
 
-    data = torch.ones((2,3))
+    data = torch.ones((2, 3))
 
     data_infini = infinicore.convert_torch_to_infini_tensor(data)
     print(data_infini)
 
 
-if __name__ == '__main__':
-    #func7_mul()
-    func7_mul()
+def func():
+    import infinicore
 
+    from ctypes import POINTER, c_float, c_int, c_uint, c_void_p, byref, addressof
+
+    data = [1, 2, 3, 4, 5]
+    print()
+    exit()
+
+    print(type(data[1]))
+    data_ptr = (c_int * len(data))(*data)
+
+    address = addressof(data_ptr)
+
+    ret = infinicore.from_blob(address,
+                               [5],
+                               dtype=infinicore.int32,
+                               device=infinicore.device("cpu", 0))
+
+    print(ret)
+
+
+def func11():
+    import numpy as np
+    import ctypes
+    import infinicore
+
+
+    # ---
+    data = [1, 2, 3, 4, 5,1]
+
+    ret = infinicore.convert_list_to_infini_tensor(data)
+
+    print(ret)
+
+    ret_gpu = ret.to(infinicore.device("cuda", 0))
+    print(ret_gpu)
+
+    z_gpu = infinicore.empty((2, 3), dtype=infinicore.float32, device=infinicore.device("cuda", 0))
+    z_cpu = z_gpu.to(infinicore.device())
+    print(z_cpu)
+
+
+if __name__ == '__main__':
+    # func7_mul()
+    # func7_mul()
+    func11()
+
+
+
+ 

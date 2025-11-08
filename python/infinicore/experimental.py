@@ -73,6 +73,25 @@ def convert_torch_to_infini_tensor(torch_tensor):
     return infini_tensor
 
 
+def convert_np_to_infini_tensor(np_tensor):
+    infini_device = infinicore.device("cpu", 0)
+    ptr = np_tensor.__array_interface__['data'][0]
+    ref = infinicore.from_blob(
+        ptr,
+        list(np_tensor.shape),
+        dtype=infinicore.int32,
+        device=infini_device,
+    )
+
+    infini_tensor = infinicore.empty(list(np_tensor.shape),
+                                     dtype=infinicore.int32,
+                                     device=infini_device
+                                     )
+    infini_tensor.copy_(ref)
+
+    return infini_tensor
+
+
 def convert_infini_to_torch_tensor(infini_result, torch_reference=None):
     """
     Convert infinicore tensor to PyTorch tensor for comparison
@@ -102,6 +121,65 @@ def convert_infini_to_torch_tensor(infini_result, torch_reference=None):
     return torch_tensor
 
 
+# -------------------------------------------------------------------------------- #
+# -------------------------------------------------------------------------------- #
+# -------------------------------------------------------------------------------- #
+
+def py_to_ctype(py_dtype):
+    """Convert PyTorch data type to infinicore data type"""
+    from ctypes import POINTER, c_float, c_int, c_uint, c_void_p, byref, addressof
+
+    if py_dtype == int:
+        return c_int
+    elif py_dtype == float:
+        return c_float
+    else:
+        raise ValueError(f"Unsupported py_dtype: {py_dtype}")
+
+
+def py_to_infinicore_dtype(py_dtype):
+    """Convert PyTorch data type to infinicore data type"""
+    from ctypes import POINTER, c_float, c_int, c_uint, c_void_p, byref, addressof
+    import infinicore
+
+    if py_dtype == int:
+        return infinicore.int32
+    elif py_dtype == float:
+        return infinicore.float32
+    else:
+        raise ValueError(f"Unsupported py_dtype: {py_dtype}")
+
+
+def convert_list_to_infini_tensor(data_list: list,
+                                  device=None):
+    from ctypes import POINTER, c_float, c_int, c_uint, c_void_p, byref, addressof
+
+    num_count = len(data_list)
+    address = (py_to_ctype(type(data_list[0])) * num_count)(*data_list)
+    ptr = addressof(address)
+    shape = [num_count]
+    infini_type = py_to_infinicore_dtype(type(data_list[0]))
+    infini_device = infinicore.device("cpu", 0)
+
+    ref = infinicore.from_blob(
+        ptr,
+        shape,
+        dtype=infinicore.int32,
+        device=infini_device,
+    )
+
+    infini_tensor = infinicore.empty(shape,
+                                     dtype=infini_type,
+                                     device=infini_device
+                                     )
+    infini_tensor.copy_(ref)
+
+    return infini_tensor
+
+
+# -------------------------------------------------------------------------------- #
+# -------------------------------------------------------------------------------- #
+# -------------------------------------------------------------------------------- #
 def infini__str__(self):
     self_torch = infinicore.convert_infini_to_torch_tensor(self)
     return "infinicore::\n" + self_torch.__str__()

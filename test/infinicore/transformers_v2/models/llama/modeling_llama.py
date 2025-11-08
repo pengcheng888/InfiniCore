@@ -107,8 +107,13 @@ class LlamaAttention(infinicore.nn.Module):
         key_states_infinicore = self.k_proj(hidden_states).view(key_hidden_shape)  # => [bs, ntok,  num_key_value_heads, head_dim]
         value_states_infinicore = self.v_proj(hidden_states).view(value_hidden_shape)  # => [bs, ntok, nkvh, head_dim]
 
-        query_states = self.rope_infinicore.forward(query_states_infinicore, cache_position)
-        key_states = self.rope_infinicore.forward(key_states_infinicore, cache_position)
+
+        cache_position_infini = kwargs.pop("cache_position_infini", None)
+        if cache_position_infini:
+            query_states = self.rope_infinicore.forward(query_states_infinicore, cache_position_infini)
+            key_states = self.rope_infinicore.forward(key_states_infinicore, cache_position_infini)
+        else:
+            exit(-1)
 
         query_states = infinicore.convert_infini_to_torch_tensor(query_states).permute((0, 2, 1, 3)).contiguous()
         key_states = infinicore.convert_infini_to_torch_tensor(key_states).permute((0, 2, 1, 3)).contiguous()
@@ -218,8 +223,14 @@ class LlamaModel(infinicore.nn.Module):  # LlamaPreTrainedModel  torch.nn.Module
             # input_ids :     {1,5}       tensor([[    1,  1128,   526,   366, 29892]])
             # inputs_embeds : {1,5,2048}  tensor([[[...]]])
             # input_ids = input_ids.to(dtype=torch.int32)
-            input_ids_infini = infinicore.convert_torch_to_infini_tensor(input_ids.to(device="cpu"))
-            inputs_embeds = self.embed_tokens(input_ids_infini)
+
+            input_ids_infini = kwargs.pop("input_ids_infini", None)
+            if input_ids_infini is None:
+                input_ids_infini = infinicore.convert_torch_to_infini_tensor(input_ids.to(device="cpu"))
+                inputs_embeds = self.embed_tokens(input_ids_infini)
+            elif isinstance(input_ids_infini, infinicore.Tensor):
+                inputs_embeds = self.embed_tokens(input_ids_infini)
+
 
         hidden_states = inputs_embeds
         ilayer = 0

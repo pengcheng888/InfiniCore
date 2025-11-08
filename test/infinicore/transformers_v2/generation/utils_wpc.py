@@ -105,7 +105,8 @@ class GenerationMixin(ContinuousMixin):
         # 1. Handle BC:
         model_inputs = {}
         model_inputs["cache_position"] = cache_position
-
+        model_inputs["cache_position_infini"] =  infinicore.convert_torch_to_infini_tensor(cache_position) 
+        
         # 2. Generic cache-dependent input preparation
         if past_key_values is not None:
             model_inputs["past_key_values"] = past_key_values
@@ -119,6 +120,9 @@ class GenerationMixin(ContinuousMixin):
         # 3. Prepare base model inputs
         model_inputs["input_ids"] =  input_ids.clone(memory_format=torch.contiguous_format) # [[1234]]
         model_inputs["inputs_embeds"] = None
+
+        import infinicore
+        model_inputs["input_ids_infini"] =  infinicore.convert_torch_to_infini_tensor(input_ids.clone(memory_format=torch.contiguous_format).cpu()) 
 
 
         # 7. Forward ALL kwargs that are uninitialized (e.g. `use_cache`).
