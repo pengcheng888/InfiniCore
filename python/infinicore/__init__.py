@@ -37,13 +37,13 @@ from infinicore.tensor import (
 
 from infinicore.ntops import use_ntops
 from infinicore.ops.add import add
-from infinicore.ops.attention import attention
+from infinicore.ops.attention import attention, attention_lm
 from infinicore.ops.matmul import matmul
 from infinicore.ops.rearrange import rearrange
 
 from infinicore import nn as nn
 
-from infinicore.experimental import convert_infini_to_torch_tensor, convert_torch_to_infini_tensor
+from infinicore.experimental import convert_infini_to_torch_tensor, convert_torch_to_infini_tensor,to_torch_dtype
 
 __all__ = [
     # Classes.
@@ -77,6 +77,7 @@ __all__ = [
     # Operations.
     "add",
     "attention",
+    "attention_lm",
     "matmul",
     "rearrange",
     "empty",

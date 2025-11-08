@@ -56,7 +56,13 @@ def sdpa_attention_forward(
         )
     sdpa_kwargs = {}
     if hasattr(module, "num_key_value_groups"):
-        if not use_gqa_in_sdpa(attention_mask, key):
+        # if not use_gqa_in_sdpa(attention_mask, key):
+        #     key = repeat_kv(key, module.num_key_value_groups)  # (1,4,9,64) => (1,4*8,9,64)
+        #     value = repeat_kv(value, module.num_key_value_groups)
+        # else:
+        #     sdpa_kwargs = {"enable_gqa": True}
+
+        if  use_gqa_in_sdpa(attention_mask, key):
             key = repeat_kv(key, module.num_key_value_groups)  # (1,4,9,64) => (1,4*8,9,64)
             value = repeat_kv(value, module.num_key_value_groups)
         else:
@@ -78,9 +84,19 @@ def sdpa_attention_forward(
     if torch.jit.is_tracing() and isinstance(is_causal, torch.Tensor):
         is_causal = is_causal.item()
 
+    # 
+    #  query_states,  # [bs, num_attention_heads,  ntok,   head_dim]
+    #  key_states,    # [bs, num_key_value_heads, all_tok, head_dim]
+    #  value_states,  # [bs, num_key_value_heads, all_tok, head_dim]
+
+
+    torch.save(    query.contiguous(), "query.pt")
+    torch.save(    key.contiguous(), "key.pt")
+    torch.save(    value.contiguous(), "value.pt")
+
     attn_output = torch.nn.functional.scaled_dot_product_attention(
-        query,  # (1,32,5,64)
-        key,  # (1,4*8,9,64)
+        query,  # (1,32, 5,64)
+        key,    # (1,4*8,9,64)
         value,  # (1,4*8,9,64)
         attn_mask=attention_mask,  # (1,1,5,9)
         dropout_p=dropout,  # 0.0
@@ -88,6 +104,11 @@ def sdpa_attention_forward(
         is_causal=is_causal,  # False
         **sdpa_kwargs,  # {}
     )
+    torch.save(    attn_output.contiguous(), "attn_output.pt")
+
+    print("ok")
+    exit(-1)
+    
     attn_output = attn_output.transpose(1, 2).contiguous()  # (1,32,5,64)  =>  (1,5,32,64)
 
     return attn_output, None

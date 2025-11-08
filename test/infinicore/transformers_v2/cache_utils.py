@@ -117,6 +117,7 @@ class DynamicLayer(CacheLayerMixin):
         self.values = torch.cat([self.values, value_states], dim=-2)
         return self.keys, self.values
 
+
     def get_mask_sizes(self, cache_position: torch.Tensor) -> tuple[int, int]:
         """Return the length and offset of the cache, used to generate the mask"""
         kv_offset = 0

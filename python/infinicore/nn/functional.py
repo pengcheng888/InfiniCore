@@ -125,8 +125,9 @@ def embedding(
     """
     assert (padding_idx == None) and (max_norm == None) and (scale_grad_by_freq==False) and (sparse==False), "Unsupported parameters."
 
-    return infinicore.Tensor(_infinicore.embedding(input._underlying, weight._underlying))
+    ret = infinicore.Tensor(_infinicore.embedding(input._underlying, weight._underlying))
 
+    return ret
 
 
 def rms_norm(

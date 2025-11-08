@@ -51,6 +51,13 @@ Args:
     v_cache: Value cache tensor
     pos: Current position in the sequence
 )doc");
+
+    m.def("attention_lm",
+          &op::attention_lm,
+          py::arg("query_states"), // [bs, num_attention_heads, ntoken, head_dim]
+          py::arg("key_states"),   // [bs, num_key_value_heads, total_token, head_dim]
+          py::arg("value_states")  // [bs, num_key_value_heads, total_token, head_dim]
+    );
 }
 
 } // namespace infinicore::ops

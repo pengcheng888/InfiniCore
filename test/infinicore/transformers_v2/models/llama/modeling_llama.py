@@ -132,7 +132,7 @@ class LlamaAttention(infinicore.nn.Module):
                 **kwargs: Unpack[TransformersKwargs],
                 ) -> tuple[Union[infinicore.Tensor, torch.Tensor]]:
         input_shape = hidden_states.shape[:-1]
-
+ 
         query_hidden_shape = (*input_shape, self.num_attention_heads, self.head_dim)
         key_hidden_shape = (*input_shape, self.num_key_value_heads, self.head_dim)
         value_hidden_shape = (*input_shape, self.num_key_value_heads, self.head_dim)
@@ -140,22 +140,51 @@ class LlamaAttention(infinicore.nn.Module):
         query_states_infinicore = self.q_proj(hidden_states).view(query_hidden_shape)
         key_states_infinicore = self.k_proj(hidden_states).view(key_hidden_shape)
         value_states_infinicore = self.v_proj(hidden_states).view(value_hidden_shape).permute((0, 2, 1, 3))
-
+      
         query_states = self.rope_infinicore.forward(query_states_infinicore, cache_position)
         key_states = self.rope_infinicore.forward(key_states_infinicore, cache_position)
-
-        query_states = infinicore.convert_infini_to_torch_tensor(query_states).permute((0, 2, 1, 3))
-        key_states = infinicore.convert_infini_to_torch_tensor(key_states).permute((0, 2, 1, 3))
+ 
+        query_states = infinicore.convert_infini_to_torch_tensor(query_states).permute((0, 2, 1, 3)).contiguous()
+        key_states = infinicore.convert_infini_to_torch_tensor(key_states).permute((0, 2, 1, 3)).contiguous()
         value_states = infinicore.convert_infini_to_torch_tensor(value_states_infinicore)
-
+     
+    
         # kv cache
         if past_key_values is not None:
             # sin and cos are specific to RoPE models; cache_position needed for the static cache
             cache_kwargs = {"cache_position": cache_position}
+    
             key_states, value_states = past_key_values.update(key_states, value_states, self.layer_idx, cache_kwargs)
 
-  
+    
         if True:
+            query_states_infini = infinicore.convert_torch_to_infini_tensor(query_states.contiguous())
+            key_states_infini =   infinicore.convert_torch_to_infini_tensor(key_states.contiguous())
+            value_states_infini = infinicore.convert_torch_to_infini_tensor(value_states.contiguous())
+            
+       
+            att_val =  infinicore.attention_lm(query_states_infini,
+                                    key_states_infini,
+                                    value_states_infini,
+                                    )
+        
+            bs = input_shape[0]
+            ntok = input_shape[1]
+            ngroup =  self.num_attention_heads // self.num_key_value_heads
+            nkvh = self.num_key_value_heads
+            dh = self.head_dim
+            
+    
+            att_val_torch = infinicore.convert_infini_to_torch_tensor(att_val)
+            att_val_torch = att_val_torch.reshape((bs, nkvh, ngroup, ntok, dh )).reshape((bs,self.num_attention_heads , ntok, dh )).contiguous()
+            attn_output =  att_val_torch.permute((0, 2, 1,3)).contiguous() # ==> {bs, ntok, self.num_attention_heads , dh }
+            
+            # ([bs, ntok, num_attention_heads, head_dim]) 
+            attn_output = attn_output.reshape(*input_shape, -1).contiguous() # ==> [bs, ntok, hidden_size] 
+        
+
+
+        if False:
             # attention
             attention_interface: Callable = eager_attention_forward
             if self.config._attn_implementation != "eager":
@@ -172,12 +201,19 @@ class LlamaAttention(infinicore.nn.Module):
                 scaling=self.scaling,  # 缩放系数 0.125
                 **kwargs,  # 'position_ids': tensor([[0, 1, 2, 3, 4]])
             )
-            attn_output = attn_output.reshape(*input_shape, -1).contiguous()
+            
+        
+
+            # temp = attn_output.permute((0, 2, 1, 3)).contiguous().reshape((1, 4, 40, 64))
+            # print("attn_output: ",temp.shape)
+            # print(temp)
+            attn_output = attn_output.reshape(*input_shape, -1).contiguous() # ==> [bs, ntok, hidden_size] 
+    
         else:
             #attention(query_states, key_states, value_states, k_cache, v_cache, pos, *, out=None)
             pass
         
-        # o_proj
+        # o_proj    
         attn_output_infinicore = infinicore.convert_torch_to_infini_tensor(attn_output)
         attn_output = self.o_proj(attn_output_infinicore)
 
@@ -206,6 +242,8 @@ class LlamaDecoderLayer(infinicore.nn.Module):
         residual = hidden_states
         # Self Attention
         hidden_states = self.input_layernorm(hidden_states)
+
+ 
         hidden_states = self.self_attn(
             hidden_states=hidden_states,
             attention_mask=attention_mask,
@@ -233,14 +271,14 @@ class LlamaModel(infinicore.nn.Module):  # LlamaPreTrainedModel  torch.nn.Module
         self.config = config
         self.padding_idx = config.pad_token_id
         self.vocab_size = config.vocab_size
-
+  
         self.embed_tokens = infinicore.nn.Embedding(config.vocab_size, config.hidden_size)
-
+   
         self.layers = infinicore.nn.ModuleList(
             [LlamaDecoderLayer(config, layer_idx) for layer_idx in range(config.num_hidden_layers)]
         )
         self.norm = LlamaRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
-
+      
     def forward(
             self,
             input_ids: Optional[torch.LongTensor] = None, # tensor([[    1,  1128,   526,   366, 29892]])
@@ -253,6 +291,8 @@ class LlamaModel(infinicore.nn.Module):  # LlamaPreTrainedModel  torch.nn.Module
             **kwargs: Unpack[TransformersKwargs],# {}
     ) -> BaseModelOutputWithPast:
         
+   
+        
         if (input_ids is None) ^ (inputs_embeds is not None):
             raise ValueError("You must specify exactly one of input_ids or inputs_embeds")
 
@@ -260,11 +300,12 @@ class LlamaModel(infinicore.nn.Module):  # LlamaPreTrainedModel  torch.nn.Module
             # input_ids :     {1,5}       tensor([[    1,  1128,   526,   366, 29892]])
             # inputs_embeds : {1,5,2048}  tensor([[[...]]])
             # input_ids = input_ids.to(dtype=torch.int32)
-
-            input_ids_infini = infinicore.convert_torch_to_infini_tensor(input_ids)
+        
+   
+            input_ids_infini = infinicore.convert_torch_to_infini_tensor(input_ids.to(device="cpu"))
             inputs_embeds_infini = self.embed_tokens(input_ids_infini)
             inputs_embeds = infinicore.convert_infini_to_torch_tensor(inputs_embeds_infini)
-
+            
         if use_cache and past_key_values is None: # 下面不执行
             past_key_values = DynamicCache(config=self.config)
 
@@ -276,7 +317,7 @@ class LlamaModel(infinicore.nn.Module):  # LlamaPreTrainedModel  torch.nn.Module
 
         if position_ids is None:  # 下面不执行
             position_ids = cache_position.unsqueeze(0)
-
+   
         # ---------------------------------------------------------------------- #
         #            等完成attention接口后，下面的代码就不用了                        #
         # ---------------------------------------------------------------------- #
@@ -287,15 +328,15 @@ class LlamaModel(infinicore.nn.Module):  # LlamaPreTrainedModel  torch.nn.Module
                                          past_key_values=past_key_values,
                                          position_ids=position_ids)
     
-
+  
         hidden_states = inputs_embeds
         hidden_states = infinicore.convert_torch_to_infini_tensor(hidden_states)
-
+      
         ilayer = 0
         for decoder_layer in self.layers[:self.config.num_hidden_layers]:
             print("ilayer: ", ilayer)
             ilayer += 1
-
+         
             hidden_states = decoder_layer(
                 hidden_states,
                 attention_mask=causal_mask,

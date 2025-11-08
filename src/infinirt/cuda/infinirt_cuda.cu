@@ -131,7 +131,13 @@ infiniStatus_t mallocAsync(void **p_ptr, size_t size, infinirtStream_t stream) {
 }
 
 infiniStatus_t freeAsync(void *ptr, infinirtStream_t stream) {
-    CHECK_CUDART(cudaFreeAsync(ptr, (cudaStream_t)stream));
+
+    // printf(" freeAsync----->  %p  \n ", ptr);
+    if (ptr) {
+        CHECK_CUDART(cudaFreeAsync(ptr, (cudaStream_t)stream));
+        ptr = nullptr;
+    }
+
     return INFINI_STATUS_SUCCESS;
 }
 } // namespace infinirt::cuda

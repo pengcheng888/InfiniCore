@@ -137,14 +137,15 @@ def func_net():
                 # print("-----> after \n", model.state_dict())
 
                 print('----------- caculate ------------>')
-                from infinicore.nn.modules.linear import create_infinicore_tensor
-                device_str = "cpu"
-                x = torch.ones((1, 10), dtype=torch.float32)
+
+                device_str = "cuda"
+                model.to(device = device_str)
+                x = torch.ones((1, 10), dtype=torch.float32, device=device_str)
 
                 out = model.forward(x)
                 print(out)
 
-                infini_x = create_infinicore_tensor(x, device_str)
+                infini_x = infinicore.convert_torch_to_infini_tensor(x)
 
                 out = model.forward(infini_x)
                 print("==============>")
@@ -156,22 +157,33 @@ def func_net():
     test_InfiniNet()
 
 
-def test6():
-    import infinicore
-    from infinicore import nn
-    infinicore.nn.RMSNorm.testop()
+
 
 
 def func7_mul():
     import infinicore
 
     import torch
-    x = torch.ones((2,3),device="cpu")*2
-    y = torch.ones((2,3),device="cpu")
-    x_infini = infinicore.convert_torch_to_infini_tensor(x)
-    y_infini = infinicore.convert_torch_to_infini_tensor(y)
+    # x = torch.ones((2,3),device="cuda")*2
+    # y = torch.ones((2,3),device="cuda")
+    # x_infini = infinicore.convert_torch_to_infini_tensor(x)
+    # y_infini = infinicore.convert_torch_to_infini_tensor(y)
+
+
+    x_infini = infinicore.empty( (2,3), dtype=infinicore.float32, device=infinicore.device("cuda", 0))
+    y_infini = infinicore.empty( (2,3), dtype=infinicore.float32, device=infinicore.device("cuda", 0))
+
     print("x_infini: ",x_infini)
     print("y_infini: ",y_infini)
+    x_torch = infinicore.convert_infini_to_torch_tensor(x_infini)
+    y_torch = infinicore.convert_infini_to_torch_tensor(y_infini)
+
+    print("x_torch: ",x_torch)
+    print("y_torch: ",y_torch)
+    x_torch = torch.tensor([], dtype=x_torch.dtype, device=x_torch.device)
+    xy_torch = torch.cat([x_torch,y_torch],-1)
+    print("xy_torch: ",xy_torch)
+
     z_infini = x_infini + y_infini
     print("z_infini: ",z_infini)
 
@@ -187,5 +199,6 @@ def func8_test():
 
 
 if __name__ == '__main__':
+    #func7_mul()
     func7_mul()
 
