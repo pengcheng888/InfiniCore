@@ -43,7 +43,7 @@ from infinicore.ops.rearrange import rearrange
 
 from infinicore import nn as nn
 
-from infinicore.experimental import convert_infini_to_torch_tensor, convert_torch_to_infini_tensor,to_torch_dtype
+from infinicore.experimental import convert_infini_to_torch_tensor, convert_torch_to_infini_tensor, to_torch_dtype
 
 __all__ = [
     # Classes.

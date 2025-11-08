@@ -49,7 +49,7 @@ def func(Folder):
     with torch.no_grad():
         print('------> start')
         t1 = time.time()
-        outputs = model.generate(**input_ids, max_new_tokens=15)  # cache_implementation="static",
+        outputs,_ = model.generate(**input_ids, max_new_tokens=15)  # cache_implementation="static",
         t2 = time.time()
         print("time: ", (t2 - t1) * 1000)
         
@@ -59,6 +59,6 @@ def func(Folder):
 
 if __name__ == '__main__':
     Folder = r'/home/ubuntu/workspace_aisys/tensorRT_quantization-main/Llama/Llama2-TinyLlama-1.1B-Chat-v1.0/'
-    # Folder = r'/home/ubuntu/workspace_aisys/tensorRT_quantization-main/Llama/TinyLlama-1.1B-Chat-v1.0-small/'
+    Folder = r'/home/ubuntu/workspace_aisys/tensorRT_quantization-main/Llama/TinyLlama-1.1B-Chat-v1.0-small/'
     # Folder = r'/home/ubuntu/models/TinyLlama-1.1B-Chat-v1.0-small/'
     func(Folder)

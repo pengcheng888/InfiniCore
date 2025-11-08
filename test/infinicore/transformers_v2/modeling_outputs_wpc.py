@@ -53,7 +53,7 @@ class BaseModelOutputWithPast(ModelOutput):
 
     last_hidden_state: Optional[torch.FloatTensor] = None
     past_key_values: Optional[Cache] = None
-    last_hidden_state_last_token: Optional[torch.Tensor] = None
+    last_hidden_state_last_token: Optional[infinicore.Tensor] = None
 
 @dataclass
 class CausalLMOutputWithPast(ModelOutput):
@@ -82,6 +82,8 @@ class CausalLMOutputWithPast(ModelOutput):
             Attentions weights after the attention softmax, used to compute the weighted average in the self-attention
             heads.
     """
+    import infinicore
+    
     logits: Optional[torch.FloatTensor] = None
     past_key_values: Optional[Cache] = None
-    next_token_logits: Optional[torch.FloatTensor] = None
+    next_token_logits: Optional[infinicore.Tensor] = None

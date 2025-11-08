@@ -91,8 +91,6 @@ class GenerationMixin(ContinuousMixin):
         self,
         input_ids: torch.LongTensor,
         past_key_values: Optional[Cache] = None,
-        attention_mask: Optional[torch.LongTensor] = None,
-        inputs_embeds: Optional[torch.FloatTensor] = None,
         cache_position: Optional[torch.LongTensor] = None,
         **kwargs,
     ):
@@ -114,113 +112,20 @@ class GenerationMixin(ContinuousMixin):
    
             if input_ids.shape[1] != cache_position.shape[0]:  # Default case (the "else", a no op, is Exception 2)
                 input_ids = input_ids[:, cache_position]
-
+            
             if input_ids.shape[1] != cache_position.shape[0]:  # Default case (the "else", a no op, is Exception 2)
                 input_ids = input_ids[:, cache_position]
 
-
         # 3. Prepare base model inputs
-        input_ids_key = "decoder_input_ids" if self.config.is_encoder_decoder else "input_ids"
-        # if `inputs_embeds` are passed, we only want to use them in the 1st generation step for every prompt.
-        # `clone` calls in this function ensure a consistent stride. See #32227
-        model_inputs[input_ids_key] = input_ids.clone(memory_format=torch.contiguous_format)
+        model_inputs["input_ids"] =  input_ids.clone(memory_format=torch.contiguous_format) # [[1234]]
         model_inputs["inputs_embeds"] = None
 
-        # 4. Create missing `position_ids` on the fly
-        encoder_attention_mask = attention_mask if self.config.is_encoder_decoder else None
-        attention_mask = (
-            kwargs.pop("decoder_attention_mask", None) if self.config.is_encoder_decoder else attention_mask
-        )
-        attention_mask_key = "decoder_attention_mask" if self.config.is_encoder_decoder else "attention_mask"
-        position_ids_key = "decoder_position_ids" if self.config.is_encoder_decoder else "position_ids"
-        if (
-            attention_mask is not None
-            and kwargs.get(position_ids_key) is None
-            and position_ids_key in set(inspect.signature(self.forward).parameters.keys())
-        ):
-            position_ids = attention_mask.long().cumsum(-1) - 1
-            position_ids.masked_fill_(attention_mask == 0, 1)
-            kwargs[position_ids_key] = position_ids  # placed in kwargs for further processing (see below)
-
-        # 5. Slice model inputs if it's an input that should have the same length as `input_ids`
-        for model_input_name in ["position_ids", "token_type_ids", "decoder_position_ids"]:
-            model_input = kwargs.get(model_input_name)
-            if model_input is not None:
-                if past_key_values is not None:
-                    current_input_length = (
-                        model_inputs["inputs_embeds"].shape[1]
-                        if model_inputs.get("inputs_embeds") is not None
-                        else model_inputs[input_ids_key].shape[1]
-                    )
-                    model_input = model_input[:, -current_input_length:]
-                    model_input = model_input.clone(memory_format=torch.contiguous_format)
-                model_inputs[model_input_name] = model_input
-
-        # 6. Create 4D attention mask is we are using a compilable cache (important for performant compiled forward
-        # pass)
-        if (
-            isinstance(past_key_values, Cache)
-            and past_key_values.is_compileable
-            and attention_mask is not None
-            and attention_mask.ndim == 2
-        ):
-            if not self.config.is_encoder_decoder and model_inputs["inputs_embeds"] is not None:
-                batch_size, sequence_length, _ = model_inputs["inputs_embeds"].shape
-            else:
-                batch_size, sequence_length = model_inputs[input_ids_key].shape[:2]
-
-            # Create the causal mask with fixed shape in advance, to reduce recompilations. If the function to create
-            # the 4D causal mask exists, it should be present in the base model (XXXModel class) or in its decoder.
-            base_model = getattr(self, self.base_model_prefix, self)
-            decoder = base_model.get_decoder() if hasattr(base_model, "get_decoder") else None
-            causal_mask_creation_function = getattr(
-                base_model, "_prepare_4d_causal_attention_mask_with_cache_position", None
-            )
-            if causal_mask_creation_function is None and decoder is not None:  # it may be in the decoder
-                causal_mask_creation_function = getattr(
-                    decoder, "_prepare_4d_causal_attention_mask_with_cache_position", None
-                )
-
-            # If it's not defined, it means the model uses the new general mask API
-            if causal_mask_creation_function is None:  # can't be found
-                token_type_ids = model_inputs.get("token_type_ids")
-                position_ids = model_inputs.get(position_ids_key)
-                # Some models may overwrite the general one
-                causal_mask_creation_function = getattr(self, "create_masks_for_generate", create_masks_for_generate)
-                attention_mask = causal_mask_creation_function(
-                    config=self.config,
-                    # we only need batch size, seq_length and dtype here - we don't care about the values of the embeddings
-                    input_embeds=torch.empty((batch_size, sequence_length), dtype=self.dtype),
-                    attention_mask=attention_mask,
-                    cache_position=cache_position,
-                    past_key_values=past_key_values,
-                    position_ids=position_ids,
-                    token_type_ids=token_type_ids,
-                )
-            else:
-                attention_mask = causal_mask_creation_function(
-                    attention_mask,
-                    sequence_length=sequence_length,
-                    target_length=past_key_values.get_max_cache_shape(),
-                    dtype=self.dtype,
-                    cache_position=cache_position,
-                    batch_size=batch_size,
-                    config=self.config,
-                    past_key_values=past_key_values,
-                )
-        if attention_mask is not None:
-            model_inputs[attention_mask_key] = attention_mask
-
-        if encoder_attention_mask is not None:
-            model_inputs["attention_mask"] = encoder_attention_mask
 
         # 7. Forward ALL kwargs that are uninitialized (e.g. `use_cache`).
         for key, value in kwargs.items():
             if key not in model_inputs:
                 model_inputs[key] = value
 
-        # 8. Remove unexpected `generate` inputs (TODO @joao: fix trainer and examples)
-        model_inputs.pop("labels", None)
         return model_inputs
 
     def _prepare_model_inputs(
@@ -306,7 +211,6 @@ class GenerationMixin(ContinuousMixin):
  
         if generation_config._eos_token_tensor is not None:
             criteria.append(EosTokenCriteria(eos_token_id=generation_config._eos_token_tensor))
-
       
         return criteria
 
@@ -729,8 +633,6 @@ class GenerationMixin(ContinuousMixin):
 
         # 6. Prepare `max_length` depending on other stopping criteria.
         input_ids_length = input_ids.shape[1]
-        has_default_max_length = kwargs.get("max_length") is None and generation_config.max_length is not None
-        has_default_min_length = kwargs.get("min_length") is None and generation_config.min_length is not None
         generation_config.max_length = generation_config.max_new_tokens + input_ids_length
 
    
@@ -854,8 +756,13 @@ class GenerationMixin(ContinuousMixin):
         model_kwargs = self._get_initial_cache_position(cur_len, input_ids.device, model_kwargs)
 
         model_forward = self.__call__
-   
-        while self._has_unfinished_sequences(this_peer_finished, synced_gpus, device=input_ids.device):
+
+        max_new_tokens = 10
+        cur_count = 0
+
+        output_tokens_list = []
+        while (cur_count < max_new_tokens) and (self._has_unfinished_sequences(this_peer_finished, synced_gpus, device=input_ids.device) ):
+            
             # prepare model inputs
             model_inputs = self.prepare_inputs_for_generation(input_ids, **model_kwargs)
             
@@ -872,35 +779,65 @@ class GenerationMixin(ContinuousMixin):
             # Copy is needed to avoid keeping a hanging ref to outputs.logits which may be very large for first iteration
             # (the clone itself is always small)
             if  outputs.next_token_logits is not None:
-                next_token_logits =  outputs.next_token_logits[:, 0, :].to(copy=True, dtype=torch.float32, device=input_ids.device)
+                next_token_logits =  outputs.next_token_logits
             else:
                 next_token_logits = outputs.logits[:, -1, :].to(copy=True, dtype=torch.float32, device=input_ids.device)
 
+            import infinicore
 
-            # pre-process distribution
-            next_token_scores = logits_processor(input_ids, next_token_logits)
 
-            # token selection
-            if do_sample:
-                probs = nn.functional.softmax(next_token_scores, dim=-1)
-                # TODO (joao): this OP throws "skipping cudagraphs due to ['incompatible ops']", find solution
-                next_tokens = torch.multinomial(probs, num_samples=1).squeeze(1)
-            else:
-                next_tokens = torch.argmax(next_token_scores, dim=-1)
+            # ----------------------------------------------------------------- #
+            #                   pre-process distribution 
+            # ----------------------------------------------------------------- #
+            # logits_processor
+            next_token_scores = next_token_logits # cuda:0
 
+
+            # ----------------------------------------------------------------- #
+            #                        token selection
+            # ----------------------------------------------------------------- #
+            if isinstance(next_token_scores, torch.Tensor):
+                if do_sample:
+                    probs = nn.functional.softmax(next_token_scores, dim=-1)
+                    # TODO (joao): this OP throws "skipping cudagraphs due to ['incompatible ops']", find solution
+                    next_tokens = torch.multinomial(probs, num_samples=1).squeeze(1)
+                else:
+                    next_tokens = torch.argmax(next_token_scores, dim=-1)
+
+            elif isinstance(next_token_scores, infinicore.Tensor):
+                next_tokens = torch.argmax( infinicore.convert_infini_to_torch_tensor (next_token_scores), 
+                                    dim=-1)
+
+                next_tokens = infinicore.convert_torch_to_infini_tensor( next_tokens ) # shape: [1,1]
+
+            # ----------------------------------------------------------------- #
+            #                        finished
+            # ----------------------------------------------------------------- #
             # finished sentences should have their next token be a padding token
-            if has_eos_stopping_criteria:
-                next_tokens = next_tokens * unfinished_sequences + pad_token_id * (1 - unfinished_sequences)
+            if isinstance(next_tokens, torch.Tensor):
+                if has_eos_stopping_criteria:
+                    next_tokens = next_tokens * unfinished_sequences + pad_token_id * (1 - unfinished_sequences)
 
+            # ----------------------------------------------------------------- #
+            #                        收集结果
+            # ----------------------------------------------------------------- #
             # update generated ids, model inputs, and length for next step
-            input_ids = torch.cat([input_ids, next_tokens[:, None]], dim=-1)
-  
-            unfinished_sequences = unfinished_sequences & ~stopping_criteria(input_ids, None)
-            this_peer_finished = unfinished_sequences.max() == 0
+            if isinstance(next_tokens, torch.Tensor):
+                input_ids = torch.cat([input_ids, next_tokens[:, None]], dim=-1)
+                unfinished_sequences = unfinished_sequences & ~stopping_criteria(input_ids, None)
+                this_peer_finished = unfinished_sequences.max() == 0 # flag表示全是0了，表示所有batch都收集完毕了
+            elif isinstance(next_tokens, infinicore.Tensor):
+                next_tokens = infinicore.convert_infini_to_torch_tensor(next_tokens).cpu()
+                next_token = next_tokens[0,0].item() # 将 torch.Tensor 转为 python的int类型
+                output_tokens_list.append(next_token)
+            
             cur_len += 1
+            cur_count +=1
 
             # This is needed to properly delete outputs.logits which may be very large for first iteration
             # Otherwise a reference to outputs is kept which keeps the logits alive in the next iteration
             del outputs
+        
 
-        return input_ids
+
+        return input_ids, output_tokens_list
