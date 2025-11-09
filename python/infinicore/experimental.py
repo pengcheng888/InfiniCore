@@ -124,7 +124,6 @@ def convert_infini_to_torch_tensor(infini_result, torch_reference=None):
 # -------------------------------------------------------------------------------- #
 # -------------------------------------------------------------------------------- #
 # -------------------------------------------------------------------------------- #
-
 def py_to_ctype(py_dtype):
     """Convert PyTorch data type to infinicore data type"""
     from ctypes import POINTER, c_float, c_int, c_uint, c_void_p, byref, addressof
@@ -151,15 +150,19 @@ def py_to_infinicore_dtype(py_dtype):
 
 
 def convert_list_to_infini_tensor(data_list: list,
-                                  device=None):
+                                  shape = None,
+                                  device_str="cpu"):
     from ctypes import POINTER, c_float, c_int, c_uint, c_void_p, byref, addressof
 
     num_count = len(data_list)
     address = (py_to_ctype(type(data_list[0])) * num_count)(*data_list)
     ptr = addressof(address)
-    shape = [num_count]
+
+    if shape is None:
+        shape = [num_count]
+    
     infini_type = py_to_infinicore_dtype(type(data_list[0]))
-    infini_device = infinicore.device("cpu", 0)
+    infini_device = infinicore.device(device_str, 0)
 
     ref = infinicore.from_blob(
         ptr,
@@ -176,6 +179,15 @@ def convert_list_to_infini_tensor(data_list: list,
 
     return infini_tensor
 
+# -------------------------------------------------------------------------------- #
+# -------------------------------------------------------------------------------- #
+# -------------------------------------------------------------------------------- #
+
+def get_index_value(infini_tensor:infinicore.Tensor, index : list):
+    torch_tensor = infinicore.convert_infini_to_torch_tensor(infini_tensor)
+    value = torch_tensor[index].cpu().item()
+
+    return value
 
 # -------------------------------------------------------------------------------- #
 # -------------------------------------------------------------------------------- #

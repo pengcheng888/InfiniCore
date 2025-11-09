@@ -101,19 +101,17 @@ class GenerationMixin(ContinuousMixin):
         See the forward pass in the model documentation for expected arguments (different models might have different
         requirements for e.g. `past_key_values`). This function should work as is for most LLMs.
         """
-
+        import infinicore
         # 1. Handle BC:
         model_inputs = {}
         model_inputs["cache_position"] = cache_position
-        model_inputs["cache_position_infini"] =  infinicore.convert_torch_to_infini_tensor(cache_position) 
-        
+
         # 2. Generic cache-dependent input preparation
         if past_key_values is not None:
             model_inputs["past_key_values"] = past_key_values
-   
+        if past_key_values is not None:
             if input_ids.shape[1] != cache_position.shape[0]:  # Default case (the "else", a no op, is Exception 2)
                 input_ids = input_ids[:, cache_position]
-            
             if input_ids.shape[1] != cache_position.shape[0]:  # Default case (the "else", a no op, is Exception 2)
                 input_ids = input_ids[:, cache_position]
 
@@ -121,14 +119,23 @@ class GenerationMixin(ContinuousMixin):
         model_inputs["input_ids"] =  input_ids.clone(memory_format=torch.contiguous_format) # [[1234]]
         model_inputs["inputs_embeds"] = None
 
-        import infinicore
-        model_inputs["input_ids_infini"] =  infinicore.convert_torch_to_infini_tensor(input_ids.clone(memory_format=torch.contiguous_format).cpu()) 
+        # --------------------------------------------------- #
+        if past_key_values is not None:
+            print(kwargs.get("next_token", None) ,kwargs.get("input_ids_infini", None) )
+            if kwargs.get("next_token", None) is not None:
+                next_token = kwargs.get("next_token", None) 
+                input_ids_infini = infinicore.convert_list_to_infini_tensor([next_token], shape = [1,1])
+                model_inputs["input_ids_infini"] = input_ids_infini
 
+   
 
         # 7. Forward ALL kwargs that are uninitialized (e.g. `use_cache`).
         for key, value in kwargs.items():
             if key not in model_inputs:
                 model_inputs[key] = value
+
+        model_inputs.pop("attention_mask", None)
+        kwargs.pop("attention_mask", None)
 
         return model_inputs
 
@@ -153,47 +160,6 @@ class GenerationMixin(ContinuousMixin):
 
         inputs = inputs_kwarg
         return inputs, input_name, model_kwargs
-
-
-    def _update_model_kwargs_for_generation(
-        self,
-        outputs: ModelOutput,
-        model_kwargs: dict[str, Any],
-        is_encoder_decoder: bool = False,
-        num_new_tokens: int = 1,
-    ) -> dict[str, Any]:
-        # update past_key_values keeping its naming used in model code
-        for possible_cache_name in ALL_CACHE_NAMES:
-            if possible_cache_name in outputs:
-                # TODO (joao): remove output/input mismatch when these old models (xlnet, reformer) are deprecated
-                if possible_cache_name in ("past_buckets_states", "mems"):
-                    cache_name = "past_key_values"
-                else:
-                    cache_name = possible_cache_name
-                model_kwargs[cache_name] = getattr(outputs, possible_cache_name)
-                break
-
-        # update token_type_ids with last value
-        if "token_type_ids" in model_kwargs:
-            token_type_ids = model_kwargs["token_type_ids"]
-            model_kwargs["token_type_ids"] = torch.cat([token_type_ids, token_type_ids[:, -1].unsqueeze(-1)], dim=-1)
-
-        # update attention mask
-        if "attention_mask" in model_kwargs:
-            attention_mask = model_kwargs["attention_mask"]
-            model_kwargs["attention_mask"] = torch.cat(
-                [attention_mask, attention_mask.new_ones((attention_mask.shape[0], 1))], dim=-1
-            )
-
-        if model_kwargs.get("use_cache", True):
-            model_kwargs["cache_position"] = model_kwargs["cache_position"][-1:] + num_new_tokens
-        else:
-            past_positions = model_kwargs.pop("cache_position")
-            new_positions = torch.arange(
-                past_positions[-1] + 1, past_positions[-1] + num_new_tokens + 1, dtype=past_positions.dtype
-            ).to(past_positions.device)
-            model_kwargs["cache_position"] = torch.cat((past_positions, new_positions))
-        return model_kwargs
 
   
     def _get_stopping_criteria(
@@ -288,6 +254,13 @@ class GenerationMixin(ContinuousMixin):
             cache_position = cache_position[past_length:]
 
         model_kwargs["cache_position"] = cache_position
+
+        #
+        import infinicore
+        cache_position_list = list(range(0,seq_length))
+        cache_position_infini = infinicore.convert_list_to_infini_tensor(cache_position_list,shape=[seq_length])
+        model_kwargs["cache_position_infini"] = cache_position_infini
+        #
         return model_kwargs
 
     def _get_cache(self, cache_implementation: str, batch_size: int, max_cache_len: int, model_kwargs) -> Cache:
@@ -610,7 +583,7 @@ class GenerationMixin(ContinuousMixin):
 
         """
         # input_ids  attention_mask cache_implementation max_new_tokens
-
+        kwargs.pop("attention_mask")
         generation_config, model_kwargs = self._prepare_generation_config(
             generation_config, use_model_defaults, **kwargs
         )
@@ -621,7 +594,7 @@ class GenerationMixin(ContinuousMixin):
         logits_processor = logits_processor if logits_processor is not None else LogitsProcessorList()
         stopping_criteria = stopping_criteria if stopping_criteria is not None else StoppingCriteriaList()
 
-        kwargs_has_attention_mask = model_kwargs.get("attention_mask", None) is not None # True
+        kwargs_has_attention_mask =False
 
         # 3. Define model inputs
         inputs_tensor, model_input_name, model_kwargs = self._prepare_model_inputs(
@@ -634,7 +607,9 @@ class GenerationMixin(ContinuousMixin):
 
         # 5. Prepare `input_ids` which will be used for auto-regressive generation
         input_ids = inputs_tensor
-
+        import infinicore
+        model_kwargs["input_ids_infini"] = infinicore.convert_torch_to_infini_tensor(inputs_tensor)
+         
         # 6. Prepare `max_length` depending on other stopping criteria.
         input_ids_length = input_ids.shape[1]
         generation_config.max_length = generation_config.max_new_tokens + input_ids_length
@@ -701,15 +676,6 @@ class GenerationMixin(ContinuousMixin):
             result.past_key_values = result.past_key_values.to_legacy_cache()
         return result
 
-    def _has_unfinished_sequences(self, this_peer_finished: bool, synced_gpus: bool, device: torch.device) -> bool:
-        """
-        Returns whether there are still unfinished sequences in the device. The existence of unfinished sequences is
-        fed through `this_peer_finished`. ZeRO stage 3-friendly.
-        """
-
-        if this_peer_finished:
-            return False
-        return True
 
 
     def _sample(
@@ -763,22 +729,33 @@ class GenerationMixin(ContinuousMixin):
 
         max_new_tokens = 10
         cur_count = 0
-
+        
+        
+        import infinicore
         output_tokens_list = []
-        while (cur_count < max_new_tokens) and (self._has_unfinished_sequences(this_peer_finished, synced_gpus, device=input_ids.device) ):
+        while (cur_count < max_new_tokens) and (not this_peer_finished ):
             
             # prepare model inputs
-            model_inputs = self.prepare_inputs_for_generation(input_ids, **model_kwargs)
+            model_inputs = self.prepare_inputs_for_generation(input_ids, **model_kwargs) # input_ids: Tensor [[1,1128,...]]
             
             #outputs = model_forward(**model_inputs, return_dict=True)
-            outputs = self(**model_inputs, return_dict=True)
+            outputs = self(**model_inputs, return_dict=True) # => CausalLMOutputWithPast
 
             # synced_gpus: don't waste resources running the code we don't need; kwargs must be updated before skipping
-            model_kwargs = self._update_model_kwargs_for_generation(
-                outputs,
-                model_kwargs,
-                is_encoder_decoder=self.config.is_encoder_decoder,
-            )
+            if model_kwargs.get("use_cache", True):
+                origin_cache_position = model_kwargs["cache_position"]
+                cache_position = model_kwargs["cache_position"][-1:] + 1
+                model_kwargs["cache_position"] = cache_position
+                
+                # TODO
+                cache_position_infini = infinicore.convert_torch_to_infini_tensor(origin_cache_position)
+                last_pos_value = infinicore.get_index_value(cache_position_infini, [-1])
+                cache_position_infini =  infinicore.convert_list_to_infini_tensor([last_pos_value+1])
+                model_kwargs["cache_position_infini"] =  cache_position_infini
+        
+   
+            else:
+                raise KeyError("cache_position error")
 
             # Copy is needed to avoid keeping a hanging ref to outputs.logits which may be very large for first iteration
             # (the clone itself is always small)
@@ -786,8 +763,6 @@ class GenerationMixin(ContinuousMixin):
                 next_token_logits =  outputs.next_token_logits
             else:
                 next_token_logits = outputs.logits[:, -1, :].to(copy=True, dtype=torch.float32, device=input_ids.device)
-
-            import infinicore
 
 
             # ----------------------------------------------------------------- #
@@ -809,9 +784,7 @@ class GenerationMixin(ContinuousMixin):
                     next_tokens = torch.argmax(next_token_scores, dim=-1)
 
             elif isinstance(next_token_scores, infinicore.Tensor):
-                next_tokens = torch.argmax( infinicore.convert_infini_to_torch_tensor (next_token_scores), 
-                                    dim=-1)
-
+                next_tokens = torch.argmax( infinicore.convert_infini_to_torch_tensor (next_token_scores), dim=-1)
                 next_tokens = infinicore.convert_torch_to_infini_tensor( next_tokens ) # shape: [1,1]
 
             # ----------------------------------------------------------------- #
@@ -830,10 +803,20 @@ class GenerationMixin(ContinuousMixin):
                 input_ids = torch.cat([input_ids, next_tokens[:, None]], dim=-1)
                 unfinished_sequences = unfinished_sequences & ~stopping_criteria(input_ids, None)
                 this_peer_finished = unfinished_sequences.max() == 0 # flag表示全是0了，表示所有batch都收集完毕了
+
+                #
+                next_token = next_tokens[0].cpu().item() # 将 torch.Tensor 转为 python的int类型
+                #
+                model_kwargs["next_token"] =  next_token
+  
+
             elif isinstance(next_tokens, infinicore.Tensor):
                 next_tokens = infinicore.convert_infini_to_torch_tensor(next_tokens).cpu()
                 next_token = next_tokens[0,0].item() # 将 torch.Tensor 转为 python的int类型
                 output_tokens_list.append(next_token)
+
+                #
+                model_kwargs["next_token"] =  next_token
             
             cur_len += 1
             cur_count +=1

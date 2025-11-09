@@ -59,7 +59,7 @@ class RoPE():  # Module
             _sin_table =  infinicore.convert_torch_to_infini_tensor(sin_table)
             _cos_table =  infinicore.convert_torch_to_infini_tensor(cos_table)
 
-            torch.cuda.synchronize()
+            # torch.cuda.synchronize()
 
         bs, ntok, num_attention_heads, head_dim = states.shape
         states = states.view((bs * ntok, num_attention_heads, head_dim))

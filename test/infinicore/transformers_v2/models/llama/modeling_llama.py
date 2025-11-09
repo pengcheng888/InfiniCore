@@ -113,6 +113,7 @@ class LlamaAttention(infinicore.nn.Module):
             query_states = self.rope_infinicore.forward(query_states_infinicore, cache_position_infini)
             key_states = self.rope_infinicore.forward(key_states_infinicore, cache_position_infini)
         else:
+            raise KeyError("cache_position_infini errot")
             exit(-1)
 
         query_states = infinicore.convert_infini_to_torch_tensor(query_states).permute((0, 2, 1, 3)).contiguous()
@@ -286,7 +287,7 @@ class LlamaForCausalLM(LlamaPreTrainedModel, GenerationMixin):  # torch.nn.Modul
             logits_to_keep: Union[int, torch.Tensor] = 0,
             **kwargs: Unpack[TransformersKwargs],
     ) -> CausalLMOutputWithPast:
-
+        print("cache_position_infini",kwargs["cache_position_infini"])
         outputs: BaseModelOutputWithPast = self.model(
             input_ids=input_ids,
             past_key_values=past_key_values,

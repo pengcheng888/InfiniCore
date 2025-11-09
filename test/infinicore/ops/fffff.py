@@ -226,18 +226,26 @@ def func11():
 
 
     # ---
-    data = [1, 2, 3, 4, 5,1]
+    data = list(range(0,5))
 
-    ret = infinicore.convert_list_to_infini_tensor(data)
+    ret = infinicore.convert_list_to_infini_tensor(data,shape=[2,3])
 
     print(ret)
 
-    ret_gpu = ret.to(infinicore.device("cuda", 0))
-    print(ret_gpu)
+    # ret_gpu = ret.to(infinicore.device("cuda", 0))
+    # print(ret_gpu)
 
-    z_gpu = infinicore.empty((2, 3), dtype=infinicore.float32, device=infinicore.device("cuda", 0))
-    z_cpu = z_gpu.to(infinicore.device())
-    print(z_cpu)
+    # z_gpu = infinicore.empty((2, 3), dtype=infinicore.float32, device=infinicore.device("cuda", 0))
+    # z_cpu = z_gpu.to(infinicore.device())
+    # print(z_cpu)
+
+    # ----------------
+    # print("0000000000000000000000000000")
+    # data = torch.ones((1,))
+    # data = infinicore.convert_torch_to_infini_tensor(data)
+
+    # value = infinicore.get_index_value(data,[-1])
+    # print(value)
 
 
 if __name__ == '__main__':

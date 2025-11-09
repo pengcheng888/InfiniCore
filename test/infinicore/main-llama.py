@@ -1,9 +1,8 @@
 import os
-import torch
 import numbers
 import transformers_v2
 import time
-
+import torch
 
 
 
@@ -17,7 +16,7 @@ def func(Folder):
     #                                          attn_implementation="sdpa")
 
     model = transformers_v2.LlamaForCausalLM.from_pretrained(Folder,
-                                             dtype=torch.float16, device_map="cuda",
+                                             dtype=torch.float16, device_map="cpu",
                                              attn_implementation="sdpa")
 
     # ------------------------------------------------------------------------------------------ #
@@ -60,5 +59,5 @@ def func(Folder):
 if __name__ == '__main__':
     Folder = r'/home/ubuntu/workspace_aisys/tensorRT_quantization-main/Llama/Llama2-TinyLlama-1.1B-Chat-v1.0/'
     Folder = r'/home/ubuntu/workspace_aisys/tensorRT_quantization-main/Llama/TinyLlama-1.1B-Chat-v1.0-small/'
-    # Folder = r'/home/ubuntu/models/TinyLlama-1.1B-Chat-v1.0-small/'
+    Folder = r'/home/ubuntu/models/TinyLlama-1.1B-Chat-v1.0-small/'
     func(Folder)
