@@ -879,6 +879,7 @@ class PreTrainedModel(torch.nn.Module, ModuleUtilsMixin):
             )
         self.config = config
 
+        
         self.name_or_path = config.name_or_path
         self.warnings_issued = {}
         self.generation_config = GenerationConfig.from_model_config(config) if self.can_generate() else None

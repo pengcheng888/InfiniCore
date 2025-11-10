@@ -1,7 +1,7 @@
 from typing import Optional
 
 import torch
-from torch.nn.parameter import Parameter
+
 from typing import Union
 from .module import Module
 
@@ -52,11 +52,11 @@ class Embedding(Module):
         self.embedding_dim = embedding_dim
         self.weight_infini = None
         if _weight is None:
-            self.weight = torch.nn.Parameter(torch.empty((num_embeddings, embedding_dim), **factory_kwargs), requires_grad=False)
+            self.weight = infinicore.nn.Parameter(torch.empty((num_embeddings, embedding_dim), **factory_kwargs), requires_grad=False)
         else:
             assert list(_weight.shape) == [num_embeddings,
                                            embedding_dim, ], "Shape of weight does not match num_embeddings and embedding_dim"
-            self.weight = torch.nn.Parameter(_weight, requires_grad=False)
+            self.weight = infinicore.nn.Parameter(_weight, requires_grad=False)
 
 
     def forward(self, input: infinicore.Tensor) -> infinicore.Tensor:

@@ -84,9 +84,12 @@ def func(Folder):
     # ------------------------------------------------------------------------------------------ #
     # ------------------------------------------------------------------------------------------ #
     # ------------------------------------------------------------------------------------------ #
-
+     
 
     config = get_config_v2(Folder)
+
+  
+
     model = transformers_v2.LlamaForCausalLM(config)
 
     path = os.path.join(Folder,"model.safetensors")
@@ -100,6 +103,7 @@ def func(Folder):
     from transformers_v2 import AutoTokenizer
     tokenizer = AutoTokenizer.from_pretrained(Folder)
 
+    model_device = "cpu"
     # ------------------------------------------------------------------------------------------ #
     # ------------------------------------------------------------------------------------------ #
     # ------------------------------------------------------------------------------------------ #
@@ -116,12 +120,14 @@ def func(Folder):
                           padding=True,  # 自动填充到相同长度
                           truncation=True,  # 自动截断到最大长度
                           max_length=128,  # 设置最大长度
-                          return_tensors="pt").to(model.device)
+                          return_tensors="pt").to(model_device)
    
     with torch.no_grad():
         print('------> start')
         t1 = time.time()
-        outputs, output_tokens_list = model.generate(**input_ids, max_new_tokens=15)  # cache_implementation="static",
+        # outputs, output_tokens_list = model.generate(**input_ids, max_new_tokens=15)  # cache_implementation="static",
+
+        outputs, output_tokens_list = model.generate_wpc(**input_ids, max_new_tokens=15)  # cache_implementation="static",
 
         t2 = time.time()
         print("time: ", (t2 - t1) * 1000)
@@ -136,3 +142,6 @@ if __name__ == '__main__':
     Folder = r'/home/ubuntu/workspace_aisys/tensorRT_quantization-main/Llama/TinyLlama-1.1B-Chat-v1.0-small/'
     # Folder = r'/home/ubuntu/models/TinyLlama-1.1B-Chat-v1.0-small/'
     func(Folder)
+
+    import torch
+    torch.nn.Module

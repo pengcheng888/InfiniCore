@@ -230,18 +230,15 @@ def func11():
 
     ret = infinicore.convert_list_to_infini_tensor(data,shape=[2,3])
 
-    print(ret)
 
-
-    data = [1,2,2]
-    print(torch.tensor(data))
 
     # ret_gpu = ret.to(infinicore.device("cuda", 0))
     # print(ret_gpu)
-
-    # z_gpu = infinicore.empty((2, 3), dtype=infinicore.float32, device=infinicore.device("cuda", 0))
-    # z_cpu = z_gpu.to(infinicore.device())
-    # print(z_cpu)
+    print("=================")
+    z_gpu = infinicore.empty((2, 3), dtype=infinicore.float32, device=infinicore.device("cpu", 0))
+    print( id(z_gpu),z_gpu)
+    z_cpu = z_gpu.to(infinicore.device("cpu"))
+    print( id(z_cpu),z_cpu)
 
     # ----------------
     # print("0000000000000000000000000000")

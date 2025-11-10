@@ -46,11 +46,11 @@ class Linear(Module):
         super().__init__()
         self.in_features = in_features
         self.out_features = out_features
-        self.weight = torch.nn.Parameter(
+        self.weight = infinicore.nn.Parameter(
             torch.empty((out_features, in_features), **factory_kwargs)
         )
         if bias:
-            self.bias = torch.nn.Parameter(torch.empty(out_features, **factory_kwargs))
+            self.bias = infinicore.nn.Parameter(torch.empty(out_features, **factory_kwargs))
         else:
             self.register_parameter("bias", None)
 

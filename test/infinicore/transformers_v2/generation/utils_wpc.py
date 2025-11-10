@@ -20,7 +20,7 @@ from typing import TYPE_CHECKING, Any, Callable, Optional, Union
 
 import torch
 from torch import nn
-from ..cache_utils import (
+from ..cache_utils_wpc import (
     Cache,
     DynamicCache,
     StaticCache,
@@ -161,27 +161,6 @@ class GenerationMixin(ContinuousMixin):
         """
 
         if generation_config is None:
-            # legacy: users may modify the model configuration to control generation. To trigger this legacy behavior,
-            # the following conditions must be met
-            # 1) the generation config must have been created from the model config (`_from_model_config` field);
-            # 2) the generation config must have seen no modification since its creation (the hash is the same);
-            # 3) there are non-default generation parameters in the model config.
-            # 4) the user must have set new generation parameters in the model config.
-            if (
-                self.generation_config._from_model_config  # 1)
-                and self.generation_config._original_object_hash == hash(self.generation_config)  # 2)
-                and len(self.config._get_non_default_generation_parameters()) > 0  # 3)
-            ):
-                new_generation_config = GenerationConfig.from_model_config(self.config)
-                if new_generation_config != self.generation_config:  # 4)
-                    warnings.warn(
-                        "You have modified the pretrained model configuration to control generation. This is a"
-                        " deprecated strategy to control generation and will be removed in v5."
-                        " Please use and modify the model generation configuration (see"
-                        " https://huggingface.co/docs/transformers/generation_strategies#default-text-generation-configuration )",
-                        UserWarning,
-                    )
-                    self.generation_config = new_generation_config
 
             generation_config = self.generation_config
 
@@ -436,8 +415,6 @@ class GenerationMixin(ContinuousMixin):
         self,
         inputs: Optional[torch.Tensor] = None,
         generation_config: Optional[GenerationConfig] = None,
- 
-
         prefix_allowed_tokens_fn: Optional[Callable[[int, torch.Tensor], list[int]]] = None,
         synced_gpus: Optional[bool] = None,
         assistant_model: Optional["PreTrainedModel"] = None,
@@ -526,6 +503,7 @@ class GenerationMixin(ContinuousMixin):
         """
         # input_ids  attention_mask cache_implementation max_new_tokens
         kwargs.pop("attention_mask")
+
         generation_config, model_kwargs = self._prepare_generation_config(
             generation_config, use_model_defaults, **kwargs
         )
@@ -585,14 +563,13 @@ class GenerationMixin(ContinuousMixin):
 
 
         # Set model_kwargs `use_cache` so we can use it later in forward runs
-        model_kwargs["use_cache"] = generation_config.use_cache
+        model_kwargs["use_cache"] = True
 
         # 10. go into different generation modes
         if generation_mode in (GenerationMode.SAMPLE, GenerationMode.GREEDY_SEARCH):
             # 11. run sample (it degenerates to greedy search when `generation_config.do_sample=False`)
             result = self._sample(
                 input_ids,
-                generation_config=generation_config,
                 synced_gpus=synced_gpus,
                 **model_kwargs,
             )
@@ -611,9 +588,6 @@ class GenerationMixin(ContinuousMixin):
     def _sample(
         self,
         input_ids: torch.LongTensor,
-        generation_config: GenerationConfig,
-        synced_gpus: bool,
-
         **model_kwargs,
     ) -> Union[ torch.LongTensor]:
         r"""

@@ -21,7 +21,7 @@ from .utils import ModelOutput
 
 
 @dataclass
-class BaseModelOutputWithPast(ModelOutput):
+class BaseModelOutputWithPast():
     """
     Base class for model's outputs that may also contain a past key/values (to speed up sequential decoding).
 
@@ -56,7 +56,7 @@ class BaseModelOutputWithPast(ModelOutput):
     last_hidden_state_last_token: Optional[infinicore.Tensor] = None
 
 @dataclass
-class CausalLMOutputWithPast(ModelOutput):
+class CausalLMOutputWithPast():
     """
     Base class for causal language model (or autoregressive) outputs.
 

@@ -151,7 +151,7 @@ def py_to_infinicore_dtype(py_dtype):
 
 def convert_list_to_infini_tensor(data_list: list,
                                   shape = None,
-                                  device_str="cpu"):
+                                  infini_device=infinicore.device("cpu", 0)):
     from ctypes import POINTER, c_float, c_int, c_uint, c_void_p, byref, addressof
 
     num_count = len(data_list)
@@ -162,23 +162,25 @@ def convert_list_to_infini_tensor(data_list: list,
         shape = [num_count]
     
     infini_type = py_to_infinicore_dtype(type(data_list[0]))
-    infini_device = infinicore.device(device_str, 0)
+ 
 
     ref = infinicore.from_blob(
         ptr,
         shape,
         dtype=infinicore.int32,
-        device=infini_device,
+        device=infinicore.device("cpu", 0),
     )
 
     infini_tensor = infinicore.empty(shape,
                                      dtype=infini_type,
-                                     device=infini_device
+                                     device=infinicore.device("cpu", 0)
                                      )
     infini_tensor.copy_(ref)
 
+    if infini_device.type != "cpu":
+        return infini_tensor.to(infini_device)
+    
     return infini_tensor
-
 # -------------------------------------------------------------------------------- #
 # -------------------------------------------------------------------------------- #
 # -------------------------------------------------------------------------------- #

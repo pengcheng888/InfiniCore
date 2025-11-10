@@ -1195,16 +1195,6 @@ class GenerationConfig(PushToHubMixin):
 
         generation_config = cls.from_dict(config_dict, return_unused_kwargs=False, _from_model_config=True)
 
-        # Special case: some models have generation attributes set in the decoder. Use them if still unset in the
-        # generation config (which in turn is defined from the outer attributes of model config).
-        decoder_config = model_config.get_text_config(decoder=True)
-        if decoder_config is not model_config:
-            default_generation_config = GenerationConfig()
-            decoder_config_dict = decoder_config.to_dict()
-            for attr in generation_config.to_dict():
-                is_unset = getattr(generation_config, attr) == getattr(default_generation_config, attr)
-                if attr in decoder_config_dict and is_unset:
-                    setattr(generation_config, attr, decoder_config_dict[attr])
 
         # If any `output_...` flag is set to `True`, we ensure `return_dict_in_generate` is set to `True`.
         if generation_config.return_dict_in_generate is False:
