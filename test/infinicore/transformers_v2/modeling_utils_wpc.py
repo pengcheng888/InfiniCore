@@ -16,7 +16,7 @@
 
 import copy
 import functools
-import importlib.metadata
+
 import inspect
 import os
 import re
@@ -24,7 +24,7 @@ import copy
 from contextlib import contextmanager
 from functools import partial, wraps
 from typing import Any, Callable, Optional, TypeVar, Union, get_type_hints
-from zipfile import is_zipfile
+
 
 import torch
 from packaging import version
@@ -33,31 +33,17 @@ from torch import Tensor, nn
 
 from .configuration_utils import PretrainedConfig
 
-from .generation import CompileConfig, GenerationConfig
-from .integrations import PeftAdapterMixin, deepspeed_config, is_deepspeed_zero3_enabled, is_fsdp_enabled
-from .integrations.accelerate import find_tied_parameters, init_empty_weights
-from .integrations.eager_paged import eager_paged_attention_forward
-from .integrations.flash_attention import flash_attention_forward
-from .integrations.flash_paged import paged_attention_forward
-from .integrations.flex_attention import flex_attention_forward
-from .integrations.hub_kernels import is_kernel, load_and_register_kernel
-from .integrations.sdpa_attention import sdpa_attention_forward
-from .integrations.sdpa_paged import sdpa_attention_paged_forward
-from .integrations.tensor_parallel import (
-    verify_tp_plan,
-)
+from .generation import  GenerationConfig
 
-from .modeling_flash_attention_utils import lazy_import_flash_attention
-from .quantizers import HfQuantizer
-from .quantizers.quantizers_utils import get_module_from_name
+from .integrations.accelerate import find_tied_parameters
+from .integrations.sdpa_attention import sdpa_attention_forward
+
+
 
 from .utils import (
     SAFE_WEIGHTS_NAME,
     ContextManagers,
-    check_torch_load_is_safe,
     is_accelerate_available,
-    is_flash_attn_2_available,
-    is_kernels_available,
     is_safetensors_available,
     is_torch_greater_or_equal,
     is_torch_xla_available,
@@ -69,7 +55,7 @@ from .utils.import_utils import (
     ENV_VARS_TRUE_VALUES,
     is_sagemaker_mp_enabled,
 )
-from .utils.quantization_config import  QuantizationMethod
+
 
 if is_accelerate_available():
     from accelerate import dispatch_model, infer_auto_device_map
@@ -82,7 +68,6 @@ if is_safetensors_available():
     from safetensors import safe_open
     from safetensors.torch import load_file as safe_load_file
     from safetensors.torch import save_file as safe_save_file
-_torch_distributed_available = torch.distributed.is_available()
 
 if is_sagemaker_mp_enabled():
     from smdistributed.modelparallel import __version__ as SMP_VERSION
@@ -98,6 +83,12 @@ XLA_DOWNCAST_BF16 = os.environ.get("XLA_DOWNCAST_BF16", "0").upper()
 SpecificPreTrainedModelType = TypeVar("SpecificPreTrainedModelType", bound="PreTrainedModel")
 _init_weights = True
 
+
+def get_module_from_name(module, tensor_name: str) -> tuple[Any, str]:
+    if "." in tensor_name:
+        module_name, tensor_name = tensor_name.rsplit(".", 1)
+        module = module.get_submodule(module_name)
+    return module, tensor_name
 
 TORCH_INIT_FUNCTIONS = {
     "uniform_": nn.init.uniform_,
@@ -274,7 +265,7 @@ if is_torch_greater_or_equal("2.3.0"):
     str_to_torch_dtype["U32"] = torch.uint32
     str_to_torch_dtype["U64"] = torch.uint64
 
-
+print("---------------------")
 def load_state_dict(
         checkpoint_file: Union[str, os.PathLike],
         is_quantized: bool = False,
@@ -308,54 +299,6 @@ def load_state_dict(
                     state_dict[k] = f.get_tensor(k)
             return state_dict
 
-    # Fallback to torch.load (if weights_only was explicitly False, do not check safety as this is known to be unsafe)
-    if weights_only:
-        check_torch_load_is_safe()
-    try:
-        if map_location is None:
-            if (
-                    (
-                            is_deepspeed_zero3_enabled()
-                            and torch.distributed.is_initialized()
-                            and torch.distributed.get_rank() > 0
-                    )
-                    or (is_fsdp_enabled() and not is_local_dist_rank_0())
-            ) and not is_quantized:
-                map_location = "meta"
-            else:
-                map_location = "cpu"
-        extra_args = {}
-        # mmap can only be used with files serialized with zipfile-based format.
-        if isinstance(checkpoint_file, str) and map_location != "meta" and is_zipfile(checkpoint_file):
-            extra_args = {"mmap": True}
-        return torch.load(
-            checkpoint_file,
-            map_location=map_location,
-            weights_only=weights_only,
-            **extra_args,
-        )
-    except Exception as e:
-        try:
-            with open(checkpoint_file) as f:
-                if f.read(7) == "version":
-                    raise OSError(
-                        "You seem to have cloned a repository without having git-lfs installed. Please install "
-                        "git-lfs and run `git lfs install` followed by `git lfs pull` in the folder "
-                        "you cloned."
-                    )
-                else:
-                    raise ValueError(
-                        f"Unable to locate the file {checkpoint_file} which is necessary to load this pretrained "
-                        "model. Make sure you have saved the model properly."
-                    ) from e
-        except (UnicodeDecodeError, ValueError):
-            raise OSError(
-                f"Unable to load weights from pytorch checkpoint file for '{checkpoint_file}' "
-                f"at '{checkpoint_file}'. "
-                "If you tried to load a PyTorch model from a TF 2.0 checkpoint, please set from_tf=True."
-            )
-
-
 def _get_tied_weight_keys(module: nn.Module, prefix=""):
     tied_weight_keys = []
     if getattr(module, "_tied_weights_keys", None) is not None:
@@ -376,19 +319,13 @@ def _infer_parameter_dtype(
         param_name: str,
         empty_param: torch.Tensor,
         keep_in_fp32_regex: Optional[re.Pattern] = None,
-        hf_quantizer: Optional[HfQuantizer] = None,
+
 ) -> Union[bool, Optional[torch.dtype]]:
     try:
         old_param = model.get_parameter_or_buffer(param_name)
     except Exception as e:
-        if hf_quantizer is not None and hf_quantizer.quantization_config.quant_method in {
-            QuantizationMethod.HQQ,
-            QuantizationMethod.QUARK,
-            QuantizationMethod.MXFP4,
-        }:
-            return True, None
-        else:
-            raise e
+
+        raise e
     is_torch_e4m3fn_available = hasattr(torch, "float8_e4m3fn")
     # We convert floating dtypes to the `dtype` passed except for float8_e4m3fn type. We also want to keep the buffers/params
     # in int/uint/bool and not cast them.
@@ -398,9 +335,6 @@ def _infer_parameter_dtype(
         # First fp32 if part of the exception list
         if keep_in_fp32_regex is not None and keep_in_fp32_regex.search(param_name):
             casting_dtype = torch.float32
-        # Then dtype that was instantiated in the meta model -- note that this respects subconfigs dtypes
-        elif hf_quantizer is not None:
-            casting_dtype = model.config._pre_quantization_dtype
         else:
             casting_dtype = old_param.dtype
     return old_param is not None and old_param.is_contiguous(), casting_dtype
@@ -425,7 +359,7 @@ def _load_state_dict_into_meta_model(
         disk_offload_index: Optional[dict] = None,
         cpu_offload_folder: Optional[str] = None,
         cpu_offload_index: Optional[dict] = None,
-        hf_quantizer: Optional[HfQuantizer] = None,
+
         is_safetensors: bool = False,
         keep_in_fp32_regex: Optional[re.Pattern] = None,
         unexpected_keys: Optional[list[str]] = None,  # passing `unexpected` for cleanup from quantization items
@@ -464,7 +398,7 @@ def _load_state_dict_into_meta_model(
             param_name,
             empty_param,
             None,
-            hf_quantizer,
+
         )
 
         param = param[...]
@@ -482,9 +416,6 @@ def _load_state_dict_into_meta_model(
             else:
                 param_device = device_map[module_layer.group()]
 
-
-        if is_fsdp_enabled():
-            param_device = "cpu" if is_local_dist_rank_0() else "meta"
 
         _load_parameter_into_model(model, param_name, param.to(param_device))
 
@@ -510,7 +441,6 @@ def load_shard_file(args):
     map_location = "cpu"
     if (
             shard_file.endswith(".safetensors")
-            and not (is_deepspeed_zero3_enabled() )
     ):
         map_location = "meta"
 
@@ -536,7 +466,6 @@ def load_shard_file(args):
         disk_offload_index=None,
         cpu_offload_folder=None,
         cpu_offload_index=None,
-        hf_quantizer=None,
         is_safetensors=False,
         keep_in_fp32_regex=None,
         unexpected_keys=unexpected_keys
@@ -664,7 +593,6 @@ def _get_device_map(
         model: "PreTrainedModel",
         device_map: Optional[Union[dict, str]],
         max_memory: Optional[dict],
-        hf_quantizer: Optional[HfQuantizer],
         dtype: Optional[torch.dtype],
         keep_in_fp32_regex: Optional[re.Pattern],
 ) -> dict:
@@ -673,8 +601,7 @@ def _get_device_map(
     """
     if isinstance(device_map, str):
         special_dtypes = {}
-        if hf_quantizer is not None:
-            special_dtypes.update(hf_quantizer.get_special_dtypes_update(model, dtype))
+
         if keep_in_fp32_regex is not None:
             special_dtypes.update(
                 {name: torch.float32 for name, _ in model.named_parameters() if keep_in_fp32_regex.search(name)}
@@ -682,8 +609,7 @@ def _get_device_map(
 
         target_dtype = dtype
 
-        if hf_quantizer is not None:
-            target_dtype = hf_quantizer.adjust_target_dtype(target_dtype)
+
 
         no_split_modules = model._get_no_split_modules(device_map)
         device_map_kwargs = {"no_split_module_classes": no_split_modules}
@@ -706,8 +632,7 @@ def _get_device_map(
             )
         else:
             inferred_max_memory = get_max_memory(max_memory)
-        if hf_quantizer is not None:
-            inferred_max_memory = hf_quantizer.adjust_max_memory(inferred_max_memory)
+
 
         # `inferred_max_memory` contains non-reserved memory. There may be *unused* reserved memory in the GPU,
         # which we can use to allocate parameters.
@@ -725,8 +650,7 @@ def _get_device_map(
 
         device_map = infer_auto_device_map(model, dtype=target_dtype, **device_map_kwargs)
 
-        if hf_quantizer is not None:
-            hf_quantizer.validate_environment(device_map=device_map)
+
 
     elif device_map is not None:
         tied_params = find_tied_parameters(model)
@@ -950,12 +874,6 @@ class PreTrainedModel(torch.nn.Module, ModuleUtilsMixin):
             )
         self.config = config
 
-        # Check the attention implementation is supported, or set it if not yet set (on the internal attr, to avoid
-        # setting it recursively)
-        self.config._attn_implementation_internal = self._check_and_adjust_attn_implementation(
-            self.config._attn_implementation, is_init_check=True
-        )
-
         self.name_or_path = config.name_or_path
         self.warnings_issued = {}
         self.generation_config = GenerationConfig.from_model_config(config) if self.can_generate() else None
@@ -1066,128 +984,12 @@ class PreTrainedModel(torch.nn.Module, ModuleUtilsMixin):
 
         return True
 
-   
-    def _check_and_adjust_attn_implementation(
-            self, attn_implementation: Optional[str], is_init_check: bool = False
-    ) -> str:
-        """
-        Check that the `attn_implementation` exists and is supported by the models, and try to get the kernel from hub if
-        it matches hf kernels pattern.
 
-        Args:
-            attn_implementation (`str` or `None`):
-                The attention implementation to check for existence/validity.
-            is_init_check (`bool`, *optional*):
-                Whether this check is performed early, i.e. at __init__ time, or later when the model and its weights are
-                fully instantiated. This is needed as we also check the devices of the weights, and/or if the model uses
-                BetterTransformer, which are only available later after __init__. This allows to raise proper exceptions early
-                before instantiating the full models if we know that the model does not support the requested attention.
-
-        Returns:
-            `str`: The final attention implementation to use, including potential fallbacks from sdpa to eager, or from
-            None to sdpa (to potentially eager).
-        """
-        applicable_attn_implementation = attn_implementation
-        # If FA not installed, do not fail but use kernels instead
-        if (
-                applicable_attn_implementation == "flash_attention_2"
-                and self._supports_flash_attn
-                and not is_flash_attn_2_available()
-                and is_kernels_available()
-        ):
-            applicable_attn_implementation = "kernels-community/flash-attn"
-        if is_kernel(applicable_attn_implementation):
-            try:
-                load_and_register_kernel(applicable_attn_implementation)
-                # log that we used kernel fallback if successful
-                if attn_implementation == "flash_attention_2":
-                    logger.warning_once(
-                        "You do not have `flash_attn` installed, using `kernels-community/flash-attn` from the `kernels` "
-                        "library instead!"
-                    )
-            except Exception as e:
-                if attn_implementation == "flash_attention_2":
-                    self._flash_attn_2_can_dispatch()  # will fail as fa2 is not available but raise the proper exception
-                logger.warning_once(
-                    f"Could not find a kernel matching `{applicable_attn_implementation}` compatible with your device in the "
-                    f"hub:\n{e}.\nUsing default attention implementation instead (sdpa if available, eager otherwise)."
-                )
-                try:
-                    self._sdpa_can_dispatch(is_init_check)
-                    applicable_attn_implementation = "sdpa"
-                except (ValueError, ImportError) as e:
-                    applicable_attn_implementation = "eager"
-        else:
-            applicable_attn_implementation = self.get_correct_attn_implementation(
-                applicable_attn_implementation, is_init_check
-            )
-            # preload flash attention here to allow compile with fullgraph
-            if applicable_attn_implementation.startswith("flash_attention"):
-                lazy_import_flash_attention(applicable_attn_implementation)
-
-        return applicable_attn_implementation
-
-    def get_correct_attn_implementation(self, requested_attention: Optional[str], is_init_check: bool = False) -> str:
-        applicable_attention = "sdpa" if requested_attention is None else requested_attention
-
-        if applicable_attention not in ["eager"] + ALL_ATTENTION_FUNCTIONS.valid_keys():
-            message = (
-                f'Specified `attn_implementation="{applicable_attention}"` is not supported. The only possible arguments are '
-                '`attn_implementation="eager"`'
-            )
-
-            if self._supports_sdpa:
-                message += ', `"attn_implementation=sdpa"'
-            raise ValueError(message + ".")
-
-        # Perform relevant checks
-        if applicable_attention == "flash_attention_2":
-            self._flash_attn_2_can_dispatch(is_init_check)
-        elif applicable_attention == "flash_attention_3":
-            self._flash_attn_3_can_dispatch(is_init_check)
-        elif applicable_attention == "flex_attention":
-            self._flex_attn_can_dispatch(is_init_check)
-        elif applicable_attention == "sdpa":
-            # Sdpa is the default, so we try it and fallback to eager otherwise when not possible
-            try:
-                self._sdpa_can_dispatch(is_init_check)
-            except (ValueError, ImportError) as e:
-                if requested_attention == "sdpa":
-                    raise e
-                applicable_attention = "eager"
-
-        return applicable_attention
 
 
     @wraps(torch.nn.Module.cuda)
     def cuda(self, *args, **kwargs):
-        if getattr(self, "quantization_method", None) == QuantizationMethod.HQQ:
-            from hqq.core.quantize import HQQLinear
-
-            # Since HQQLinear stores some tensors in the 'meta' attribute,
-            # it's necessary to manually call the `cuda` method on HQQLinear layers.
-            super().cuda(*args, **kwargs)
-            for module in self.modules():
-                if isinstance(module, HQQLinear):
-                    if len(args) > 0:
-                        device = args[0]
-                    else:
-                        device = kwargs.get("device", "cuda")
-                    module.cuda(device)
-            return self
-
-        # Checks if the model has been loaded in 4-bit or 8-bit with BNB
-        if getattr(self, "quantization_method", None) == QuantizationMethod.BITS_AND_BYTES:
-            if getattr(self, "is_loaded_in_8bit", False):
-                raise ValueError(
-                    "Calling `cuda()` is not supported for `8-bit` quantized models. "
-                    " Please use the model as it is, since the model has already been set to the correct devices."
-                )
-            elif version.parse(importlib.metadata.version("bitsandbytes")) < version.parse("0.43.2"):
-                raise ValueError(
-                    "Calling `cuda()` is not supported for `4-bit` quantized models with the installed version of bitsandbytes. "
-                    f"The current device is `{self.device}`. If you intended to move the model, please install bitsandbytes >= 0.43.2."
-                )
+        
         return super().cuda(*args, **kwargs)
 
     @wraps(torch.nn.Module.to)
@@ -1202,77 +1004,11 @@ class PreTrainedModel(torch.nn.Module, ModuleUtilsMixin):
                     dtype_present_in_args = True
                     break
 
-        if getattr(self, "quantization_method", None) == QuantizationMethod.HQQ:
-            from hqq.core.quantize import HQQLinear
 
-            # Since HQQLinear stores some tensors in the 'meta' attribute, we must
-            # explicitly move the parameters to the target device for each HQQLinear layer after `to`.
-            super().to(*args, **kwargs)
-            for module in self.modules():
-                if isinstance(module, HQQLinear):
-                    if "device" in kwargs:
-                        device = kwargs["device"]
-                    else:
-                        device = args[0]
-                    if "dtype" in kwargs:
-                        dtype = kwargs["dtype"]
-                    elif dtype_present_in_args:
-                        dtype = arg
-                    else:
-                        dtype = None
-                    # Due to the current messy implementation of HQQLinear, updating `compute_dtype`
-                    # followed by calling the `cuda` method achieves the intended behavior of `to`,
-                    # even when the target device is CPU.
-                    if dtype is not None:
-                        module.compute_dtype = dtype
-                    module.cuda(device)
-            return self
 
-        if dtype_present_in_args and getattr(self, "quantization_method", None) == QuantizationMethod.QUARK:
-            raise ValueError("Casting a Quark quantized model to a new `dtype` is not supported.")
-
-        # Checks if the model has been loaded in 4-bit or 8-bit with BNB
-        if getattr(self, "quantization_method", None) == QuantizationMethod.BITS_AND_BYTES:
-            if dtype_present_in_args:
-                raise ValueError(
-                    "You cannot cast a bitsandbytes model in a new `dtype`. Make sure to load the model using `from_pretrained` using the"
-                    " desired `dtype` by passing the correct `dtype` argument."
-                )
-
-            if getattr(self, "is_loaded_in_8bit", False):
-                raise ValueError(
-                    "`.to` is not supported for `8-bit` bitsandbytes models. Please use the model as it is, since the"
-                    " model has already been set to the correct devices and casted to the correct `dtype`."
-                )
-            elif version.parse(importlib.metadata.version("bitsandbytes")) < version.parse("0.43.2"):
-                raise ValueError(
-                    "Calling `to()` is not supported for `4-bit` quantized models with the installed version of bitsandbytes. "
-                    f"The current device is `{self.device}`. If you intended to move the model, please install bitsandbytes >= 0.43.2."
-                )
-        elif getattr(self, "quantization_method", None) == QuantizationMethod.GPTQ:
-            if dtype_present_in_args:
-                raise ValueError(
-                    "You cannot cast a GPTQ model in a new `dtype`. Make sure to load the model using `from_pretrained` using the desired"
-                    " `dtype` by passing the correct `dtype` argument."
-                )
         return super().to(*args, **kwargs)
 
-    @classmethod
-    def get_init_context(cls, is_quantized: bool, _is_ds_init_called: bool):
-        if is_deepspeed_zero3_enabled():
-            import deepspeed
 
-            init_contexts = [no_init_weights()]
-            # We cannot initialize the model on meta device with deepspeed when not quantized
-            if not is_quantized and not _is_ds_init_called:
-                logger.info("Detected DeepSpeed ZeRO-3: activating zero.init() for this model")
-                init_contexts.extend([deepspeed.zero.Init(config_dict_or_path=deepspeed_config()), set_zero3_state()])
-            elif is_quantized:
-                init_contexts.extend([init_empty_weights(), set_quantized_state()])
-        else:
-            init_contexts = [no_init_weights(), init_empty_weights()]
-
-        return init_contexts
 
     @classmethod
     def from_pretrained(
@@ -1479,19 +1215,18 @@ class PreTrainedModel(torch.nn.Module, ModuleUtilsMixin):
         )
 
         config.name_or_path = pretrained_model_name_or_path
-        model_init_context = cls.get_init_context(False, False)
+        model_init_context =[]
         config = copy.deepcopy(config)  # We do not want to modify the config inplace in from_pretrained.
         with ContextManagers(model_init_context):
             # Let's make sure we don't run the init function of buffer modules
             model = cls(config, *model_args, **model_kwargs)
-
 
         # make sure we use the model's config since the __init__ call might have copied it
         config = model.config
 
         # Prepare the full device map
         if device_map is not None:
-            device_map = _get_device_map(model, device_map, None, None, dtype, None)
+            device_map = _get_device_map(model, device_map, None, dtype, None)
 
 
         # restore default dtype
@@ -1689,8 +1424,7 @@ class PreTrainedModel(torch.nn.Module, ModuleUtilsMixin):
         # Compute expected model keys
         expected_keys = list(model_to_load.state_dict().keys())
    
-        if logger.level >= logging.WARNING:
-            verify_tp_plan(expected_keys, getattr(model_to_load, "_tp_plan", None))
+
 
         # Prepare and compatabilize arguments for serial and parallel shard loading
         args_list = [
@@ -1825,13 +1559,7 @@ class AttentionInterface(GeneralInterface):
     # Class instance object, so that a call to `register` can be reflected into all other files correctly, even if
     # a new instance is created (in order to locally override a given function)
     _global_mapping = {
-        "flash_attention_3": flash_attention_forward,
-        "flash_attention_2": flash_attention_forward,
-        "flex_attention": flex_attention_forward,
-        "paged_attention": paged_attention_forward,
         "sdpa": sdpa_attention_forward,
-        "sdpa_paged": sdpa_attention_paged_forward,
-        "eager_paged": eager_paged_attention_forward,
     }
 
 

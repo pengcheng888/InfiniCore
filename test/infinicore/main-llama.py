@@ -48,10 +48,12 @@ def func(Folder):
     with torch.no_grad():
         print('------> start')
         t1 = time.time()
-        outputs,_ = model.generate(**input_ids, max_new_tokens=15)  # cache_implementation="static",
+        outputs, output_tokens_list = model.generate(**input_ids, max_new_tokens=15)  # cache_implementation="static",
+
         t2 = time.time()
         print("time: ", (t2 - t1) * 1000)
-        
+        print( outputs, output_tokens_list )
+        outputs =torch.tensor([output_tokens_list]) 
         for output in outputs:
             print(tokenizer.decode(output, skip_special_tokens=True))
 

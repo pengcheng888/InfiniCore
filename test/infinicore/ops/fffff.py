@@ -232,6 +232,10 @@ def func11():
 
     print(ret)
 
+
+    data = [1,2,2]
+    print(torch.tensor(data))
+
     # ret_gpu = ret.to(infinicore.device("cuda", 0))
     # print(ret_gpu)
 

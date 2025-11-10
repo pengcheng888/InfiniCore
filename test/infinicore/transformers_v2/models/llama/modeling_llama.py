@@ -214,8 +214,8 @@ class LlamaModel(infinicore.nn.Module):  # LlamaPreTrainedModel  torch.nn.Module
             **kwargs: Unpack[TransformersKwargs],  # {}
     ) -> BaseModelOutputWithPast:
 
-        if (input_ids is None) ^ (inputs_embeds is not None):
-            raise ValueError("You must specify exactly one of input_ids or inputs_embeds")
+        # if (input_ids is None) ^ (inputs_embeds is not None):
+        #     raise ValueError("You must specify exactly one of input_ids or inputs_embeds")
 
         if use_cache and past_key_values is None:
             past_key_values = DynamicCache(config=self.config)
@@ -287,7 +287,7 @@ class LlamaForCausalLM(LlamaPreTrainedModel, GenerationMixin):  # torch.nn.Modul
             logits_to_keep: Union[int, torch.Tensor] = 0,
             **kwargs: Unpack[TransformersKwargs],
     ) -> CausalLMOutputWithPast:
-        print("cache_position_infini",kwargs["cache_position_infini"])
+
         outputs: BaseModelOutputWithPast = self.model(
             input_ids=input_ids,
             past_key_values=past_key_values,
@@ -302,7 +302,7 @@ class LlamaForCausalLM(LlamaPreTrainedModel, GenerationMixin):  # torch.nn.Modul
         # Only compute necessary logits, and do not upcast them to float if we are not computing the loss
         slice_indices = slice(-logits_to_keep, None) if isinstance(logits_to_keep, int) else logits_to_keep  # [0,None,None]
 
-        if False and (outputs.last_hidden_state_last_token is not None):  # torch.Size([1, 2048])
+        if True and (outputs.last_hidden_state_last_token is not None):  # torch.Size([1, 2048])
             logits = self.lm_head(outputs.last_hidden_state_last_token)  # logits torch.Size([1, 1, 32000])
             return CausalLMOutputWithPast(
                 logits=infinicore.convert_infini_to_torch_tensor(logits),

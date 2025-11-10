@@ -14,7 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import copy
-import inspect
 import warnings
 
 from typing import TYPE_CHECKING, Any, Callable, Optional, Union
@@ -24,38 +23,25 @@ from torch import nn
 from ..cache_utils import (
     Cache,
     DynamicCache,
-    EncoderDecoderCache,
     StaticCache,
 )
 
-from ..masking_utils import create_masks_for_generate
-from ..pytorch_utils import isin_mps_friendly
+
 from ..utils import (
-    ModelOutput,
     logging,
 )
 
+ALL_STATIC_CACHE_IMPLEMENTATIONS = ("static")
 from .configuration_utils import (
-    ALL_STATIC_CACHE_IMPLEMENTATIONS,
-    DEPRECATED_STATIC_CACHE_IMPLEMENTATIONS,
-    STATIC_CACHE_IMPLEMENTATIONS,
     GenerationConfig,
     GenerationMode,
 )
 from .continuous_batching import ContinuousMixin
-from .logits_process import (
-    LogitsProcessorList,
-)
-from .stopping_criteria import (
-    EosTokenCriteria,
-    MaxLengthCriteria,
-    StoppingCriteriaList,
-)
+
 
 if TYPE_CHECKING:
     from ..modeling_utils import PreTrainedModel
-    from ..tokenization_utils_base import PreTrainedTokenizerBase
-    from .streamers import BaseStreamer
+
 
 logger = logging.get_logger(__name__)
 
@@ -104,28 +90,34 @@ class GenerationMixin(ContinuousMixin):
         import infinicore
         # 1. Handle BC:
         model_inputs = {}
-        model_inputs["cache_position"] = cache_position
-
-        # 2. Generic cache-dependent input preparation
+        model_inputs["inputs_embeds"] = None
         if past_key_values is not None:
             model_inputs["past_key_values"] = past_key_values
-        if past_key_values is not None:
-            if input_ids.shape[1] != cache_position.shape[0]:  # Default case (the "else", a no op, is Exception 2)
-                input_ids = input_ids[:, cache_position]
-            if input_ids.shape[1] != cache_position.shape[0]:  # Default case (the "else", a no op, is Exception 2)
-                input_ids = input_ids[:, cache_position]
 
-        # 3. Prepare base model inputs
-        model_inputs["input_ids"] =  input_ids.clone(memory_format=torch.contiguous_format) # [[1234]]
-        model_inputs["inputs_embeds"] = None
+
+        if False:
+
+            model_inputs["cache_position"] = cache_position
+
+            # 2. Generic cache-dependent input preparation
+            if past_key_values is not None:
+                if input_ids.shape[1] != cache_position.shape[0]:  # Default case (the "else", a no op, is Exception 2)
+                    input_ids = input_ids[:, cache_position]
+                if input_ids.shape[1] != cache_position.shape[0]:  # Default case (the "else", a no op, is Exception 2)
+                    input_ids = input_ids[:, cache_position]
+
+            # 3. Prepare base model inputs
+            model_inputs["input_ids"] =  input_ids.clone(memory_format=torch.contiguous_format) # [[1234]]
+  
 
         # --------------------------------------------------- #
-        if past_key_values is not None:
-            print(kwargs.get("next_token", None) ,kwargs.get("input_ids_infini", None) )
-            if kwargs.get("next_token", None) is not None:
-                next_token = kwargs.get("next_token", None) 
-                input_ids_infini = infinicore.convert_list_to_infini_tensor([next_token], shape = [1,1])
-                model_inputs["input_ids_infini"] = input_ids_infini
+        if True:
+            model_inputs["cache_position_infini"] =  kwargs.get("cache_position_infini", None)
+            if past_key_values is not None:
+                if kwargs.get("next_token", None) is not None:
+                    next_token = kwargs.get("next_token", None) 
+                    input_ids_infini = infinicore.convert_list_to_infini_tensor([next_token], shape = [1,1])
+                    model_inputs["input_ids_infini"] = input_ids_infini
 
    
 
@@ -133,10 +125,6 @@ class GenerationMixin(ContinuousMixin):
         for key, value in kwargs.items():
             if key not in model_inputs:
                 model_inputs[key] = value
-
-        model_inputs.pop("attention_mask", None)
-        kwargs.pop("attention_mask", None)
-
         return model_inputs
 
     def _prepare_model_inputs(
@@ -162,27 +150,6 @@ class GenerationMixin(ContinuousMixin):
         return inputs, input_name, model_kwargs
 
   
-    def _get_stopping_criteria(
-        self,
-        generation_config: GenerationConfig,
-        stopping_criteria: Optional[StoppingCriteriaList],
-        tokenizer: Optional["PreTrainedTokenizerBase"] = None,
-        **kwargs,
-    ) -> StoppingCriteriaList:
-        criteria = StoppingCriteriaList()
-        if generation_config.max_length is not None:
-            max_position_embeddings = getattr(self.config, "max_position_embeddings", None)
-            criteria.append(
-                MaxLengthCriteria(
-                    max_length=generation_config.max_length,
-                    max_position_embeddings=max_position_embeddings,
-                )
-            )
- 
-        if generation_config._eos_token_tensor is not None:
-            criteria.append(EosTokenCriteria(eos_token_id=generation_config._eos_token_tensor))
-      
-        return criteria
 
 
     def _prepare_generation_config(
@@ -229,6 +196,7 @@ class GenerationMixin(ContinuousMixin):
 
     def _get_initial_cache_position(self, seq_length, device, model_kwargs):
         """Calculates `cache_position` for the pre-fill stage based on `input_ids` and optionally past length"""
+
         # `torch.compile`-friendly `torch.arange` from a shape -- the lines below are equivalent to `torch.arange`
         if "cache_position" in model_kwargs and model_kwargs["cache_position"] is not None:
             return model_kwargs
@@ -381,11 +349,7 @@ class GenerationMixin(ContinuousMixin):
             dynamic_cache_kwargs = {"config": self.config}
         if generation_config.cache_implementation is not None:
             if generation_config.cache_implementation in ALL_STATIC_CACHE_IMPLEMENTATIONS:
-                if generation_config.cache_implementation in DEPRECATED_STATIC_CACHE_IMPLEMENTATIONS:
-                    logger.warning_once(
-                        f"Using `cache_implementation='{generation_config.cache_implementation}' is deprecated. Please only "
-                        f"use one of {STATIC_CACHE_IMPLEMENTATIONS}, and the layer structure will be inferred automatically."
-                    )
+
                 model_kwargs[cache_name] = self._get_cache(
                     cache_implementation=generation_config.cache_implementation,
                     batch_size=max(generation_config.num_beams, generation_config.num_return_sequences) * batch_size,
@@ -400,8 +364,6 @@ class GenerationMixin(ContinuousMixin):
         else:
             model_kwargs[cache_name] = (
                 DynamicCache(**dynamic_cache_kwargs)
-                if not requires_cross_attention_cache
-                else EncoderDecoderCache(DynamicCache(**dynamic_cache_kwargs), DynamicCache(**dynamic_cache_kwargs))
             )
 
 
@@ -450,16 +412,7 @@ class GenerationMixin(ContinuousMixin):
             logger.warning(f"Setting `pad_token_id` to `eos_token_id`:{pad_token_tensor} for open-end generation.")
 
 
-        if (
-            eos_token_tensor is not None
-            and isin_mps_friendly(elements=eos_token_tensor, test_elements=pad_token_tensor).any()
-        ):
-            if kwargs_has_attention_mask is not None and not kwargs_has_attention_mask:
-                logger.warning_once(
-                    "The attention mask is not set and cannot be inferred from input because pad token is same as "
-                    "eos token. As a consequence, you may observe unexpected behavior. Please pass your input's "
-                    "`attention_mask` to obtain reliable results."
-                )
+     
         if eos_token_tensor is not None and (
             torch.is_floating_point(eos_token_tensor) or (eos_token_tensor < 0).any()
         ):
@@ -483,12 +436,11 @@ class GenerationMixin(ContinuousMixin):
         self,
         inputs: Optional[torch.Tensor] = None,
         generation_config: Optional[GenerationConfig] = None,
-        logits_processor: Optional[LogitsProcessorList] = None,
-        stopping_criteria: Optional[StoppingCriteriaList] = None,
+ 
+
         prefix_allowed_tokens_fn: Optional[Callable[[int, torch.Tensor], list[int]]] = None,
         synced_gpus: Optional[bool] = None,
         assistant_model: Optional["PreTrainedModel"] = None,
-        streamer: Optional["BaseStreamer"] = None,
         negative_prompt_ids: Optional[torch.Tensor] = None,
         negative_prompt_attention_mask: Optional[torch.Tensor] = None,
         use_model_defaults: Optional[bool] = None,
@@ -523,16 +475,8 @@ class GenerationMixin(ContinuousMixin):
                 priority: 1) from the `generation_config.json` model file, if it exists; 2) from the model
                 configuration. Please note that unspecified parameters will inherit [`~generation.GenerationConfig`]'s
                 default values, whose documentation should be checked to parameterize generation.
-            logits_processor (`LogitsProcessorList`, *optional*):
-                Custom logits processors that complement the default logits processors built from arguments and
-                generation config. If a logit processor is passed that is already created with the arguments or a
-                generation config an error is thrown. This feature is intended for advanced users.
-            stopping_criteria (`StoppingCriteriaList`, *optional*):
-                Custom stopping criteria that complements the default stopping criteria built from arguments and a
-                generation config. If a stopping criteria is passed that is already created with the arguments or a
-                generation config an error is thrown. If your stopping criteria depends on the `scores` input, make
-                sure you pass `return_dict_in_generate=True, output_scores=True` to `generate`. This feature is
-                intended for advanced users.
+  
+
             prefix_allowed_tokens_fn (`Callable[[int, torch.Tensor], list[int]]`, *optional*):
                 If provided, this function constraints the beam search to allowed tokens only at each step. If not
                 provided no constraint is applied. This function takes 2 arguments: the batch ID `batch_id` and
@@ -545,9 +489,7 @@ class GenerationMixin(ContinuousMixin):
                 to `True` if using `FullyShardedDataParallel` or DeepSpeed ZeRO Stage 3 with multiple GPUs to avoid
                 deadlocking if one GPU finishes generating before other GPUs. Otherwise, defaults to `False`.
 
-            streamer (`BaseStreamer`, *optional*):
-                Streamer object that will be used to stream the generated sequences. Generated tokens are passed
-                through `streamer.put(token_ids)` and the streamer is responsible for any further processing.
+
             negative_prompt_ids (`torch.LongTensor` of shape `(batch_size, sequence_length)`, *optional*):
                 The negative prompt needed for some processors such as CFG. The batch size must match the input batch
                 size. This is an experimental feature, subject to breaking API changes in future versions.
@@ -590,10 +532,6 @@ class GenerationMixin(ContinuousMixin):
    
         # 2. Set generation parameters if not already defined
         synced_gpus = False
-    
-        logits_processor = logits_processor if logits_processor is not None else LogitsProcessorList()
-        stopping_criteria = stopping_criteria if stopping_criteria is not None else StoppingCriteriaList()
-
         kwargs_has_attention_mask =False
 
         # 3. Define model inputs
@@ -645,11 +583,6 @@ class GenerationMixin(ContinuousMixin):
                 UserWarning,
             )
 
-        # 9. prepare logits processors and stopping criteria
-        prepared_logits_processor = LogitsProcessorList()
-        prepared_stopping_criteria = self._get_stopping_criteria(
-            generation_config=generation_config, stopping_criteria=stopping_criteria, tokenizer=None, **kwargs
-        )
 
         # Set model_kwargs `use_cache` so we can use it later in forward runs
         model_kwargs["use_cache"] = generation_config.use_cache
@@ -659,11 +592,8 @@ class GenerationMixin(ContinuousMixin):
             # 11. run sample (it degenerates to greedy search when `generation_config.do_sample=False`)
             result = self._sample(
                 input_ids,
-                logits_processor=prepared_logits_processor,
-                stopping_criteria=prepared_stopping_criteria,
                 generation_config=generation_config,
                 synced_gpus=synced_gpus,
-                streamer=streamer,
                 **model_kwargs,
             )
 
@@ -681,11 +611,9 @@ class GenerationMixin(ContinuousMixin):
     def _sample(
         self,
         input_ids: torch.LongTensor,
-        logits_processor: LogitsProcessorList,
-        stopping_criteria: StoppingCriteriaList,
         generation_config: GenerationConfig,
         synced_gpus: bool,
-        streamer: Optional["BaseStreamer"],
+
         **model_kwargs,
     ) -> Union[ torch.LongTensor]:
         r"""
@@ -695,28 +623,20 @@ class GenerationMixin(ContinuousMixin):
         Parameters:
             input_ids (`torch.LongTensor` of shape `(batch_size, sequence_length)`):
                 The sequence used as a prompt for the generation.
-            logits_processor (`LogitsProcessorList`):
-                An instance of [`LogitsProcessorList`]. List of instances of class derived from [`LogitsProcessor`]
-                used to modify the prediction scores of the language modeling head applied at each generation step.
-            stopping_criteria (`StoppingCriteriaList`):
-                An instance of [`StoppingCriteriaList`]. List of instances of class derived from [`StoppingCriteria`]
-                used to tell if the generation loop should stop.
+
+ 
             generation_config ([`~generation.GenerationConfig`]):
                 The generation configuration to be used as parametrization of the decoding method.
             synced_gpus (`bool`):
                 Whether to continue running the while loop until max_length (needed to avoid deadlocking with
                 `FullyShardedDataParallel` and DeepSpeed ZeRO Stage 3).
-            streamer (`BaseStreamer`, *optional*):
-                Streamer object that will be used to stream the generated sequences. Generated tokens are passed
-                through `streamer.put(token_ids)` and the streamer is responsible for any further processing.
+
             model_kwargs:
                 Additional model specific kwargs will be forwarded to the `forward` function of the model. If model is
                 an encoder-decoder model the kwargs should include `encoder_outputs`.
 
         """
-        # init values
-        pad_token_id = generation_config._pad_token_tensor
-        has_eos_stopping_criteria = any(hasattr(criteria, "eos_token_id") for criteria in stopping_criteria)
+
         do_sample = False
 
         # keep track of which sequences are already finished
@@ -753,7 +673,6 @@ class GenerationMixin(ContinuousMixin):
                 cache_position_infini =  infinicore.convert_list_to_infini_tensor([last_pos_value+1])
                 model_kwargs["cache_position_infini"] =  cache_position_infini
         
-   
             else:
                 raise KeyError("cache_position error")
 
@@ -787,26 +706,18 @@ class GenerationMixin(ContinuousMixin):
                 next_tokens = torch.argmax( infinicore.convert_infini_to_torch_tensor (next_token_scores), dim=-1)
                 next_tokens = infinicore.convert_torch_to_infini_tensor( next_tokens ) # shape: [1,1]
 
-            # ----------------------------------------------------------------- #
-            #                        finished
-            # ----------------------------------------------------------------- #
-            # finished sentences should have their next token be a padding token
-            if isinstance(next_tokens, torch.Tensor):
-                if has_eos_stopping_criteria:
-                    next_tokens = next_tokens * unfinished_sequences + pad_token_id * (1 - unfinished_sequences)
-
+   
             # ----------------------------------------------------------------- #
             #                        收集结果
             # ----------------------------------------------------------------- #
             # update generated ids, model inputs, and length for next step
             if isinstance(next_tokens, torch.Tensor):
                 input_ids = torch.cat([input_ids, next_tokens[:, None]], dim=-1)
-                unfinished_sequences = unfinished_sequences & ~stopping_criteria(input_ids, None)
+                unfinished_sequences = unfinished_sequences 
                 this_peer_finished = unfinished_sequences.max() == 0 # flag表示全是0了，表示所有batch都收集完毕了
 
                 #
                 next_token = next_tokens[0].cpu().item() # 将 torch.Tensor 转为 python的int类型
-                #
                 model_kwargs["next_token"] =  next_token
   
 
