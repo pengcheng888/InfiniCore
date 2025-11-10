@@ -24,6 +24,10 @@ str_to_torch_dtype = {
     "F8_E5M2": torch.float8_e5m2,
 }
 
+
+
+
+
 def load_state_dict(
         checkpoint_file: Union[str, os.PathLike],
         map_location: Optional[Union[str, torch.device]] = "cpu",
@@ -57,40 +61,44 @@ def load_state_dict(
             return state_dict
 
 
+def get_config(Folder):
+    config_dict = transformers_v2.LlamaConfig._get_config_dict(Folder)[0]
+    config =  transformers_v2.LlamaConfig(**config_dict)
+    return config
+
+def get_config_v2(Folder):
+    def load_config_json(dir_path_: str):
+        import json
+        with open(os.path.join(dir_path_, "config.json"), "r") as f:
+            config = json.load(f)
+        return config
+
+    config_dict = load_config_json(os.path.join(Folder))
+    config =  transformers_v2.LlamaConfig(**config_dict)
+    return config
+
+
+
+
 def func(Folder):
     # ------------------------------------------------------------------------------------------ #
     # ------------------------------------------------------------------------------------------ #
     # ------------------------------------------------------------------------------------------ #
 
-    # model = LlamaForCausalLM.from_pretrained(Folder,
-    #                                          dtype=torch.bfloat16, device_map="auto",
-    #                                          attn_implementation="sdpa")
 
-
-    model = transformers_v2.LlamaForCausalLM.from_pretrained(Folder,
-                                             dtype=torch.float16, device_map="cpu",
-                                             attn_implementation="sdpa")
-    print(model)
-    config = model.LlamaForCausalLM_config
-    m = transformers_v2.LlamaForCausalLM(config)
-    print(config)
-    exit()
-    print(m)
+    config = get_config_v2(Folder)
+    model = transformers_v2.LlamaForCausalLM(config)
 
     path = os.path.join(Folder,"model.safetensors")
-    dd = load_state_dict(path)
+    model_param = load_state_dict(path)
     
-    m.load_state_dict(dd)
+    model.load_state_dict(model_param)
     
-    model = m
-
     # ------------------------------------------------------------------------------------------ #
     # ------------------------------------------------------------------------------------------ #
     # ------------------------------------------------------------------------------------------ #
     from transformers_v2 import AutoTokenizer
     tokenizer = AutoTokenizer.from_pretrained(Folder)
-
-
 
     # ------------------------------------------------------------------------------------------ #
     # ------------------------------------------------------------------------------------------ #

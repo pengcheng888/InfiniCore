@@ -867,7 +867,12 @@ class PreTrainedModel(torch.nn.Module, ModuleUtilsMixin):
     def __init__(self, config: PretrainedConfig, *inputs, **kwargs):
         super().__init__()
         if not isinstance(config, PretrainedConfig):
-            raise TypeError(
+            # raise TypeError(
+            #     f"Parameter config in `{self.__class__.__name__}(config)` should be an instance of class "
+            #     "`PretrainedConfig`. To create a model from a pretrained model use "
+            #     f"`model = {self.__class__.__name__}.from_pretrained(PRETRAINED_MODEL_NAME)`"
+            # )
+            print(
                 f"Parameter config in `{self.__class__.__name__}(config)` should be an instance of class "
                 "`PretrainedConfig`. To create a model from a pretrained model use "
                 f"`model = {self.__class__.__name__}.from_pretrained(PRETRAINED_MODEL_NAME)`"

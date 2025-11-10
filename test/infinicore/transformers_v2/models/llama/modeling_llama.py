@@ -274,6 +274,7 @@ class LlamaForCausalLM(LlamaPreTrainedModel, GenerationMixin):  # torch.nn.Modul
         self.model = LlamaModel(config)
         self.vocab_size = config.vocab_size
         self.lm_head = infinicore.nn.Linear(config.hidden_size, config.vocab_size, bias=False)
+        self.LlamaForCausalLM_config = config
 
     @can_return_tuple
     @auto_docstring
