@@ -962,3 +962,37 @@ class InfiniCoreModule:
 import torch
 Module =  InfiniCoreModule
 # Module =  torch.nn.Module
+
+# ==========================================================================
+# ==========================================================================
+# ==========================================================================
+
+import infinicore
+torch.nn.Module
+class InfiniCoreModule_wpc:
+    r"""Base class for InfiniCore neural network modules.
+    Your models should also subclass this class.
+
+    Modules can also contain other Modules, allowing 
+    to nest them in a tree structure.
+    """
+
+    _version: int = 1
+    _parameters: Dict[str, Optional[Union[torch.nn.Parameter, 'Parameter']]]
+    _buffers: Dict[str, Optional[torch.Tensor]]
+    _modules: Dict[str, Optional['InfiniCoreModule']]
+
+    def __init__(self):
+        super().__setattr__("_parameters", OrderedDict())
+        super().__setattr__("_buffers", OrderedDict())
+        super().__setattr__("_modules", OrderedDict())
+    
+    def __setattr__(self, name: str, value: Union[infinicore.Tensor, 'InfiniCoreModule_wpc']) -> None:
+        print("__setattr__ ---->", type(value))
+        if isinstance(value, infinicore.nn.Parameter_wpc):
+            print("???")
+            
+        super().__setattr__(name, value)
+        
+
+Module_wpc =  InfiniCoreModule_wpc

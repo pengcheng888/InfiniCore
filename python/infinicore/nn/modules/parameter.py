@@ -18,6 +18,7 @@ from typing import Optional
 from collections import OrderedDict
 
 
+
 class InfiniCoreParameter(torch.Tensor):
     r"""A kind of Tensor that is to be considered a module parameter.
 
@@ -139,3 +140,16 @@ def _rebuild_parameter_with_state(data, requires_grad, hooks, state):
 # InfiniCoreParameter =  torch.nn.Parameter
 
 Parameter = InfiniCoreParameter
+
+# ===========================================================================================
+# ===========================================================================================
+# ===========================================================================================
+
+import infinicore
+
+class InfiniCoreParameter_wpc(infinicore.Tensor):
+
+    def __init__(self, data: Optional[infinicore.Tensor] = None):
+        self.data = data
+        
+Parameter_wpc = InfiniCoreParameter_wpc
