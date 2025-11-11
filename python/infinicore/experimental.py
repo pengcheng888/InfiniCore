@@ -46,6 +46,16 @@ def to_infinicore_dtype(torch_dtype):
         raise ValueError(f"Unsupported torch dtype: {torch_dtype}")
 
 
+def torch_2_infini_tensor_ref(torch_tensor: torch.Tensor):
+    infini_device = infinicore.device(torch_tensor.device.type, 0)
+    ref = infinicore.from_blob(
+        torch_tensor.data_ptr(),
+        list(torch_tensor.shape),
+        dtype=to_infinicore_dtype(torch_tensor.dtype),
+        device=infini_device,
+    )
+    return ref
+
 def convert_torch_to_infini_tensor(torch_tensor):
     infini_device = infinicore.device(torch_tensor.device.type, 0)
     if torch_tensor.is_contiguous():
@@ -64,7 +74,7 @@ def convert_torch_to_infini_tensor(torch_tensor):
             device=infini_device,
         )
 
-    infini_tensor = infinicore.empty(torch_tensor.shape,
+    infini_tensor = infinicore.empty(list(torch_tensor.shape),
                                      dtype=to_infinicore_dtype(torch_tensor.dtype),
                                      device=infini_device
                                      )

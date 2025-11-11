@@ -36,13 +36,12 @@ class Embedding(Module):
 
     num_embeddings: int
     embedding_dim: int
-    weight: torch.Tensor
+    weight: infinicore.Tensor
 
     def __init__(
             self,
             num_embeddings: int,
             embedding_dim: int,
-            _weight: Optional[torch.Tensor] = None,
             device=None,
             dtype=None,
     ) -> None:
@@ -50,22 +49,13 @@ class Embedding(Module):
         super().__init__()
         self.num_embeddings = num_embeddings
         self.embedding_dim = embedding_dim
-        self.weight_infini = None
-        if _weight is None:
-            self.weight = infinicore.nn.Parameter(torch.empty((num_embeddings, embedding_dim), **factory_kwargs), requires_grad=False)
-        else:
-            assert list(_weight.shape) == [num_embeddings,
-                                           embedding_dim, ], "Shape of weight does not match num_embeddings and embedding_dim"
-            self.weight = infinicore.nn.Parameter(_weight, requires_grad=False)
-
+     
+        self.weight = infinicore.nn.Parameter(
+            infinicore.empty((1,), dtype=infinicore.float32, device=infinicore.device("cpu", 0))
+            )
 
     def forward(self, input: infinicore.Tensor) -> infinicore.Tensor:
-
-        if self.weight_infini is None:
-            self.weight_infini =  infinicore.convert_torch_to_infini_tensor(self.weight)
-
-        return  infinicore.nn.functional.embedding(input, self.weight_infini)
-
+        return  infinicore.nn.functional.embedding(input, self.weight)
 
 
     def extra_repr(self) -> str:

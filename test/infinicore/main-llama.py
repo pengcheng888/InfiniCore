@@ -73,9 +73,7 @@ def func(Folder):
     print(model)
     config = model.LlamaForCausalLM_config
     m = transformers_v2.LlamaForCausalLM(config)
-    print(config)
-    exit()
-    print(m)
+
 
     path = os.path.join(Folder,"model.safetensors")
     dd = load_state_dict(path)

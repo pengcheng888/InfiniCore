@@ -32,13 +32,9 @@ def create_sin_cos_table(max_position,
 
 class RoPE():  # Module
     def __init__(self, config):
-
-
         self.max_position_embeddings = config.max_position_embeddings
         self.rope_theta = config.rope_theta
         self.head_dim = getattr(config, "head_dim", None) or config.hidden_size // config.num_attention_heads
-
-
 
     def forward(self, states: infinicore.Tensor,
                               position_ids: infinicore.Tensor,

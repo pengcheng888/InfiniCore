@@ -37,7 +37,8 @@ def causal_softmax(
 
 
 
-def linear(input: infinicore.Tensor,  
+
+def linear_bk(input: infinicore.Tensor,  
            weight: infinicore.Tensor,  
            bias: Optional[infinicore.Tensor] = None,
            ) -> infinicore.Tensor:
@@ -82,6 +83,37 @@ def linear(input: infinicore.Tensor,
         y =  infinicore.Tensor(_infinicore.linear_bias(input.view((N, in_features))._underlying,
                                            weight.permute((1, 0))._underlying,
                                            bias.as_strided(bias_shape, bias_strided)._underlying))
+    
+
+
+    return y.view(output_shape)
+
+
+def linear(input: infinicore.Tensor,  
+           weight: infinicore.Tensor,  
+           bias: Optional[infinicore.Tensor] = None,
+           ) -> infinicore.Tensor:
+    
+    input_shape = input.shape
+    out_features, in_features = weight.shape
+    assert in_features == input_shape[-1]
+
+    N = math.prod(input_shape[0:-1])
+    input_dims = len(input_shape)
+
+    output_shape = (*input_shape[0:-1], out_features)
+
+    if bias is None:
+        y =  infinicore.Tensor(_infinicore.linear2(input.view((N, in_features))._underlying,
+                                      weight.permute((1, 0))._underlying))
+    else:
+        assert out_features == bias.shape[0]
+        bias_shape = output_shape
+        bias_strided = (0, 1)
+        y =  infinicore.Tensor(_infinicore.linear2(input.view((N, in_features))._underlying,
+                                           weight.permute((1, 0))._underlying,
+                                           bias.as_strided(bias_shape, bias_strided)._underlying))
+    
     return y.view(output_shape)
 
 

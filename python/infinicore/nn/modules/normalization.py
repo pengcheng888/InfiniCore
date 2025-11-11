@@ -83,15 +83,14 @@ class RMSNorm(Module):
 
         self.normalized_shape = list(normalized_shape)
         self.eps = eps
-        self.weight = infinicore.nn.Parameter(torch.empty(self.normalized_shape, **factory_kwargs))
-        self.weight_infini = None
+        self.weight = infinicore.nn.Parameter(
+             infinicore.empty((1,), dtype=infinicore.float32, device=infinicore.device("cpu", 0))
+            )
 
     def forward(self, x: infinicore.Tensor) -> infinicore.Tensor:
-        if self.weight_infini is None:
-            self.weight_infini = infinicore.convert_torch_to_infini_tensor(self.weight)
-        return infinicore.nn.functional.rms_norm(x, self.normalized_shape, self.weight_infini, self.eps)
+
+        return infinicore.nn.functional.rms_norm(x, self.normalized_shape, self.weight, self.eps)
 
     def extra_repr(self) -> str:
         return "{normalized_shape}, eps={eps}".format(**self.__dict__)
-
 

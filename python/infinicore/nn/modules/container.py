@@ -7,14 +7,14 @@
 # but based on InfiniCoreModule for inference purposes.
 
 from typing import List, Optional, Iterator, Union, Sequence, TypeVar
-import torch
+
 import operator
 from itertools import chain
 from collections import OrderedDict
 from .module import InfiniCoreModule
 
 # Define type variable for module compatibility (supports both torch.nn.Module and InfiniCoreModule)
-ModuleType = TypeVar('ModuleType', bound=Union[torch.nn.Module, 'InfiniCoreModule'])
+ModuleType = TypeVar('ModuleType', bound=Union['InfiniCoreModule'])
 
 
 class InfiniCoreModuleList(InfiniCoreModule):
@@ -186,6 +186,6 @@ class InfiniCoreModuleList(InfiniCoreModule):
         return keys
 
 
-import torch
+
 # ModuleList =  torch.nn.ModuleList
 ModuleList =  InfiniCoreModuleList

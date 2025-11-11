@@ -32,13 +32,13 @@ class Linear(Module):
     __constants__ = ["in_features", "out_features"]
     in_features: int
     out_features: int
-    weight: torch.Tensor
+    weight: infinicore.Tensor
 
     def __init__(
         self,
         in_features: int,
         out_features: int,
-        bias: bool = True,
+        bias: bool = False,
         device=None,
         dtype=None,
     ) -> None:
@@ -47,44 +47,11 @@ class Linear(Module):
         self.in_features = in_features
         self.out_features = out_features
         self.weight = infinicore.nn.Parameter(
-            torch.empty((out_features, in_features), **factory_kwargs)
+            infinicore.empty((1,), dtype=infinicore.float32, device=infinicore.device("cpu", 0))
         )
-        if bias:
-            self.bias = infinicore.nn.Parameter(torch.empty(out_features, **factory_kwargs))
-        else:
-            self.register_parameter("bias", None)
-
-        self.weight_infini = None
-        self.bias_infini = None
-
-    def forward(self,
-                input: Union[infinicore.Tensor, torch.Tensor],
-                ) -> Union[infinicore.Tensor, torch.Tensor]:
-        if isinstance(input, torch.Tensor):
-            return self.forward_torch(input)
-
-        return self.forward_infini(input)
-
-    def forward_torch(self, input:  torch.Tensor) ->  torch.Tensor:
-
-        # in_features 是 20
-        # out_features 是 30
-        # 将输入的维度从 in_features 变成 out_features
-        # F.linear(input, self.weight, self.bias) # size([128,in_features]),size([out_features,in_features]) ==> size([128,out_features])
-        return  torch.nn.functional.linear(input, self.weight, self.bias)
     
-    def forward_infini(self, input: infinicore.Tensor) ->  infinicore.Tensor:
-
-        # in_features 是 20
-        # out_features 是 30
-        # 将输入的维度从 in_features 变成 out_features
-        # F.linear(input, self.weight, self.bias) # size([128,in_features]),size([out_features,in_features]) ==> size([128,out_features])
-        if self.weight_infini is None:
-            self.weight_infini = infinicore.convert_torch_to_infini_tensor(self.weight)
-        if (self.bias_infini is None) and (self.bias is not None):
-            self.bias_infini = infinicore.convert_torch_to_infini_tensor(self.bias)
-
-        return  infinicore.nn.functional.linear(input, self.weight_infini, self.bias_infini)
+    def forward(self, input: infinicore.Tensor) ->  infinicore.Tensor:
+        return infinicore.nn.functional.linear(input, self.weight, None)
     
     def extra_repr(self) -> str:
-        return f"in_features={self.in_features}, out_features={self.out_features}, bias={self.bias is not None}"
+        return f"in_features={self.in_features}, out_features={self.out_features}"
