@@ -116,6 +116,8 @@ class OpTest(BaseOperatorTest):
 
     def torch_operator(self, *args, **kwargs):
         """PyTorch matmul implementation"""
+        print(" kwargs:: ",len(kwargs))
+        
         return torch.matmul(*args, **kwargs)
 
     def infinicore_operator(self, *args, **kwargs):
