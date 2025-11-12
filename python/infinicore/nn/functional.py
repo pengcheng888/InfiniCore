@@ -102,10 +102,10 @@ def embedding_bk(
 ) -> Tensor:
     r"""Generate a simple lookup table that looks up embeddings in a fixed dictionary and size."""
     assert (
-        (padding_idx == None)
-        and (max_norm == None)
-        and (scale_grad_by_freq == False)
-        and (sparse == False)
+        (padding_idx is None)
+        and (max_norm is None)
+        and (scale_grad_by_freq is False)
+        and (sparse is False)
     ), "Unsupported parameters."
 
     if out is None:

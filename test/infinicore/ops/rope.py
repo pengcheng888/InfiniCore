@@ -24,18 +24,17 @@ _TEST_CASES_DATA = [
 # Tolerance configuration
 _TOLERANCE_MAP = {
     infinicore.float16: {"atol": 1e-3, "rtol": 1e-2},
-    infinicore.float32: {"atol": 0, "rtol": 1e-3},
-    infinicore.bfloat16: {"atol": 0, "rtol": 5e-2},
+    infinicore.float32: {"atol": 1e-2, "rtol": 1e-3},
+    infinicore.bfloat16: {"atol": 1e-2, "rtol": 5e-2},
 }
 
 # Data types to test
 _TENSOR_DTYPES = [infinicore.float16, infinicore.bfloat16, infinicore.float32]
-_TENSOR_DTYPES = [infinicore.float16]
 
 
 def parse_test_cases():
     """
-    Parse test case data and return list of TestCase objects for linear operation.
+    Parse test case data and return list of TestCase objects for Rope operation.
     Each test case contains all necessary information for execution and validation.
     """
     test_cases = []
@@ -71,11 +70,11 @@ def parse_test_cases():
                     output_spec=None,
                     comparison_target=None,
                     tolerance=tolerance,
-                    description=f"Linear - OUT_OF_PLACE",
+                    description=f"Rope - OUT_OF_PLACE",
                 )
             )
 
-            # Test Case 2: In-place with explicit output tensor (Linear(a, b, out=c))
+            # Test Case 2: In-place with explicit output tensor
             if c_supports_inplace:
                 test_cases.append(
                     TestCase(
@@ -84,7 +83,7 @@ def parse_test_cases():
                         output_spec=out_spec,  # Specify the output tensor spec
                         comparison_target="out",
                         tolerance=tolerance,
-                        description=f"Linear - INPLACE(out)",
+                        description=f"Rope - INPLACE(out)",
                     )
                 )
 
@@ -126,16 +125,16 @@ def rotary_embedding(ans, t, sin, cos, algo=_infinicore.Algo.GPT_NEOX):
 
 
 class OpTest(BaseOperatorTest):
-    """Linear operator test with simplified implementation"""
+    """Rope operator test with simplified implementation"""
 
     def __init__(self):
-        super().__init__("Linear")
+        super().__init__("Rope")
 
     def get_test_cases(self):
         return parse_test_cases()
 
     def torch_operator(self, x, sin_table, cos_table, algo, out=None, **kwargs):
-        """PyTorch linear implementation"""
+        """PyTorch Rope implementation"""
 
         ans = x.clone()
         rotary_embedding(ans, x, sin_table, cos_table, algo=algo)
@@ -145,7 +144,7 @@ class OpTest(BaseOperatorTest):
         return ans
 
     def infinicore_operator(self, x, sin_table, cos_table, algo, out=None, **kwargs):
-        """InfiniCore linear implementation"""
+        """InfiniCore Rope implementation"""
 
         ntok = x.shape[0]
         torch_device = "cpu"
