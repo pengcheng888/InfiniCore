@@ -65,3 +65,46 @@ def swiglu(input: Tensor, other: Tensor, *, out=None):
     _infinicore.swiglu_(out._underlying, input._underlying, other._underlying)
 
     return out
+
+
+def embedding(input: Tensor, weight: Tensor, *, out=None) -> Tensor:
+    r"""Generate a simple lookup table that looks up embeddings in a fixed dictionary and size."""
+
+    if out is None:
+        return Tensor(_infinicore.embedding(input._underlying, weight._underlying))
+
+    _infinicore.embedding_(out._underlying, input._underlying, weight._underlying)
+    return out
+
+
+def rope(
+    x: Tensor,
+    pos_ids: Tensor,
+    sin_table: Tensor,
+    cos_table: Tensor,
+    algo: _infinicore.Algo = _infinicore.Algo.GPT_NEOX,
+    *,
+    out=None,
+) -> Tensor:
+    r"""Rotary Position Embedding(RoPE)."""
+
+    if out is None:
+        return infinicore.Tensor(
+            _infinicore.rope(
+                x._underlying,
+                pos_ids._underlying,
+                sin_table._underlying,
+                cos_table._underlying,
+                algo,
+            )
+        )
+
+    _infinicore.rope_(
+        out._underlying,
+        x._underlying,
+        pos_ids._underlying,
+        sin_table._underlying,
+        cos_table._underlying,
+        algo,
+    )
+    return out
