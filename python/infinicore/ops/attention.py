@@ -24,15 +24,3 @@ def attention(q, k, v, k_cache, v_cache, pos, *, out=None):
         v_cache._underlying,
         pos,
     )
-
-
-def attention_lm(query_states, 
-                 key_states, 
-                 value_states):
-
-    return Tensor( _infinicore.attention_lm(
-        query_states._underlying,
-        key_states._underlying,
-        value_states._underlying,
-    ))
-

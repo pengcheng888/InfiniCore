@@ -52,12 +52,22 @@ Args:
     pos: Current position in the sequence
 )doc");
 
-    m.def("attention_lm",
-          &op::attention_lm,
-          py::arg("query_states"), // [bs, num_attention_heads, ntoken, head_dim]
-          py::arg("key_states"),   // [bs, num_key_value_heads, total_token, head_dim]
-          py::arg("value_states")  // [bs, num_key_value_heads, total_token, head_dim]
-    );
+    m.def("scaled_dot_product_attention",
+          &op::scaled_dot_product_attention,
+          py::arg("query"),
+          py::arg("key"),
+          py::arg("value"),
+          py::arg("scale") = py::none(),
+          R"doc(Computes scaled dot product attention on query, key and value tensors)doc");
+
+    m.def("scaled_dot_product_attention_",
+          &op::scaled_dot_product_attention_,
+          py::arg("out"),
+          py::arg("query"),
+          py::arg("key"),
+          py::arg("value"),
+          py::arg("scale") = py::none(),
+          R"doc(Computes scaled dot product attention on query, key and value tensors)doc");
 }
 
 } // namespace infinicore::ops

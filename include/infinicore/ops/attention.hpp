@@ -2,6 +2,7 @@
 
 #include "../device.hpp"
 #include "common/op.hpp"
+#include <pybind11/pybind11.h>
 
 namespace infinicore::op {
 class Attention {
@@ -14,7 +15,15 @@ public:
 Tensor attention(Tensor q, Tensor k, Tensor v, Tensor k_cache, Tensor v_cache, size_t pos);
 void attention_(Tensor out, Tensor q, Tensor k, Tensor v, Tensor k_cache, Tensor v_cache, size_t pos);
 
-Tensor attention_lm(Tensor query_states,
-                    Tensor key_states,
-                    Tensor value_states);
+Tensor scaled_dot_product_attention(Tensor query,
+                                    Tensor key,
+                                    Tensor value,
+                                    pybind11::object scale);
+
+void scaled_dot_product_attention_(Tensor out,
+                                   Tensor query,
+                                   Tensor key,
+                                   Tensor value,
+                                   pybind11::object scale);
+
 } // namespace infinicore::op

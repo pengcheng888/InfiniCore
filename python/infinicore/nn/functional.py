@@ -1,16 +1,18 @@
 import infinicore
+from infinicore import Tensor
 import math
 from infinicore.lib import _infinicore
 from typing import Callable, Optional, TYPE_CHECKING, Union
 
-__all__ = ["causal_softmax", # _
-            "linear",
-            "embedding", 
-            "rms_norm",
-              "rope", # _
-              "silu", 
-              "swiglu" , # _
-              ]
+__all__ = [
+    "causal_softmax",  # _
+    "linear",
+    "embedding",
+    "rms_norm",
+    "rope",  # _
+    "silu",
+    "swiglu",  # _
+]
 
 
 def causal_softmax(
@@ -31,33 +33,32 @@ def causal_softmax(
         dim (int): Unsupported parameters..
         dtype (:class:`infinicore.dtype`, optional): Unsupported parameters.
     """
-    
+
     assert (dim == None) and (dtype == None), "Unsupported parameters."
     return infinicore.Tensor(_infinicore.causal_softmax(input._underlying))
 
 
-
-
-def linear_bk(input: infinicore.Tensor,  
-           weight: infinicore.Tensor,  
-           bias: Optional[infinicore.Tensor] = None,
-           ) -> infinicore.Tensor:
+def linear_bk(
+    input: infinicore.Tensor,
+    weight: infinicore.Tensor,
+    bias: Optional[infinicore.Tensor] = None,
+) -> infinicore.Tensor:
     """
     linear(input, weight, bias=None) -> Tensor
-    
+
     Applies a linear transformation to the incoming data: :math:`y = xA^T + b`.
-    
+
     This operation supports 2-D :attr:`weight` with :ref:`sparse layout<sparse-docs>`
-    
+
     .. warning::
         Sparse support is a beta feature and some layout(s)/dtype/device combinations may not be supported,
         or may not have autograd support. If you notice missing functionality please
         open a feature request.
-    
+
     This operator supports :ref:`TensorFloat32<tf32_on_ampere>`.
-    
+
     Shape:
-    
+
         - Input: :math:`(*, in\_features)` where `*` means any number of
           additional dimensions, including none
         - Weight: :math:`(out\_features, in\_features)` or :math:`(in\_features)`
@@ -74,26 +75,32 @@ def linear_bk(input: infinicore.Tensor,
 
     output_shape = (*input_shape[0:-1], out_features)
     if bias is None:
-        y =  infinicore.Tensor(_infinicore.linear(input.view((N, in_features))._underlying,
-                                      weight.permute((1, 0))._underlying))
+        y = infinicore.Tensor(
+            _infinicore.linear(
+                input.view((N, in_features))._underlying,
+                weight.permute((1, 0))._underlying,
+            )
+        )
     else:
         assert out_features == bias.shape[0]
         bias_shape = output_shape
         bias_strided = (0, 1)
-        y =  infinicore.Tensor(_infinicore.linear_bias(input.view((N, in_features))._underlying,
-                                           weight.permute((1, 0))._underlying,
-                                           bias.as_strided(bias_shape, bias_strided)._underlying))
-    
-
+        y = infinicore.Tensor(
+            _infinicore.linear_bias(
+                input.view((N, in_features))._underlying,
+                weight.permute((1, 0))._underlying,
+                bias.as_strided(bias_shape, bias_strided)._underlying,
+            )
+        )
 
     return y.view(output_shape)
 
 
-def linear(input: infinicore.Tensor,  
-           weight: infinicore.Tensor,  
-           bias: Optional[infinicore.Tensor] = None,
-           ) -> infinicore.Tensor:
-    
+def linear(
+    input: infinicore.Tensor,
+    weight: infinicore.Tensor,
+    bias: Optional[infinicore.Tensor] = None,
+) -> infinicore.Tensor:
     input_shape = input.shape
     out_features, in_features = weight.shape
     assert in_features == input_shape[-1]
@@ -104,16 +111,24 @@ def linear(input: infinicore.Tensor,
     output_shape = (*input_shape[0:-1], out_features)
 
     if bias is None:
-        y =  infinicore.Tensor(_infinicore.linear2(input.view((N, in_features))._underlying,
-                                      weight.permute((1, 0))._underlying))
+        y = infinicore.Tensor(
+            _infinicore.linear2(
+                input.view((N, in_features))._underlying,
+                weight.permute((1, 0))._underlying,
+            )
+        )
     else:
         assert out_features == bias.shape[0]
         bias_shape = output_shape
         bias_strided = (0, 1)
-        y =  infinicore.Tensor(_infinicore.linear2(input.view((N, in_features))._underlying,
-                                           weight.permute((1, 0))._underlying,
-                                           bias.as_strided(bias_shape, bias_strided)._underlying))
-    
+        y = infinicore.Tensor(
+            _infinicore.linear2(
+                input.view((N, in_features))._underlying,
+                weight.permute((1, 0))._underlying,
+                bias.as_strided(bias_shape, bias_strided)._underlying,
+            )
+        )
+
     return y.view(output_shape)
 
 
@@ -155,9 +170,16 @@ def embedding(
           where V = maximum index + 1 and embedding_dim = the embedding size
         - Output: `(*, embedding_dim)`, where `*` is the input shape
     """
-    assert (padding_idx == None) and (max_norm == None) and (scale_grad_by_freq==False) and (sparse==False), "Unsupported parameters."
+    assert (
+        (padding_idx == None)
+        and (max_norm == None)
+        and (scale_grad_by_freq == False)
+        and (sparse == False)
+    ), "Unsupported parameters."
 
-    ret = infinicore.Tensor(_infinicore.embedding(input._underlying, weight._underlying))
+    ret = infinicore.Tensor(
+        _infinicore.embedding(input._underlying, weight._underlying)
+    )
 
     return ret
 
@@ -167,22 +189,25 @@ def rms_norm(
     normalized_shape: list[int],
     weight: infinicore.Tensor,
     eps: float = 1e-5,
-    out=None
+    out=None,
 ) -> infinicore.Tensor:
     r"""Apply Root Mean Square Layer Normalization.
 
     See :class:`~infinicore.nn.RMSNorm` for details.
     """
-    assert normalized_shape == weight.shape, "normalized_shape  does not match weight.shape."
-    
+    assert normalized_shape == weight.shape, (
+        "normalized_shape  does not match weight.shape."
+    )
+
     if out is None:
-        return  infinicore.Tensor( _infinicore.rms_norm(input._underlying, weight._underlying, eps))
-    
-    _infinicore.rms_norm( out._underlying, input._underlying, weight._underlying, eps)
+        return infinicore.Tensor(
+            _infinicore.rms_norm(input._underlying, weight._underlying, eps)
+        )
+
+    _infinicore.rms_norm(out._underlying, input._underlying, weight._underlying, eps)
 
 
-
-def silu(input:  infinicore.Tensor, inplace: bool = False) ->  infinicore.Tensor:
+def silu(input: infinicore.Tensor, inplace: bool = False) -> infinicore.Tensor:
     r"""Apply the Sigmoid Linear Unit (SiLU) function, element-wise.
 
     The SiLU function is also known as the swish function.
@@ -194,36 +219,78 @@ def silu(input:  infinicore.Tensor, inplace: bool = False) ->  infinicore.Tensor
     """
 
     if inplace:
-        return  _infinicore.silu_(input._underlying, input._underlying)
-    
+        return _infinicore.silu_(input._underlying, input._underlying)
+
     return infinicore.Tensor(_infinicore.silu(input._underlying))
 
 
-
-def swiglu(input:  infinicore.Tensor, other:  infinicore.Tensor, out=None):
+def swiglu(input: infinicore.Tensor, other: infinicore.Tensor, out=None):
     r"""Apply the Swish-Gated Linear Unit (SwiGLU) function, element-wise.
     See :class:`~infinicore.nn.SwiGLU` for more details.
     """
 
     if out is None:
-        return infinicore.Tensor(_infinicore.swiglu(input._underlying, other._underlying))
+        return infinicore.Tensor(
+            _infinicore.swiglu(input._underlying, other._underlying)
+        )
     _infinicore.swiglu_(out._underlying, input._underlying, other._underlying)
 
 
-
-def rope(x:  infinicore.Tensor, 
-         pos_ids:  infinicore.Tensor, 
-         sin_table:  infinicore.Tensor, 
-         cos_table:  infinicore.Tensor,
-        out=None):
-    r"""
-
-    """
+def rope(
+    x: infinicore.Tensor,
+    pos_ids: infinicore.Tensor,
+    sin_table: infinicore.Tensor,
+    cos_table: infinicore.Tensor,
+    out=None,
+):
+    r""" """
     if out is None:
         return infinicore.Tensor(
-            _infinicore.rope(x._underlying, pos_ids._underlying, sin_table._underlying, cos_table._underlying)
+            _infinicore.rope(
+                x._underlying,
+                pos_ids._underlying,
+                sin_table._underlying,
+                cos_table._underlying,
+            )
         )
 
     _infinicore.rope_(
-        out._underlying, x._underlying, pos_ids._underlying, sin_table._underlying, cos_table._underlying
+        out._underlying,
+        x._underlying,
+        pos_ids._underlying,
+        sin_table._underlying,
+        cos_table._underlying,
     )
+
+
+def scaled_dot_product_attention(
+    query: Tensor,
+    key: Tensor,
+    value: Tensor,
+    attn_mask: Optional[Tensor] = None,
+    dropout_p: float = 0.0,
+    is_causal: bool = False,
+    scale: Optional[float] = None,
+    enable_gqa: bool = False,
+    *,
+    out=None,
+) -> Tensor:
+    assert (attn_mask is None) and (0.0 == dropout_p), "Unsupported parameters."
+    assert (enable_gqa is True) and (is_causal is True), "Incorrect parameter value."
+
+    if out is None:
+        return infinicore.Tensor(
+            _infinicore.scaled_dot_product_attention(
+                query._underlying, key._underlying, value._underlying, scale
+            )
+        )
+
+    _infinicore.scaled_dot_product_attention_(
+        out._underlying,
+        query._underlying,
+        key._underlying,
+        value._underlying,
+        scale,
+    )
+
+    return out
