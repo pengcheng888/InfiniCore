@@ -77,4 +77,5 @@ def func7():
     print(y)
 
 if __name__ == '__main__':
-    func7()
+    #func7()
+    pass

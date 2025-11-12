@@ -42,7 +42,7 @@ def parse_test_cases():
     for data in _TEST_CASES_DATA:
         bs = data[0]
         n, in_features, out_features = data[1], data[2], data[3]
-        bias = data[4] 
+        bias = data[4]
         input_strides = data[5] if len(data) > 5 else None
         weight_strides = data[6] if len(data) > 6 else None
         out_strides = data[7] if len(data) > 7 else None
@@ -53,12 +53,12 @@ def parse_test_cases():
             weight_shape = (out_features, in_features)
             out_shape = (n, out_features)
         else:
-            input_shape =(bs, n, in_features)
-            weight_shape =(out_features, in_features)
-            out_shape =(bs,n, out_features)
+            input_shape = (bs, n, in_features)
+            weight_shape = (out_features, in_features)
+            out_shape = (bs, n, out_features)
 
         if bias is True:
-            bias_shape = ( out_features,)
+            bias_shape = (out_features,)
         else:
             bias_shape = None
 
@@ -82,7 +82,7 @@ def parse_test_cases():
             # Test Case 1: Out-of-place (return value)
             test_cases.append(
                 TestCase(
-                    inputs=[input_spec, weight_spec,bias_spec],
+                    inputs=[input_spec, weight_spec, bias_spec],
                     kwargs={},
                     output_spec=None,
                     comparison_target=None,
@@ -116,25 +116,17 @@ class OpTest(BaseOperatorTest):
     def get_test_cases(self):
         return parse_test_cases()
 
-    def torch_operator(self, input,  
-           weight,  
-           bias,  out=None,
-           **kwargs):
+    def torch_operator(self, input, weight, bias, out=None, **kwargs):
         """PyTorch linear implementation"""
         result = torch.nn.functional.linear(input, weight, bias)
         if out is not None:
             out.copy_(result)
             return out
         return result
- 
-        
-    def infinicore_operator(self, input,  
-           weight,  
-           bias,  out=None,
-           **kwargs):
+
+    def infinicore_operator(self, input, weight, bias, out=None, **kwargs):
         """InfiniCore linear implementation"""
-        return infinicore.nn.functional.linear(input, weight, bias,  out=out)
-        
+        return infinicore.nn.functional.linear(input, weight, bias, out=out)
 
 
 def main():

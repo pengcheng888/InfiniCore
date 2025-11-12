@@ -3,7 +3,6 @@ from infinicore.lib import _infinicore
 from infinicore.tensor import Tensor
 import math
 
-
 __all__ = ["causal_softmax", "rms_norm", "silu", "swiglu"]
 
 
@@ -19,12 +18,12 @@ def causal_softmax(input: Tensor, out=None) -> Tensor:
 
 
 def rms_norm(
-    input: Tensor,
-    normalized_shape: list[int],
-    weight: Tensor,
-    eps: float = 1e-5,
-    *,
-    out=None,
+        input: Tensor,
+        normalized_shape: list[int],
+        weight: Tensor,
+        eps: float = 1e-5,
+        *,
+        out=None,
 ) -> Tensor:
     r"""Apply Root Mean Square Layer Normalization."""
 
@@ -69,23 +68,18 @@ def swiglu(input: Tensor, other: Tensor, *, out=None):
     return out
 
 
-def linear(input: Tensor,  
-           weight: Tensor,  
-           bias = None,
-           *, 
-           out=None
-           ) -> Tensor:
+def linear(input: Tensor, weight: Tensor, bias=None, *, out=None) -> Tensor:
     r"""Applies a linear transformation to the incoming data: y=xA^T+b."""
 
     if out is None:
-        return Tensor(_infinicore.linear(input._underlying, 
-                                          weight._underlying,
-                                            None if bias is None else bias._underlying
-                                          )
-                    )
+        return Tensor(_infinicore.linear(input._underlying,
+                                         weight._underlying,
+                                         None if bias is None else bias._underlying
+                                         )
+                      )
 
-    _infinicore.linear_(out._underlying, 
-                        input._underlying, 
+    _infinicore.linear_(out._underlying,
+                        input._underlying,
                         weight._underlying,
                         None if bias is None else bias._underlying
                         )
@@ -93,34 +87,29 @@ def linear(input: Tensor,
 
 
 def embedding_bk(
-    input: Tensor,
-    weight: Tensor,
-    padding_idx: int = None,
-    max_norm: float = None,
-    norm_type: float = 2.0,
-    scale_grad_by_freq: bool = False,
-    sparse: bool = False,
-    *, 
-    out=None
+        input: Tensor,
+        weight: Tensor,
+        padding_idx: int = None,
+        max_norm: float = None,
+        norm_type: float = 2.0,
+        scale_grad_by_freq: bool = False,
+        sparse: bool = False,
+        *,
+        out=None
 ) -> Tensor:
     r"""Generate a simple lookup table that looks up embeddings in a fixed dictionary and size.
     """
-    assert (padding_idx == None) and (max_norm == None) and (scale_grad_by_freq==False) and (sparse==False), "Unsupported parameters."
+    assert (padding_idx == None) and (max_norm == None) and (scale_grad_by_freq == False) and (sparse == False), "Unsupported parameters."
 
     if out is None:
         return Tensor(_infinicore.embedding(input._underlying, weight._underlying))
-    
+
     _infinicore.embedding(out._underlying, input._underlying, weight._underlying)
 
     return out
 
 
-def embedding(
-    input: Tensor,
-    weight: Tensor,
-    *, 
-    out=None
-) -> Tensor:
+def embedding(input: Tensor, weight: Tensor, *, out=None) -> Tensor:
     r"""Generate a simple lookup table that looks up embeddings in a fixed dictionary and size.
     """
 
@@ -142,16 +131,15 @@ def swiglu(input: Tensor, other: Tensor, *, out=None):
     return out
 
 
-
-def rope(x:  Tensor, 
-         pos_ids:  Tensor, 
-         sin_table: Tensor, 
-         cos_table:  Tensor,
+def rope(x: Tensor,
+         pos_ids: Tensor,
+         sin_table: Tensor,
+         cos_table: Tensor,
          algo: _infinicore.Algo,
          *,
-        out=None)-> Tensor:
+         out=None) -> Tensor:
     r"""
-    Rotary Position Embedding(RoPE) .
+    Rotary Position Embedding(RoPE).
     """
     if out is None:
         return infinicore.Tensor(
