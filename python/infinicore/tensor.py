@@ -1,10 +1,11 @@
 import infinicore.device
 import infinicore.dtype
 from infinicore.lib import _infinicore
+from .utils import to_infinicore_dtype
 
 
 class Tensor:
-    def __init__(self, underlying):
+    def __init__(self, underlying, *, torch_ref=None):
         """An internal method. Please do not use this directly."""
 
         self._underlying = underlying
@@ -14,6 +15,8 @@ class Tensor:
         self._device = infinicore.device._from_infinicore_device(
             self._underlying.device
         )
+
+        self._torch_ref = torch_ref
 
     @property
     def shape(self):
@@ -66,6 +69,9 @@ class Tensor:
     def as_strided(self, size, stride):
         return Tensor(self._underlying.as_strided(size, stride))
 
+    def from_torch(self, size, stride):
+        return Tensor(self._underlying.as_strided(size, stride))
+
     def contiguous(self):
         return Tensor(self._underlying.contiguous())
 
@@ -77,7 +83,7 @@ class Tensor:
 
     def debug(self, filename=None):
         """Print tensor data or save to file for debugging
-        
+
         Args:
             filename: Optional filename to save raw binary data. If None, prints to stdout.
         """
@@ -124,4 +130,18 @@ def strided_from_blob(data_ptr, size, strides, *, dtype=None, device=None):
         _infinicore.strided_from_blob(
             data_ptr, size, strides, dtype._underlying, device._underlying
         )
+    )
+
+
+def from_torch(torch_tensor) -> Tensor:
+    infini_type = to_infinicore_dtype(torch_tensor.dtype)
+    infini_device = infinicore.device(torch_tensor.device.type, 0)
+    return Tensor(
+        _infinicore.from_blob(
+            torch_tensor.data_ptr(),
+            list(torch_tensor.shape),
+            dtype=infini_type._underlying,
+            device=infini_device._underlying,
+        ),
+        torch_ref=torch_tensor,
     )

@@ -1,8 +1,6 @@
-
-
 # ============================================
 # Copyright (c) 2025, InfiniCore
-# 
+#
 # This file implements InfiniCoreModuleList, which is similar to torch.nn.ModuleList
 # but based on InfiniCoreModule for inference purposes.
 
@@ -14,7 +12,7 @@ from collections import OrderedDict
 from .module import InfiniCoreModule
 
 # Define type variable for module compatibility (supports both torch.nn.Module and InfiniCoreModule)
-ModuleType = TypeVar('ModuleType', bound=Union['InfiniCoreModule'])
+ModuleType = TypeVar("ModuleType", bound=Union["InfiniCoreModule"])
 
 
 class InfiniCoreModuleList(InfiniCoreModule):
@@ -57,7 +55,9 @@ class InfiniCoreModuleList(InfiniCoreModule):
             idx += len(self)
         return str(idx)
 
-    def __getitem__(self, idx: Union[int, slice]) -> Union[ModuleType, 'InfiniCoreModuleList']:
+    def __getitem__(
+        self, idx: Union[int, slice]
+    ) -> Union[ModuleType, "InfiniCoreModuleList"]:
         if isinstance(idx, slice):
             return self.__class__(list(self._modules.values())[idx])
         else:
@@ -78,7 +78,7 @@ class InfiniCoreModuleList(InfiniCoreModule):
             idx_str = self._get_abs_string_index(idx)
             if idx_str in self._modules:
                 del self._modules[idx_str]
-        
+
         # To preserve numbering, self._modules is being reconstructed with modules after deletion
         if len(self._modules) > 0:
             str_indices = [str(i) for i in range(len(self._modules))]
@@ -90,10 +90,12 @@ class InfiniCoreModuleList(InfiniCoreModule):
     def __iter__(self) -> Iterator[ModuleType]:
         return iter(self._modules.values())
 
-    def __iadd__(self, modules: Sequence[ModuleType]) -> 'InfiniCoreModuleList':
+    def __iadd__(self, modules: Sequence[ModuleType]) -> "InfiniCoreModuleList":
         return self.extend(modules)
 
-    def __add__(self, other: Union[Sequence[ModuleType], 'InfiniCoreModuleList']) -> 'InfiniCoreModuleList':
+    def __add__(
+        self, other: Union[Sequence[ModuleType], "InfiniCoreModuleList"]
+    ) -> "InfiniCoreModuleList":
         r"""Return a new InfiniCoreModuleList by concatenating with another iterable.
 
         Args:
@@ -104,13 +106,13 @@ class InfiniCoreModuleList(InfiniCoreModule):
                 f"InfiniCoreModuleList can only be concatenated with list, tuple, or InfiniCoreModuleList, "
                 f"got {type(other).__name__}"
             )
-        
+
         combined = InfiniCoreModuleList()
         for i, module in enumerate(chain(self, other)):
             combined.add_module(str(i), module)
         return combined
 
-    def append(self, module: ModuleType) -> 'InfiniCoreModuleList':
+    def append(self, module: ModuleType) -> "InfiniCoreModuleList":
         r"""Append a given module to the end of the list.
 
         Args:
@@ -119,7 +121,7 @@ class InfiniCoreModuleList(InfiniCoreModule):
         self.add_module(str(len(self)), module)
         return self
 
-    def extend(self, modules: Sequence[ModuleType]) -> 'InfiniCoreModuleList':
+    def extend(self, modules: Sequence[ModuleType]) -> "InfiniCoreModuleList":
         r"""Append modules from a Python iterable to the end of the list.
 
         Args:
@@ -133,7 +135,7 @@ class InfiniCoreModuleList(InfiniCoreModule):
                     f"InfiniCoreModuleList.extend should be called with an "
                     f"iterable, but got {type(modules).__name__}"
                 )
-        
+
         offset = len(self)
         for i, module in enumerate(modules):
             self.add_module(str(offset + i), module)
@@ -169,11 +171,11 @@ class InfiniCoreModuleList(InfiniCoreModule):
         """Return a string representation of the ModuleList."""
         if len(self) == 0:
             return self.__class__.__name__ + "()"
-        
+
         lines = []
         for i, module in enumerate(self):
             lines.append(f"({i}): {repr(module)}")
-        
+
         main_str = self.__class__.__name__ + "(\n  "
         main_str += "\n  ".join(lines) + "\n)"
         return main_str
@@ -186,6 +188,4 @@ class InfiniCoreModuleList(InfiniCoreModule):
         return keys
 
 
-
-# ModuleList =  torch.nn.ModuleList
-ModuleList =  InfiniCoreModuleList
+ModuleList = InfiniCoreModuleList

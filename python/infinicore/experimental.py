@@ -56,6 +56,7 @@ def torch_2_infini_tensor_ref(torch_tensor: torch.Tensor):
     )
     return ref
 
+
 def convert_torch_to_infini_tensor(torch_tensor):
     infini_device = infinicore.device(torch_tensor.device.type, 0)
     if torch_tensor.is_contiguous():
@@ -74,10 +75,11 @@ def convert_torch_to_infini_tensor(torch_tensor):
             device=infini_device,
         )
 
-    infini_tensor = infinicore.empty(list(torch_tensor.shape),
-                                     dtype=to_infinicore_dtype(torch_tensor.dtype),
-                                     device=infini_device
-                                     )
+    infini_tensor = infinicore.empty(
+        list(torch_tensor.shape),
+        dtype=to_infinicore_dtype(torch_tensor.dtype),
+        device=infini_device,
+    )
     infini_tensor.copy_(ref)
 
     return infini_tensor
@@ -85,7 +87,7 @@ def convert_torch_to_infini_tensor(torch_tensor):
 
 def convert_np_to_infini_tensor(np_tensor):
     infini_device = infinicore.device("cpu", 0)
-    ptr = np_tensor.__array_interface__['data'][0]
+    ptr = np_tensor.__array_interface__["data"][0]
     ref = infinicore.from_blob(
         ptr,
         list(np_tensor.shape),
@@ -93,10 +95,9 @@ def convert_np_to_infini_tensor(np_tensor):
         device=infini_device,
     )
 
-    infini_tensor = infinicore.empty(list(np_tensor.shape),
-                                     dtype=infinicore.int32,
-                                     device=infini_device
-                                     )
+    infini_tensor = infinicore.empty(
+        list(np_tensor.shape), dtype=infinicore.int32, device=infini_device
+    )
     infini_tensor.copy_(ref)
 
     return infini_tensor
@@ -159,9 +160,9 @@ def py_to_infinicore_dtype(py_dtype):
         raise ValueError(f"Unsupported py_dtype: {py_dtype}")
 
 
-def convert_list_to_infini_tensor(data_list: list,
-                                  shape = None,
-                                  infini_device=infinicore.device("cpu", 0)):
+def convert_list_to_infini_tensor(
+    data_list: list, shape=None, infini_device=infinicore.device("cpu", 0)
+):
     from ctypes import POINTER, c_float, c_int, c_uint, c_void_p, byref, addressof
 
     num_count = len(data_list)
@@ -170,9 +171,8 @@ def convert_list_to_infini_tensor(data_list: list,
 
     if shape is None:
         shape = [num_count]
-    
+
     infini_type = py_to_infinicore_dtype(type(data_list[0]))
- 
 
     ref = infinicore.from_blob(
         ptr,
@@ -181,25 +181,27 @@ def convert_list_to_infini_tensor(data_list: list,
         device=infinicore.device("cpu", 0),
     )
 
-    infini_tensor = infinicore.empty(shape,
-                                     dtype=infini_type,
-                                     device=infinicore.device("cpu", 0)
-                                     )
+    infini_tensor = infinicore.empty(
+        shape, dtype=infini_type, device=infinicore.device("cpu", 0)
+    )
     infini_tensor.copy_(ref)
 
     if infini_device.type != "cpu":
         return infini_tensor.to(infini_device)
-    
+
     return infini_tensor
+
+
 # -------------------------------------------------------------------------------- #
 # -------------------------------------------------------------------------------- #
 # -------------------------------------------------------------------------------- #
 
-def get_index_value(infini_tensor:infinicore.Tensor, index : list):
+
+def get_index_value(infini_tensor: infinicore.Tensor, index: list):
     torch_tensor = infinicore.convert_infini_to_torch_tensor(infini_tensor)
     value = torch_tensor[index].cpu().item()
-
     return value
+
 
 # -------------------------------------------------------------------------------- #
 # -------------------------------------------------------------------------------- #
@@ -218,7 +220,7 @@ def infini__mul__(self, other):
 
     # 先暂时使用 pytorch 实现逐元素相乘
     output_torch = self_torch * other_torch
-    # 
+    #
     output_infinicore = infinicore.convert_torch_to_infini_tensor(output_torch)
     return output_infinicore
 
