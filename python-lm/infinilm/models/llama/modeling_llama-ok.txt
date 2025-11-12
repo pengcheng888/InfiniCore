@@ -177,36 +177,14 @@ class LlamaAttention(infinicore.nn.Module):
         # t_all+= (t2-t1)*1000
         # print("t_all: ",t_all)
 
-        if True:
-            # att_val => [bs,  num_attention_heads, ntok, head_dim]
-            att_val = infinicore.nn.functional.scaled_dot_product_attention(
-                query_states_infini,  # [bs, num_attention_heads, ntok, head_dim]
-                key_states_infini,  # [bs, num_key_value_heads, all_tok, head_dim]
-                value_states_infini,  # [bs, num_key_value_heads, all_tok, head_dim]
-                is_causal=True,
-                enable_gqa=True,
-            )
-        else:
-            import torch
-
-            query_states_torch = infinicore.convert_infini_to_torch_tensor(
-                query_states_infini
-            )
-            key_states_torch = infinicore.convert_infini_to_torch_tensor(
-                key_states_infini
-            )
-            value_states_torch = infinicore.convert_infini_to_torch_tensor(
-                value_states_infini
-            )
-            att_val_torch = torch.nn.functional.scaled_dot_product_attention(
-                query_states_torch,  # [bs, num_attention_heads, ntok, head_dim]
-                key_states_torch,  # [bs, num_key_value_heads, all_tok, head_dim]
-                value_states_torch,  # [bs, num_key_value_heads, all_tok, head_dim]
-                is_causal=True,
-                enable_gqa=True,
-            )
-
-            att_val = infinicore.from_torch(att_val_torch)
+        # att_val => [bs,  num_attention_heads, ntok, head_dim]
+        att_val = infinicore.nn.functional.scaled_dot_product_attention(
+            query_states_infini,  # [bs, num_attention_heads, ntok, head_dim]
+            key_states_infini,  # [bs, num_key_value_heads, all_tok, head_dim]
+            value_states_infini,  # [bs, num_key_value_heads, all_tok, head_dim]
+            is_causal=True,
+            enable_gqa=True,
+        )
 
         attn_output = att_val.permute(
             (0, 2, 1, 3)

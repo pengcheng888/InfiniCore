@@ -287,7 +287,10 @@ def func7():
             temp_mask = torch.ones(L, S, dtype=torch.bool, device=query.device).tril(
                 diagonal=0
             )
+            print(temp_mask)
             attn_bias.masked_fill_(temp_mask.logical_not(), float("-inf"))
+            print(attn_bias)
+            exit(-1)
 
         if attn_mask is not None:
             if attn_mask.dtype == torch.bool:
@@ -308,17 +311,31 @@ def func7():
     print()
     print()
 
-    device_str = "cpu"
+    device_str = "cuda"
     # Optionally use the context manager to ensure one of the fused kernels is run
-    query = torch.rand(1, 8, 128, 64, dtype=torch.float16, device=device_str)
-    key = torch.rand(1, 8, 128, 64, dtype=torch.float16, device=device_str)
-    value = torch.rand(1, 8, 128, 64, dtype=torch.float16, device=device_str)
+    # query = torch.rand(1, 8, 128, 64, dtype=torch.float16, device=device_str)
+    # key = torch.rand(1, 8, 128, 64, dtype=torch.float16, device=device_str)
+    # value = torch.rand(1, 8, 128, 64, dtype=torch.float16, device=device_str)
 
-    out1 = F.scaled_dot_product_attention(query, key, value)
+    # query = torch.rand(1, 32, 10, 64, dtype=torch.float32, device=device_str)
+    # key = torch.rand(1, 8, 128, 64, dtype=torch.float32, device=device_str)
+    # value = torch.rand(1, 8, 128, 64, dtype=torch.float32, device=device_str)
+
+    query = torch.rand(1, 32, 2, 64, dtype=torch.float32, device=device_str)
+    key = torch.rand(1, 8, 11, 64, dtype=torch.float32, device=device_str)
+    value = torch.rand(1, 8, 11, 64, dtype=torch.float32, device=device_str)
+
+    out1 = F.scaled_dot_product_attention(
+        query, key, value, is_causal=True, enable_gqa=True
+    )
     print(out1.shape)
 
-    out2 = scaled_dot_product_attention(query, key, value, is_causal=True)
+    out2 = scaled_dot_product_attention(
+        query, key, value, is_causal=True, enable_gqa=True
+    )
     print(out2.shape)
+
+    print("torch.abs(out1 - out2).max() ", torch.abs(out1 - out2).max())
     # print(torch.abs(out1 - out2))
     # -------------------------------------------------------------------- #
     query_infini = infinicore.from_torch(query)
@@ -330,7 +347,11 @@ def func7():
     print(out_infini.shape)
 
     out_torch = infinicore.convert_infini_to_torch_tensor(out_infini)
-    print(torch.abs(out_torch - out2))
+    print("torch.abs(out_torch - out2).max() ", torch.abs(out_torch - out2).max())
+    print(
+        "torch.abs(out_torch - out1).max() ",
+        torch.abs(out_torch - out1).max(),
+    )
 
 
 if __name__ == "__main__":

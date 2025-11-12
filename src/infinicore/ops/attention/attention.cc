@@ -39,11 +39,9 @@ Tensor scaled_dot_product_attention(Tensor query_states, // [bs, num_attention_h
     Size batch_size = query_shape[0];
     Size num_attention_heads = query_shape[1];
     Size ntoken = query_shape[2];
-    Size num_key_value_heads = key_shape[1];
     Size head_dim = key_shape[3];
-    Size ngroup = num_attention_heads / num_key_value_heads;
 
-    Tensor output_values = Tensor::empty({batch_size, num_key_value_heads, ngroup * ntoken, head_dim}, query_states->dtype(), query_states->device());
+    Tensor output_values = Tensor::empty({batch_size, num_attention_heads, ntoken, head_dim}, query_states->dtype(), query_states->device());
 
     scaled_dot_product_attention_(output_values, query_states, key_states, value_states, scale);
 
@@ -77,11 +75,12 @@ void scaled_dot_product_attention_(Tensor out,
         attention_scale = 1.f / float(sqrt(head_dim));
     }
 
+    Tensor out_view = out->view({batch_size, num_key_value_heads, ngroup * ntoken, head_dim});
     for (Size ib = 0; ib < batch_size; ++ib) {
         Tensor q = query_states->narrow({{0, ib, 1}})->view({num_attention_heads, ntoken, head_dim});      // [ num_attention_heads, ntoken, head_dim]
         Tensor k = key_states->narrow({{0, ib, 1}})->view({num_key_value_heads, total_token, head_dim});   // [ num_key_value_heads, total_token, head_dim]
         Tensor v = value_states->narrow({{0, ib, 1}})->view({num_key_value_heads, total_token, head_dim}); // [ num_key_value_heads, total_token, head_dim]
-        Tensor output_v = out->narrow({{0, ib, 1}})->view({num_key_value_heads, ngroup * ntoken, head_dim});
+        Tensor output_v = out_view->narrow({{0, ib, 1}})->view({num_key_value_heads, ngroup * ntoken, head_dim});
         {
             /*
             输入：
