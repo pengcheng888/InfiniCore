@@ -9,6 +9,7 @@ __all__ = ["Embedding"]
 
 import infinicore
 
+
 class Embedding(Module):
     r"""A simple lookup table that stores embeddings of a fixed dictionary and size.
 
@@ -39,29 +40,30 @@ class Embedding(Module):
     weight: infinicore.Tensor
 
     def __init__(
-            self,
-            num_embeddings: int,
-            embedding_dim: int,
-            device=None,
-            dtype=None,
+        self,
+        num_embeddings: int,
+        embedding_dim: int,
+        device=None,
+        dtype=None,
     ) -> None:
         factory_kwargs = {"device": device, "dtype": dtype}
         super().__init__()
         self.num_embeddings = num_embeddings
         self.embedding_dim = embedding_dim
-     
+
         self.weight = infinicore.nn.Parameter(
-            infinicore.empty((1,), dtype=infinicore.float32, device=infinicore.device("cpu", 0))
+            infinicore.empty(
+                (1,), dtype=infinicore.float32, device=infinicore.device("cpu", 0)
             )
+        )
 
     def forward(self, input: infinicore.Tensor) -> infinicore.Tensor:
-        return  infinicore.nn.functional.embedding(input, self.weight)
-
+        return infinicore.nn.functional.embedding(input, self.weight)
 
     def extra_repr(self) -> str:
         s = "{num_embeddings}, {embedding_dim}"
         return s.format(**self.__dict__)
-    
+
 
 # class Embedding(Module):
 #     r"""A simple lookup table that stores embeddings of a fixed dictionary and size.
@@ -124,7 +126,7 @@ class Embedding(Module):
 #         if self.weight_infini is None:
 #             self.weight_infini =  infinicore.convert_torch_to_infini_tensor(self.weight)
 
-   
+
 #         return  infinicore.nn.functional.embedding(input, self.weight_infini)
 
 #     def forward_torch2torch(self,

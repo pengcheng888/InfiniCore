@@ -10,7 +10,7 @@ def func3():
             self.rms = infinicore.nn.RMSNorm(normalized_shape=8)
 
         def forward(self, x: infinicore.Tensor):
-            return self.rms.forward(x)
+            return self.rms(x)
 
     import torch
 
@@ -30,7 +30,6 @@ def func3():
 
     model = InfiniNet()
     print(model)
-
     model.load_state_dict(model_param)
 
     # -------------- 构造输入数据 --------------
@@ -172,7 +171,6 @@ def func5():
 
 def func6():
     import infinicore
-
     import torch
 
     input = torch.ones(5, 5)

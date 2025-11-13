@@ -11,7 +11,7 @@ from typing import Iterator, List, Optional, Sequence, TypeVar, Union
 
 from .module import Module
 
-# Define type variable for module compatibility (supports both torch.nn.Module and InfiniCoreModule)
+# Define type variable for module compatibility (supports InfiniCoreModule)
 ModuleType = TypeVar("ModuleType", bound=Union["Module"])
 
 
@@ -116,7 +116,7 @@ class InfiniCoreModuleList(Module):
         r"""Append a given module to the end of the list.
 
         Args:
-            module (nn.Module or InfiniCoreModule): module to append
+            module (InfiniCoreModule): module to append
         """
         self.add_module(str(len(self)), module)
         return self
@@ -146,7 +146,7 @@ class InfiniCoreModuleList(Module):
 
         Args:
             index (int): index to insert.
-            module (nn.Module or InfiniCoreModule): module to insert
+            module ( InfiniCoreModule): module to insert
         """
         for i in range(len(self._modules), index, -1):
             self._modules[str(i)] = self._modules[str(i - 1)]
