@@ -6,31 +6,22 @@ from pathlib import Path
 from typing import Dict, Tuple, List
 
 
-def find_ops_directory(start_dir=None):
+def find_ops_directory(location=None):
     """
-    Find the ops directory by searching from start_dir upwards.
+    Find the ops directory by searching from location upwards.
 
     Args:
-        start_dir: Starting directory for search (default: current file's parent)
+        location: Starting directory for search (default: current file's parent)
 
     Returns:
         Path: Path to ops directory or None if not found
     """
-    if start_dir is None:
-        start_dir = Path(__file__).parent
+    if location is None:
+        location = Path(__file__).parent / "ops"
 
-    # Look for ops directory in common locations
-    possible_locations = [
-        start_dir / "ops",
-        start_dir / ".." / "ops",
-        start_dir / ".." / "test" / "ops",
-        start_dir / "test" / "ops",
-    ]
-
-    for location in possible_locations:
-        ops_dir = location.resolve()
-        if ops_dir.exists() and any(ops_dir.glob("*.py")):
-            return ops_dir
+    ops_dir = location.resolve()
+    if ops_dir.exists() and any(ops_dir.glob("*.py")):
+        return ops_dir
 
     return None
 
@@ -116,7 +107,7 @@ def run_all_op_tests(ops_dir=None, specific_ops=None, extra_args=None):
         filtered_files = []
         for test_file in operator_test_files:
             test_name = test_file.stem.lower()
-            if any(op.lower() in test_name for op in specific_ops):
+            if any(op.lower() == test_name for op in specific_ops):
                 filtered_files.append(test_file)
         operator_test_files = filtered_files
 
@@ -135,26 +126,45 @@ def run_all_op_tests(ops_dir=None, specific_ops=None, extra_args=None):
         test_name = test_file.stem
 
         try:
-            # Run the test script
-            cmd = [sys.executable, str(test_file)]
+            # Run the test script - use the absolute path and run from current directory
+            cmd = [sys.executable, str(test_file.absolute())]
 
             # Add extra arguments if provided
             if extra_args:
                 cmd.extend(extra_args)
 
-            # Run with captured output
             result = subprocess.run(
                 cmd,
-                cwd=ops_dir,
-                capture_output=True,
+                capture_output=True,  # Capture output to analyze
                 text=True,
-                timeout=300,  # 5 minute timeout per test
             )
 
-            success = result.returncode == 0
+            # Analyze output to determine test status
+            stdout_lower = result.stdout.lower()
+            stderr_lower = result.stderr.lower()
+
+            # Check for operator not implemented patterns
+            if (
+                "all tests passed!" in stdout_lower
+                and "success rate: 100.0%" in stdout_lower
+            ):
+                success = True
+                returncode = 0
+            elif "both operators not implemented" in stdout_lower:
+                # Both operators not implemented - skipped test
+                success = False  # Not a failure, but skipped
+                returncode = -2  # Special code for skipped
+            elif "one operator not implemented" in stdout_lower:
+                # One operator not implemented - partial test
+                success = False  # Not fully successful
+                returncode = -3  # Special code for partial
+            else:
+                success = False
+                returncode = -1
+
             results[test_name] = (
                 success,
-                result.returncode,
+                returncode,
                 result.stdout,
                 result.stderr,
             )
@@ -171,14 +181,23 @@ def run_all_op_tests(ops_dir=None, specific_ops=None, extra_args=None):
                 print("\nSTDERR:")
                 print(result.stderr.rstrip())
 
-            status_icon = "✅" if success else "❌"
-            print(
-                f"\n{status_icon} {test_name}: {'PASSED' if success else 'FAILED'} (return code: {result.returncode})"
-            )
+            # Enhanced status display
+            if returncode == -2:
+                status_icon = "⏭️"
+                status_text = "SKIPPED"
+            elif returncode == -3:
+                status_icon = "⚠️"
+                status_text = "PARTIAL"
+            elif success:
+                status_icon = "✅"
+                status_text = "PASSED"
+            else:
+                status_icon = "❌"
+                status_text = "FAILED"
 
-        except subprocess.TimeoutExpired:
-            print(f"⏰ {test_name}: TIMEOUT (exceeded 5 minutes)")
-            results[test_name] = (False, -2, "", "Test execution timed out")
+            print(
+                f"{status_icon}  {test_name}: {status_text} (return code: {returncode})"
+            )
 
         except Exception as e:
             print(f"💥 {test_name}: ERROR - {str(e)}")
@@ -190,43 +209,97 @@ def run_all_op_tests(ops_dir=None, specific_ops=None, extra_args=None):
 def print_summary(results):
     """Print a comprehensive summary of test results."""
     print(f"\n{'='*80}")
-    print("TEST SUMMARY")
+    print("CUMULATIVE TEST SUMMARY")
     print(f"{'='*80}")
 
     if not results:
         print("No tests were run.")
         return False
 
-    passed = sum(1 for success, _, _, _ in results.values() if success)
+    # Count different types of results
+    passed = 0
+    failed = 0
+    skipped = 0
+    partial = 0
+    passed_operators = []  # Store passed operator names
+    failed_operators = []  # Store failed operator names
+    skipped_operators = []  # Store skipped operator names
+    partial_operators = []  # Store partial operator names
+
+    for test_name, (success, returncode, stdout, stderr) in results.items():
+        if success:
+            passed += 1
+            passed_operators.append(test_name)
+        elif returncode == -2:  # Special code for skipped tests
+            skipped += 1
+            skipped_operators.append(test_name)
+        elif returncode == -3:  # Special code for partial tests
+            partial += 1
+            partial_operators.append(test_name)
+        else:
+            failed += 1
+            failed_operators.append(test_name)
+
     total = len(results)
-    failed_tests = [name for name, (success, _, _, _) in results.items() if not success]
 
     print(f"Total tests: {total}")
     print(f"Passed: {passed}")
-    print(f"Failed: {total - passed}")
+    print(f"Failed: {failed}")
+
+    if skipped > 0:
+        print(f"Skipped: {skipped}")
+
+    if partial > 0:
+        print(f"Partial: {partial}")
+
+    # Display passed operators
+    if passed_operators:
+        print(f"\n✅ PASSED OPERATORS ({len(passed_operators)}):")
+        # Display operators in groups of 10 per line
+        for i in range(0, len(passed_operators), 10):
+            line_ops = passed_operators[i : i + 10]
+            print("  " + ", ".join(line_ops))
+    else:
+        print(f"\n✅ PASSED OPERATORS: None")
+
+    # Display failed operators (if any)
+    if failed_operators:
+        print(f"\n❌ FAILED OPERATORS ({len(failed_operators)}):")
+        for i in range(0, len(failed_operators), 10):
+            line_ops = failed_operators[i : i + 10]
+            print("  " + ", ".join(line_ops))
+
+    # Display skipped operators (if any)
+    if skipped_operators:
+        print(f"\n⏭️ SKIPPED OPERATORS ({len(skipped_operators)}):")
+        for i in range(0, len(skipped_operators), 10):
+            line_ops = skipped_operators[i : i + 10]
+            print("  " + ", ".join(line_ops))
+
+    # Display partial operators (if any)
+    if partial_operators:
+        print(f"\n⚠️  PARTIAL OPERATORS ({len(partial_operators)}):")
+        for i in range(0, len(partial_operators), 10):
+            line_ops = partial_operators[i : i + 10]
+            print("  " + ", ".join(line_ops))
 
     if total > 0:
-        success_rate = passed / total * 100
-        print(f"Success rate: {success_rate:.1f}%")
+        # Calculate success rate based on executed tests only
+        executed_tests = passed + failed + partial
+        if executed_tests > 0:
+            success_rate = passed / executed_tests * 100
+            print(f"\nSuccess rate: {success_rate:.1f}%")
 
-    if not failed_tests:
-        print("\n🎉 All tests passed!")
+    if failed == 0:
+        if skipped > 0 or partial > 0:
+            print(f"\n⚠️  Tests completed with some operators not implemented")
+            print(f"   - {skipped} tests skipped (both operators not implemented)")
+            print(f"   - {partial} tests partial (one operator not implemented)")
+        else:
+            print(f"\n🎉 All tests passed!")
         return True
     else:
-        print(f"\n❌ {len(failed_tests)} tests failed:")
-        for test_name in failed_tests:
-            success, returncode, stdout, stderr = results[test_name]
-            print(f"  - {test_name} (return code: {returncode})")
-
-            # Print brief error info for failed tests
-            if stderr:
-                error_lines = stderr.strip().split("\n")
-                if error_lines:
-                    # Take first meaningful error line
-                    for line in error_lines:
-                        if line.strip() and not line.startswith("Warning:"):
-                            print(f"    Error: {line.strip()}")
-                            break
+        print(f"\n❌ {failed} tests failed")
         return False
 
 
@@ -279,19 +352,14 @@ def generate_help_epilog(ops_dir):
     epilog_parts.append("  # Run all operator tests on CPU")
     epilog_parts.append("  python run.py --cpu")
     epilog_parts.append("")
-    epilog_parts.append("  # Run specific operators with benchmarking")
-    epilog_parts.append("  python run.py --ops add matmul --nvidia --bench")
+    epilog_parts.append("  # Run specific operators")
+    epilog_parts.append("  python run.py --ops add matmul --nvidia")
     epilog_parts.append("")
     epilog_parts.append("  # Run with debug mode on multiple devices")
     epilog_parts.append("  python run.py --cpu --nvidia --debug")
     epilog_parts.append("")
     epilog_parts.append("  # List available tests without running")
     epilog_parts.append("  python run.py --list")
-    epilog_parts.append("")
-    epilog_parts.append("  # Run with custom performance settings")
-    epilog_parts.append(
-        "  python run.py --nvidia --bench --num_prerun 50 --num_iterations 5000"
-    )
     epilog_parts.append("")
 
     # Available operators section
@@ -314,6 +382,9 @@ def generate_help_epilog(ops_dir):
     )
     epilog_parts.append(
         "  - Operators are automatically discovered from the ops directory"
+    )
+    epilog_parts.append(
+        "  - --bench option is disabled in batch mode (run individual tests for benchmarking)"
     )
 
     return "\n".join(epilog_parts)
@@ -343,13 +414,14 @@ def main():
         help="List all available test files without running them",
     )
 
-    # Hardware platform options using shared function
     from framework import get_hardware_args_group
 
-    hardware_group = get_hardware_args_group(parser)
+    if "-h" in sys.argv or "--help" in sys.argv:
+        get_hardware_args_group(parser)
 
     # Parse known args first, leave the rest for the test scripts
     args, unknown_args = parser.parse_known_args()
+    get_hardware_args_group(parser)
 
     # Handle list command
     if args.list:
@@ -413,6 +485,16 @@ def main():
 
     # Print summary and exit with appropriate code
     all_passed = print_summary(results)
+
+    # Check if there were any tests with missing implementations
+    has_missing_implementations = any(
+        returncode in [-2, -3] for _, (_, returncode, _, _) in results.items()
+    )
+
+    if all_passed and has_missing_implementations:
+        print(f"\n⚠️  Note: Some operators are not fully implemented")
+        print(f"   Run individual tests for details on missing implementations")
+
     sys.exit(0 if all_passed else 1)
 
 
