@@ -1,8 +1,7 @@
-from .module import Module
-from .parameter import Parameter
-
 from .container import ModuleList
 from .linear import Linear
-from .sparse import Embedding
-from .rope import RoPE
+from .module import Module
 from .normalization import RMSNorm
+from .parameter import Parameter
+from .rope import RoPE
+from .sparse import Embedding

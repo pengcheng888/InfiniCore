@@ -1,6 +1,5 @@
-
 # Copyright (c) 2025, InfiniCore
-# 
+#
 # This file contains modified code derived from PyTorch's `torch.nn.Parameter`
 # implementation, which is licensed under the BSD 3-Clause License.
 #
@@ -14,12 +13,25 @@
 # The use of this file is governed by the BSD 3-Clause License.
 
 
-from typing import Optional
-
 import infinicore
 
+
 class InfiniCoreParameter(infinicore.Tensor):
-    def __init__(self, data: Optional[infinicore.Tensor] = None):
-        self.data = data
-        
+    r"""A kind of Tensor that is to be considered a module parameter."""
+
+    def __init__(self, data=None):
+        if not isinstance(data, infinicore.Tensor):
+            raise ValueError("The `data` variable must be of type `infinicore.Tensor`.")
+        super().__init__(data._underlying)
+
+    def __repr__(self):
+        return "Parameter containing:\n" + super().__repr__()
+
+    def __deepcopy__(self, memo):
+        raise ValueError("not supported!")
+
+    def __reduce_ex__(self, proto):
+        raise ValueError("not supported!")
+
+
 Parameter = InfiniCoreParameter

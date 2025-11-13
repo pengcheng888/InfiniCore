@@ -4,18 +4,18 @@
 # This file implements InfiniCoreModuleList, which is similar to torch.nn.ModuleList
 # but based on InfiniCoreModule for inference purposes.
 
-from typing import List, Optional, Iterator, Union, Sequence, TypeVar
-
 import operator
-from itertools import chain
 from collections import OrderedDict
-from .module import InfiniCoreModule
+from itertools import chain
+from typing import Iterator, List, Optional, Sequence, TypeVar, Union
+
+from .module import Module
 
 # Define type variable for module compatibility (supports both torch.nn.Module and InfiniCoreModule)
-ModuleType = TypeVar("ModuleType", bound=Union["InfiniCoreModule"])
+ModuleType = TypeVar("ModuleType", bound=Union["Module"])
 
 
-class InfiniCoreModuleList(InfiniCoreModule):
+class InfiniCoreModuleList(Module):
     r"""Holds submodules in a list.
 
     InfiniCoreModuleList can be indexed like a regular Python list, but

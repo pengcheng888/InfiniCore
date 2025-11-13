@@ -1,72 +1,6 @@
 import infinicore
 
 
-def func1():
-    from infinicore import nn
-
-    modelpath = r"/home/ubuntu/Music/nn5_my/InfiniCore/test/infinicore/ops/model.pt"
-
-    class InfiniNet(infinicore.nn.Module):
-        def __init__(self):
-            super(InfiniNet, self).__init__()
-            self.num = 10
-            self.fc1 = infinicore.nn.Linear(10, 6, bias=False)
-            self.fc2 = infinicore.nn.Linear(6, 1, bias=False)
-
-        def forward(self, x):
-            x = x.view((1, 10))
-            output = self.fc2.forward(self.fc1.forward(x))
-            print()
-            return output
-
-        def test(self):
-            model = InfiniNet()
-            print(model)
-            # torch.save(model.state_dict(), "model.pt")
-            # print("-----> before \n", model.state_dict())
-            import torch
-
-            model_param = torch.load(modelpath, map_location=torch.device("cuda"))
-
-            def torch_2_infini_ref(model_param: dict):
-                print("model_param: ", id(model_param))
-
-                model_param_infini = {}
-                for key, value in model_param.items():
-                    model_param_infini[key] = (
-                        infinicore.experimental.torch_2_infini_tensor_ref(value)
-                    )
-
-                return model_param_infini
-
-            print("model_param: ", id(model_param))
-            model_param_infini = torch_2_infini_ref(model_param)
-
-            print("model_param: ", id(model_param))
-
-            model.load_state_dict(model_param_infini)
-
-            print("----------- caculate ------------>")
-
-            device_str = "cuda"
-
-            x = torch.ones((1, 10), dtype=torch.float32, device=device_str)
-
-            # out = model.forward(x)
-            # print(out)
-
-            infini_x = infinicore.convert_torch_to_infini_tensor(x)
-
-            out = model.forward(infini_x)
-
-            print(out)
-
-    # infinicore.nn.Linear(10, 6, bias=False)
-    # exit(-1)
-
-    InfiniNet().test()
-
-
 def func3():
     import infinicore
 
@@ -354,5 +288,29 @@ def func7():
     )
 
 
+def func8():
+    from infinicore import nn
+
+    class InfiniNet(infinicore.nn.Module):
+        def __init__(self):
+            super(InfiniNet, self).__init__()
+
+            self.weight = infinicore.nn.Parameter(
+                infinicore.empty(
+                    (1,), dtype=infinicore.float32, device=infinicore.device("cpu", 0)
+                )
+            )
+            print("?>>", self.weight)
+
+        def forward(self):
+            pass
+
+        def test(self):
+            model = InfiniNet()
+            print(model)
+
+    InfiniNet().test()
+
+
 if __name__ == "__main__":
-    func7()
+    func3()

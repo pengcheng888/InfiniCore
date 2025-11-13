@@ -1,7 +1,7 @@
 import infinicore
 import torch
 import numbers
-from typing import  Optional, Union
+from typing import Optional, Union
 from .module import Module
 
 
@@ -36,14 +36,14 @@ __all__ = ["RMSNorm"]
 
 #         self.normalized_shape = list(normalized_shape)
 #         self.eps = eps
-        
-       
+
+
 #         self.weight = infinicore.nn.Parameter(
 #               infinicore.empty(
 #                 (2, 3), dtype=infinicore.float32, device=infinicore.device("cpu", 0)
 #                 )
 #          )
-         
+
 #         self.weight_infini = None
 
 #     def forward(self, x: infinicore.Tensor) -> infinicore.Tensor:
@@ -53,6 +53,7 @@ __all__ = ["RMSNorm"]
 
 #     def extra_repr(self) -> str:
 #         return "{normalized_shape}, eps={eps}".format(**self.__dict__)
+
 
 class RMSNorm(Module):
     r"""Applies Root Mean Square Layer Normalization over a mini-batch of inputs.
@@ -64,16 +65,17 @@ class RMSNorm(Module):
         - Input: :math:`(N, *)`
         - Output: :math:`(N, *)` (same shape as input)
     """
+
     __constants__ = ["normalized_shape", "eps"]
     normalized_shape: tuple[int, ...]
     eps: Optional[float]
 
     def __init__(
-            self,
-            normalized_shape: Union[int, list[int]],
-            eps = 1e-6,
-            device=None,
-            dtype=None,
+        self,
+        normalized_shape: Union[int, list[int]],
+        eps=1e-6,
+        device=None,
+        dtype=None,
     ) -> None:
         factory_kwargs = {"device": device, "dtype": dtype}
         super().__init__()
@@ -84,13 +86,17 @@ class RMSNorm(Module):
         self.normalized_shape = list(normalized_shape)
         self.eps = eps
         self.weight = infinicore.nn.Parameter(
-             infinicore.empty((1,), dtype=infinicore.float32, device=infinicore.device("cpu", 0))
+            infinicore.empty(
+                self.normalized_shape,
+                dtype=infinicore.float32,
+                device=infinicore.device("cpu", 0),
             )
+        )
 
     def forward(self, x: infinicore.Tensor) -> infinicore.Tensor:
-
-        return infinicore.nn.functional.rms_norm(x, self.normalized_shape, self.weight, self.eps)
+        return infinicore.nn.functional.rms_norm(
+            x, self.normalized_shape, self.weight, self.eps
+        )
 
     def extra_repr(self) -> str:
         return "{normalized_shape}, eps={eps}".format(**self.__dict__)
-
