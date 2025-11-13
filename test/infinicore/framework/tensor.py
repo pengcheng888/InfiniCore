@@ -1,8 +1,9 @@
 import torch
+import math
 from pathlib import Path
 from .datatypes import to_torch_dtype
 from .devices import torch_device_map
-from .utils import is_integer_dtype
+from .utils import is_integer_dtype, is_complex_dtype
 
 
 class TensorInitializer:
@@ -52,7 +53,12 @@ class TensorInitializer:
             return TensorInitializer._create_integer_tensor(
                 shape, torch_dtype, torch_device_str, mode, **kwargs
             )
+        elif is_complex_dtype(torch_dtype):
+            return TensorInitializer._create_complex_tensor(
+                shape, torch_dtype, torch_device_str, mode, **kwargs
+            )
 
+        # Handle real floating-point types
         if mode == TensorInitializer.RANDOM:
             return torch.rand(shape, dtype=torch_dtype, device=torch_device_str)
         elif mode == TensorInitializer.ZEROS:
@@ -88,6 +94,7 @@ class TensorInitializer:
 
     @staticmethod
     def _create_integer_tensor(shape, torch_dtype, torch_device_str, mode, **kwargs):
+        """Create integer tensor"""
         if mode == TensorInitializer.RANDOM:
             if torch_dtype == torch.bool:
                 return torch.randint(
@@ -134,6 +141,40 @@ class TensorInitializer:
             return torch.randint(
                 0, 100, shape, dtype=torch_dtype, device=torch_device_str
             )
+
+    @staticmethod
+    def _create_complex_tensor(shape, torch_dtype, torch_device_str, mode, **kwargs):
+        """Create complex tensor (complex64 or complex128)"""
+        if mode == TensorInitializer.RANDOM:
+            # Create complex tensor with random real and imaginary parts
+            real_part = torch.rand(shape, device=torch_device_str)
+            imag_part = torch.rand(shape, device=torch_device_str)
+            complex_tensor = torch.complex(real_part, imag_part)
+            return complex_tensor.to(torch_dtype)
+        elif mode == TensorInitializer.ZEROS:
+            return torch.zeros(shape, dtype=torch_dtype, device=torch_device_str)
+        elif mode == TensorInitializer.ONES:
+            return torch.ones(shape, dtype=torch_dtype, device=torch_device_str)
+        elif mode == TensorInitializer.MANUAL:
+            tensor = kwargs.get("set_tensor")
+            if tensor is None:
+                raise ValueError("Manual mode requires set_tensor")
+            if list(tensor.shape) != list(shape):
+                raise ValueError(
+                    f"Shape mismatch: expected {shape}, got {tensor.shape}"
+                )
+            return tensor.to(torch_dtype).to(torch_device_str)
+        elif mode == TensorInitializer.BINARY:
+            tensor = kwargs.get("set_tensor")
+            if tensor is None:
+                raise ValueError("Binary mode requires set_tensor")
+            return tensor.to(torch_dtype).to(torch_device_str)
+        else:
+            # Default to random complex values
+            real_part = torch.rand(shape, device=torch_device_str)
+            imag_part = torch.rand(shape, device=torch_device_str)
+            complex_tensor = torch.complex(real_part, imag_part)
+            return complex_tensor.to(torch_dtype)
 
     @staticmethod
     def _create_strided_tensor(
@@ -269,22 +310,15 @@ class TensorSpec:
 
     @classmethod
     def from_strided_tensor(
-        cls, shape, strides, dtype=None, init_mode=TensorInitializer.RANDOM, **kwargs
+        cls,
+        shape,
+        strides,
+        dtype=None,
+        init_mode=TensorInitializer.RANDOM,
+        **kwargs,
     ):
         """Alias for from_tensor with explicit strides (for backward compatibility)"""
         return cls.from_tensor(shape, strides, dtype, init_mode, **kwargs)
-
-    def with_dtype(self, dtype):
-        """Create a new TensorSpec with the specified dtype"""
-        return TensorSpec(
-            shape=self.shape,
-            dtype=dtype,
-            strides=self.strides,
-            value=self.value,
-            is_scalar=self.is_scalar,
-            init_mode=self.init_mode,
-            **self.kwargs,
-        )
 
     def create_torch_tensor(self, device):
         """Create a torch tensor based on this specification"""
@@ -294,7 +328,7 @@ class TensorSpec:
         # Create tensor using unified interface
         return TensorInitializer.create_tensor(
             shape=self.shape,
-            dtype=self.dtype,  # Use the dtype from the spec
+            dtype=self.dtype,
             device=device,
             mode=self.init_mode,
             strides=self.strides,
