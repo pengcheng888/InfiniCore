@@ -2,9 +2,11 @@ import infinicore.device
 import infinicore.dtype
 from infinicore.lib import _infinicore
 
+from .utils import to_infinicore_dtype
+
 
 class Tensor:
-    def __init__(self, underlying):
+    def __init__(self, underlying, *, torch_ref=None):
         """An internal method. Please do not use this directly."""
 
         self._underlying = underlying
@@ -14,6 +16,8 @@ class Tensor:
         self._device = infinicore.device._from_infinicore_device(
             self._underlying.device
         )
+
+        self._torch_ref = torch_ref
 
     @property
     def shape(self):
@@ -86,6 +90,12 @@ class Tensor:
         else:
             self._underlying.debug(filename)
 
+    def __mul__(self, other):
+        return infinicore.mul(self, other)
+
+    def __add__(self, other):
+        return infinicore.add(self, other)
+
 
 def empty(size, *, dtype=None, device=None, pin_memory=False):
     return Tensor(
@@ -134,4 +144,18 @@ def strided_from_blob(data_ptr, size, strides, *, dtype=None, device=None):
         _infinicore.strided_from_blob(
             data_ptr, size, strides, dtype._underlying, device._underlying
         )
+    )
+
+
+def from_torch(torch_tensor) -> Tensor:
+    infini_type = to_infinicore_dtype(torch_tensor.dtype)
+    infini_device = infinicore.device(torch_tensor.device.type, 0)
+    return Tensor(
+        _infinicore.from_blob(
+            torch_tensor.data_ptr(),
+            list(torch_tensor.shape),
+            dtype=infini_type._underlying,
+            device=infini_device._underlying,
+        ),
+        torch_ref=torch_tensor,
     )
