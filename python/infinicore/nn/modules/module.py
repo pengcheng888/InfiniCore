@@ -575,7 +575,7 @@ class InfiniCoreModule:
                         for k, v in local_state_dict.items()
                         if k.startswith(child_prefix)
                     }
-                    load(child, child_state_dict, child_prefix)
+                    load(child, child_state_dict, child_prefix)  # noqa: F821
 
         load(self, state_dict)
         del load
