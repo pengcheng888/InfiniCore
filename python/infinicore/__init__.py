@@ -30,6 +30,7 @@ from infinicore.dtype import (
 from infinicore.ops.add import add
 from infinicore.ops.attention import attention
 from infinicore.ops.matmul import matmul
+from infinicore.ops.mul import mul
 from infinicore.ops.rearrange import rearrange
 from infinicore.tensor import (
     Tensor,
@@ -76,6 +77,7 @@ __all__ = [
     "add",
     "attention",
     "matmul",
+    "mul",
     "rearrange",
     "empty",
     "empty_like",
