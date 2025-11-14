@@ -33,9 +33,7 @@ from typing import (
 import infinicore
 
 from ...tensor import Tensor
-from ..parameter import Parameter
-
-__all__ = ["Module"]
+from ..parameter import InfiniCoreParameter as Parameter
 
 _EXTRA_STATE_KEY_SUFFIX = "_extra_state"
 T = TypeVar("T", bound="InfiniCoreModule")
@@ -857,6 +855,3 @@ class InfiniCoreModule:
 
     def to(self, *args, **kwargs):
         raise KeyError("not support")
-
-
-Module = InfiniCoreModule

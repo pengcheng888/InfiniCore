@@ -9,10 +9,7 @@ from collections import OrderedDict
 from itertools import chain
 from typing import Iterator, List, Optional, Sequence, TypeVar, Union
 
-from .module import Module
-
-__all__ = ["ModuleList"]
-
+from .module import InfiniCoreModule as Module
 
 # Define type variable for module compatibility (supports InfiniCoreModule)
 ModuleType = TypeVar("ModuleType", bound=Union["Module"])
@@ -189,6 +186,3 @@ class InfiniCoreModuleList(Module):
         # Filter out numeric keys to avoid cluttering dir() output
         keys = [key for key in keys if not key.isdigit()]
         return keys
-
-
-ModuleList = InfiniCoreModuleList

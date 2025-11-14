@@ -32,6 +32,3 @@ class InfiniCoreParameter(Tensor):
 
     def __reduce_ex__(self, proto):
         raise ValueError("not supported!")
-
-
-Parameter = InfiniCoreParameter
