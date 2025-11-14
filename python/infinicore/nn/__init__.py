@@ -1,3 +1,3 @@
-from infinicore.nn import (
-    functional as functional,
-)
+from infinicore.nn import functional
+
+__all__ = ["functional"]
