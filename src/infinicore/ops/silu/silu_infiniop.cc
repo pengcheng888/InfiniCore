@@ -28,7 +28,7 @@ void calculate(Tensor output, Tensor input) {
 
     if (!desc_opt) {
         INFINICORE_CHECK_ERROR(infiniopCreateSiluDescriptor(
-            context::getInfiniopHandle(), &desc,
+            context::getInfiniopHandle(output->device()), &desc,
             output->desc(), input->desc()));
         cache.put(seed, desc);
     } else {

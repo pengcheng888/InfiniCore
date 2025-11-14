@@ -99,7 +99,13 @@ infinirtStream_t getStream() {
     return ContextImpl::singleton().getCurrentRuntime()->stream();
 }
 
-infiniopHandle_t getInfiniopHandle() {
+infiniopHandle_t getInfiniopHandle(Device device) {
+    if (device.getType() == Device::Type::CPU) {
+        return ContextImpl::singleton().getCpuRuntime()->infiniopHandle();
+    }
+    if (device != getDevice()) {
+        throw std::runtime_error("Requested device doesn't match current runtime.");
+    }
     return ContextImpl::singleton().getCurrentRuntime()->infiniopHandle();
 }
 

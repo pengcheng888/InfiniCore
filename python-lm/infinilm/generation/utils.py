@@ -1,6 +1,8 @@
 from typing import TYPE_CHECKING, Any, Callable, Optional, Union
-from ..cache_utils import Cache, DynamicCache
+
 import infinicore
+
+from ..cache_utils import Cache, DynamicCache
 
 
 class GenerationMixin:
@@ -78,7 +80,7 @@ class GenerationMixin:
         #                  输入的 token_ids 转为 cpu                             #
         # -------------------------------------------------------------------- #
         input_ids = inputs_tensor
-        model_kwargs["input_ids_infini"] = infinicore.from_torch(inputs_tensor.cpu())
+        model_kwargs["input_ids_infini"] = inputs_tensor.cpu().to_infini()
 
         # -------------------------------------------------------------------- #
         #                       创建 cache                                      #
@@ -102,7 +104,7 @@ class GenerationMixin:
         can be used for text-decoder, text-to-text, speech-to-text, and vision-to-text models.
 
         Parameters:
-            input_ids (`torch.LongTensor` of shape `(batch_size, sequence_length)`):
+            input_ids (`LongTensor` of shape `(batch_size, sequence_length)`):
                 The sequence used as a prompt for the generation.
 
             model_kwargs:
@@ -183,30 +185,25 @@ class GenerationMixin:
                         1.0,
                     )
                     next_tokens = next_tokens.view([1, 1, 1])
+
                 if True:
                     next_tokens = torch.argmax(
-                        infinicore.convert_infini_to_torch_tensor(next_token_scores),
+                        next_token_scores.to_torch(),
                         dim=-1,
                     )
-
-                    next_tokens = infinicore.from_torch(next_tokens)  # shape: [1,1]
+                    next_tokens = next_tokens.to_infini()  # shape: [1,1]
 
             # ----------------------------------------------------------------- #
             #                        收集结果
             # ----------------------------------------------------------------- #
             # update generated ids, model inputs, and length for next step
-            if isinstance(next_tokens, infinicore.Tensor):
-                next_tokens = infinicore.convert_infini_to_torch_tensor(
-                    next_tokens
-                ).cpu()
 
-                next_token = next_tokens[
-                    0, 0
-                ].item()  # 将 torch.Tensor 转为 python的int类型
-                output_tokens_list.append(next_token)
+            next_tokens = next_tokens.to_torch().cpu()
 
-                #
-                model_kwargs["next_token"] = next_token
+            # 将 torch.Tensor 中的数据 转为 python的int类型
+            next_token = next_tokens[0, 0].item()
+            output_tokens_list.append(next_token)
+            model_kwargs["next_token"] = next_token
 
             cur_len += 1
             cur_count += 1

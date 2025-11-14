@@ -18,27 +18,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Callable, Optional, Union
-import time
-from ...cache_utils import Cache, DynamicCache
-
-from ...modeling_outputs import BaseModelOutputWithPast, CausalLMOutputWithPast
-from .configuration_llama import LlamaConfig
-from ...generation.utils import GenerationMixin
-from transformers.utils import logging
-from typing import Optional, Union
+import json
 import os
-import json
-from .configuration_llama import LlamaConfig
-import json
+from typing import Optional, Union
+
+from transformers.utils import logging
 
 import infinicore
+
+from ...cache_utils import Cache, DynamicCache
+from ...generation.utils import GenerationMixin
+from ...modeling_outputs import BaseModelOutputWithPast, CausalLMOutputWithPast
+from .configuration_llama import LlamaConfig
 
 logger = logging.get_logger(__name__)
 
 LlamaRMSNorm = infinicore.nn.RMSNorm
-
-t_all = 0.0
 
 
 class LlamaMLP(infinicore.nn.Module):
@@ -131,17 +126,13 @@ class LlamaAttention(infinicore.nn.Module):
         # --------------------------------------------------------------------------------------- #
         #                           对 Q,K，V进行 project 加上 rope
         # --------------------------------------------------------------------------------------- #
-        query_states_infinicore = self.q_proj(hidden_states).view(
-            query_hidden_shape
-        )  # => [bs, ntok,  num_attention_heads, head_dim]
+        # => [bs, ntok,  num_attention_heads, head_dim]
+        query_states_infinicore = self.q_proj(hidden_states).view(query_hidden_shape)
 
-        key_states_infinicore = self.k_proj(hidden_states).view(
-            key_hidden_shape
-        )  # => [bs, ntok,  num_key_value_heads, head_dim]
-
-        value_states_infinicore = self.v_proj(hidden_states).view(
-            value_hidden_shape
-        )  # => [bs, ntok, nkvh, head_dim]
+        # => [bs, ntok,  num_key_value_heads, head_dim]
+        key_states_infinicore = self.k_proj(hidden_states).view(key_hidden_shape)
+        # => [bs, ntok, nkvh, head_dim]
+        value_states_infinicore = self.v_proj(hidden_states).view(value_hidden_shape)
 
         # --------------------------------------------------------------------------------------- #
         #                           对 Q和K， 加上 rope
@@ -154,8 +145,6 @@ class LlamaAttention(infinicore.nn.Module):
             query_states_infinicore, cache_position_infini
         )
         key_states = self.rope_infinicore(key_states_infinicore, cache_position_infini)
-
-        t1 = time.time()
 
         # --------------------------------------------------------------------------------------- #
         #                           kv cache
@@ -175,55 +164,23 @@ class LlamaAttention(infinicore.nn.Module):
         # --------------------------------------------------------------------------------------- #
         #                           注意力计算
         # --------------------------------------------------------------------------------------- #
+        # att_val => [bs,  num_attention_heads, ntok, head_dim]
+        att_val = infinicore.nn.functional.scaled_dot_product_attention(
+            query_states_infini,  # [bs, num_attention_heads, ntok, head_dim]
+            key_states_infini,  # [bs, num_key_value_heads, all_tok, head_dim]
+            value_states_infini,  # [bs, num_key_value_heads, all_tok, head_dim]
+            is_causal=True,
+            enable_gqa=True,
+        )
 
-        t2 = time.time()
-
-        # global t_all
-        # t_all+= (t2-t1)*1000
-        # print("t_all: ",t_all)
-
-        if True:
-            # att_val => [bs,  num_attention_heads, ntok, head_dim]
-            att_val = infinicore.nn.functional.scaled_dot_product_attention(
-                query_states_infini,  # [bs, num_attention_heads, ntok, head_dim]
-                key_states_infini,  # [bs, num_key_value_heads, all_tok, head_dim]
-                value_states_infini,  # [bs, num_key_value_heads, all_tok, head_dim]
-                is_causal=True,
-                enable_gqa=True,
-            )
-        else:
-            import torch
-
-            query_states_torch = infinicore.convert_infini_to_torch_tensor(
-                query_states_infini
-            )
-            key_states_torch = infinicore.convert_infini_to_torch_tensor(
-                key_states_infini
-            )
-            value_states_torch = infinicore.convert_infini_to_torch_tensor(
-                value_states_infini
-            )
-            att_val_torch = torch.nn.functional.scaled_dot_product_attention(
-                query_states_torch,  # [bs, num_attention_heads, ntok, head_dim]
-                key_states_torch,  # [bs, num_key_value_heads, all_tok, head_dim]
-                value_states_torch,  # [bs, num_key_value_heads, all_tok, head_dim]
-                is_causal=True,
-                enable_gqa=True,
-            )
-
-            att_val = infinicore.from_torch(att_val_torch)
-
-        attn_output = att_val.permute(
-            (0, 2, 1, 3)
-        ).contiguous()  # => {bs, ntok, num_attention_heads, dh }
+        # => [bs, ntok, num_attention_heads, dh ]
+        attn_output = att_val.permute((0, 2, 1, 3)).contiguous()
 
         # --------------------------------------------------------------------------------------- #
         #                           out project
         # --------------------------------------------------------------------------------------- #
-        # ([bs, ntok, num_attention_heads, head_dim])
-        attn_output = attn_output.view(
-            hidden_states_shape
-        )  # ==> [bs, ntok, hidden_size]
+        # ([bs, ntok, num_attention_heads, head_dim]) ==> [bs, ntok, hidden_size ]
+        attn_output = attn_output.view(hidden_states_shape)
 
         # o_proj
         attn_output = self.o_proj(attn_output)
@@ -271,7 +228,7 @@ class LlamaDecoderLayer(infinicore.nn.Module):
         return hidden_states
 
 
-class LlamaModel(infinicore.nn.Module):  # LlamaPreTrainedModel  nn.Module
+class LlamaModel(infinicore.nn.Module):
     def __init__(self, config: LlamaConfig):
         super().__init__()
         self.config = config
@@ -309,46 +266,27 @@ class LlamaModel(infinicore.nn.Module):  # LlamaPreTrainedModel  nn.Module
             inputs_embeds = self.embed_tokens(input_ids_infini)
 
         hidden_states = inputs_embeds
-        ilayer = 0
         for decoder_layer in self.layers[: self.config.num_hidden_layers]:
-            # print("ilayer: ", ilayer)
-            # ilayer += 1
-
             hidden_states = decoder_layer(
                 hidden_states,
                 past_key_values=past_key_values,
                 **kwargs,
             )
 
-        hidden_states = self.norm(hidden_states)
-        hidden_states = infinicore.convert_infini_to_torch_tensor(hidden_states)
+        hidden_states = self.norm(hidden_states)  # 1,5,2048
+        _, ntoken, _ = hidden_states.shape
 
+        last_hidden_state_last_token = infinicore.narrow(
+            hidden_states, 1, ntoken - 1, 1
+        )
         return BaseModelOutputWithPast(
             past_key_values=past_key_values,
-            last_hidden_state_last_token=infinicore.convert_torch_to_infini_tensor(
-                hidden_states[:, [-1], :]
-            ),
+            last_hidden_state_last_token=last_hidden_state_last_token,
         )
 
 
-class LlamaPreTrainedModel(infinicore.nn.Module):
+class LlamaForCausalLM(infinicore.nn.Module, GenerationMixin):
     config: LlamaConfig
-    base_model_prefix = "model"
-    _no_split_modules = ["LlamaDecoderLayer"]
-    _skip_keys_device_placement = ["past_key_values"]
-    _supports_flash_attn = True
-    _supports_sdpa = True
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-
-class LlamaForCausalLM(
-    LlamaPreTrainedModel, GenerationMixin
-):  # nn.Module LlamaPreTrainedModel,
-    _tied_weights_keys = ["lm_head.weight"]
-    _tp_plan = {"lm_head": "colwise_rep"}
-    _pp_plan = {"lm_head": (["hidden_states"], ["logits"])}
 
     def __init__(self, config):
         super().__init__()
@@ -369,16 +307,6 @@ class LlamaForCausalLM(
         """
         input_ids: Optional[ LongTensor ] = None,  # tensor([[    1,  1128,   526,   366, 29892]])
         cache_position: Optional[ LongTensor ] = None,  # [0,1,2,3,4] ...  [5]   cuda:0
-
-        Args:
-            input_ids:
-            past_key_values:
-            inputs_embeds:
-            use_cache:
-            **kwargs:
-
-        Returns:
-
         """
         outputs: BaseModelOutputWithPast = self.model(
             past_key_values=past_key_values,
@@ -387,12 +315,10 @@ class LlamaForCausalLM(
             **kwargs,
         )
 
-        logits = self.lm_head(
-            outputs.last_hidden_state_last_token
-        )  # logits Size([1, 1, 32000])
+        # logits Size([1, 1, 32000])
+        logits = self.lm_head(outputs.last_hidden_state_last_token.contiguous())
 
         return CausalLMOutputWithPast(
-            logits=infinicore.convert_infini_to_torch_tensor(logits),
             next_token_logits=logits,
             past_key_values=outputs.past_key_values,
         )
@@ -418,7 +344,6 @@ class LlamaForCausalLM(
 
 
 __all__ = [
-    "LlamaForCausalLM",
     "LlamaModel",
-    "LlamaPreTrainedModel",
+    "LlamaForCausalLM",
 ]

@@ -3,8 +3,7 @@ from typing import Any
 
 
 class PretrainedConfig:
-    def __init__(*args,
-                 **kwargs):
+    def __init__(*args, **kwargs):
         pass
 
     def to_dict(self) -> dict[str, Any]:
@@ -71,12 +70,16 @@ class PretrainedConfig:
             encoder (`Optional[bool]`, *optional*):
                 If set to `True`, then only search for encoder config names.
         """
-        return_both = decoder == encoder  # both unset or both set -> search all possible names
+        return_both = (
+            decoder == encoder
+        )  # both unset or both set -> search all possible names
 
         decoder_possible_text_config_names = ("decoder", "generator", "text_config")
         encoder_possible_text_config_names = ("text_encoder",)
         if return_both:
-            possible_text_config_names = encoder_possible_text_config_names + decoder_possible_text_config_names
+            possible_text_config_names = (
+                encoder_possible_text_config_names + decoder_possible_text_config_names
+            )
         elif decoder:
             possible_text_config_names = decoder_possible_text_config_names
         else:
@@ -101,7 +104,11 @@ class PretrainedConfig:
             config_to_return = self
 
         # handle legacy models with flat config structure, when we only want one of the configs
-        if not return_both and len(valid_text_config_names) == 0 and config_to_return.is_encoder_decoder:
+        if (
+            not return_both
+            and len(valid_text_config_names) == 0
+            and config_to_return.is_encoder_decoder
+        ):
             config_to_return = copy.deepcopy(config_to_return)
             prefix_to_discard = "encoder" if decoder else "decoder"
             for key in config_to_return.to_dict():

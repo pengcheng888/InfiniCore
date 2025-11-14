@@ -16,7 +16,7 @@ Device getDevice();
 size_t getDeviceCount(Device::Type type);
 
 infinirtStream_t getStream();
-infiniopHandle_t getInfiniopHandle();
+infiniopHandle_t getInfiniopHandle(Device device);
 
 void syncStream();
 void syncDevice();

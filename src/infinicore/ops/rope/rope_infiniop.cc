@@ -42,7 +42,7 @@ void calculate(Tensor x_out, const Tensor &x, const Tensor &pos, const Tensor &s
 
     if (!desc_opt) {
         INFINICORE_CHECK_ERROR(infiniopCreateRoPEDescriptor(
-            context::getInfiniopHandle(), &desc,
+            context::getInfiniopHandle(x_out->device()), &desc,
             x_out->desc(), x->desc(),
             pos->desc(), sin_cache->desc(), cos_cache->desc(),
             infiniop_algo));

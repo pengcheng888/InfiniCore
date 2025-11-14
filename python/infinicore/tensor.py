@@ -56,8 +56,8 @@ class Tensor:
     def is_contiguous(self):
         return self._underlying.is_contiguous()
 
-    def is_is_pinned(self):
-        return self._underlying.is_is_pinned()
+    def is_pinned(self):
+        return self._underlying.is_pinned()
 
     def copy_(self, src):
         self._underlying.copy_(src._underlying)
@@ -90,11 +90,11 @@ class Tensor:
         else:
             self._underlying.debug(filename)
 
-    def __mul__(self, other):
-        return infinicore.mul(self, other)
-
     def __add__(self, other):
         return infinicore.add(self, other)
+
+    def __mul__(self, other):
+        return infinicore.mul(self, other)
 
 
 def empty(size, *, dtype=None, device=None, pin_memory=False):
@@ -150,6 +150,7 @@ def strided_from_blob(data_ptr, size, strides, *, dtype=None, device=None):
 def from_torch(torch_tensor) -> Tensor:
     infini_type = to_infinicore_dtype(torch_tensor.dtype)
     infini_device = infinicore.device(torch_tensor.device.type, 0)
+
     return Tensor(
         _infinicore.from_blob(
             torch_tensor.data_ptr(),

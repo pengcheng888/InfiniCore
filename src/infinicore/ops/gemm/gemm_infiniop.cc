@@ -28,7 +28,7 @@ void calculate(Tensor c, Tensor a, Tensor b, float alpha, float beta) {
 
     if (!desc_opt) {
         INFINICORE_CHECK_ERROR(infiniopCreateGemmDescriptor(
-            context::getInfiniopHandle(), &desc,
+            context::getInfiniopHandle(c->device()), &desc,
             c->desc(), a->desc(), b->desc()));
         cache.put(seed, desc);
     } else {

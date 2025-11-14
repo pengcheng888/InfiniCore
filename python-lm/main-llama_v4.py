@@ -18,20 +18,13 @@ def func(Folder):
 
     model = infinilm.LlamaForCausalLM.from_pretrained(model_path=Folder)
     model_param_infini = get_model_state_dict(model_path=Folder, device=model_device)
-    model.load_state_dict(model_param_infini)  # cpu进入，里面 to cuda
+    model.load_state_dict(model_param_infini)
 
     # ---------------------------------------------------------------------------- #
     #                        token编码
     # ---------------------------------------------------------------------------- #
-    prompt = [
-        "How are you,"
-    ]  # {'input_ids': tensor([[    1,  1128,   526,   366, 29892]]), 'attention_mask': tensor([[1, 1, 1, 1, 1]])}
-    prompt = "How are you,"  # {'input_ids': tensor([[    1,  1128,   526,   366, 29892]]), 'attention_mask': tensor([[1, 1, 1, 1, 1]])}
-
-    # prompt = "山东最高的山是?"  # {'input_ids': tensor([[    1,  1128,   526,   366, 29892]]), 'attention_mask': tensor([[1, 1, 1, 1, 1]])}
-    # prompt = ["How are you,",
-    #           "How old are you,"]  # {'input_ids': tensor([[1,1128,526,366, 29892,2],  [1, 1128, 2030, 526, 366, 29892]]), 'attention_mask': tensor([[1, 1, 1, 1, 1, 0], [1, 1, 1, 1, 1, 1]])}
-
+    # prompt = ["How are you,"]
+    prompt = "How are you,"
     # 'input_ids': tensor([[ 1, 1128, 526, 366, 29892]]
     input_ids = tokenizer(
         prompt,

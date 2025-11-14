@@ -4,7 +4,6 @@ from typing import Any, Optional
 import torch
 import transformers.utils.logging as logging
 
-
 logger = logging.get_logger(__name__)
 
 

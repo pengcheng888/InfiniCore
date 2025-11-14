@@ -31,6 +31,7 @@ from infinicore.ops.add import add
 from infinicore.ops.attention import attention
 from infinicore.ops.matmul import matmul
 from infinicore.ops.mul import mul
+from infinicore.ops.narrow import narrow
 from infinicore.ops.rearrange import rearrange
 from infinicore.tensor import (
     empty,
@@ -46,6 +47,7 @@ from infinicore.tensor import (
 from .tensor import Tensor
 
 from infinicore.experimental import (
+    rand,
     convert_infini_to_torch_tensor,
     convert_torch_to_infini_tensor,
     to_torch_dtype,
@@ -89,7 +91,7 @@ __all__ = [
     "attention",
     "matmul",
     "mul",
-    "rearrange",
+    "narrowrearrange",
     "empty",
     "empty_like",
     "from_blob",

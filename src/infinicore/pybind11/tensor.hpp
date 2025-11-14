@@ -32,7 +32,7 @@ inline void bind(py::module &m) {
         .def("to", [](const Tensor &tensor, const Device &device) { return tensor->to(device); })
         .def("as_strided", [](const Tensor &tensor, const Shape &shape, const Strides &strides) { return tensor->as_strided(shape, strides); })
         .def("contiguous", [](const Tensor &tensor) { return tensor->contiguous(); })
-
+        .def("narrow", [](const Tensor &tensor, std::size_t dim, std::size_t start, std::size_t length) { return tensor->narrow({{dim, start, length}}); })
         .def("permute", [](const Tensor &tensor, const Shape &dims) { return tensor->permute(dims); })
         .def("view", [](const Tensor &tensor, const Shape &shape) { return tensor->view(shape); });
 

@@ -28,7 +28,7 @@ void calculate(Tensor y, Tensor x, Tensor weight, float epsilon) {
 
     if (!desc_opt) {
         INFINICORE_CHECK_ERROR(infiniopCreateRMSNormDescriptor(
-            context::getInfiniopHandle(), &desc,
+            context::getInfiniopHandle(y->device()), &desc,
             y->desc(), x->desc(), weight->desc(), epsilon));
         cache.put(seed, desc);
     } else {

@@ -35,7 +35,7 @@ static void calculate(
 
     if (!desc_opt) {
         INFINICORE_CHECK_ERROR(infiniopCreateRandomSampleDescriptor(
-            context::getInfiniopHandle(), &desc,
+            context::getInfiniopHandle(indices->device()), &desc,
             indices->desc(), logits->desc()));
         cache.put(seed, desc);
     } else {

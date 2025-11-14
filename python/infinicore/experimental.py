@@ -217,22 +217,56 @@ def infini__str__(self):
 infinicore.Tensor.__str__ = infini__str__
 
 
-def infini__mul__(self, other):
-    self_torch = infinicore.convert_infini_to_torch_tensor(self)
-    other_torch = infinicore.convert_infini_to_torch_tensor(other)
-
-    # 先暂时使用 pytorch 实现逐元素相乘
-    output_torch = self_torch * other_torch
-    #
-    output_infinicore = infinicore.convert_torch_to_infini_tensor(output_torch)
-    return output_infinicore
+import torch
 
 
-infinicore.Tensor.__mul__ = infini__mul__
+def rand(
+    *size,
+    generator=None,
+    out=None,
+    dtype=None,
+    layout=torch.strided,
+    device=None,
+    requires_grad=False,
+    pin_memory=False,
+):
+    torch_tensor = torch.rand(
+        *size,
+        out=out,
+        dtype=dtype,
+        layout=layout,
+        device=device,
+        requires_grad=requires_grad,
+        pin_memory=pin_memory,
+    )
+    infini_tensor = infinicore.from_torch(torch_tensor)
+    return infini_tensor
 
 
-def infini__add__(self, other):
-    return infinicore.add(self, other)
+def to_infini(self) -> infinicore.Tensor:
+    """
+    将torch.Tensor的数据转为 infinicore.Tensor
+    """
+    return infinicore.from_torch(self)
 
 
-infinicore.Tensor.__add__ = infini__add__
+torch.Tensor.to_infini = to_infini
+
+
+def to_torch(self) -> torch.Tensor:
+    return infinicore.convert_infini_to_torch_tensor(self)
+
+
+infinicore.Tensor.to_torch = to_torch
+
+
+def from_infini(data: infinicore.Tensor) -> torch.Tensor:
+    """
+    将 infinicore.Tensor 的数据 转为 torch.Tensor
+    """
+    return infinicore.convert_infini_to_torch_tensor(data)
+
+
+torch.from_infini = from_infini
+
+print("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")

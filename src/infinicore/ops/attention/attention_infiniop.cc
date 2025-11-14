@@ -28,7 +28,7 @@ void calculate(Tensor out, Tensor q, Tensor k, Tensor v, Tensor k_cache, Tensor 
 
     if (!desc_opt) {
         INFINICORE_CHECK_ERROR(infiniopCreateAttentionDescriptor(
-            context::getInfiniopHandle(), &desc,
+            context::getInfiniopHandle(out->device()), &desc,
             out->desc(), q->desc(), k->desc(), v->desc(),
             k_cache->desc(), v_cache->desc(), pos));
         cache.put(seed, desc);

@@ -27,7 +27,7 @@ void calculate(Tensor y, Tensor x) {
     infiniopRearrangeDescriptor_t desc = nullptr;
 
     if (!desc_opt) {
-        INFINICORE_CHECK_ERROR(infiniopCreateRearrangeDescriptor(context::getInfiniopHandle(), &desc, y->desc(), x->desc()));
+        INFINICORE_CHECK_ERROR(infiniopCreateRearrangeDescriptor(context::getInfiniopHandle(y->device()), &desc, y->desc(), x->desc()));
         cache.put(seed, desc);
     } else {
         desc = *desc_opt;
