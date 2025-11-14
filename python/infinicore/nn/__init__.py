@@ -1,3 +1,1 @@
-from infinicore.nn import (
-    functional as functional,
-)
+from .functional import *  # noqa: F403
