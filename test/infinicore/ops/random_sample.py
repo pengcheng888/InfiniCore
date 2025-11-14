@@ -211,7 +211,7 @@ class OpTest(BaseOperatorTest):
             # Try the standard comparison first
             # This will call prepare_inputs_and_kwargs which will set self._current_logits
             return super().run_test(device, test_case, config)
-        except AssertionError:
+        except AssertionError as original_error:
             # If standard comparison fails, check if this is a valid case where
             # indices differ but logits values are equal
 
@@ -268,7 +268,7 @@ class OpTest(BaseOperatorTest):
 
             # Check if indices are equal (standard case)
             if ic_idx == ref_idx:
-                return
+                return True, "passed"
 
             # Special case: indices differ but logits values are equal
             # This is valid for random_sample when multiple indices have the same logits value
@@ -277,13 +277,13 @@ class OpTest(BaseOperatorTest):
                 logits_ic = logits_tensor[ic_idx].item()
                 if logits_ic == logits_ref:
                     # Valid: different indices but same logits value
-                    return
+                    return True, "passed"
             except (IndexError, RuntimeError):
                 # If we can't access the logits, fall through to raise the original error
                 pass
 
             # If we get here, the results are truly different
-            raise
+            raise original_error
 
 
 def main():
