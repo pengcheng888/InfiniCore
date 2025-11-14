@@ -26,7 +26,11 @@ from ...modeling_outputs import BaseModelOutputWithPast, CausalLMOutputWithPast
 from .configuration_llama import LlamaConfig
 from ...generation.utils import GenerationMixin
 from transformers.utils import logging
-
+from typing import Optional, Union
+import os
+import json
+from .configuration_llama import LlamaConfig
+import json
 
 import infinicore
 
@@ -307,8 +311,8 @@ class LlamaModel(infinicore.nn.Module):  # LlamaPreTrainedModel  nn.Module
         hidden_states = inputs_embeds
         ilayer = 0
         for decoder_layer in self.layers[: self.config.num_hidden_layers]:
-            print("ilayer: ", ilayer)
-            ilayer += 1
+            # print("ilayer: ", ilayer)
+            # ilayer += 1
 
             hidden_states = decoder_layer(
                 hidden_states,
@@ -386,11 +390,31 @@ class LlamaForCausalLM(
         logits = self.lm_head(
             outputs.last_hidden_state_last_token
         )  # logits Size([1, 1, 32000])
+
         return CausalLMOutputWithPast(
             logits=infinicore.convert_infini_to_torch_tensor(logits),
             next_token_logits=logits,
             past_key_values=outputs.past_key_values,
         )
+
+    @classmethod
+    def from_pretrained(
+        cls,
+        model_path: Optional[Union[str, os.PathLike]],
+        ignore_mismatched_sizes: bool = False,
+        weights_only: bool = True,
+        *model_args,
+        **kwargs,
+    ):
+        def load_config_json(dir_path_: str):
+            with open(os.path.join(dir_path_, "config.json"), "r") as f:
+                config = json.load(f)
+            return config
+
+        config_dict = load_config_json(os.path.join(model_path))
+        config = LlamaConfig(**config_dict)
+
+        return LlamaForCausalLM(config)
 
 
 __all__ = [

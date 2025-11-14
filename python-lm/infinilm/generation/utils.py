@@ -4,9 +4,6 @@ import infinicore
 
 
 class GenerationMixin:
-    def __init__(self):
-        pass
-
     def _get_initial_cache_position(self, seq_length, device, model_kwargs):
         """Calculates `cache_position` for the pre-fill stage based on `input_ids` and optionally past length"""
         cache_position_list = list(range(0, seq_length))
@@ -71,8 +68,9 @@ class GenerationMixin:
 
     def generate(self, **kwargs):
         kwargs.pop("attention_mask")
-        inputs_tensor = kwargs.pop("input_ids", None)
+        max_new_tokens = kwargs.pop("max_new_tokens", 10)
 
+        inputs_tensor = kwargs.pop("input_ids", None)
         model_kwargs = kwargs
         model_kwargs["use_cache"] = True
 
@@ -90,12 +88,13 @@ class GenerationMixin:
         # -------------------------------------------------------------------- #
         #                       _sample函数                                     #
         # -------------------------------------------------------------------- #
-        result = self._sample(input_ids, **model_kwargs)
+        result = self._sample(input_ids, max_new_tokens=max_new_tokens, **model_kwargs)
         return result
 
     def _sample(
         self,
-        input_ids,  # torch.LongTensor
+        input_ids,
+        max_new_tokens=10,
         **model_kwargs,
     ):
         r"""
@@ -122,7 +121,6 @@ class GenerationMixin:
         model_kwargs = self._get_initial_cache_position(cur_len, device, model_kwargs)
 
         # model_forward = self.__call__
-        max_new_tokens = 10
         cur_count = 0
         output_tokens_list = []
 
@@ -138,11 +136,10 @@ class GenerationMixin:
             )  # input_ids: Tensor [[1,1128,...]]
 
             # -------------------------------------------------------------------------- #
-            #                     推理一次
+            #                     计算一次
             # -------------------------------------------------------------------------- #
-            outputs = self.forward(
-                **model_inputs, return_dict=True
-            )  # => CausalLMOutputWithPast
+            # => CausalLMOutputWithPast
+            outputs = self.forward(**model_inputs, return_dict=True)
 
             # -------------------------------------------------------------------------- #
             #                     更新下一次所需的，cache_position
@@ -150,7 +147,6 @@ class GenerationMixin:
             # synced_gpus: don't waste resources running the code we don't need; kwargs must be updated before skipping
             if model_kwargs.get("use_cache", True):
                 cache_position_infini = model_kwargs["cache_position_infini"]
-
                 last_pos_value = infinicore.get_index_value(cache_position_infini, [-1])
                 model_kwargs["cache_position_infini"] = (
                     infinicore.convert_list_to_infini_tensor(
@@ -176,11 +172,24 @@ class GenerationMixin:
             if isinstance(next_token_scores, infinicore.Tensor):
                 import torch
 
-                next_tokens = torch.argmax(
-                    infinicore.convert_infini_to_torch_tensor(next_token_scores), dim=-1
-                )
+                print("next_token_scores: ", next_token_scores.shape)
 
-                next_tokens = infinicore.from_torch(next_tokens)  # shape: [1,1]
+                if False:
+                    next_tokens = infinicore.nn.functional.random_sample(
+                        next_token_scores.view([32000]),
+                        1.0,
+                        1.0,
+                        1,
+                        1.0,
+                    )
+                    next_tokens = next_tokens.view([1, 1, 1])
+                if True:
+                    next_tokens = torch.argmax(
+                        infinicore.convert_infini_to_torch_tensor(next_token_scores),
+                        dim=-1,
+                    )
+
+                    next_tokens = infinicore.from_torch(next_tokens)  # shape: [1,1]
 
             # ----------------------------------------------------------------- #
             #                        收集结果
@@ -190,6 +199,7 @@ class GenerationMixin:
                 next_tokens = infinicore.convert_infini_to_torch_tensor(
                     next_tokens
                 ).cpu()
+
                 next_token = next_tokens[
                     0, 0
                 ].item()  # 将 torch.Tensor 转为 python的int类型
