@@ -13,14 +13,14 @@
 # The use of this file is governed by the BSD 3-Clause License.
 
 
-import infinicore
+from ..tensor import Tensor
 
 
-class InfiniCoreParameter(infinicore.Tensor):
+class InfiniCoreParameter(Tensor):
     r"""A kind of Tensor that is to be considered a module parameter."""
 
     def __init__(self, data=None):
-        if not isinstance(data, infinicore.Tensor):
+        if not isinstance(data, Tensor):
             raise ValueError("The `data` variable must be of type `infinicore.Tensor`.")
         super().__init__(data._underlying)
 

@@ -32,7 +32,10 @@ from typing import (
 
 import infinicore
 
-from .parameter import Parameter
+from ...tensor import Tensor
+from ..parameter import Parameter
+
+__all__ = ["Module"]
 
 _EXTRA_STATE_KEY_SUFFIX = "_extra_state"
 T = TypeVar("T", bound="InfiniCoreModule")
@@ -57,7 +60,7 @@ class InfiniCoreModule:
 
     _version: int = 1
     _parameters: Dict[str, Optional[Parameter]]
-    _buffers: Dict[str, Optional[infinicore.Tensor]]
+    _buffers: Dict[str, Optional[Tensor]]
     _non_persistent_buffers_set: Set[str]
     _modules: Dict[str, Optional["InfiniCoreModule"]]
 
@@ -87,9 +90,7 @@ class InfiniCoreModule:
             f"'{type(self).__name__}' object has no attribute '{name}'"
         )
 
-    def __setattr__(
-        self, name: str, value: Union[infinicore.Tensor, "InfiniCoreModule"]
-    ) -> None:
+    def __setattr__(self, name: str, value: Union[Tensor, "InfiniCoreModule"]) -> None:
         def remove_from(*dicts_or_sets) -> None:
             for d in dicts_or_sets:
                 if name in d:
@@ -113,7 +114,7 @@ class InfiniCoreModule:
             )
             self.register_parameter(name, value)
         elif name in params:  # value will overwrite the name of params.
-            if not isinstance(value, infinicore.Tensor):
+            if not isinstance(value, Tensor):
                 raise TypeError(
                     f"cannot assign 'value' as parameter '{name}'  (infinicore.nn.Parameter, Parameter or None expected)"
                 )
@@ -141,7 +142,7 @@ class InfiniCoreModule:
             else:
                 buffers = self.__dict__.get("_buffers")
                 if buffers is not None and name in buffers:
-                    if value is not None and not isinstance(value, infinicore.Tensor):
+                    if value is not None and not isinstance(value, Tensor):
                         raise TypeError(
                             f"cannot assign 'value' as buffer '{name}' "
                             "(torch.Tensor or None expected)"
@@ -154,7 +155,7 @@ class InfiniCoreModule:
         return self.forward(*input, **kwargs)
 
     def register_buffer(
-        self, name: str, tensor: Optional[infinicore.Tensor], persistent: bool = True
+        self, name: str, tensor: Optional[Tensor], persistent: bool = True
     ) -> None:
         r"""Adds a buffer to the module.
 
@@ -187,7 +188,7 @@ class InfiniCoreModule:
             raise KeyError('buffer name can\'t be empty string ""')
         elif hasattr(self, name) and name not in self._buffers:
             raise KeyError("attribute '{}' already exists".format(name))
-        elif tensor is not None and not isinstance(tensor, infinicore.Tensor):
+        elif tensor is not None and not isinstance(tensor, Tensor):
             raise TypeError(
                 "cannot assign '{}' object to buffer '{}' "
                 "(torch Tensor or None required)".format("tensor", name)
@@ -256,7 +257,7 @@ class InfiniCoreModule:
         if param is None:
             self._parameters[name] = None  # 竟然可以是None
         else:
-            if not isinstance(param, (Parameter, infinicore.Tensor)):
+            if not isinstance(param, (Parameter, Tensor)):
                 raise TypeError(
                     f"cannot assign  'param' object to parameter '{name}' "
                     "(infinicore.nn.Parameter, Parameter or None required)"
@@ -477,9 +478,9 @@ class InfiniCoreModule:
                 input_param = state_dict[key]
 
                 # input_param must be of type infinicore.Tensor
-                if not isinstance(input_param, infinicore.Tensor):
+                if not isinstance(input_param, Tensor):
                     raise TypeError(
-                        f"While copying the parameter named {key}, expected infinicore.Tensor from checkpoint but received {type(input_param)}"
+                        f"While copying the parameter named {key}, expected Tensor from checkpoint but received {type(input_param)}"
                     )
 
                 if (
@@ -575,7 +576,7 @@ class InfiniCoreModule:
                         for k, v in local_state_dict.items()
                         if k.startswith(child_prefix)
                     }
-                    load(child, child_state_dict, child_prefix)  # noqa: F821
+                    load(child, child_state_dict, child_prefix)
 
         load(self, state_dict)
         del load
@@ -654,7 +655,7 @@ class InfiniCoreModule:
         for elem in gen:
             yield elem
 
-    def buffers(self, recurse: bool = True) -> Iterator[infinicore.Tensor]:
+    def buffers(self, recurse: bool = True) -> Iterator[Tensor]:
         r"""Returns an iterator over module buffers.
 
         Args:
@@ -677,7 +678,7 @@ class InfiniCoreModule:
 
     def named_buffers(
         self, prefix: str = "", recurse: bool = True
-    ) -> Iterator[Tuple[str, infinicore.Tensor]]:
+    ) -> Iterator[Tuple[str, Tensor]]:
         r"""Returns an iterator over module buffers, yielding both the
         name of the buffer as well as the buffer itself.
 
