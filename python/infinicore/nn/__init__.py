@@ -1,1 +1,3 @@
-from .functional import *  # noqa: F403
+from infinicore.nn import functional
+
+__all__ = ["functional"]
