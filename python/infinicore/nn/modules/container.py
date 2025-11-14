@@ -11,6 +11,9 @@ from typing import Iterator, List, Optional, Sequence, TypeVar, Union
 
 from .module import Module
 
+__all__ = ["ModuleList"]
+
+
 # Define type variable for module compatibility (supports InfiniCoreModule)
 ModuleType = TypeVar("ModuleType", bound=Union["Module"])
 

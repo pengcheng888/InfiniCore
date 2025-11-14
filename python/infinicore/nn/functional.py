@@ -105,9 +105,34 @@ def scaled_dot_product_attention(
         key._underlying,
         value._underlying,
         scale,
-def embedding(input: Tensor, weight: Tensor, *, out=None) -> Tensor:
+    )
+
+    return out
+
+
+def embedding(
+    input: Tensor,
+    weight: Tensor,
+    padding_idx=None,
+    max_norm=None,
+    norm_type=2.0,
+    scale_grad_by_freq=False,
+    sparse=False,
+    *,
+    out=None,
+) -> Tensor:
     r"""Generate a simple lookup table that looks up embeddings in a fixed dictionary and size."""
 
+    assert (
+        (padding_idx is None)
+        and (max_norm is None)
+        and (scale_grad_by_freq is False)
+        and (sparse is False)
+    ), "Unsupported parameters."
+
+    assert "cpu" == input.device.type, (
+        "The device of 'input' variable must be on the CPU."
+    )
     if out is None:
         return Tensor(_infinicore.embedding(input._underlying, weight._underlying))
 
@@ -145,6 +170,8 @@ def rope(
         cos_table._underlying,
         algo,
     )
+
+
 def linear(input: Tensor, weight: Tensor, bias=None, *, out=None) -> Tensor:
     r"""Applies a linear transformation to the incoming data: y=xA^T+b."""
 
@@ -163,6 +190,8 @@ def linear(input: Tensor, weight: Tensor, bias=None, *, out=None) -> Tensor:
         weight._underlying,
         None if bias is None else bias._underlying,
     )
+
+
 def random_sample(
     logits: Tensor,
     random_val: float,

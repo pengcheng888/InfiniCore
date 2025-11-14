@@ -1,6 +1,6 @@
 import contextlib
 
-import infinicore.nn as nn
+from infinicore import nn as nn
 from infinicore.device import device
 from infinicore.dtype import (
     bfloat16,
@@ -33,7 +33,6 @@ from infinicore.ops.matmul import matmul
 from infinicore.ops.mul import mul
 from infinicore.ops.rearrange import rearrange
 from infinicore.tensor import (
-    Tensor,
     empty,
     empty_like,
     from_blob,
@@ -42,6 +41,17 @@ from infinicore.tensor import (
     strided_empty,
     strided_from_blob,
     zeros,
+)
+
+from .tensor import Tensor
+
+from infinicore.experimental import (
+    convert_infini_to_torch_tensor,
+    convert_torch_to_infini_tensor,
+    to_torch_dtype,
+    to_infinicore_dtype,
+    convert_list_to_infini_tensor,
+    get_index_value,
 )
 
 __all__ = [
