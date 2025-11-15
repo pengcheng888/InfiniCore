@@ -137,14 +137,12 @@ class LlamaAttention(infinicore.nn.Module):
         # --------------------------------------------------------------------------------------- #
         #                           对 Q和K， 加上 rope
         # --------------------------------------------------------------------------------------- #
-        cache_position_infini = kwargs.pop("cache_position_infini", None)
-        if not cache_position_infini:
-            raise KeyError("cache_position_infini error")
+        cache_position = kwargs.pop("cache_position", None)
+        if not cache_position:
+            raise KeyError("cache_position error")
 
-        query_states = self.rope_infinicore(
-            query_states_infinicore, cache_position_infini
-        )
-        key_states = self.rope_infinicore(key_states_infinicore, cache_position_infini)
+        query_states = self.rope_infinicore(query_states_infinicore, cache_position)
+        key_states = self.rope_infinicore(key_states_infinicore, cache_position)
 
         # --------------------------------------------------------------------------------------- #
         #                           kv cache
@@ -249,8 +247,8 @@ class LlamaModel(infinicore.nn.Module):
 
     def forward(
         self,
-        input_ids_infini,
-        cache_position_infini,
+        input_ids,
+        cache_position,
         past_key_values: Optional[Cache] = None,  # StaticCache(layers=[StaticLayer])
         use_cache: Optional[bool] = None,  # True
         **kwargs,  # {}
@@ -265,7 +263,7 @@ class LlamaModel(infinicore.nn.Module):
         # inputs_embeds : {1,5,2048}  tensor([[[...]]])
         # input_ids = input_ids.to(dtype=int32)
 
-        inputs_embeds = self.embed_tokens(input_ids_infini)
+        inputs_embeds = self.embed_tokens(input_ids)
 
         # --------------------------------------------------------- #
         #                    decoder_layer
@@ -275,7 +273,7 @@ class LlamaModel(infinicore.nn.Module):
             hidden_states = decoder_layer(
                 hidden_states,
                 past_key_values=past_key_values,
-                cache_position_infini=cache_position_infini,
+                cache_position=cache_position,
                 **kwargs,
             )
 
@@ -309,8 +307,8 @@ class LlamaForCausalLM(infinicore.nn.Module, GenerationMixin):
 
     def forward(
         self,
-        input_ids_infini,
-        cache_position_infini,
+        input_ids,
+        cache_position,
         past_key_values: Optional[Cache] = None,
         use_cache: Optional[bool] = None,
         **kwargs,
@@ -321,8 +319,8 @@ class LlamaForCausalLM(infinicore.nn.Module, GenerationMixin):
         """
 
         outputs: BaseModelOutputWithPast = self.model(
-            input_ids_infini,
-            cache_position_infini,
+            input_ids,
+            cache_position,
             past_key_values=past_key_values,
             use_cache=use_cache,
             **kwargs,

@@ -6,18 +6,17 @@ from ..cache_utils import Cache, DynamicCache
 
 
 class GenerationMixin:
-    def _get_initial_cache_position(self, seq_length, device, model_kwargs):
+    def _get_initial_cache_position(self, seq_length, device):
         """Calculates `cache_position` for the pre-fill stage based on `input_ids` and optionally past length"""
         cache_position_list = list(range(0, seq_length))
 
-        cache_position_infini = infinicore.convert_list_to_infini_tensor(
+        cache_position = infinicore.convert_list_to_infini_tensor(
             cache_position_list,
             shape=[seq_length],
             infini_device=device,
         )
-        model_kwargs["cache_position_infini"] = cache_position_infini
 
-        return model_kwargs
+        return cache_position
 
     def prepare_inputs_for_generation(
         self,
@@ -40,19 +39,17 @@ class GenerationMixin:
         # -------------------------------------------------------------------- #
         #                 所需的: cache_position
         # -------------------------------------------------------------------- #
-        model_inputs["cache_position_infini"] = kwargs.get(
-            "cache_position_infini", None
-        )
+        model_inputs["cache_position"] = kwargs.get("cache_position", None)
 
         # -------------------------------------------------------------------- #
         #                 所需的: token的input_ids
         # -------------------------------------------------------------------- #
         if kwargs.get("next_token", None) is not None:
             next_token = kwargs.get("next_token", None)
-            input_ids_infini = infinicore.convert_list_to_infini_tensor(
+            input_ids = infinicore.convert_list_to_infini_tensor(
                 [next_token], shape=[1, 1]
             )
-            model_inputs["input_ids_infini"] = input_ids_infini
+            model_inputs["input_ids"] = input_ids
 
         # -------------------------------------------------------------------- #
         #                 所需的: 其他
@@ -64,8 +61,7 @@ class GenerationMixin:
 
         return model_inputs
 
-    def generate(self, input_ids_infini, max_new_tokens=10, device=None, **kwargs):
-        kwargs.pop("attention_mask", None)
+    def generate(self, input_ids, max_new_tokens=10, device=None, **kwargs):
         model_kwargs = kwargs
 
         # -------------------------------------------------------------------- #
@@ -78,7 +74,7 @@ class GenerationMixin:
         #                       _sample函数                                     #
         # -------------------------------------------------------------------- #
         result = self._sample(
-            input_ids_infini,
+            input_ids,
             max_new_tokens=max_new_tokens,
             device=device,
             **model_kwargs,
@@ -87,7 +83,7 @@ class GenerationMixin:
 
     def _sample(
         self,
-        input_ids_infini,
+        input_ids,
         max_new_tokens=10,
         device=None,
         **model_kwargs,
@@ -106,18 +102,19 @@ class GenerationMixin:
 
         """
 
-        batch_size, cur_len = input_ids_infini.shape[:2]
+        batch_size, cur_len = input_ids.shape[:2]
 
         # -------------------------------------------------------------------------- #
         #                     初始化 cache_position
         # -------------------------------------------------------------------------- #
-        model_kwargs = self._get_initial_cache_position(cur_len, device, model_kwargs)
+        cache_position = self._get_initial_cache_position(cur_len, device)
 
         # model_forward = self.__call__
         cur_count = 0
         output_tokens_list = []
 
-        model_kwargs["input_ids_infini"] = input_ids_infini
+        model_kwargs["input_ids"] = input_ids
+        model_kwargs["cache_position"] = cache_position
         while cur_count < max_new_tokens:
             # -------------------------------------------------------------------------- #
             #                     prepare model inputs
@@ -133,13 +130,11 @@ class GenerationMixin:
             #                     更新下一次所需的，cache_position
             # -------------------------------------------------------------------------- #
             # synced_gpus: don't waste resources running the code we don't need; kwargs must be updated before skipping
-            cache_position_infini = model_kwargs["cache_position_infini"]
-            last_pos_value = infinicore.get_index_value(cache_position_infini, [-1])
-            model_kwargs["cache_position_infini"] = (
-                infinicore.convert_list_to_infini_tensor(
-                    [last_pos_value + 1],
-                    infini_device=infinicore.device(device.type, device.index),
-                )
+            cache_position = model_kwargs["cache_position"]
+            last_pos_value = infinicore.get_index_value(cache_position, [-1])
+            model_kwargs["cache_position"] = infinicore.convert_list_to_infini_tensor(
+                [last_pos_value + 1],
+                infini_device=infinicore.device(device.type, device.index),
             )
 
             # -------------------------------------------------------------------------- #
