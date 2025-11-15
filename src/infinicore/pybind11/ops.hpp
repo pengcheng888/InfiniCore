@@ -5,6 +5,7 @@
 #include "ops/add.hpp"
 #include "ops/attention.hpp"
 #include "ops/causal_softmax.hpp"
+#include "ops/linear.hpp"
 #include "ops/matmul.hpp"
 #include "ops/rearrange.hpp"
 #include "ops/rms_norm.hpp"
@@ -19,6 +20,7 @@ inline void bind(py::module &m) {
     bind_add(m);
     bind_attention(m);
     bind_causal_softmax(m);
+    bind_linear(m);
     bind_matmul(m);
     bind_rearrange(m);
     bind_rms_norm(m);
