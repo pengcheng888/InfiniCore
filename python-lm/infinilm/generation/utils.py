@@ -171,39 +171,64 @@ class GenerationMixin:
             next_token_scores = next_token_logits  # cuda:0
 
             # random_sample : token selection
-            if isinstance(next_token_scores, infinicore.Tensor):
-                import torch
+            print("next_token_scores: ", next_token_scores.shape)  # [1, 1, 32000]
+            batch_size, _, vocab_size = next_token_scores.shape
+            if True:
+                next_tokens = infinicore.empty(
+                    (batch_size,),
+                    dtype=infinicore.int32,
+                    device=next_token_scores.device,
+                )
 
-                print("next_token_scores: ", next_token_scores.shape)
-
-                if False:
-                    next_tokens = infinicore.nn.functional.random_sample(
-                        next_token_scores.view([32000]),
+                for i in range(0, batch_size):
+                    score = infinicore.narrow(next_token_scores, 0, i, 1).view(
+                        [vocab_size]
+                    )
+                    out = infinicore.narrow(next_tokens, 0, i, 1).view([])
+                    infinicore.nn.functional.random_sample(
+                        score,
                         1.0,
-                        1.0,
+                        0.0,
                         1,
                         1.0,
+                        out=out,
                     )
-                    next_tokens = next_tokens.view([1, 1, 1])
 
-                if True:
-                    next_tokens = torch.argmax(
-                        next_token_scores.to_torch(),
-                        dim=-1,
-                    )
-                    next_tokens = next_tokens.to_infini()  # shape: [1,1]
+                # ----------------------------------------------------------------- #
+                #                        收集结果
+                # ----------------------------------------------------------------- #
+                # update generated ids, model inputs, and length for next step
+                next_tokens = next_tokens.to_torch().cpu()
 
-            # ----------------------------------------------------------------- #
-            #                        收集结果
-            # ----------------------------------------------------------------- #
-            # update generated ids, model inputs, and length for next step
+                # 将 torch.Tensor 中的数据 转为 python的int类型
+                next_token = next_tokens[0].item()
+                output_tokens_list.append(next_token)
+                model_kwargs["next_token"] = next_token
 
-            next_tokens = next_tokens.to_torch().cpu()
+            else:
+                import torch
 
-            # 将 torch.Tensor 中的数据 转为 python的int类型
-            next_token = next_tokens[0, 0].item()
-            output_tokens_list.append(next_token)
-            model_kwargs["next_token"] = next_token
+                next_tokens = torch.argmax(
+                    next_token_scores.to_torch(),
+                    dim=-1,
+                )
+                print(next_tokens.shape)
+                next_tokens = next_tokens.squeeze(dim=1).to_infini()  # shape: [1,1]
+                print(next_tokens.shape)
+
+                exit(-1)
+
+                # ----------------------------------------------------------------- #
+                #                        收集结果
+                # ----------------------------------------------------------------- #
+                # update generated ids, model inputs, and length for next step
+
+                next_tokens = next_tokens.to_torch().cpu()
+
+                # 将 torch.Tensor 中的数据 转为 python的int类型
+                next_token = next_tokens[0, 0].item()
+                output_tokens_list.append(next_token)
+                model_kwargs["next_token"] = next_token
 
             cur_len += 1
             cur_count += 1
