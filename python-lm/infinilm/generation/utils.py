@@ -1,4 +1,4 @@
-from typing import TYPE_CHECKING, Any, Callable, Optional, Union
+from typing import Optional
 
 import infinicore
 
@@ -13,7 +13,7 @@ class GenerationMixin:
         cache_position_infini = infinicore.convert_list_to_infini_tensor(
             cache_position_list,
             shape=[seq_length],
-            infini_device=infinicore.device(device.type, device.index),
+            infini_device=device,
         )
         model_kwargs["cache_position_infini"] = cache_position_infini
 
@@ -25,11 +25,7 @@ class GenerationMixin:
         **kwargs,
     ):
         """
-        Prepare the model inputs for generation. It includes operations like computing the 4D attention mask or
-        slicing inputs given the existing cache.
-
-        See the forward pass in the model documentation for expected arguments (different models might have different
-        requirements for e.g. `past_key_values`). This function should work as is for most LLMs.
+        Prepare the model inputs for generation. It includes operations like slicing inputs given the existing cache.
         """
         import infinicore
 
@@ -68,35 +64,32 @@ class GenerationMixin:
 
         return model_inputs
 
-    def generate(self, **kwargs):
-        kwargs.pop("attention_mask")
-        max_new_tokens = kwargs.pop("max_new_tokens", 10)
-
-        inputs_tensor = kwargs.pop("input_ids", None)
+    def generate(self, input_ids_infini, max_new_tokens=10, device=None, **kwargs):
+        kwargs.pop("attention_mask", None)
         model_kwargs = kwargs
-        model_kwargs["use_cache"] = True
-
-        # -------------------------------------------------------------------- #
-        #                  输入的 token_ids 转为 cpu                             #
-        # -------------------------------------------------------------------- #
-        input_ids = inputs_tensor
-        model_kwargs["input_ids_infini"] = inputs_tensor.cpu().to_infini()
 
         # -------------------------------------------------------------------- #
         #                       创建 cache                                      #
         # -------------------------------------------------------------------- #
+        model_kwargs["use_cache"] = True
         model_kwargs["past_key_values"] = DynamicCache(config=self.config)
 
         # -------------------------------------------------------------------- #
         #                       _sample函数                                     #
         # -------------------------------------------------------------------- #
-        result = self._sample(input_ids, max_new_tokens=max_new_tokens, **model_kwargs)
+        result = self._sample(
+            input_ids_infini,
+            max_new_tokens=max_new_tokens,
+            device=device,
+            **model_kwargs,
+        )
         return result
 
     def _sample(
         self,
-        input_ids,
+        input_ids_infini,
         max_new_tokens=10,
+        device=None,
         **model_kwargs,
     ):
         r"""
@@ -113,9 +106,7 @@ class GenerationMixin:
 
         """
 
-        # keep track of which sequences are already finished
-        batch_size, cur_len = input_ids.shape[:2]
-        device = input_ids.device
+        batch_size, cur_len = input_ids_infini.shape[:2]
 
         # -------------------------------------------------------------------------- #
         #                     初始化 cache_position
@@ -126,113 +117,74 @@ class GenerationMixin:
         cur_count = 0
         output_tokens_list = []
 
-        # -------------------------------------------------------------------------- #
-        #                     循环生成，结束条件是字符数量
-        # -------------------------------------------------------------------------- #
+        model_kwargs["input_ids_infini"] = input_ids_infini
         while cur_count < max_new_tokens:
             # -------------------------------------------------------------------------- #
             #                     prepare model inputs
             # -------------------------------------------------------------------------- #
-            model_inputs = self.prepare_inputs_for_generation(
-                **model_kwargs
-            )  # input_ids: Tensor [[1,1128,...]]
+            model_inputs = self.prepare_inputs_for_generation(**model_kwargs)
 
             # -------------------------------------------------------------------------- #
             #                     计算一次
             # -------------------------------------------------------------------------- #
-            # => CausalLMOutputWithPast
             outputs = self.forward(**model_inputs, return_dict=True)
 
             # -------------------------------------------------------------------------- #
             #                     更新下一次所需的，cache_position
             # -------------------------------------------------------------------------- #
             # synced_gpus: don't waste resources running the code we don't need; kwargs must be updated before skipping
-            if model_kwargs.get("use_cache", True):
-                cache_position_infini = model_kwargs["cache_position_infini"]
-                last_pos_value = infinicore.get_index_value(cache_position_infini, [-1])
-                model_kwargs["cache_position_infini"] = (
-                    infinicore.convert_list_to_infini_tensor(
-                        [last_pos_value + 1],
-                        infini_device=infinicore.device(device.type, device.index),
-                    )
+            cache_position_infini = model_kwargs["cache_position_infini"]
+            last_pos_value = infinicore.get_index_value(cache_position_infini, [-1])
+            model_kwargs["cache_position_infini"] = (
+                infinicore.convert_list_to_infini_tensor(
+                    [last_pos_value + 1],
+                    infini_device=infinicore.device(device.type, device.index),
                 )
-            else:
-                raise KeyError("cache_position error")
-
-            # Copy is needed to avoid keeping a hanging ref to outputs.logits which may be very large for first iteration
-            # (the clone itself is always small)
+            )
 
             # -------------------------------------------------------------------------- #
-            #                     处理 推理的输出
+            #                     处理输出
             # -------------------------------------------------------------------------- #
             next_token_logits = outputs.next_token_logits
-
-            # pre-process distribution： logits_processor
             next_token_scores = next_token_logits  # cuda:0
 
+            # -------------------------------------------------------------------------- #
+            #                     random_sample
+            # -------------------------------------------------------------------------- #
             # random_sample : token selection
-            print("next_token_scores: ", next_token_scores.shape)  # [1, 1, 32000]
             batch_size, _, vocab_size = next_token_scores.shape
-            if True:
-                next_tokens = infinicore.empty(
-                    (batch_size,),
-                    dtype=infinicore.int32,
-                    device=next_token_scores.device,
+
+            next_tokens = infinicore.empty(
+                (batch_size,),
+                dtype=infinicore.int32,
+                device=next_token_scores.device,
+            )
+
+            for i in range(0, batch_size):
+                score = infinicore.narrow(next_token_scores, 0, i, 1).view([vocab_size])
+                out = infinicore.narrow(next_tokens, 0, i, 1).view([])
+                infinicore.nn.functional.random_sample(
+                    score,
+                    1.0,
+                    0.0,
+                    1,
+                    1.0,
+                    out=out,
                 )
 
-                for i in range(0, batch_size):
-                    score = infinicore.narrow(next_token_scores, 0, i, 1).view(
-                        [vocab_size]
-                    )
-                    out = infinicore.narrow(next_tokens, 0, i, 1).view([])
-                    infinicore.nn.functional.random_sample(
-                        score,
-                        1.0,
-                        0.0,
-                        1,
-                        1.0,
-                        out=out,
-                    )
+            # ----------------------------------------------------------------- #
+            #                        得到cpu上的结果
+            # ----------------------------------------------------------------- #
+            # update generated ids, model inputs, and length for next step
+            next_tokens = next_tokens.to_torch().cpu()
 
-                # ----------------------------------------------------------------- #
-                #                        收集结果
-                # ----------------------------------------------------------------- #
-                # update generated ids, model inputs, and length for next step
-                next_tokens = next_tokens.to_torch().cpu()
-
-                # 将 torch.Tensor 中的数据 转为 python的int类型
-                next_token = next_tokens[0].item()
-                output_tokens_list.append(next_token)
-                model_kwargs["next_token"] = next_token
-
-            else:
-                import torch
-
-                next_tokens = torch.argmax(
-                    next_token_scores.to_torch(),
-                    dim=-1,
-                )
-                print(next_tokens.shape)
-                next_tokens = next_tokens.squeeze(dim=1).to_infini()  # shape: [1,1]
-                print(next_tokens.shape)
-
-                exit(-1)
-
-                # ----------------------------------------------------------------- #
-                #                        收集结果
-                # ----------------------------------------------------------------- #
-                # update generated ids, model inputs, and length for next step
-
-                next_tokens = next_tokens.to_torch().cpu()
-
-                # 将 torch.Tensor 中的数据 转为 python的int类型
-                next_token = next_tokens[0, 0].item()
-                output_tokens_list.append(next_token)
-                model_kwargs["next_token"] = next_token
+            next_token = next_tokens[0].item()  # 将 torch 中的数据 转为 python的int类型
+            output_tokens_list.append(next_token)
+            model_kwargs["next_token"] = next_token
 
             cur_len += 1
             cur_count += 1
 
             del outputs
 
-        return input_ids, output_tokens_list
+        return output_tokens_list

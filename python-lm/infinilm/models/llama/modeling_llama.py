@@ -249,31 +249,41 @@ class LlamaModel(infinicore.nn.Module):
 
     def forward(
         self,
+        input_ids_infini,
+        cache_position_infini,
         past_key_values: Optional[Cache] = None,  # StaticCache(layers=[StaticLayer])
-        inputs_embeds=None,  # None
         use_cache: Optional[bool] = None,  # True
         **kwargs,  # {}
     ) -> BaseModelOutputWithPast:
         if use_cache and past_key_values is None:
             past_key_values = DynamicCache(config=self.config)
 
-        if inputs_embeds is None:
-            # input_ids :     {1,5}       tensor([[    1,  1128,   526,   366, 29892]])
-            # inputs_embeds : {1,5,2048}  tensor([[[...]]])
-            # input_ids = input_ids.to(dtype=int32)
+        # --------------------------------------------------------- #
+        #               token的embedding
+        # --------------------------------------------------------- #
+        # input_ids :     {1,5}       tensor([[    1,  1128,   526,   366, 29892]])
+        # inputs_embeds : {1,5,2048}  tensor([[[...]]])
+        # input_ids = input_ids.to(dtype=int32)
 
-            input_ids_infini = kwargs.pop("input_ids_infini", None)
-            inputs_embeds = self.embed_tokens(input_ids_infini)
+        inputs_embeds = self.embed_tokens(input_ids_infini)
 
+        # --------------------------------------------------------- #
+        #                    decoder_layer
+        # --------------------------------------------------------- #
         hidden_states = inputs_embeds
         for decoder_layer in self.layers[: self.config.num_hidden_layers]:
             hidden_states = decoder_layer(
                 hidden_states,
                 past_key_values=past_key_values,
+                cache_position_infini=cache_position_infini,
                 **kwargs,
             )
 
         hidden_states = self.norm(hidden_states)  # 1,5,2048
+
+        # --------------------------------------------------------- #
+        #                    norm
+        # --------------------------------------------------------- #
         _, ntoken, _ = hidden_states.shape
 
         last_hidden_state_last_token = infinicore.narrow(
@@ -299,8 +309,9 @@ class LlamaForCausalLM(infinicore.nn.Module, GenerationMixin):
 
     def forward(
         self,
+        input_ids_infini,
+        cache_position_infini,
         past_key_values: Optional[Cache] = None,
-        inputs_embeds=None,
         use_cache: Optional[bool] = None,
         **kwargs,
     ) -> CausalLMOutputWithPast:
@@ -308,9 +319,11 @@ class LlamaForCausalLM(infinicore.nn.Module, GenerationMixin):
         input_ids: Optional[ LongTensor ] = None,  # tensor([[    1,  1128,   526,   366, 29892]])
         cache_position: Optional[ LongTensor ] = None,  # [0,1,2,3,4] ...  [5]   cuda:0
         """
+
         outputs: BaseModelOutputWithPast = self.model(
+            input_ids_infini,
+            cache_position_infini,
             past_key_values=past_key_values,
-            inputs_embeds=inputs_embeds,
             use_cache=use_cache,
             **kwargs,
         )
@@ -327,10 +340,6 @@ class LlamaForCausalLM(infinicore.nn.Module, GenerationMixin):
     def from_pretrained(
         cls,
         model_path: Optional[Union[str, os.PathLike]],
-        ignore_mismatched_sizes: bool = False,
-        weights_only: bool = True,
-        *model_args,
-        **kwargs,
     ):
         def load_config_json(dir_path_: str):
             with open(os.path.join(dir_path_, "config.json"), "r") as f:

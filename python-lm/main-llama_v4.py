@@ -2,6 +2,8 @@ import infinilm
 import torch
 from infinilm.modeling_utils import get_model_state_dict
 
+import infinicore
+
 
 def func(Folder):
     # ---------------------------------------------------------------------------- #
@@ -38,11 +40,15 @@ def func(Folder):
     # ---------------------------------------------------------------------------- #
     #                        自回归生成
     # ---------------------------------------------------------------------------- #
-    outputs, output_tokens_list = model.generate(
-        **input_ids, max_new_tokens=10, device=None
+    inputs_tensor = input_ids["input_ids"]
+    input_ids_infini = inputs_tensor.cpu().to_infini()
+    infini_device = infinicore.device(model_device, 0)
+
+    output_tokens_list = model.generate(
+        input_ids_infini, max_new_tokens=10, device=infini_device
     )
 
-    print(outputs, output_tokens_list)
+    print(output_tokens_list)
 
     # ---------------------------------------------------------------------------- #
     #                        解码成字符显示
