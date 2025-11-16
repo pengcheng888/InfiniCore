@@ -16,7 +16,7 @@ def func(Folder):
     # ---------------------------------------------------------------------------- #
     #                        创建模型, 加载权重
     # ---------------------------------------------------------------------------- #
-    model_device = "cuda"
+    model_device = "cpu"
 
     model = infinilm.LlamaForCausalLM.from_pretrained(model_path=Folder)
     model_param_infini = get_model_state_dict(model_path=Folder, device=model_device)
@@ -61,5 +61,7 @@ def func(Folder):
 if __name__ == "__main__":
     Folder = r"/home/ubuntu/workspace_aisys/tensorRT_quantization-main/Llama/Llama2-TinyLlama-1.1B-Chat-v1.0/"
     Folder = r"/home/ubuntu/workspace_aisys/tensorRT_quantization-main/Llama/TinyLlama-1.1B-Chat-v1.0-small/"
-    # Folder = r'/home/ubuntu/models/TinyLlama-1.1B-Chat-v1.0-small/'
+    Folder = r"/home/ubuntu/models/TinyLlama-1.1B-Chat-v1.0-small/"
+    # Folder = r"/home/ubuntu/models/TinyLlama-1.1B-Chat-v1.0/"
+
     func(Folder)

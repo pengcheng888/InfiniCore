@@ -107,8 +107,8 @@ class RoPE(Module):  # Module
                 torch_device=device,
             )
 
-            _sin_table = sin_table_infini.to(infinicore.device("cuda", 0))
-            _cos_table = cos_table_infini.to(infinicore.device("cuda", 0))
+            _sin_table = sin_table_infini.to(infinicore.device("cpu", 0))
+            _cos_table = cos_table_infini.to(infinicore.device("cpu", 0))
 
         bs, ntok, num_attention_heads, head_dim = states.shape
         states = states.view((bs * ntok, num_attention_heads, head_dim))

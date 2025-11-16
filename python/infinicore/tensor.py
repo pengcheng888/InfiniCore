@@ -79,6 +79,9 @@ class Tensor:
     def view(self, shape):
         return Tensor(self._underlying.view(shape))
 
+    def narrow(self, dim: int, start: int, length: int) -> "Tensor":
+        return Tensor(self._underlying.narrow(dim, start, length))
+
     def debug(self, filename=None):
         """Print tensor data or save to file for debugging
 
