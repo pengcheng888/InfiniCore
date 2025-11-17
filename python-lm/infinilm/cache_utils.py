@@ -32,11 +32,11 @@ class CacheLayerMixin(ABC):
 class DynamicLayer(CacheLayerMixin):
     """
     A cache layer that grows dynamically as more tokens are generated. This is the default for generative models.
-    It stores the key and value states as tensors of shape `[batch_size, num_heads, seq_len, head_dim]`.
+    It stores the key and value states as tensors of shape `[batch_size, seq_len, num_heads,  head_dim]`.
     """
 
     def lazy_initialization(self, key_states: infinicore.Tensor):
-        batch_size, num_heads, seq_len, head_dim = key_states.shape
+        batch_size, seq_len, num_heads, head_dim = key_states.shape
 
         if self.keys is None:
             dtype, device = key_states.dtype, key_states.device
@@ -45,12 +45,12 @@ class DynamicLayer(CacheLayerMixin):
             self.cache_position = 0
 
             self.keys = infinicore.empty(
-                [batch_size, num_heads, self.max_seq_len, head_dim],
+                [batch_size, self.max_seq_len, num_heads, head_dim],
                 dtype=dtype,
                 device=device,
             )
             self.values = infinicore.empty(
-                [batch_size, num_heads, self.max_seq_len, head_dim],
+                [batch_size, self.max_seq_len, num_heads, head_dim],
                 dtype=dtype,
                 device=device,
             )
@@ -60,20 +60,20 @@ class DynamicLayer(CacheLayerMixin):
             self.max_seq_len = max(self.max_seq_len * 2, self.cache_position + seq_len)
 
             keys_new = infinicore.empty(
-                [batch_size, num_heads, self.max_seq_len, head_dim],
+                [batch_size, self.max_seq_len, num_heads, head_dim],
                 dtype=dtype,
                 device=device,
             )
             values_new = infinicore.empty(
-                [batch_size, num_heads, self.max_seq_len, head_dim],
+                [batch_size, self.max_seq_len, num_heads, head_dim],
                 dtype=dtype,
                 device=device,
             )
-            keys_new.narrow(2, 0, self.cache_position).copy_(
-                self.keys.narrow(2, 0, self.cache_position)
+            keys_new.narrow(1, 0, self.cache_position).copy_(
+                self.keys.narrow(1, 0, self.cache_position)
             )
-            values_new.narrow(2, 0, self.cache_position).copy_(
-                self.values.narrow(2, 0, self.cache_position)
+            values_new.narrow(1, 0, self.cache_position).copy_(
+                self.values.narrow(1, 0, self.cache_position)
             )
 
             self.keys, self.values = keys_new, values_new
@@ -87,16 +87,16 @@ class DynamicLayer(CacheLayerMixin):
         # Lazy initialization
         self.lazy_initialization(key_states)
 
-        _, _, seq_len, _ = key_states.shape
+        _, seq_len, _, _ = key_states.shape
         index = self.cache_position
 
         # Update the cache
-        self.keys.narrow(2, index, seq_len).copy_(key_states)
-        self.values.narrow(2, index, seq_len).copy_(value_states)
+        self.keys.narrow(1, index, seq_len).copy_(key_states)
+        self.values.narrow(1, index, seq_len).copy_(value_states)
         self.cache_position += seq_len
 
-        return self.keys.narrow(2, 0, self.cache_position), self.values.narrow(
-            2, 0, self.cache_position
+        return self.keys.narrow(1, 0, self.cache_position), self.values.narrow(
+            1, 0, self.cache_position
         )
 
 
@@ -158,9 +158,6 @@ class Cache:
         Return:
             A tuple containing the updated key and value states.
         """
-
-        key_states = key_states.permute((0, 2, 1, 3))
-        value_states = value_states.permute((0, 2, 1, 3))
 
         # In this case, the `layers` were not provided, and we must append as much as `layer_idx`
         if self.layer_class_to_replicate is not None:

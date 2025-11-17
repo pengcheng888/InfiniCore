@@ -116,22 +116,22 @@ class LlamaAttention(infinicore.nn.Module):
         past_key_values: Optional[Cache] = None,
         **kwargs,
     ) -> infinicore.Tensor:
-        hidden_states_shape = hidden_states.shape  # [bs, ntok, hidden_size]
-        bs, ntok = hidden_states_shape[:-1]  # [bs, ntok]
+        hidden_states_shape = hidden_states.shape  # [bs, seq_len, hidden_size]
+        bs, seq_len = hidden_states_shape[:-1]  # [bs, seq_len]
 
-        query_hidden_shape = (bs, ntok, self.num_attention_heads, self.head_dim)
-        key_hidden_shape = (bs, ntok, self.num_key_value_heads, self.head_dim)
-        value_hidden_shape = (bs, ntok, self.num_key_value_heads, self.head_dim)
+        query_hidden_shape = (bs, seq_len, self.num_attention_heads, self.head_dim)
+        key_hidden_shape = (bs, seq_len, self.num_key_value_heads, self.head_dim)
+        value_hidden_shape = (bs, seq_len, self.num_key_value_heads, self.head_dim)
 
         # --------------------------------------------------------------------------------------- #
         #                           对 Q,K，V进行 project 加上 rope
         # --------------------------------------------------------------------------------------- #
-        # => [bs, ntok,  num_attention_heads, head_dim]
+        # => [bs, seq_len,  num_attention_heads, head_dim]
         query_states_infinicore = self.q_proj(hidden_states).view(query_hidden_shape)
 
-        # => [bs, ntok,  num_key_value_heads, head_dim]
+        # => [bs, seq_len,  num_key_value_heads, head_dim]
         key_states_infinicore = self.k_proj(hidden_states).view(key_hidden_shape)
-        # => [bs, ntok, nkvh, head_dim]
+        # => [bs, seq_len, nkvh, head_dim]
         value_states_infinicore = self.v_proj(hidden_states).view(value_hidden_shape)
 
         # --------------------------------------------------------------------------------------- #
@@ -147,14 +147,14 @@ class LlamaAttention(infinicore.nn.Module):
         # --------------------------------------------------------------------------------------- #
         #                           kv cache
         # --------------------------------------------------------------------------------------- #
-        query_states_infini = query_states.permute((0, 2, 1, 3)).contiguous()
+
         # kv cache
         if past_key_values is not None:
             # sin and cos are specific to RoPE models; cache_position needed for the static cache
             cache_kwargs = {}
             key_states_infini, value_states_infini = past_key_values.update(
-                key_states,  # [bs, num_key_value_heads, ntok, head_dim]
-                value_states_infinicore,  # [bs, num_key_value_heads, ntok, head_dim]
+                key_states,  # [bs, seq_len, num_key_value_heads, head_dim]
+                value_states_infinicore,  # [bs, seq_len, num_key_value_heads, head_dim]
                 self.layer_idx,
                 cache_kwargs,
             )
@@ -162,22 +162,26 @@ class LlamaAttention(infinicore.nn.Module):
         # --------------------------------------------------------------------------------------- #
         #                           注意力计算
         # --------------------------------------------------------------------------------------- #
-        # att_val => [bs,  num_attention_heads, ntok, head_dim]
+        query_states_infini = query_states.permute((0, 2, 1, 3)).contiguous()
+        key_states_infini = key_states_infini.permute((0, 2, 1, 3)).contiguous()
+        value_states_infini = value_states_infini.permute((0, 2, 1, 3)).contiguous()
+
+        # att_val => [bs,  num_attention_heads, seq_len, head_dim]
         att_val = infinicore.nn.functional.scaled_dot_product_attention(
-            query_states_infini,  # [bs, num_attention_heads, ntok, head_dim]
+            query_states_infini,  # [bs, num_attention_heads, seq_len, head_dim]
             key_states_infini,  # [bs, num_key_value_heads, all_tok, head_dim]
             value_states_infini,  # [bs, num_key_value_heads, all_tok, head_dim]
             is_causal=True,
             enable_gqa=True,
         )
 
-        # => [bs, ntok, num_attention_heads, dh ]
+        # => [bs, seq_len, num_attention_heads, dh ]
         attn_output = att_val.permute((0, 2, 1, 3)).contiguous()
 
         # --------------------------------------------------------------------------------------- #
         #                           out project
         # --------------------------------------------------------------------------------------- #
-        # ([bs, ntok, num_attention_heads, head_dim]) ==> [bs, ntok, hidden_size ]
+        # ([bs, seq_len, num_attention_heads, head_dim]) ==> [bs, seq_len, hidden_size ]
         attn_output = attn_output.view(hidden_states_shape)
 
         # o_proj
@@ -199,7 +203,7 @@ class LlamaDecoderLayer(infinicore.nn.Module):
 
     def forward(
         self,
-        hidden_states: infinicore.Tensor,  # [bs, ntok, hidden_size]
+        hidden_states: infinicore.Tensor,  # [bs, seq_len, hidden_size]
         past_key_values: Optional[Cache] = None,
         use_cache: Optional[bool] = False,
         **kwargs,
@@ -282,10 +286,9 @@ class LlamaModel(infinicore.nn.Module):
         # --------------------------------------------------------- #
         #                    norm
         # --------------------------------------------------------- #
-        _, ntoken, _ = hidden_states.shape
-
+        _, seq_len, _ = hidden_states.shape
         last_hidden_state_last_token = infinicore.narrow(
-            hidden_states, 1, ntoken - 1, 1
+            hidden_states, 1, seq_len - 1, 1
         )
         return BaseModelOutputWithPast(
             past_key_values=past_key_values,
