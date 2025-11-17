@@ -37,7 +37,7 @@ LlamaRMSNorm = infinicore.nn.RMSNorm
 
 
 class LlamaMLP(infinicore.nn.Module):
-    def __init__(self, config):
+    def __init__(self, config, **kwargs):
         super().__init__()
         self.config = config
         self.hidden_size = config.hidden_size
@@ -62,7 +62,7 @@ class LlamaMLP(infinicore.nn.Module):
 class LlamaAttention(infinicore.nn.Module):
     """Multi-headed attention from 'Attention Is All You Need' paper"""
 
-    def __init__(self, config: LlamaConfig, layer_idx: int):
+    def __init__(self, config: LlamaConfig, layer_idx: int, **kwargs):
         super().__init__()
         self.config = config
         self.layer_idx = layer_idx
@@ -82,8 +82,8 @@ class LlamaAttention(infinicore.nn.Module):
         self.rope_infinicore = infinicore.nn.RoPE(
             max_position_embeddings=config.max_position_embeddings,
             rope_theta=config.rope_theta,
-            head_dim=getattr(config, "head_dim", None)
-            or config.hidden_size // config.num_attention_heads,
+            head_dim=self.head_dim,
+            **kwargs,
         )
 
         self.q_proj = infinicore.nn.Linear(
@@ -191,10 +191,10 @@ class LlamaAttention(infinicore.nn.Module):
 
 
 class LlamaDecoderLayer(infinicore.nn.Module):
-    def __init__(self, config: LlamaConfig, layer_idx: int):
+    def __init__(self, config: LlamaConfig, layer_idx: int, **kwargs):
         super().__init__()
         self.hidden_size = config.hidden_size
-        self.self_attn = LlamaAttention(config=config, layer_idx=layer_idx)
+        self.self_attn = LlamaAttention(config=config, layer_idx=layer_idx, **kwargs)
         self.mlp = LlamaMLP(config)
         self.input_layernorm = LlamaRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
         self.post_attention_layernorm = LlamaRMSNorm(
@@ -231,7 +231,7 @@ class LlamaDecoderLayer(infinicore.nn.Module):
 
 
 class LlamaModel(infinicore.nn.Module):
-    def __init__(self, config: LlamaConfig):
+    def __init__(self, config: LlamaConfig, **kwargs):
         super().__init__()
         self.config = config
         self.padding_idx = config.pad_token_id
@@ -243,7 +243,7 @@ class LlamaModel(infinicore.nn.Module):
 
         self.layers = infinicore.nn.ModuleList(
             [
-                LlamaDecoderLayer(config, layer_idx)
+                LlamaDecoderLayer(config, layer_idx, **kwargs)
                 for layer_idx in range(config.num_hidden_layers)
             ]
         )
@@ -272,8 +272,12 @@ class LlamaModel(infinicore.nn.Module):
         # --------------------------------------------------------- #
         #                    decoder_layer
         # --------------------------------------------------------- #
+        ilayer = 0  # noqa: F841
         hidden_states = inputs_embeds
         for decoder_layer in self.layers[: self.config.num_hidden_layers]:
+            # print("ilayer: ", ilayer)
+            # ilayer += 1
+
             hidden_states = decoder_layer(
                 hidden_states,
                 past_key_values=past_key_values,
@@ -299,10 +303,10 @@ class LlamaModel(infinicore.nn.Module):
 class LlamaForCausalLM(infinicore.nn.Module, GenerationMixin):
     config: LlamaConfig
 
-    def __init__(self, config):
+    def __init__(self, config, **kwargs):
         super().__init__()
         self.config = config
-        self.model = LlamaModel(config)
+        self.model = LlamaModel(config, **kwargs)
         self.vocab_size = config.vocab_size
         self.lm_head = infinicore.nn.Linear(
             config.hidden_size, config.vocab_size, bias=False
@@ -341,6 +345,8 @@ class LlamaForCausalLM(infinicore.nn.Module, GenerationMixin):
     def from_pretrained(
         cls,
         model_path: Optional[Union[str, os.PathLike]],
+        device=None,
+        dtype=None,
     ):
         def load_config_json(dir_path_: str):
             with open(os.path.join(dir_path_, "config.json"), "r") as f:
@@ -350,7 +356,7 @@ class LlamaForCausalLM(infinicore.nn.Module, GenerationMixin):
         config_dict = load_config_json(os.path.join(model_path))
         config = LlamaConfig(**config_dict)
 
-        return LlamaForCausalLM(config)
+        return LlamaForCausalLM(config, device=device, dtype=dtype)
 
 
 __all__ = [

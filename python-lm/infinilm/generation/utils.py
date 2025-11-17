@@ -157,6 +157,7 @@ class GenerationMixin:
 
             for i in range(0, batch_size):
                 score = infinicore.narrow(next_token_scores, 0, i, 1).view([vocab_size])
+
                 out = infinicore.narrow(next_tokens, 0, i, 1).view([])
                 infinicore.nn.functional.random_sample(
                     score,

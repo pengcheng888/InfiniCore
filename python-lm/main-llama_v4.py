@@ -16,10 +16,19 @@ def func(Folder):
     # ---------------------------------------------------------------------------- #
     #                        创建模型, 加载权重
     # ---------------------------------------------------------------------------- #
-    model_device = "cpu"
+    model_device = "cuda"
+    infini_device = infinicore.device(model_device, 0)
+    infini_dtype = infinicore.float32
 
-    model = infinilm.LlamaForCausalLM.from_pretrained(model_path=Folder)
+    model = infinilm.LlamaForCausalLM.from_pretrained(
+        model_path=Folder, device=infini_device, dtype=infini_dtype
+    )
     model_param_infini = get_model_state_dict(model_path=Folder, device=model_device)
+
+    assert (
+        model_param_infini["model.embed_tokens.weight"].dtype == infinicore.float32
+    ), "使用float32的权重类型"
+
     model.load_state_dict(model_param_infini)
 
     # ---------------------------------------------------------------------------- #
@@ -42,7 +51,6 @@ def func(Folder):
     # ---------------------------------------------------------------------------- #
     inputs_tensor = input_ids["input_ids"]
     input_ids_infini = inputs_tensor.cpu().to_infini()
-    infini_device = infinicore.device(model_device, 0)
 
     output_tokens_list = model.generate(
         input_ids_infini, max_new_tokens=10, device=infini_device
@@ -54,14 +62,16 @@ def func(Folder):
     #                        解码成字符显示
     # ---------------------------------------------------------------------------- #
     outputs = torch.tensor([output_tokens_list])
+    print("prompt:\n", "How are you,")
     for output in outputs:
         print(tokenizer.decode(output, skip_special_tokens=True))
+    print("\n\nover!")
 
 
 if __name__ == "__main__":
     Folder = r"/home/ubuntu/workspace_aisys/tensorRT_quantization-main/Llama/Llama2-TinyLlama-1.1B-Chat-v1.0/"
-    Folder = r"/home/ubuntu/workspace_aisys/tensorRT_quantization-main/Llama/TinyLlama-1.1B-Chat-v1.0-small/"
-    Folder = r"/home/ubuntu/models/TinyLlama-1.1B-Chat-v1.0-small/"
+    # Folder = r"/home/ubuntu/workspace_aisys/tensorRT_quantization-main/Llama/TinyLlama-1.1B-Chat-v1.0-small/"
+    # Folder = r"/home/ubuntu/models/TinyLlama-1.1B-Chat-v1.0-small/"
     # Folder = r"/home/ubuntu/models/TinyLlama-1.1B-Chat-v1.0/"
 
     func(Folder)

@@ -1,6 +1,7 @@
 from typing import Union
 
 import numpy as np
+import torch
 
 import infinicore
 from infinicore.nn import functional as F
@@ -30,7 +31,9 @@ def create_sin_cos_table_numpy(max_position, head_dim, theta=10000.0):
     return sin_table, cos_table
 
 
-def create_sin_cos_table(max_position, head_dim, theta=10000.0):
+def create_sin_cos_table(
+    max_position, head_dim, theta=10000.0, device="cpu", dtype=torch.float32
+):
     sin_table_np, cos_table_np = create_sin_cos_table_numpy(
         max_position, head_dim, theta
     )
@@ -56,7 +59,7 @@ def create_sin_cos_table(max_position, head_dim, theta=10000.0):
     return sin_table_infini, cos_table_infini
 
 
-class RoPE(Module):
+class RoPE(Module):  # Module
     def __init__(
         self,
         max_position_embeddings,
@@ -75,23 +78,8 @@ class RoPE(Module):
         self.rope_theta = rope_theta
         self.head_dim = head_dim
 
-        global _sin_table
-        global _cos_table
-
         if _sin_table is None:
-            sin_table_infini, cos_table_infini = create_sin_cos_table(
-                self.max_position_embeddings,
-                head_dim=self.head_dim,
-                theta=self.rope_theta,
-            )
-
-            infini_device = factory_kwargs["device"]
-
-            _sin_table = sin_table_infini.to(infini_device)
-            _cos_table = cos_table_infini.to(infini_device)
-
-            # _sin_table = sin_table_infini.to(infinicore.device("cpu", 0))
-            # _cos_table = cos_table_infini.to(infinicore.device("cpu", 0))
+            pass
 
     def forward(
         self,
@@ -99,6 +87,24 @@ class RoPE(Module):
         position_ids: Tensor,
         algo=RopeAlgo.GPT_NEOX,
     ):
+        global _sin_table
+        global _cos_table
+
+        if _sin_table is None:
+            dtype = infinicore.to_torch_dtype(states.dtype)
+            device = states.device.type
+
+            sin_table_infini, cos_table_infini = create_sin_cos_table(
+                self.max_position_embeddings,
+                head_dim=self.head_dim,
+                theta=self.rope_theta,
+                torch_dtype=dtype,
+                torch_device=device,
+            )
+
+            _sin_table = sin_table_infini.to(infinicore.device("cuda", 0))
+            _cos_table = cos_table_infini.to(infinicore.device("cuda", 0))
+
         bs, ntok, num_attention_heads, head_dim = states.shape
         states = states.view((bs * ntok, num_attention_heads, head_dim))
 

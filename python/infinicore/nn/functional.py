@@ -140,6 +140,13 @@ def embedding(
     return out
 
 
+class RopeAlgo:
+    r"""Different types of RoPE algorithms."""
+
+    GPT_J = _infinicore.Algo.GPT_J
+    GPT_NEOX = _infinicore.Algo.GPT_NEOX
+
+
 def rope(
     x: Tensor,
     pos_ids: Tensor,
