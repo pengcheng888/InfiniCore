@@ -6,12 +6,14 @@ from .rms_norm import rms_norm
 from .rope import RopeAlgo, rope
 from .silu import silu
 from .swiglu import swiglu
+from .self_attention import self_attention
 
 __all__ = [
     "causal_softmax",
     "random_sample",
     "rms_norm",
     "silu",
+    "self_attention",
     "swiglu",
     "linear",
     "embedding",
