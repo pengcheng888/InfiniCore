@@ -122,7 +122,7 @@ class OpTest(BaseOperatorTest):
 
     def infinicore_operator(self, query, key, value, out=None, **kwargs):
         """InfiniCore sdpa implementation"""
-        return infinicore.nn.functional.scaled_dot_product_attention(
+        return infinicore.nn.functional.self_attention(
             query, key, value, is_causal=True, enable_gqa=True, out=out
         )
 

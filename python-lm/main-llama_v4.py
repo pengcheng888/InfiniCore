@@ -1,3 +1,5 @@
+import sys
+
 import infinilm
 import torch
 from infinilm.modeling_utils import get_model_state_dict
@@ -5,25 +7,24 @@ from infinilm.modeling_utils import get_model_state_dict
 import infinicore
 
 
-def func(Folder):
+def test(model_path, device_type="cuda"):
     # ---------------------------------------------------------------------------- #
     #                        创建 tokenizer
     # ---------------------------------------------------------------------------- #
     from transformers import AutoTokenizer
 
-    tokenizer = AutoTokenizer.from_pretrained(Folder)
+    tokenizer = AutoTokenizer.from_pretrained(model_path)
 
     # ---------------------------------------------------------------------------- #
     #                        创建模型, 加载权重
     # ---------------------------------------------------------------------------- #
-    model_device = "cuda"
-    infini_device = infinicore.device(model_device, 0)
+    infini_device = infinicore.device(device_type, 0)
     infini_dtype = infinicore.float32
 
     model = infinilm.LlamaForCausalLM.from_pretrained(
-        model_path=Folder, device=infini_device, dtype=infini_dtype
+        model_path=model_path, device=infini_device, dtype=infini_dtype
     )
-    model_param_infini = get_model_state_dict(model_path=Folder, device=model_device)
+    model_param_infini = get_model_state_dict(model_path=model_path, device=device_type)
 
     assert (
         model_param_infini["model.embed_tokens.weight"].dtype == infinicore.float32
@@ -44,7 +45,7 @@ def func(Folder):
         max_length=128,  # 设置最大长度
         return_tensors="pt",
     )
-    input_ids = input_ids.to(model_device)
+    input_ids = input_ids.to(device_type)
 
     # ---------------------------------------------------------------------------- #
     #                        自回归生成
@@ -69,9 +70,29 @@ def func(Folder):
 
 
 if __name__ == "__main__":
-    Folder = r"/home/ubuntu/workspace_aisys/tensorRT_quantization-main/Llama/Llama2-TinyLlama-1.1B-Chat-v1.0/"
-    # Folder = r"/home/ubuntu/workspace_aisys/tensorRT_quantization-main/Llama/TinyLlama-1.1B-Chat-v1.0-small/"
-    # Folder = r"/home/ubuntu/models/TinyLlama-1.1B-Chat-v1.0-small/"
-    # Folder = r"/home/ubuntu/models/TinyLlama-1.1B-Chat-v1.0/"
+    model_path = r"/home/ubuntu/workspace_aisys/tensorRT_quantization-main/Llama/Llama2-TinyLlama-1.1B-Chat-v1.0/"
+    model_path = r"/home/ubuntu/workspace_aisys/tensorRT_quantization-main/Llama/TinyLlama-1.1B-Chat-v1.0-small/"
+    # model_path = r"/home/ubuntu/models/TinyLlama-1.1B-Chat-v1.0-small/"
+    # model_path = r"/home/ubuntu/models/TinyLlama-1.1B-Chat-v1.0/"
 
-    func(Folder)
+    device_type = "cuda"
+    test(model_path, device_type)
+    exit(-1)
+
+    if len(sys.argv) < 1:
+        print("Usage: python main-llama.py [--cpu | --nvidia] <path/to/model_dir> ")
+        sys.exit(1)
+
+    # Parse command line arguments
+    model_path = sys.argv[2]
+
+    device_type = "cpu"
+    if sys.argv[1] == "--cpu":
+        device_type = "cpu"
+    elif sys.argv[1] == "--nvidia":
+        device_type = "cuda"
+    else:
+        print("Usage:  python main-llama.py [--cpu | --nvidia] <path/to/model_dir>")
+        sys.exit(1)
+
+    test(model_path, device_type)

@@ -1,12 +1,20 @@
+import ctypes
+
+import numpy as np
+
 import infinicore.device
 import infinicore.dtype
 from infinicore.lib import _infinicore
 
-from .utils import to_infinicore_dtype
+from .utils import (
+    infinicore_to_numpy_dtype,
+    numpy_to_infinicore_dtype,
+    to_infinicore_dtype,
+)
 
 
 class Tensor:
-    def __init__(self, underlying, *, torch_ref=None):
+    def __init__(self, underlying, *, _torch_ref=None):
         """An internal method. Please do not use this directly."""
 
         self._underlying = underlying
@@ -17,7 +25,7 @@ class Tensor:
             self._underlying.device
         )
 
-        self._torch_ref = torch_ref
+        self._torch_ref = _torch_ref
 
     @property
     def shape(self):
@@ -161,5 +169,136 @@ def from_torch(torch_tensor) -> Tensor:
             dtype=infini_type._underlying,
             device=infini_device._underlying,
         ),
-        torch_ref=torch_tensor,
+        _torch_ref=torch_tensor,
     )
+
+
+def from_numpy(
+    np_array,
+    *,
+    dtype: infinicore.dtype = None,
+    device: infinicore.device = None,
+) -> Tensor:
+    """Convert a NumPy ndarray to an infinicore.Tensor."""
+    if not isinstance(np_array, np.ndarray):
+        raise TypeError(
+            f"Input data must be a np.ndarray, got {type(np_array).__name__}"
+        )
+
+    # infini_type
+    np_type = np_array.dtype
+    if dtype is not None:
+        np_type = infinicore_to_numpy_dtype(dtype)
+        if np_type != np_array.dtype:
+            np_array = np_array.astype(np_type)
+
+    #
+    infini_type = (
+        dtype if dtype is not None else numpy_to_infinicore_dtype(np_array.dtype)
+    )
+    infini_device_cpu = infinicore.device("cpu", 0)
+
+    data_ptr = np_array.ctypes.data_as(ctypes.c_void_p).value
+    temp_tensor = Tensor(
+        _infinicore.from_blob(
+            data_ptr,
+            list(np_array.shape),
+            dtype=infini_type._underlying,
+            device=infini_device_cpu._underlying,
+        )
+    )
+
+    result = empty(list(np_array.shape), dtype=infini_type, device=infini_device_cpu)
+    result.copy_(temp_tensor)
+
+    infini_device = device if device is not None else infinicore.device("cpu", 0)
+    if infini_device.type != "cpu":
+        result = result.to(infini_device)
+
+    return result
+
+
+def from_list(data, *, dtype=None, device=None) -> Tensor:
+    """Convert a Python list to an infinicore Tensor.
+
+    Args:
+        data: Python list or nested list to convert to tensor
+        dtype: Optional infinicore dtype. If None, inferred from numpy array
+        device: Optional infinicore device. If None, defaults to CPU device
+
+    Returns:
+        Tensor: An infinicore tensor created from the list data
+
+    Raises:
+        TypeError: If input data is not a list or tuple
+        ValueError: If input data is empty
+
+    Note:
+        NumPy arrays can only be created on CPU. For CUDA devices, data is first
+        created on CPU, then copied to the target device.
+    """
+    # Input validation
+    if not isinstance(data, (list, tuple)):
+        raise TypeError(
+            f"Input data must be a list or tuple, got {type(data).__name__}"
+        )
+
+    if not data:
+        raise ValueError("Input data cannot be empty")
+
+    # Determine target numpy dtype
+    # If dtype is specified, convert it to numpy dtype first
+    # This ensures the numpy array has the correct dtype from the start
+    if dtype is not None:
+        np_dtype = infinicore_to_numpy_dtype(dtype)
+    else:
+        np_dtype = None  # Let numpy infer
+
+    # Convert Python list to numpy array with correct dtype
+    # NumPy arrays can only be created on CPU
+    # Use np.array(..., copy=True, order='C') to efficiently:
+    # - Convert data type (if dtype is specified)
+    # - Create a copy (ensuring data ownership)
+    # - Ensure C-contiguous memory layout
+    if np_dtype is not None:
+        np_array = np.array(data, dtype=np_dtype, copy=True, order="C")
+    else:
+        np_array = np.array(data, copy=True, order="C")
+
+    # Infer dtype if not provided
+    if dtype is None:
+        infini_type = numpy_to_infinicore_dtype(np_array.dtype)
+    else:
+        infini_type = dtype
+
+    # Default to CPU device if not provided
+    if device is None:
+        target_device = infinicore.device("cpu", 0)
+    else:
+        target_device = device
+
+    # Create a temporary tensor on CPU using from_blob to reference numpy array
+    # This allows us to copy data without keeping numpy array reference
+    cpu_device = infinicore.device("cpu", 0)
+    data_ptr = np_array.ctypes.data_as(ctypes.c_void_p).value
+    temp_tensor = Tensor(
+        _infinicore.from_blob(
+            data_ptr,
+            list(np_array.shape),
+            dtype=infini_type._underlying,
+            device=cpu_device._underlying,
+        )
+    )
+
+    # Always create the result tensor on CPU first, then copy data
+    # This ensures we have a proper copy of the data
+    result = empty(list(np_array.shape), dtype=infini_type, device=cpu_device)
+    result.copy_(temp_tensor)
+
+    # If target device is not CPU, move the tensor to the target device
+    # The temporary tensor and numpy array will be garbage collected
+    # since we don't keep references to them
+    if target_device.type != "cpu":
+        result = result.to(target_device)
+
+    return result

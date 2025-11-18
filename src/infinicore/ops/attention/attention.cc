@@ -27,10 +27,98 @@ void attention_(Tensor out, Tensor q, Tensor k, Tensor v, Tensor k_cache, Tensor
     Attention::execute(out, q, k, v, k_cache, v_cache, pos);
 }
 
-Tensor scaled_dot_product_attention(Tensor query_states, // [bs, num_attention_heads, ntoken, head_dim]
-                                    Tensor key_states,   // [bs, num_key_value_heads, total_token, head_dim]
-                                    Tensor value_states, // [bs, num_key_value_heads, total_token, head_dim]
-                                    pybind11::object scale) {
+Tensor self_attention1(Tensor query_states, // [bs, seq_len, num_attention_heads,  head_dim]
+                       Tensor key_states,   // [bs, total_seq_len, num_key_value_heads,  head_dim]
+                       Tensor value_states, // [bs, total_seq_len, num_key_value_heads, head_dim]
+                       pybind11::object scale) {
+
+    auto query_shape = query_states->shape();
+
+    Size batch_size = query_shape[0];
+    Size seq_len = query_shape[1];
+    Size num_attention_heads = query_shape[2];
+    Size head_dim = query_shape[3];
+
+    Tensor output_values = Tensor::empty({batch_size, num_attention_heads, seq_len, head_dim}, query_states->dtype(), query_states->device()); // ??
+
+    self_attention_(output_values, query_states, key_states, value_states, scale);
+
+    return output_values;
+}
+
+void self_attention_1(Tensor out,
+                      Tensor query_states,
+                      Tensor key_states,
+                      Tensor value_states,
+                      pybind11::object scale) {
+
+    auto query_shape = query_states->shape();
+    auto key_shape = key_states->shape();
+
+    Size batch_size = query_shape[0];
+    Size seq_len = query_shape[1];
+    Size num_attention_heads = query_shape[2];
+    Size head_dim = query_shape[3];
+
+    Size total_seq_len = key_shape[1];
+    Size num_key_value_heads = key_shape[2];
+
+    assert(0 == (num_attention_heads % num_key_value_heads));
+    Size ngroup = num_attention_heads / num_key_value_heads;
+
+    float attention_scale{0.0f};
+    if (!scale.is_none()) {
+        attention_scale = scale.cast<float>();
+    } else {
+        attention_scale = 1.f / float(sqrt(head_dim));
+    }
+
+    Tensor out_view = out->view({batch_size, num_key_value_heads, ngroup * seq_len, head_dim}); // ?
+    for (Size ib = 0; ib < batch_size; ++ib) {
+        Tensor q = query_states->narrow({{0, ib, 1}})->view({seq_len, num_attention_heads, head_dim}); // [seq_len, num_attention_heads,  head_dim]  ??
+
+        //  [ total_seq_len, num_key_value_heads,  head_dim]
+        Tensor k = key_states->narrow({{0, ib, 1}})->view({total_seq_len, num_key_value_heads, head_dim});
+        // [ total_seq_len, num_key_value_heads, head_dim]
+        Tensor v = value_states->narrow({{0, ib, 1}})->view({total_seq_len, num_key_value_heads, head_dim});
+
+        Tensor output_v = out_view->narrow({{0, ib, 1}})->view({num_key_value_heads, ngroup * seq_len, head_dim}); // ??
+        {
+            /*
+            输入：
+                q,  [ num_attention_heads, seq_len, head_dim]
+                k,  [ num_key_value_heads, total_seq_len, head_dim]
+                v,  [ num_key_value_heads, total_seq_len, head_dim]
+            输出：
+                att_val ： {num_key_value_heads, ngroup * ntok, head_dim}
+            */
+
+            auto q_gemm = q->view({seq_len * ngroup, num_key_value_heads, head_dim})->permute({1, 0, 2})->contiguous(); //  => {num_key_value_heads, ngroup * seq_len, head_dim}
+            auto k_gemm = k->permute({1, 2, 0});                                                                        //  => [ num_key_value_heads,  head_dim, total_seq_len]
+            auto v_gemm = v->permute({1, 0, 2});                                                                        //  => [ num_key_value_heads, total_seq_len, head_dim]
+
+            // qk_score : => {nkvh, ngroup * seq_len, total_seq_len}
+            Tensor qk_score = gemm(q_gemm, // {nkvh, ngroup * seq_len, dh}
+                                   k_gemm, // {nkvh, dh, total_seq_len}
+                                   attention_scale, 0.f);
+
+            // softmax
+            auto qk_softmax = qk_score->view({num_attention_heads, seq_len, total_seq_len});
+            causal_softmax_(qk_softmax, qk_softmax);
+
+            // values
+            gemm_(output_v, // {nkvh, ngroup * seq_len, dh}
+                  qk_score, // {nkvh, ngroup * seq_len, total_seq_len}
+                  v_gemm,   // { nkvh, total_seq_len, dh}
+                  1.0f, 0.0f);
+        }
+    }
+}
+
+Tensor self_attention(Tensor query_states, // [bs, num_attention_heads, ntoken, head_dim]
+                      Tensor key_states,   // [bs, num_key_value_heads, total_seq_len, head_dim]
+                      Tensor value_states, // [bs, num_key_value_heads, total_seq_len, head_dim]
+                      pybind11::object scale) {
 
     auto query_shape = query_states->shape();
     auto key_shape = key_states->shape();
@@ -42,16 +130,16 @@ Tensor scaled_dot_product_attention(Tensor query_states, // [bs, num_attention_h
 
     Tensor output_values = Tensor::empty({batch_size, num_attention_heads, ntoken, head_dim}, query_states->dtype(), query_states->device());
 
-    scaled_dot_product_attention_(output_values, query_states, key_states, value_states, scale);
+    self_attention_(output_values, query_states, key_states, value_states, scale);
 
     return output_values;
 }
 
-void scaled_dot_product_attention_(Tensor out,
-                                   Tensor query_states,
-                                   Tensor key_states,
-                                   Tensor value_states,
-                                   pybind11::object scale) {
+void self_attention_(Tensor out,
+                     Tensor query_states,
+                     Tensor key_states,
+                     Tensor value_states,
+                     pybind11::object scale) {
 
     auto query_shape = query_states->shape();
     auto key_shape = key_states->shape();

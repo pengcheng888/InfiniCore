@@ -162,21 +162,39 @@ class LlamaAttention(infinicore.nn.Module):
         # --------------------------------------------------------------------------------------- #
         #                           注意力计算
         # --------------------------------------------------------------------------------------- #
-        query_states_infini = query_states.permute((0, 2, 1, 3)).contiguous()
-        key_states_infini = key_states_infini.permute((0, 2, 1, 3)).contiguous()
-        value_states_infini = value_states_infini.permute((0, 2, 1, 3)).contiguous()
 
-        # att_val => [bs,  num_attention_heads, seq_len, head_dim]
-        att_val = infinicore.nn.functional.scaled_dot_product_attention(
-            query_states_infini,  # [bs, num_attention_heads, seq_len, head_dim]
-            key_states_infini,  # [bs, num_key_value_heads, all_tok, head_dim]
-            value_states_infini,  # [bs, num_key_value_heads, all_tok, head_dim]
-            is_causal=True,
-            enable_gqa=True,
-        )
+        if True:
+            query_states_infini = query_states.permute((0, 2, 1, 3)).contiguous()
+            key_states_infini = key_states_infini.permute((0, 2, 1, 3)).contiguous()
+            value_states_infini = value_states_infini.permute((0, 2, 1, 3)).contiguous()
 
-        # => [bs, seq_len, num_attention_heads, dh ]
-        attn_output = att_val.permute((0, 2, 1, 3)).contiguous()
+            # att_val => [bs,  num_attention_heads, seq_len, head_dim]
+            att_val = infinicore.nn.functional.self_attention(
+                query_states_infini,  # [bs, num_attention_heads, seq_len, head_dim]
+                key_states_infini,  # [bs, num_key_value_heads, all_tok, head_dim]
+                value_states_infini,  # [bs, num_key_value_heads, all_tok, head_dim]
+                is_causal=True,
+                enable_gqa=True,
+            )
+
+            # => [bs, seq_len, num_attention_heads, dh ]
+            attn_output = att_val.permute((0, 2, 1, 3)).contiguous()
+        else:
+            query_states_infini = query_states.contiguous()
+            key_states_infini = key_states_infini.contiguous()
+            value_states_infini = value_states_infini.contiguous()
+
+            # att_val => [bs,  num_attention_heads, seq_len, head_dim]
+            att_val = infinicore.nn.functional.self_attention(
+                query_states_infini,  # [bs, num_attention_heads, seq_len, head_dim]
+                key_states_infini,  # [bs, num_key_value_heads, all_tok, head_dim]
+                value_states_infini,  # [bs, num_key_value_heads, all_tok, head_dim]
+                is_causal=True,
+                enable_gqa=True,
+            )
+
+            # => [bs, seq_len, num_attention_heads, dh ]
+            attn_output = att_val.contiguous()
 
         # --------------------------------------------------------------------------------------- #
         #                           out project

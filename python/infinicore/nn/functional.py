@@ -4,7 +4,14 @@ import infinicore
 from infinicore.lib import _infinicore
 from infinicore.tensor import Tensor
 
-__all__ = ["causal_softmax", "random_sample", "rms_norm", "silu", "swiglu"]
+__all__ = [
+    "causal_softmax",
+    "random_sample",
+    "rms_norm",
+    "silu",
+    "swiglu",
+    "self_attention",
+]
 
 
 def causal_softmax(input: Tensor, out=None) -> Tensor:
@@ -69,7 +76,7 @@ def swiglu(input: Tensor, other: Tensor, *, out=None):
     return out
 
 
-def scaled_dot_product_attention(
+def self_attention(
     query: Tensor,
     key: Tensor,
     value: Tensor,
@@ -88,18 +95,18 @@ def scaled_dot_product_attention(
     ntoken = query.shape[-2]
     total_token = key.shape[-2]
 
-    assert (1 == ntoken and total_token > 1) or (ntoken == total_token), (
-        "Incorrect parameter value."
-    )
+    # assert (1 == ntoken and total_token > 1) or (ntoken == total_token), (
+    #     "Incorrect parameter value."
+    # )
 
     if out is None:
         return infinicore.Tensor(
-            _infinicore.scaled_dot_product_attention(
+            _infinicore.self_attention(
                 query._underlying, key._underlying, value._underlying, scale
             )
         )
 
-    _infinicore.scaled_dot_product_attention_(
+    _infinicore.self_attention_(
         out._underlying,
         query._underlying,
         key._underlying,

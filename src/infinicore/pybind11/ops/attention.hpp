@@ -52,16 +52,16 @@ Args:
     pos: Current position in the sequence
 )doc");
 
-    m.def("scaled_dot_product_attention",
-          &op::scaled_dot_product_attention,
+    m.def("self_attention",
+          &op::self_attention,
           py::arg("query"),
           py::arg("key"),
           py::arg("value"),
           py::arg("scale") = py::none(),
           R"doc(Computes scaled dot product attention on query, key and value tensors)doc");
 
-    m.def("scaled_dot_product_attention_",
-          &op::scaled_dot_product_attention_,
+    m.def("self_attention_",
+          &op::self_attention_,
           py::arg("out"),
           py::arg("query"),
           py::arg("key"),
