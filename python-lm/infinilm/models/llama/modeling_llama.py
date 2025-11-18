@@ -31,6 +31,8 @@ from ...generation.utils import GenerationMixin
 from ...modeling_outputs import CausalLMOutputWithPast
 from .configuration_llama import LlamaConfig
 
+import numpy as np
+
 logger = logging.get_logger(__name__)
 
 LlamaRMSNorm = infinicore.nn.RMSNorm
@@ -59,9 +61,83 @@ class LlamaMLP(infinicore.nn.Module):
         return down_proj
 
 
-class LlamaAttention(infinicore.nn.Module):
-    """Multi-headed attention from 'Attention Is All You Need' paper"""
+def infini_attention(
+    query_states: infinicore.Tensor,
+    key_states: infinicore.Tensor,
+    value_states: infinicore.Tensor,
+):
+    seq_len, num_attention_heads, head_dim = query_states.shape
+    total_seq_len, num_key_value_heads, _ = key_states.shape
 
+    ngroup = num_attention_heads // num_key_value_heads
+
+    key_states_new = infinicore.empty(
+        (total_seq_len, num_key_value_heads, ngroup, head_dim),
+        dtype=query_states.dtype,
+        device=query_states.device,
+    )
+    value_states_new = infinicore.empty(
+        (total_seq_len, num_key_value_heads, ngroup, head_dim),
+        dtype=query_states.dtype,
+        device=query_states.device,
+    )
+
+    for i in range(ngroup):
+        key_states_new.narrow(2, i, 1).copy_(
+            key_states.view(
+                (total_seq_len, num_key_value_heads, 1, head_dim)
+            ).contiguous()
+        )
+
+        value_states_new.narrow(2, i, 1).copy_(
+            value_states.view(
+                (total_seq_len, num_key_value_heads, 1, head_dim)
+            ).contiguous()
+        )
+
+    key_states = (
+        key_states_new.contiguous()
+        .view((total_seq_len, num_key_value_heads * ngroup, head_dim))
+        .contiguous()
+    )
+
+    value_states = (
+        value_states_new.contiguous()
+        .view((total_seq_len, num_key_value_heads * ngroup, head_dim))
+        .contiguous()
+    )
+
+    # => [ num_attention_heads, seq_len,       head_dim]
+    Q = query_states.permute((1, 0, 2)).contiguous()
+    # => [ num_key_value_heads, total_seq_len, head_dim]
+    K = key_states.permute((1, 0, 2)).contiguous()
+    # => [ num_key_value_heads, total_seq_len, head_dim]
+    V = value_states.permute((1, 0, 2)).contiguous()
+
+    scale = 1 / np.sqrt(head_dim)
+
+    # [ num_attention_heads, seq_len, head_dim] @ [ num_key_value_heads, head_dim, total_seq_len]
+    # => [ num_attention_heads, seq_len, total_seq_len]
+
+    scale = infinicore.from_list([scale], dtype=Q.dtype).as_strided(
+        ([num_attention_heads, seq_len, total_seq_len]), [0, 0, 0]
+    )
+
+    score = Q @ K.permute((0, 2, 1)) * scale
+
+    score_causal = infinicore.nn.functional.causal_softmax(score)
+
+    # [ num_attention_heads,  seq_len,  total_seq_len] @   num_key_value_heads, total_seq_len, head_dim]
+    # => [ num_attention_heads,  seq_len,   head_dim]
+    out = score_causal @ V
+
+    # => [seq_len, num_attention_heads, head_dim]
+    out = out.permute((1, 0, 2)).contiguous()
+
+    return out
+
+
+class LlamaAttention(infinicore.nn.Module):
     def __init__(self, config: LlamaConfig, layer_idx: int, **kwargs):
         super().__init__()
         self.config = config
@@ -160,7 +236,7 @@ class LlamaAttention(infinicore.nn.Module):
         #                           注意力计算
         # --------------------------------------------------------------------------------------- #
 
-        if True:
+        if False:
             #  [bs, num_key_value_heads, seq_len, head_dim]
             query_states_infini = query_states.permute((0, 2, 1, 3)).contiguous()
             key_states_infini = key_states_infini.permute((0, 2, 1, 3)).contiguous()
@@ -175,22 +251,31 @@ class LlamaAttention(infinicore.nn.Module):
 
             # => [bs, seq_len, num_attention_heads, dh ]
             attn_output = att_val.permute((0, 2, 1, 3)).contiguous()
-        else:
-            query_states_infini = query_states.contiguous()
-            key_states_infini = key_states_infini.contiguous()
-            value_states_infini = value_states_infini.contiguous()
 
-            # att_val => [bs,  num_attention_heads, seq_len, head_dim]
-            att_val = infinicore.nn.functional.self_attention(
-                query_states_infini,  # [bs, num_attention_heads, seq_len, head_dim]
-                key_states_infini,  # [bs, num_key_value_heads, all_tok, head_dim]
-                value_states_infini,  # [bs, num_key_value_heads, all_tok, head_dim]
-                is_causal=True,
-                enable_gqa=True,
-            )
+        if True:
+            total_seq_len = key_states_infini.shape[1]
+            # attn_output = infinicore.empty_like(query_states)
 
-            # => [bs, seq_len, num_attention_heads, dh ]
-            attn_output = att_val.contiguous()
+            for i in range(0, bs):
+                query_states_i = query_states.view(
+                    (1 * seq_len, self.num_attention_heads, self.head_dim)
+                ).contiguous()
+                key_states_infini_i = key_states_infini.view(
+                    (1 * total_seq_len, self.num_key_value_heads, self.head_dim)
+                ).contiguous()
+                value_states_infini_i = value_states_infini.view(
+                    (1 * total_seq_len, self.num_key_value_heads, self.head_dim)
+                ).contiguous()
+
+                attn_output = infini_attention(
+                    query_states_i,
+                    key_states_infini_i,
+                    value_states_infini_i,
+                )
+
+                # attn_output.narrow(0, i, 1).view(
+                #     (seq_len, self.num_attention_heads, self.head_dim)
+                # ).copy_(attn_output_i)
 
         # --------------------------------------------------------------------------------------- #
         #                           out project
@@ -309,8 +394,8 @@ class LlamaModel(infinicore.nn.Module):
         ilayer = 0  # noqa: F841
         hidden_states = inputs_embeds
         for decoder_layer in self.layers[: self.config.num_hidden_layers]:
-            # print("ilayer: ", ilayer)
-            # ilayer += 1
+            print("ilayer: ", ilayer)
+            ilayer += 1
 
             hidden_states = decoder_layer(
                 hidden_states,

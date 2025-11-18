@@ -122,9 +122,8 @@ class GenerationMixin:
             # -------------------------------------------------------------------------- #
             #                     更新下一次所需的，cache_position
             # -------------------------------------------------------------------------- #
-
             cache_position = model_kwargs["cache_position"]
-            (seq_len,) = cache_position.shape  # [5] [1]
+            (seq_len,) = cache_position.shape
 
             last_position = cache_position.narrow(0, seq_len - 1, 1)
             one_value = infinicore.from_list(
@@ -155,12 +154,11 @@ class GenerationMixin:
 
             for i in range(0, batch_size):
                 score = next_token_scores.narrow(0, i, 1).view([vocab_size])
-
                 out = next_tokens.narrow(0, i, 1).view([])
                 infinicore.nn.functional.random_sample(
                     score,
-                    1.0,
-                    0.0,
+                    0.8,
+                    0.1,
                     1,
                     1.0,
                     out=out,

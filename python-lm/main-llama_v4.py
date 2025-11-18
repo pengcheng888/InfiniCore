@@ -19,16 +19,18 @@ def test(model_path, device_type="cuda"):
     #                        创建模型, 加载权重
     # ---------------------------------------------------------------------------- #
     infini_device = infinicore.device(device_type, 0)
-    infini_dtype = infinicore.float32
+    infini_dtype = infinicore.float16
 
     model = infinilm.LlamaForCausalLM.from_pretrained(
         model_path=model_path, device=infini_device, dtype=infini_dtype
     )
-    model_param_infini = get_model_state_dict(model_path=model_path, device=device_type)
+    model_param_infini = get_model_state_dict(
+        model_path=model_path, infini_device=infini_device, infini_dtype=infini_dtype
+    )
 
     assert (
-        model_param_infini["model.embed_tokens.weight"].dtype == infinicore.float32
-    ), "使用float32的权重类型"
+        model_param_infini["model.embed_tokens.weight"].dtype == infinicore.float16
+    ), " 使用支持 float16 的权重类型"
 
     model.load_state_dict(model_param_infini)
 
@@ -53,10 +55,14 @@ def test(model_path, device_type="cuda"):
     inputs_tensor = input_ids["input_ids"]
     input_ids_infini = inputs_tensor.cpu().to_infini()
 
+    import time
+
+    t1 = time.time()
     output_tokens_list = model.generate(
         input_ids_infini, max_new_tokens=10, device=infini_device
     )
-
+    t2 = time.time()
+    print("time: ", (t2 - t1) * 1000)
     print(output_tokens_list)
 
     # ---------------------------------------------------------------------------- #
@@ -72,10 +78,10 @@ def test(model_path, device_type="cuda"):
 if __name__ == "__main__":
     model_path = r"/home/ubuntu/workspace_aisys/tensorRT_quantization-main/Llama/Llama2-TinyLlama-1.1B-Chat-v1.0/"
     model_path = r"/home/ubuntu/workspace_aisys/tensorRT_quantization-main/Llama/TinyLlama-1.1B-Chat-v1.0-small/"
-    # model_path = r"/home/ubuntu/models/TinyLlama-1.1B-Chat-v1.0-small/"
+    model_path = r"/home/ubuntu/models/TinyLlama-1.1B-Chat-v1.0-small/"
     # model_path = r"/home/ubuntu/models/TinyLlama-1.1B-Chat-v1.0/"
 
-    device_type = "cuda"
+    device_type = "cpu"
     test(model_path, device_type)
     exit(-1)
 
