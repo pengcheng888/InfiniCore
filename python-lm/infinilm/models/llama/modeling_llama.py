@@ -147,7 +147,7 @@ class LlamaAttention(infinicore.nn.Module):
 
         # kv cache
         if past_key_values is not None:
-            # sin and cos are specific to RoPE models; cache_position needed for the static cache
+            # sin and cos are specific to RoPE models
             cache_kwargs = {}
             key_states_infini, value_states_infini = past_key_values.update(
                 key_states,  # [bs, seq_len, num_key_value_heads, head_dim]
@@ -223,8 +223,11 @@ class LlamaDecoderLayer(infinicore.nn.Module):
         rope_instance=None,
         **kwargs,
     ) -> infinicore.Tensor:
+        # ------------------------------------------------ #
+        #          Self Attention
+        # ------------------------------------------------ #
         residual = hidden_states
-        # Self Attention
+
         hidden_states = self.input_layernorm(hidden_states)
 
         hidden_states = self.self_attn(
@@ -237,10 +240,15 @@ class LlamaDecoderLayer(infinicore.nn.Module):
 
         hidden_states = residual + hidden_states
 
-        # Fully Connected
+        # ------------------------------------------------ #
+        #           Fully Connected
+        # ------------------------------------------------ #
         residual = hidden_states
+
         hidden_states = self.post_attention_layernorm(hidden_states)
+
         hidden_states = self.mlp(hidden_states)
+
         hidden_states = residual + hidden_states
 
         return hidden_states
@@ -279,9 +287,9 @@ class LlamaModel(infinicore.nn.Module):
         self,
         input_ids,
         cache_position,
-        past_key_values: Optional[Cache] = None,  # StaticCache(layers=[StaticLayer])
+        past_key_values: Optional[Cache] = None,
         use_cache: Optional[bool] = None,  # True
-        **kwargs,  # {}
+        **kwargs,
     ):
         if use_cache and past_key_values is None:
             past_key_values = DynamicCache(config=self.config)

@@ -16,7 +16,7 @@
     } while (0)
 
 struct InfiniopTensorDescriptor {
-private:
+public:
     // Datatype
     infiniDtype_t _dtype;
     // Shape of the tensor

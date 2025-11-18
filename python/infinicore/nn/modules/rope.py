@@ -195,7 +195,7 @@ class RoPE(Module):
         bs, seq_len, num_attention_heads, head_dim = states.shape
 
         for i in range(0, bs):
-            state_i = infinicore.narrow(states, 0, i, 1).view(
+            state_i = states.narrow(0, i, 1).view(
                 (1 * seq_len, num_attention_heads, head_dim)
             )
             F.rope(

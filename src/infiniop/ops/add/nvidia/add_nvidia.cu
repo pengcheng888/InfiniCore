@@ -22,7 +22,7 @@ infiniStatus_t Descriptor::create(
     const auto &a_shape = a_desc->shape();
     const auto &b_shape = b_desc->shape();
 
-    CHECK_DTYPE(dtype, INFINI_DTYPE_F16, INFINI_DTYPE_F32, INFINI_DTYPE_F64, INFINI_DTYPE_BF16);
+    CHECK_DTYPE(dtype, INFINI_DTYPE_F16, INFINI_DTYPE_F32, INFINI_DTYPE_BF16, INFINI_DTYPE_I32, INFINI_DTYPE_I64, INFINI_DTYPE_F64);
 
     CHECK_SAME_SHAPE(c_shape, a_shape, b_shape);
 
@@ -42,7 +42,7 @@ infiniStatus_t Descriptor::calculate(
     if (workspace_size < _workspace_size) {
         return INFINI_STATUS_INSUFFICIENT_WORKSPACE;
     }
-
+    // printf(" a b c  %d %d %d \n", a_desc->dtype(), b_desc->dtype(), c_desc->dtype());
     switch (_dtype) {
     case INFINI_DTYPE_F16:
         return _device_info->calculate<256, cuda::AddOp, half>(_info, workspace, output, inputs, stream);
@@ -50,6 +50,10 @@ infiniStatus_t Descriptor::calculate(
         return _device_info->calculate<256, cuda::AddOp, cuda_bfloat16>(_info, workspace, output, inputs, stream);
     case INFINI_DTYPE_F32:
         return _device_info->calculate<256, cuda::AddOp, float>(_info, workspace, output, inputs, stream);
+    case INFINI_DTYPE_I32:
+        return _device_info->calculate<256, cuda::AddOp, int32_t>(_info, workspace, output, inputs, stream);
+    case INFINI_DTYPE_I64:
+        return _device_info->calculate<256, cuda::AddOp, int64_t>(_info, workspace, output, inputs, stream);
     case INFINI_DTYPE_F64:
         return _device_info->calculate<256, cuda::AddOp, double>(_info, workspace, output, inputs, stream);
     default:

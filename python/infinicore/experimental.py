@@ -1,4 +1,5 @@
 import torch
+
 import infinicore
 
 
@@ -137,7 +138,7 @@ def convert_infini_to_torch_tensor(infini_result, torch_reference=None):
 # -------------------------------------------------------------------------------- #
 def py_to_ctype(py_dtype):
     """Convert PyTorch data type to infinicore data type"""
-    from ctypes import POINTER, c_float, c_int, c_uint, c_void_p, byref, addressof
+    from ctypes import POINTER, addressof, byref, c_float, c_int, c_uint, c_void_p
 
     if py_dtype == int:
         return c_int
@@ -149,7 +150,8 @@ def py_to_ctype(py_dtype):
 
 def py_to_infinicore_dtype(py_dtype):
     """Convert PyTorch data type to infinicore data type"""
-    from ctypes import POINTER, c_float, c_int, c_uint, c_void_p, byref, addressof
+    from ctypes import POINTER, addressof, byref, c_float, c_int, c_uint, c_void_p
+
     import infinicore
 
     if py_dtype == int:
@@ -166,7 +168,7 @@ def convert_list_to_infini_tensor(
     infini_device=infinicore.device("cpu", 0),
     infini_dtype=infinicore.int32,
 ):
-    from ctypes import POINTER, c_float, c_int, c_uint, c_void_p, byref, addressof
+    from ctypes import POINTER, addressof, byref, c_float, c_int, c_uint, c_void_p
 
     num_count = len(data_list)
     address = (py_to_ctype(type(data_list[0])) * num_count)(*data_list)
@@ -217,7 +219,7 @@ def infini__str__(self):
 infinicore.Tensor.__str__ = infini__str__
 
 
-import torch
+import torch  # noqa: E402
 
 
 def rand(
