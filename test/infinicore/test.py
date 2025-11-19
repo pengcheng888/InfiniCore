@@ -107,7 +107,45 @@ def test3():
     print("abs error: ", torch.abs(ans_torch_ref - torch_ans_result).max())
 
 
+def test4_to():
+    """
+    解决在python代码中 tensor从gpu to到cpu上出错的问题.
+    """
+    if True:
+        x = torch.rand((2, 3), dtype=torch.float32, device="cpu")
+        x_infini = infinicore.from_torch(x.clone())
+        print(" ---------------> test 1")
+        x_infini.debug()
+        x_gpu = x_infini.to(infinicore.device("cuda", 0))
+        x_gpu = x_gpu.to(infinicore.device("cuda", 0))
+
+        x_gpu.debug()
+        x_cpu = x_infini.to(infinicore.device("cpu", 0))
+        x_cpu = x_cpu.to(infinicore.device("cpu", 0))
+
+        x_cpu.debug()
+
+    if True:
+        x = infinicore.empty(
+            (2, 3), dtype=infinicore.float32, device=infinicore.device("cuda", 0)
+        )
+        x.debug()
+        x.to(infinicore.device("cuda", 0))
+
+        x_cpu = x.to(infinicore.device("cpu", 0))
+        x_cpu.debug()
+
+        x_cpu_gpu = x_cpu.to(infinicore.device("cuda", 0))
+        x_cpu_gpu.debug()
+
+        x_gpu = x.to(infinicore.device("cuda", 0))
+        x_gpu.debug()
+
+    print(" 简单的测试用例，通过!!")
+
+
 if __name__ == "__main__":
-    # test()
+    test()
     test2()
     test3()
+    test4_to()
