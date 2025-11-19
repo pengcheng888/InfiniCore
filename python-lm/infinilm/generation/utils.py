@@ -33,18 +33,37 @@ class GenerationMixin:
         if past_key_values is not None:
             model_inputs["past_key_values"] = past_key_values
 
-        # -------------------------------------------------------------------- #
-        #                 所需的: cache_position
-        # -------------------------------------------------------------------- #
-        model_inputs["cache_position"] = kwargs.get("cache_position", None)
+        # -------------------------------------------------------------------------- #
+        #                     计算所需的，cache_position
+        # -------------------------------------------------------------------------- #
+        current_cache_position = kwargs.get("cache_position", None)
+        if current_cache_position is None:
+            # prill阶段
+            bs, seq_len = kwargs["input_ids"].shape[0:2]
+            model_inputs["cache_position"] = self._get_initial_cache_position(
+                seq_len, device
+            )
+
+        else:
+            # decoder 阶段
+            (seq_len,) = current_cache_position.shape
+            last_position = current_cache_position.narrow(0, seq_len - 1, 1)
+
+            one_value = infinicore.from_list(
+                [1],
+                dtype=last_position.dtype,
+                device=last_position.device,
+            )
+            next_position = one_value + last_position
+
+            model_inputs["cache_position"] = next_position
 
         # -------------------------------------------------------------------- #
         #                 所需的: token的input_ids
         # -------------------------------------------------------------------- #
-        if kwargs.get("next_token", None) is not None:
-            next_token = kwargs.get("next_token", None)
-            input_ids = infinicore.from_list([[next_token]])
-            model_inputs["input_ids"] = input_ids
+        if kwargs.get("next_token_id", None) is not None:
+            next_token_id = kwargs["next_token_id"]
+            model_inputs["input_ids"] = infinicore.from_list([[next_token_id]])
 
         # -------------------------------------------------------------------- #
         #                 其他
@@ -124,33 +143,11 @@ class GenerationMixin:
 
         for i in range(0, max_new_tokens):
             # -------------------------------------------------------------------------- #
-            #                     计算所需的，cache_position
-            # -------------------------------------------------------------------------- #
-            current_cache_position = model_kwargs.get("cache_position", None)
-            if current_cache_position is None:
-                # prill阶段
-                model_kwargs["cache_position"] = self._get_initial_cache_position(
-                    seq_len, device
-                )
-
-            else:
-                # decoder 阶段
-                (seq_len,) = current_cache_position.shape
-                last_position = current_cache_position.narrow(0, seq_len - 1, 1)
-
-                one_value = infinicore.from_list(
-                    [1],
-                    dtype=last_position.dtype,
-                    device=last_position.device,
-                )
-                next_position = one_value + last_position
-
-                model_kwargs["cache_position"] = next_position
-
-            # -------------------------------------------------------------------------- #
             #                     prepare model inputs
             # -------------------------------------------------------------------------- #
             model_inputs = self.prepare_inputs_for_generation(device, **model_kwargs)
+
+            model_kwargs["cache_position"] = model_inputs["cache_position"]
 
             # -------------------------------------------------------------------------- #
             #                     计算一次
@@ -190,7 +187,7 @@ class GenerationMixin:
             token_id = next_tokens.to_numpy()[0]
             output_str = tokenizer.decode([token_id], skip_special_tokens=True)
 
-            model_kwargs["next_token"] = token_id
+            model_kwargs["next_token_id"] = token_id
             output_tokens_list.append(token_id)
             output_content += output_str
 
