@@ -1,22 +1,17 @@
-# coding=utf-8
-# Copyright 2022 EleutherAI and the HuggingFace Inc. team. All rights reserved.
+# Copyright (c) 2025, InfiniCore
 #
-# This code is based on EleutherAI's GPT-NeoX library and the GPT-NeoX
-# and OPT implementations in this library. It has been modified from its
-# original forms to accommodate minor architectural differences compared
-# to GPT-NeoX and OPT used by the Meta AI team that trained the model.
+# This file contains modified code derived from transformers
+# implementation, which is licensed under the BSD 3-Clause License.
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
+# The modifications include adaptations for the InfiniCore framework.
 #
-#     http://www.apache.org/licenses/LICENSE-2.0
+# Original transformers source:
+# https://github.com/huggingface/transformers
 #
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# Referencing PyTorch v4.57.0
+#
+# The use of this file is governed by the BSD 3-Clause License.
+
 
 import json
 import os
@@ -28,12 +23,87 @@ import infinicore
 
 from ...cache_utils import Cache, DynamicCache
 from ...generation.utils import GenerationMixin
-from ...modeling_outputs import CausalLMOutputWithPast
 from .configuration_llama import LlamaConfig
 
-import numpy as np
-
 logger = logging.get_logger(__name__)
+
+
+def repeat_kv(keys: infinicore.Tensor, values: infinicore.Tensor, ngroup: int):
+    total_seq_len, num_key_value_heads, head_dim = keys.shape
+
+    keys_repeat = infinicore.empty(
+        (total_seq_len, num_key_value_heads, ngroup, head_dim),
+        dtype=keys.dtype,
+        device=keys.device,
+    )
+    values_repeat = infinicore.empty(
+        (total_seq_len, num_key_value_heads, ngroup, head_dim),
+        dtype=values.dtype,
+        device=values.device,
+    )
+
+    for i in range(ngroup):
+        keys_repeat.narrow(2, i, 1).copy_(
+            keys.view((total_seq_len, num_key_value_heads, 1, head_dim))
+        )
+        values_repeat.narrow(2, i, 1).copy_(
+            values.view((total_seq_len, num_key_value_heads, 1, head_dim))
+        )
+
+    keys_new = keys_repeat.view((total_seq_len, num_key_value_heads * ngroup, head_dim))
+    values_new = values_repeat.view(
+        (total_seq_len, num_key_value_heads * ngroup, head_dim)
+    )
+    return keys_new, values_new
+
+
+def multi_head_attention(
+    querys: infinicore.Tensor,  # [seq_len,       num_heads, head_dim]
+    keys: infinicore.Tensor,  #   [total_seq_len, num_heads, head_dim]
+    values: infinicore.Tensor,  # [total_seq_len, num_heads, head_dim]
+    scaling: float,
+):
+    # => [ num_heads, seq_len,       head_dim]
+    Q = querys.permute((1, 0, 2))
+    # => [ num_heads, total_seq_len, head_dim]
+    K = keys
+    # => [ num_heads, total_seq_len, head_dim]
+    V = values.permute((1, 0, 2))
+
+    # [ num_heads, seq_len, head_dim] @ [ num_heads, head_dim, total_seq_len]
+    # => [ num_heads, seq_len, total_seq_len]
+    attn_weight = Q @ K.permute((1, 2, 0))
+
+    scaling = infinicore.from_list(
+        [scaling], dtype=attn_weight.dtype, device=attn_weight.device
+    ).as_strided(attn_weight.shape, [0, 0, 0])
+
+    attn_weight = attn_weight * scaling
+
+    infinicore.nn.functional.causal_softmax(attn_weight, out=attn_weight)
+
+    # [ num_heads,  seq_len,  total_seq_len] @ [num_heads, total_seq_len, head_dim]
+    # => [ num_heads,seq_len,head_dim]
+    out = attn_weight @ V
+
+    # => [seq_len, num_heads, head_dim]
+    return out.permute((1, 0, 2)).contiguous()
+
+
+def grouped_query_attention(
+    querys: infinicore.Tensor,  # [seq_len,       num_attention_heads, head_dim]
+    keys: infinicore.Tensor,  #   [total_seq_len, num_key_value_heads, head_dim]
+    values: infinicore.Tensor,  # [total_seq_len, num_key_value_heads, head_dim]
+    scaling: float,
+):
+    num_attention_heads = querys.shape[1]
+    num_key_value_heads = keys.shape[1]
+    ngroup = num_attention_heads // num_key_value_heads
+    if ngroup > 1:
+        keys, values = repeat_kv(keys, values, ngroup)
+
+    return multi_head_attention(querys, keys, values, scaling=scaling)
+
 
 LlamaRMSNorm = infinicore.nn.RMSNorm
 
@@ -41,18 +111,18 @@ LlamaRMSNorm = infinicore.nn.RMSNorm
 class LlamaMLP(infinicore.nn.Module):
     def __init__(self, config, **kwargs):
         super().__init__()
-        self.config = config
-        self.hidden_size = config.hidden_size
-        self.intermediate_size = config.intermediate_size
+        hidden_size = config.hidden_size
+        intermediate_size = config.intermediate_size
+        mlp_bias = config.mlp_bias
 
         self.gate_proj = infinicore.nn.Linear(
-            self.hidden_size, self.intermediate_size, bias=config.mlp_bias, **kwargs
+            hidden_size, intermediate_size, bias=mlp_bias, **kwargs
         )
         self.up_proj = infinicore.nn.Linear(
-            self.hidden_size, self.intermediate_size, bias=config.mlp_bias, **kwargs
+            hidden_size, intermediate_size, bias=mlp_bias, **kwargs
         )
         self.down_proj = infinicore.nn.Linear(
-            self.intermediate_size, self.hidden_size, bias=config.mlp_bias, **kwargs
+            intermediate_size, hidden_size, bias=mlp_bias, **kwargs
         )
         self.act_fn = infinicore.nn.functional.silu
 
@@ -61,145 +131,46 @@ class LlamaMLP(infinicore.nn.Module):
         return down_proj
 
 
-def multi_head_attention():
-    pass
-
-
-def repeat_kv(
-    query_states,
-    key_states,
-    value_states,
-):
-    seq_len, num_attention_heads, head_dim = query_states.shape
-    total_seq_len, num_key_value_heads, head_dim = key_states.shape
-
-    ngroup = num_attention_heads // num_key_value_heads
-
-    pass
-
-
-def infini_attention(
-    query_states: infinicore.Tensor,  # [seq_len,       num_attention_heads, head_dim]
-    key_states: infinicore.Tensor,  #   [total_seq_len, num_key_value_heads, head_dim]
-    value_states: infinicore.Tensor,  # [total_seq_len, num_key_value_heads, head_dim]
-):
-    seq_len, num_attention_heads, head_dim = query_states.shape
-    total_seq_len, num_key_value_heads, _ = key_states.shape
-
-    ngroup = num_attention_heads // num_key_value_heads
-
-    if ngroup > 1:
-        pass
-
-    key_states_new = infinicore.empty(
-        (total_seq_len, num_key_value_heads, ngroup, head_dim),
-        dtype=query_states.dtype,
-        device=query_states.device,
-    )
-    value_states_new = infinicore.empty(
-        (total_seq_len, num_key_value_heads, ngroup, head_dim),
-        dtype=query_states.dtype,
-        device=query_states.device,
-    )
-
-    for i in range(ngroup):
-        key_states_new.narrow(2, i, 1).copy_(
-            key_states.view(
-                (total_seq_len, num_key_value_heads, 1, head_dim)
-            ).contiguous()
-        )
-
-        value_states_new.narrow(2, i, 1).copy_(
-            value_states.view(
-                (total_seq_len, num_key_value_heads, 1, head_dim)
-            ).contiguous()
-        )
-
-    key_states = (
-        key_states_new.contiguous()
-        .view((total_seq_len, num_key_value_heads * ngroup, head_dim))
-        .contiguous()
-    )
-
-    value_states = (
-        value_states_new.contiguous()
-        .view((total_seq_len, num_key_value_heads * ngroup, head_dim))
-        .contiguous()
-    )
-
-    # => [ num_attention_heads, seq_len,       head_dim]
-    Q = query_states.permute((1, 0, 2)).contiguous()
-    # => [ num_key_value_heads, total_seq_len, head_dim]
-    K = key_states.permute((1, 0, 2)).contiguous()
-    # => [ num_key_value_heads, total_seq_len, head_dim]
-    V = value_states.permute((1, 0, 2)).contiguous()
-
-    scale = 1 / np.sqrt(head_dim)
-
-    # [ num_attention_heads, seq_len, head_dim] @ [ num_key_value_heads, head_dim, total_seq_len]
-    # => [ num_attention_heads, seq_len, total_seq_len]
-
-    scale = infinicore.from_list([scale], dtype=Q.dtype, device=Q.device).as_strided(
-        ([num_attention_heads, seq_len, total_seq_len]), [0, 0, 0]
-    )
-
-    score = Q @ K.permute((0, 2, 1)) * scale
-
-    infinicore.nn.functional.causal_softmax(score, out=score)
-
-    score_causal = score.contiguous()
-
-    # [ num_attention_heads,  seq_len,  total_seq_len] @   num_key_value_heads, total_seq_len, head_dim]
-    # => [ num_attention_heads,  seq_len,   head_dim]
-
-    out = score_causal @ V
-
-    # => [seq_len, num_attention_heads, head_dim]
-    out = out.permute((1, 0, 2)).contiguous()
-
-    return out
-
-
 class LlamaAttention(infinicore.nn.Module):
     def __init__(self, config: LlamaConfig, layer_idx: int, **kwargs):
         super().__init__()
         self.config = config
         self.layer_idx = layer_idx
-        self.head_dim = getattr(
-            config, "head_dim", config.hidden_size // config.num_attention_heads
-        )
-        self.num_key_value_groups = (
-            config.num_attention_heads // config.num_key_value_heads
-        )
-        self.scaling = self.head_dim**-0.5
-        self.attention_dropout = config.attention_dropout
+        self.hidden_size = config.hidden_size
 
         self.num_attention_heads = config.num_attention_heads
         self.num_key_value_heads = config.num_key_value_heads
-        self.hidden_size = config.hidden_size
+        self.num_key_value_groups = self.num_attention_heads // self.num_key_value_heads
+        attention_bias = config.attention_bias
+
+        self.head_dim = getattr(
+            config, "head_dim", self.hidden_size // self.num_attention_heads
+        )
+
+        self.scaling = self.head_dim**-0.5
 
         self.q_proj = infinicore.nn.Linear(
-            config.hidden_size,
-            config.num_attention_heads * self.head_dim,
-            bias=config.attention_bias,
+            self.hidden_size,
+            self.num_attention_heads * self.head_dim,
+            bias=attention_bias,
         )
 
         self.k_proj = infinicore.nn.Linear(
-            config.hidden_size,
-            config.num_key_value_heads * self.head_dim,
-            bias=config.attention_bias,
+            self.hidden_size,
+            self.num_key_value_heads * self.head_dim,
+            bias=attention_bias,
         )
 
         self.v_proj = infinicore.nn.Linear(
-            config.hidden_size,
-            config.num_key_value_heads * self.head_dim,
-            bias=config.attention_bias,
+            self.hidden_size,
+            self.num_key_value_heads * self.head_dim,
+            bias=attention_bias,
         )
 
         self.o_proj = infinicore.nn.Linear(
-            config.num_attention_heads * self.head_dim,
-            config.hidden_size,
-            bias=config.attention_bias,
+            self.num_attention_heads * self.head_dim,
+            self.hidden_size,
+            bias=attention_bias,
         )
 
     def forward(
@@ -210,47 +181,45 @@ class LlamaAttention(infinicore.nn.Module):
         **kwargs,
     ) -> infinicore.Tensor:
         hidden_states_shape = hidden_states.shape  # [bs, seq_len, hidden_size]
-        bs, seq_len = hidden_states_shape[:-1]  # [bs, seq_len]
+        bs, seq_len = hidden_states_shape[:-1]  #    [bs, seq_len]
 
-        query_hidden_shape = (bs, seq_len, self.num_attention_heads, self.head_dim)
-        key_hidden_shape = (bs, seq_len, self.num_key_value_heads, self.head_dim)
-        value_hidden_shape = (bs, seq_len, self.num_key_value_heads, self.head_dim)
+        querys_shape = (bs, seq_len, self.num_attention_heads, self.head_dim)
+        keys_shape = (bs, seq_len, self.num_key_value_heads, self.head_dim)
+        values_shape = (bs, seq_len, self.num_key_value_heads, self.head_dim)
 
         # --------------------------------------------------------------------------------------- #
         #                           对 Q,K，V进行 project 加上 rope
         # --------------------------------------------------------------------------------------- #
         # => [bs, seq_len,  num_attention_heads, head_dim]
-        query_states_infinicore = self.q_proj(hidden_states).view(query_hidden_shape)
+        query_states = self.q_proj(hidden_states).view(querys_shape)
 
         # => [bs, seq_len,  num_key_value_heads, head_dim]
-        key_states_infinicore = self.k_proj(hidden_states).view(key_hidden_shape)
+        key_states = self.k_proj(hidden_states).view(keys_shape)
+
         # => [bs, seq_len, nkvh, head_dim]
-        value_states_infinicore = self.v_proj(hidden_states).view(value_hidden_shape)
+        value_states = self.v_proj(hidden_states).view(values_shape)
 
         # --------------------------------------------------------------------------------------- #
         #                           对 Q和K， 加上 rope
         # --------------------------------------------------------------------------------------- #
         cache_position = kwargs.pop("cache_position", None)
-        if not cache_position:
+        if cache_position is None:
             raise KeyError("cache_position error")
-
         if rope_instance is None:
             raise KeyError("rope_instance error")
 
-        query_states = rope_instance(query_states_infinicore, cache_position)
-        key_states = rope_instance(key_states_infinicore, cache_position)
-
+        query_states = rope_instance(query_states, cache_position)
+        key_states = rope_instance(key_states, cache_position)
         # --------------------------------------------------------------------------------------- #
         #                           kv cache
         # --------------------------------------------------------------------------------------- #
 
         # kv cache
         if past_key_values is not None:
-            # sin and cos are specific to RoPE models
             cache_kwargs = {}
-            key_states_infini, value_states_infini = past_key_values.update(
+            key_states_total, value_states_total = past_key_values.update(
                 key_states,  # [bs, seq_len, num_key_value_heads, head_dim]
-                value_states_infinicore,  # [bs, seq_len, num_key_value_heads, head_dim]
+                value_states,  # [bs, seq_len, num_key_value_heads, head_dim]
                 self.layer_idx,
                 cache_kwargs,
             )
@@ -258,12 +227,11 @@ class LlamaAttention(infinicore.nn.Module):
         # --------------------------------------------------------------------------------------- #
         #                           注意力计算
         # --------------------------------------------------------------------------------------- #
-
         if False:
             #  [bs, num_key_value_heads, seq_len, head_dim]
             query_states_infini = query_states.permute((0, 2, 1, 3)).contiguous()
-            key_states_infini = key_states_infini.permute((0, 2, 1, 3)).contiguous()
-            value_states_infini = value_states_infini.permute((0, 2, 1, 3)).contiguous()
+            key_states_infini = key_states_total.permute((0, 2, 1, 3)).contiguous()
+            value_states_infini = value_states_total.permute((0, 2, 1, 3)).contiguous()
 
             # att_val => [bs,  num_attention_heads, seq_len, head_dim]
             att_val = infinicore.nn.functional.self_attention(
@@ -275,30 +243,29 @@ class LlamaAttention(infinicore.nn.Module):
             # => [bs, seq_len, num_attention_heads, dh ]
             attn_output = att_val.permute((0, 2, 1, 3)).contiguous()
 
-        if True:
-            total_seq_len = key_states_infini.shape[1]
+        else:
+            total_seq_len = key_states_total.shape[1]
             attn_output = infinicore.empty_like(query_states)
-
             for i in range(0, bs):
-                query_states_i = query_states.view(
-                    (1 * seq_len, self.num_attention_heads, self.head_dim)
-                ).contiguous()
-                key_states_infini_i = key_states_infini.view(
-                    (1 * total_seq_len, self.num_key_value_heads, self.head_dim)
-                ).contiguous()
-                value_states_infini_i = value_states_infini.view(
-                    (1 * total_seq_len, self.num_key_value_heads, self.head_dim)
-                ).contiguous()
-
-                attn_output = infini_attention(
-                    query_states_i,
-                    key_states_infini_i,
-                    value_states_infini_i,
+                query_states_i = query_states.narrow(0, i, 1).view(
+                    (seq_len, self.num_attention_heads, self.head_dim)
+                )
+                key_states_i = key_states_total.narrow(0, i, 1).view(
+                    (total_seq_len, self.num_key_value_heads, self.head_dim)
+                )
+                value_states_i = value_states_total.narrow(0, i, 1).view(
+                    (total_seq_len, self.num_key_value_heads, self.head_dim)
                 )
 
-                # attn_output.narrow(0, i, 1).view(
-                #     (seq_len, self.num_attention_heads, self.head_dim)
-                # ).copy_(attn_output_i)
+                attn_output_i = attn_output.narrow(0, i, 1).view(
+                    (seq_len, self.num_attention_heads, self.head_dim)
+                )
+
+                attention_i = grouped_query_attention(
+                    query_states_i, key_states_i, value_states_i, scaling=self.scaling
+                )
+
+                attn_output_i.copy_(attention_i)
 
         # --------------------------------------------------------------------------------------- #
         #                           out project
@@ -307,21 +274,20 @@ class LlamaAttention(infinicore.nn.Module):
         attn_output = attn_output.view(hidden_states_shape)
 
         # o_proj
-        attn_output = self.o_proj(attn_output)
-
-        return attn_output
+        return self.o_proj(attn_output)
 
 
 class LlamaDecoderLayer(infinicore.nn.Module):
     def __init__(self, config: LlamaConfig, layer_idx: int, **kwargs):
         super().__init__()
-        self.hidden_size = config.hidden_size
+        hidden_size = config.hidden_size
+        rms_norm_eps = config.rms_norm_eps
+
         self.self_attn = LlamaAttention(config=config, layer_idx=layer_idx, **kwargs)
-        self.mlp = LlamaMLP(config)
-        self.input_layernorm = LlamaRMSNorm(config.hidden_size, eps=config.rms_norm_eps)
-        self.post_attention_layernorm = LlamaRMSNorm(
-            config.hidden_size, eps=config.rms_norm_eps
-        )
+        self.mlp = LlamaMLP(config=config)
+
+        self.input_layernorm = LlamaRMSNorm(hidden_size, eps=rms_norm_eps)
+        self.post_attention_layernorm = LlamaRMSNorm(hidden_size, eps=rms_norm_eps)
 
     def forward(
         self,
@@ -367,8 +333,8 @@ class LlamaModel(infinicore.nn.Module):
         super().__init__()
         self.config = config
         self.padding_idx = config.pad_token_id
-        self.vocab_size = config.vocab_size
-        self.head_dim = getattr(
+
+        head_dim = getattr(
             config, "head_dim", config.hidden_size // config.num_attention_heads
         )
 
@@ -387,7 +353,7 @@ class LlamaModel(infinicore.nn.Module):
         self.rope_instance = infinicore.nn.RoPE(
             max_position_embeddings=config.max_position_embeddings,
             rope_theta=config.rope_theta,
-            head_dim=self.head_dim,
+            head_dim=head_dim,
             **kwargs,
         )
 
@@ -407,8 +373,6 @@ class LlamaModel(infinicore.nn.Module):
         # --------------------------------------------------------- #
         # input_ids :     {1,5}       tensor([[    1,  1128,   526,   366, 29892]])
         # inputs_embeds : {1,5,2048}  tensor([[[...]]])
-        # input_ids = input_ids.to(dtype=int32)
-
         inputs_embeds = self.embed_tokens(input_ids)
 
         # --------------------------------------------------------- #
@@ -417,9 +381,8 @@ class LlamaModel(infinicore.nn.Module):
         ilayer = 0  # noqa: F841
         hidden_states = inputs_embeds
         for decoder_layer in self.layers[: self.config.num_hidden_layers]:
-            print("ilayer: ", ilayer)
-            ilayer += 1
-
+            # print("ilayer: ", ilayer)
+            # ilayer += 1
             hidden_states = decoder_layer(
                 hidden_states,
                 past_key_values=past_key_values,
@@ -431,7 +394,7 @@ class LlamaModel(infinicore.nn.Module):
         # --------------------------------------------------------- #
         #                    norm
         # --------------------------------------------------------- #
-        _, seq_len, _ = hidden_states.shape  # 1,5,2048
+        seq_len = hidden_states.shape[1]
         last_token = hidden_states.narrow(1, seq_len - 1, 1)
 
         return self.norm(last_token)
@@ -444,7 +407,6 @@ class LlamaForCausalLM(infinicore.nn.Module, GenerationMixin):
         super().__init__()
         self.config = config
         self.model = LlamaModel(config, **kwargs)
-        self.vocab_size = config.vocab_size
         self.lm_head = infinicore.nn.Linear(
             config.hidden_size, config.vocab_size, bias=False
         )
@@ -456,12 +418,7 @@ class LlamaForCausalLM(infinicore.nn.Module, GenerationMixin):
         past_key_values: Optional[Cache] = None,
         use_cache: Optional[bool] = None,
         **kwargs,
-    ) -> CausalLMOutputWithPast:
-        """
-        input_ids: Optional[ LongTensor ] = None,  # tensor([[    1,  1128,   526,   366, 29892]])
-        cache_position: Optional[ LongTensor ] = None,  # [0,1,2,3,4] ...  [5]   cuda:0
-        """
-
+    ):
         last_token = self.model(
             input_ids,
             cache_position,
@@ -469,11 +426,7 @@ class LlamaForCausalLM(infinicore.nn.Module, GenerationMixin):
             use_cache=use_cache,
             **kwargs,
         )
-
-        # logits Size([1, 1, 32000])
-        logits = self.lm_head(last_token)
-
-        return CausalLMOutputWithPast(logits=logits)
+        return self.lm_head(last_token)
 
     @classmethod
     def from_pretrained(

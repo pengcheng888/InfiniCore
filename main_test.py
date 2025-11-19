@@ -2,6 +2,7 @@ import torch
 from torch import nn
 import numpy as np
 import infinicore
+import ctypes
 
 torch.manual_seed(10)
 
@@ -405,18 +406,36 @@ def func3():
     print(out_s.shape, out_s)
 
 
+# np.from_infini()
+
+
+def example2_multidimensional():
+    """多维Tensor示例"""
+    print("\n=== 多维Tensor示例 ===")
+
+    # 创建2D PyTorch Tensor
+    torch_tensor = torch.tensor([[1, 2, 3], [4, 5, 6]], dtype=torch.int32)
+    print(f"原始2D Tensor:\n{torch_tensor}")
+
+    # 获取数据指针和形状信息
+    data_ptr = torch_tensor.data_ptr()
+    num_elements = torch_tensor.numel()
+    original_shape = torch_tensor.shape
+
+    # 创建1D NumPy数组（共享内存）
+    ArrayType = ctypes.c_int32 * num_elements
+    array = ArrayType.from_address(data_ptr)
+    np_flat = np.ctypeslib.as_array(array)
+
+    # 重塑为原始形状
+    np_array = np_flat.reshape(original_shape)
+    print(f"重塑后的NumPy数组:\n{np_array}")
+
+    # 验证修改的相互影响
+    np_array[1, 2] = 100
+    print(f"修改后Tensor:\n{torch_tensor}")
+
+
 if __name__ == "__main__":
-    # func3()
-
-    A = infinicore.empty(
-        [1, 32, 5, 5],
-        dtype=infinicore.float16,
-        device=infinicore.device("cuda", 0),
-    )
-    B = infinicore.empty(
-        [1, 32, 5, 64],
-        dtype=infinicore.float16,
-        device=infinicore.device("cuda", 0),
-    )
-
-    print(A @ B)
+    pass
+    # example2_multidimensional()\

@@ -1,6 +1,7 @@
 import torch
 
 import infinicore
+import numpy as np
 
 
 def to_torch_dtype(infini_dtype):
@@ -226,29 +227,6 @@ infinicore.Tensor.__str__ = infini__str__
 import torch  # noqa: E402
 
 
-def rand(
-    *size,
-    generator=None,
-    out=None,
-    dtype=None,
-    layout=torch.strided,
-    device=None,
-    requires_grad=False,
-    pin_memory=False,
-):
-    torch_tensor = torch.rand(
-        *size,
-        out=out,
-        dtype=dtype,
-        layout=layout,
-        device=device,
-        requires_grad=requires_grad,
-        pin_memory=pin_memory,
-    )
-    infini_tensor = infinicore.from_torch(torch_tensor)
-    return infini_tensor
-
-
 def to_infini(self) -> infinicore.Tensor:
     """
     将torch.Tensor的数据转为 infinicore.Tensor
@@ -258,8 +236,25 @@ def to_infini(self) -> infinicore.Tensor:
 
 torch.Tensor.to_infini = to_infini
 
+torch.Tensor._infini_ret = None
+
 
 def to_torch(self) -> torch.Tensor:
+    # torch_tensor = torch.zeros(
+    #     infini_result.shape,
+    #     dtype=to_torch_dtype(infini_result.dtype),
+    #     device=infini_result.device.type,
+    # )
+
+    # infini_device = infinicore.device(torch_tensor.device.type, 0)
+    # temp_tensor = infinicore.from_blob(
+    #     torch_tensor.data_ptr(),
+    #     list(torch_tensor.shape),
+    #     dtype=to_infinicore_dtype(torch_tensor.dtype),
+    #     device=infini_device,
+    # )
+    # temp_tensor.copy_(infini_result)
+
     return infinicore.convert_infini_to_torch_tensor(self)
 
 
@@ -274,3 +269,47 @@ def from_infini(data: infinicore.Tensor) -> torch.Tensor:
 
 
 torch.from_infini = from_infini
+
+# -------------------------------------------------------------------
+# -------------------------------------------------------------------
+
+
+# -------------------------------------------------------------------------------- #
+# -------------------------------------------------------------------------------- #
+# -------------------------------------------------------------------------------- #
+def infini_to_ctype_dtype(infini_dtype):
+    """Convert PyTorch data type to infinicore data type"""
+    import ctypes
+    from ctypes import POINTER, addressof, byref, c_float, c_int, c_uint, c_void_p
+
+    if infini_dtype == infinicore.int32:
+        return ctypes.c_int32
+    elif infini_dtype == infinicore.float32:
+        return ctypes.c_float
+    else:
+        raise ValueError(f"Unsupported py_dtype: {infini_dtype}")
+
+
+def infini_to_numpy(infini_tensor: infinicore.Tensor):
+    if infini_tensor.device.type != "cpu":
+        infini_tensor_cpu = infini_tensor.to(infinicore.device("cpu", 0))
+    else:
+        infini_tensor_cpu = infini_tensor
+
+    # 获取数据指针和形状信息
+    data_ptr = infini_tensor_cpu.data_ptr()
+    num_elements = infini_tensor_cpu.numel()
+    original_shape = infini_tensor_cpu.shape
+
+    # 创建1D NumPy数组（共享内存）
+    ArrayType = infinicore.infini_to_ctype_dtype(infini_tensor_cpu.dtype) * num_elements
+    array = ArrayType.from_address(data_ptr)
+    np_flat = np.ctypeslib.as_array(array)
+
+    # 重塑为原始形状
+    np_array = np_flat.reshape(original_shape)
+
+    return np.copy(np_array)
+
+
+infinicore.Tensor.to_numpy = infini_to_numpy

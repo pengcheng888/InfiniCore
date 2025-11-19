@@ -1,3 +1,18 @@
+# Copyright (c) 2025, InfiniCore
+#
+# This file contains modified code derived from transformers
+# implementation, which is licensed under the BSD 3-Clause License.
+#
+# The modifications include adaptations for the InfiniCore framework.
+#
+# Original transformers source:
+# https://github.com/huggingface/transformers
+#
+# Referencing PyTorch v4.57.0
+#
+# The use of this file is governed by the BSD 3-Clause License.
+
+
 from abc import ABC, abstractmethod
 from typing import Any, Optional
 
@@ -32,7 +47,7 @@ class CacheLayerMixin(ABC):
 class DynamicLayer(CacheLayerMixin):
     """
     A cache layer that grows dynamically as more tokens are generated. This is the default for generative models.
-    It stores the key and value states as tensors of shape `[batch_size, seq_len, num_heads,  head_dim]`.
+    It stores the key and value states as tensors of shape `[batch_size, seq_len, num_heads, head_dim]`.
     """
 
     def lazy_initialization(self, key_states: infinicore.Tensor):

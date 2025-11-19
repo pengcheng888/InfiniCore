@@ -1,4 +1,5 @@
 import sys
+import time
 
 import infinilm
 import torch
@@ -55,15 +56,14 @@ def test(model_path, device_type="cuda"):
     inputs_tensor = input_ids["input_ids"]
     input_ids_infini = inputs_tensor.cpu().to_infini()
 
-    import time
-
     t1 = time.time()
-    output_tokens_list = model.generate(
-        input_ids_infini, max_new_tokens=10, device=infini_device
+    output_tokens_list, output_content = model.generate(
+        input_ids_infini, max_new_tokens=10, device=infini_device, tokenizer=tokenizer
     )
     t2 = time.time()
-    print("time: ", (t2 - t1) * 1000)
-    print(output_tokens_list)
+    print("generate time: ", (t2 - t1) * 1000)
+    # print(output_tokens_list)
+    return
 
     # ---------------------------------------------------------------------------- #
     #                        解码成字符显示

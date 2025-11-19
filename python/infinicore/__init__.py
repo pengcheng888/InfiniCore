@@ -48,13 +48,13 @@ from infinicore.tensor import (
 )
 
 from infinicore.experimental import (
-    rand,
     convert_infini_to_torch_tensor,
     convert_torch_to_infini_tensor,
     to_torch_dtype,
     to_infinicore_dtype,
     convert_list_to_infini_tensor,
     get_index_value,
+    infini_to_ctype_dtype,
 )
 
 __all__ = [

@@ -1,3 +1,17 @@
+# Copyright (c) 2025, InfiniCore
+#
+# This file contains modified code derived from transformers
+# implementation, which is licensed under the BSD 3-Clause License.
+#
+# The modifications include adaptations for the InfiniCore framework.
+#
+# Original transformers source:
+# https://github.com/huggingface/transformers
+#
+# Referencing PyTorch v4.57.0
+#
+# The use of this file is governed by the BSD 3-Clause License.
+
 import copy
 from typing import Any
 
@@ -28,8 +42,6 @@ class PretrainedConfig:
 
             output[key] = value
 
-        # self._remove_keys_not_serialized(output)
-
         self.dict_dtype_to_str(output)
 
         return output
@@ -50,26 +62,6 @@ class PretrainedConfig:
                 self.dict_dtype_to_str(value)
 
     def get_text_config(self, decoder=None, encoder=None):
-        """
-        elif encoder and hasattr(config_to_return, "encoder_layers"):
-                config_to_return.num_hidden_layers = config_to_return.encoder_layers
-
-        return config_to_returnReturns the text config related to the text input (encoder) or text output (decoder) of the model. The
-        `decoder` and `encoder` input arguments can be used to specify which end of the model we are interested in,
-        which is useful on models that have both text input and output modalities.
-
-        There are three possible outcomes of using this method:
-        1. On most models, it returns the original config instance itself.
-        2. On newer (2024+) composite models, it returns the text section of the config, which is nested under a set
-            of valid names.
-        3. On older (2023-) composite models, it discards decoder-only parameters when `encoder=True` and vice-versa.
-
-        Args:
-            decoder (`Optional[bool]`, *optional*):
-                If set to `True`, then only search for decoder config names.
-            encoder (`Optional[bool]`, *optional*):
-                If set to `True`, then only search for encoder config names.
-        """
         return_both = (
             decoder == encoder
         )  # both unset or both set -> search all possible names

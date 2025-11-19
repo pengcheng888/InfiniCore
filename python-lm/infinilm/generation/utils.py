@@ -6,14 +6,14 @@ from ..cache_utils import Cache, DynamicCache
 
 
 class GenerationMixin:
+    def __init__(self):
+        pass
+
     def _get_initial_cache_position(self, seq_length, device):
         """Calculates `cache_position` for the pre-fill stage"""
-
         cache_position_list = list(range(0, seq_length))
         return infinicore.from_list(
-            cache_position_list,
-            dtype=infinicore.int64,
-            device=device,
+            cache_position_list, dtype=infinicore.int64, device=device
         )
 
     def prepare_inputs_for_generation(
@@ -21,7 +21,7 @@ class GenerationMixin:
         past_key_values: Optional[Cache] = None,
         **kwargs,
     ):
-        """Prepare the model inputs for generation. It includes operations like slicing inputs given the existing cache."""
+        """Prepare the model inputs for generation."""
 
         # 1. Handle BC:
         model_inputs = {}
@@ -45,16 +45,17 @@ class GenerationMixin:
             model_inputs["input_ids"] = input_ids
 
         # -------------------------------------------------------------------- #
-        #                 所需的: 其他
+        #                 其他
         # -------------------------------------------------------------------- #
-        # 7. Forward ALL kwargs that are uninitialized (e.g. `use_cache`).
         for key, value in kwargs.items():
             if key not in model_inputs:
                 model_inputs[key] = value
 
         return model_inputs
 
-    def generate(self, input_ids, max_new_tokens=10, device=None, **kwargs):
+    def generate(
+        self, input_ids, max_new_tokens=10, device=None, tokenizer=None, **kwargs
+    ):
         model_kwargs = kwargs
 
         # -------------------------------------------------------------------- #
@@ -70,6 +71,7 @@ class GenerationMixin:
             input_ids,
             max_new_tokens=max_new_tokens,
             device=device,
+            tokenizer=tokenizer,
             **model_kwargs,
         )
         return result
@@ -79,6 +81,7 @@ class GenerationMixin:
         input_ids,
         max_new_tokens=10,
         device=None,
+        tokenizer=None,
         **model_kwargs,
     ):
         r"""
@@ -89,9 +92,7 @@ class GenerationMixin:
             input_ids (`LongTensor` of shape `(batch_size, sequence_length)`):
                 The sequence used as a prompt for the generation.
 
-            model_kwargs:
-                Additional model specific kwargs will be forwarded to the `forward` function of the model. If model is
-                an encoder-decoder model the kwargs should include `encoder_outputs`.
+
 
         """
 
@@ -108,6 +109,8 @@ class GenerationMixin:
 
         model_kwargs["input_ids"] = input_ids
         model_kwargs["cache_position"] = cache_position
+        output_content = ""
+        print()
         while cur_count < max_new_tokens:
             # -------------------------------------------------------------------------- #
             #                     prepare model inputs
@@ -117,7 +120,7 @@ class GenerationMixin:
             # -------------------------------------------------------------------------- #
             #                     计算一次
             # -------------------------------------------------------------------------- #
-            outputs = self.forward(**model_inputs, return_dict=True)
+            logits = self.forward(**model_inputs, return_dict=True)
 
             # -------------------------------------------------------------------------- #
             #                     更新下一次所需的，cache_position
@@ -126,6 +129,7 @@ class GenerationMixin:
             (seq_len,) = cache_position.shape
 
             last_position = cache_position.narrow(0, seq_len - 1, 1)
+
             one_value = infinicore.from_list(
                 [1],
                 dtype=last_position.dtype,
@@ -138,7 +142,7 @@ class GenerationMixin:
             # -------------------------------------------------------------------------- #
             #                     处理输出
             # -------------------------------------------------------------------------- #
-            next_token_scores = outputs.logits
+            next_token_scores = logits
 
             # -------------------------------------------------------------------------- #
             #                     random_sample
@@ -151,7 +155,6 @@ class GenerationMixin:
                 dtype=infinicore.int32,
                 device=next_token_scores.device,
             )
-
             for i in range(0, batch_size):
                 score = next_token_scores.narrow(0, i, 1).view([vocab_size])
                 out = next_tokens.narrow(0, i, 1).view([])
@@ -167,16 +170,25 @@ class GenerationMixin:
             # ----------------------------------------------------------------- #
             #                        得到cpu上的结果
             # ----------------------------------------------------------------- #
-            # update generated ids, model inputs, and length for next step
-            next_tokens = next_tokens.to_torch().cpu()
 
-            next_token = next_tokens[0].item()  # 将 torch 中的数据 转为 python的int类型
+            if False:
+                # update generated ids, model inputs, and length for next step
+                next_tokens = next_tokens.to_torch().cpu()
+
+                next_token = next_tokens[
+                    0
+                ].item()  # 将 torch 中的数据 转为 python的int类型
+            else:
+                next_token = next_tokens.to_numpy()[0]
+
             output_tokens_list.append(next_token)
             model_kwargs["next_token"] = next_token
 
+            output_str = tokenizer.decode([next_token], skip_special_tokens=True)
+            output_content += output_str
+
+            print(output_str, end="", flush=True)
             cur_len += 1
             cur_count += 1
-
-            del outputs
-
-        return output_tokens_list
+        print()
+        return output_tokens_list, output_content
