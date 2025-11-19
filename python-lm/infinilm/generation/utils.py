@@ -1,3 +1,4 @@
+import time
 from typing import Optional
 
 import infinicore
@@ -141,6 +142,7 @@ class GenerationMixin:
         output_content = ""
         print()
 
+        time_list = []
         for i in range(0, max_new_tokens):
             # -------------------------------------------------------------------------- #
             #                     prepare model inputs
@@ -152,6 +154,7 @@ class GenerationMixin:
             # -------------------------------------------------------------------------- #
             #                     计算一次
             # -------------------------------------------------------------------------- #
+            start_time = time.time()
             logits = self.forward(**model_inputs, return_dict=True)
 
             # -------------------------------------------------------------------------- #
@@ -180,6 +183,8 @@ class GenerationMixin:
                     1.0,
                     out=out,
                 )
+            end_time = time.time()
+            time_list.append((end_time - start_time) * 1000)
 
             # ----------------------------------------------------------------- #
             #                得到下一个token的id，并解码为字符
@@ -195,5 +200,8 @@ class GenerationMixin:
             if token_id in eos_token_id_list:
                 break
 
-        print()
+        print(
+            f"\n\nTime per ste: {sum(time_list) / len(time_list)} ms\n",
+        )
+
         return output_tokens_list, output_content

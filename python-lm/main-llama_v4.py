@@ -10,8 +10,6 @@ import infinicore
 
 
 def test(model_path, device_str="cuda", max_new_tokens=100):
-    max_new_tokens = 10
-
     # ---------------------------------------------------------------------------- #
     #                        创建模型,
     # ---------------------------------------------------------------------------- #
@@ -68,20 +66,32 @@ def test(model_path, device_str="cuda", max_new_tokens=100):
     # ---------------------------------------------------------------------------- #
     #                        token编码
     # ---------------------------------------------------------------------------- #
-    prompt = ["How are you,"]
-    input_ids = tokenizer(
-        prompt,
-        padding=True,  # 自动填充到相同长度
-        truncation=True,  # 自动截断到最大长度
-        max_length=128,  # 设置最大长度
-    )
+    prompt = "How are you,"
+    prompt = "山东最高的山是？"
+    if False:
+        input_ids = tokenizer(
+            prompt,
+            padding=True,  # 自动填充到相同长度
+            truncation=True,  # 自动截断到最大长度
+            max_length=128,  # 设置最大长度
+        )
+        print("prompt: ", prompt)
+    else:
+        input_content = tokenizer.apply_chat_template(
+            conversation=[{"role": "user", "content": prompt}],
+            add_generation_prompt=True,
+            tokenize=False,
+        )
+        print(input_content, end="", flush=True)
+        input_ids = tokenizer.encode(input_content)
 
     # ---------------------------------------------------------------------------- #
     #                        自回归生成
     # ---------------------------------------------------------------------------- #
 
-    input_ids_list = input_ids["input_ids"]  # List: [[1, 1128, 526, 366, 29892]]
+    input_ids_list = [input_ids]  # List: [[1, 1128, 526, 366, 29892]]
     input_ids_infini = infinicore.from_list(input_ids_list)
+
     t1 = time.time()
 
     output_tokens_list, output_content = model.generate(
@@ -94,10 +104,7 @@ def test(model_path, device_str="cuda", max_new_tokens=100):
     t2 = time.time()
 
     print(
-        f"generate time: {(t2 - t1) * 1000} ms",
-    )
-    print(
-        f"avg time: {(t2 - t1) * 1000 / max_new_tokens} ms",
+        f"total_time: {(t2 - t1) * 1000} ms",
     )
 
     return
@@ -135,13 +142,14 @@ def get_args():
 
 
 if __name__ == "__main__":
-    if True:
+    if False:
         model_path = r"/home/ubuntu/workspace_aisys/tensorRT_quantization-main/Llama/Llama2-TinyLlama-1.1B-Chat-v1.0/"
         model_path = r"/home/ubuntu/workspace_aisys/tensorRT_quantization-main/Llama/TinyLlama-1.1B-Chat-v1.0-small/"
         # model_path = r"/home/ubuntu/models/TinyLlama-1.1B-Chat-v1.0-small/"
         # model_path = r"/home/ubuntu/models/TinyLlama-1.1B-Chat-v1.0/"
         device_type = "cuda"
-        test(model_path, device_type)
+        max_new_tokens = 10
+        test(model_path, device_type, max_new_tokens=max_new_tokens)
         exit(-1)
 
     args = get_args()
