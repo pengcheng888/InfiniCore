@@ -406,4 +406,17 @@ def func3():
 
 
 if __name__ == "__main__":
-    func3()
+    # func3()
+
+    A = infinicore.empty(
+        [1, 32, 5, 5],
+        dtype=infinicore.float16,
+        device=infinicore.device("cuda", 0),
+    )
+    B = infinicore.empty(
+        [1, 32, 5, 64],
+        dtype=infinicore.float16,
+        device=infinicore.device("cuda", 0),
+    )
+
+    print(A @ B)

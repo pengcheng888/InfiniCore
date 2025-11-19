@@ -78,10 +78,10 @@ def test(model_path, device_type="cuda"):
 if __name__ == "__main__":
     model_path = r"/home/ubuntu/workspace_aisys/tensorRT_quantization-main/Llama/Llama2-TinyLlama-1.1B-Chat-v1.0/"
     model_path = r"/home/ubuntu/workspace_aisys/tensorRT_quantization-main/Llama/TinyLlama-1.1B-Chat-v1.0-small/"
-    model_path = r"/home/ubuntu/models/TinyLlama-1.1B-Chat-v1.0-small/"
+    # model_path = r"/home/ubuntu/models/TinyLlama-1.1B-Chat-v1.0-small/"
     # model_path = r"/home/ubuntu/models/TinyLlama-1.1B-Chat-v1.0/"
 
-    device_type = "cpu"
+    device_type = "cuda"
     test(model_path, device_type)
     exit(-1)
 

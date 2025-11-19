@@ -61,15 +61,35 @@ class LlamaMLP(infinicore.nn.Module):
         return down_proj
 
 
+def multi_head_attention():
+    pass
+
+
+def repeat_kv(
+    query_states,
+    key_states,
+    value_states,
+):
+    seq_len, num_attention_heads, head_dim = query_states.shape
+    total_seq_len, num_key_value_heads, head_dim = key_states.shape
+
+    ngroup = num_attention_heads // num_key_value_heads
+
+    pass
+
+
 def infini_attention(
-    query_states: infinicore.Tensor,
-    key_states: infinicore.Tensor,
-    value_states: infinicore.Tensor,
+    query_states: infinicore.Tensor,  # [seq_len,       num_attention_heads, head_dim]
+    key_states: infinicore.Tensor,  #   [total_seq_len, num_key_value_heads, head_dim]
+    value_states: infinicore.Tensor,  # [total_seq_len, num_key_value_heads, head_dim]
 ):
     seq_len, num_attention_heads, head_dim = query_states.shape
     total_seq_len, num_key_value_heads, _ = key_states.shape
 
     ngroup = num_attention_heads // num_key_value_heads
+
+    if ngroup > 1:
+        pass
 
     key_states_new = infinicore.empty(
         (total_seq_len, num_key_value_heads, ngroup, head_dim),
@@ -119,16 +139,19 @@ def infini_attention(
     # [ num_attention_heads, seq_len, head_dim] @ [ num_key_value_heads, head_dim, total_seq_len]
     # => [ num_attention_heads, seq_len, total_seq_len]
 
-    scale = infinicore.from_list([scale], dtype=Q.dtype).as_strided(
+    scale = infinicore.from_list([scale], dtype=Q.dtype, device=Q.device).as_strided(
         ([num_attention_heads, seq_len, total_seq_len]), [0, 0, 0]
     )
 
     score = Q @ K.permute((0, 2, 1)) * scale
 
-    score_causal = infinicore.nn.functional.causal_softmax(score)
+    infinicore.nn.functional.causal_softmax(score, out=score)
+
+    score_causal = score.contiguous()
 
     # [ num_attention_heads,  seq_len,  total_seq_len] @   num_key_value_heads, total_seq_len, head_dim]
     # => [ num_attention_heads,  seq_len,   head_dim]
+
     out = score_causal @ V
 
     # => [seq_len, num_attention_heads, head_dim]
@@ -254,7 +277,7 @@ class LlamaAttention(infinicore.nn.Module):
 
         if True:
             total_seq_len = key_states_infini.shape[1]
-            # attn_output = infinicore.empty_like(query_states)
+            attn_output = infinicore.empty_like(query_states)
 
             for i in range(0, bs):
                 query_states_i = query_states.view(
