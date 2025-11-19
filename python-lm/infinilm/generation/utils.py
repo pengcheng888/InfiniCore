@@ -19,6 +19,7 @@ class GenerationMixin:
 
     def prepare_inputs_for_generation(
         self,
+        device: infinicore.device,
         past_key_values: Optional[Cache] = None,
         **kwargs,
     ):
@@ -113,42 +114,48 @@ class GenerationMixin:
         # -------------------------------------------------------------------------- #
         #                     初始化 cache_position
         # -------------------------------------------------------------------------- #
-        cache_position = self._get_initial_cache_position(seq_len, device)
 
         output_tokens_list = []
 
         model_kwargs["input_ids"] = input_ids
-        model_kwargs["cache_position"] = cache_position
+        model_kwargs["cache_position"] = None
         output_content = ""
         print()
 
         for i in range(0, max_new_tokens):
             # -------------------------------------------------------------------------- #
+            #                     计算所需的，cache_position
+            # -------------------------------------------------------------------------- #
+            current_cache_position = model_kwargs.get("cache_position", None)
+            if current_cache_position is None:
+                # prill阶段
+                model_kwargs["cache_position"] = self._get_initial_cache_position(
+                    seq_len, device
+                )
+
+            else:
+                # decoder 阶段
+                (seq_len,) = current_cache_position.shape
+                last_position = current_cache_position.narrow(0, seq_len - 1, 1)
+
+                one_value = infinicore.from_list(
+                    [1],
+                    dtype=last_position.dtype,
+                    device=last_position.device,
+                )
+                next_position = one_value + last_position
+
+                model_kwargs["cache_position"] = next_position
+
+            # -------------------------------------------------------------------------- #
             #                     prepare model inputs
             # -------------------------------------------------------------------------- #
-            model_inputs = self.prepare_inputs_for_generation(**model_kwargs)
+            model_inputs = self.prepare_inputs_for_generation(device, **model_kwargs)
 
             # -------------------------------------------------------------------------- #
             #                     计算一次
             # -------------------------------------------------------------------------- #
             logits = self.forward(**model_inputs, return_dict=True)
-
-            # -------------------------------------------------------------------------- #
-            #                     更新下一次所需的，cache_position
-            # -------------------------------------------------------------------------- #
-            cache_position = model_kwargs["cache_position"]
-            (seq_len,) = cache_position.shape
-
-            last_position = cache_position.narrow(0, seq_len - 1, 1)
-
-            one_value = infinicore.from_list(
-                [1],
-                dtype=last_position.dtype,
-                device=last_position.device,
-            )
-            next_position = one_value + last_position
-
-            model_kwargs["cache_position"] = next_position
 
             # -------------------------------------------------------------------------- #
             #                     处理输出
@@ -178,18 +185,18 @@ class GenerationMixin:
                 )
 
             # ----------------------------------------------------------------- #
-            #                        得到cpu上的结果
+            #                得到下一个token的id，并解码为字符
             # ----------------------------------------------------------------- #
             token_id = next_tokens.to_numpy()[0]
-
-            output_tokens_list.append(token_id)
-            model_kwargs["next_token"] = token_id
-
             output_str = tokenizer.decode([token_id], skip_special_tokens=True)
+
+            model_kwargs["next_token"] = token_id
+            output_tokens_list.append(token_id)
             output_content += output_str
 
             print(output_str, end="", flush=True)
             if token_id in eos_token_id_list:
                 break
+
         print()
         return output_tokens_list, output_content
