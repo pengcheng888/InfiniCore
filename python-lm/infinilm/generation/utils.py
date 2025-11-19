@@ -6,10 +6,11 @@ from ..cache_utils import Cache, DynamicCache
 
 
 class GenerationMixin:
-    def __init__(self):
-        pass
-
-    def _get_initial_cache_position(self, seq_length, device):
+    def _get_initial_cache_position(
+        self,
+        seq_length: int,
+        device: infinicore.device,
+    ) -> infinicore.Tensor:
         """Calculates `cache_position` for the pre-fill stage"""
         cache_position_list = list(range(0, seq_length))
         return infinicore.from_list(
@@ -54,7 +55,13 @@ class GenerationMixin:
         return model_inputs
 
     def generate(
-        self, input_ids, max_new_tokens=10, device=None, tokenizer=None, **kwargs
+        self,
+        input_ids: infinicore.Tensor,
+        max_new_tokens: int,
+        device: infinicore.device,
+        tokenizer,
+        config,
+        **kwargs,
     ):
         model_kwargs = kwargs
 
@@ -72,46 +79,50 @@ class GenerationMixin:
             max_new_tokens=max_new_tokens,
             device=device,
             tokenizer=tokenizer,
+            config=config,
             **model_kwargs,
         )
         return result
 
     def _sample(
         self,
-        input_ids,
-        max_new_tokens=10,
-        device=None,
-        tokenizer=None,
+        input_ids: infinicore.Tensor,
+        max_new_tokens: int,
+        device: infinicore.device,
+        tokenizer,
+        config,
         **model_kwargs,
     ):
         r"""
-        Generates sequences of token ids for models with a language modeling head using **multinomial sampling** and
-        can be used for text-decoder, text-to-text, speech-to-text, and vision-to-text models.
+        Generates sequences of token ids for models with a language modeling head.
 
         Parameters:
-            input_ids (`LongTensor` of shape `(batch_size, sequence_length)`):
-                The sequence used as a prompt for the generation.
-
-
-
+            input_ids (batch_size, seq_len): The sequence used as a prompt for the generation.
+            max_new_tokens: Maximum number of new tokens.
+            device: infinicore.device.
+            tokenizer: translating data into raw text.
         """
 
-        batch_size, cur_len = input_ids.shape[:2]
+        batch_size, seq_len = input_ids.shape[:2]
+
+        eos_token_id = config.eos_token_id
+        eos_token_id_list = (
+            [eos_token_id] if isinstance(eos_token_id, int) else eos_token_id
+        )
 
         # -------------------------------------------------------------------------- #
         #                     初始化 cache_position
         # -------------------------------------------------------------------------- #
-        cache_position = self._get_initial_cache_position(cur_len, device)
+        cache_position = self._get_initial_cache_position(seq_len, device)
 
-        # model_forward = self.__call__
-        cur_count = 0
         output_tokens_list = []
 
         model_kwargs["input_ids"] = input_ids
         model_kwargs["cache_position"] = cache_position
         output_content = ""
         print()
-        while cur_count < max_new_tokens:
+
+        for i in range(0, max_new_tokens):
             # -------------------------------------------------------------------------- #
             #                     prepare model inputs
             # -------------------------------------------------------------------------- #
@@ -142,21 +153,20 @@ class GenerationMixin:
             # -------------------------------------------------------------------------- #
             #                     处理输出
             # -------------------------------------------------------------------------- #
-            next_token_scores = logits
+            token_scores = logits
 
             # -------------------------------------------------------------------------- #
             #                     random_sample
             # -------------------------------------------------------------------------- #
-            # random_sample : token selection
-            batch_size, _, vocab_size = next_token_scores.shape
+            batch_size, _, vocab_size = token_scores.shape
 
             next_tokens = infinicore.empty(
                 (batch_size,),
                 dtype=infinicore.int32,
-                device=next_token_scores.device,
+                device=token_scores.device,
             )
             for i in range(0, batch_size):
-                score = next_token_scores.narrow(0, i, 1).view([vocab_size])
+                score = token_scores.narrow(0, i, 1).view([vocab_size])
                 out = next_tokens.narrow(0, i, 1).view([])
                 infinicore.nn.functional.random_sample(
                     score,
@@ -170,25 +180,16 @@ class GenerationMixin:
             # ----------------------------------------------------------------- #
             #                        得到cpu上的结果
             # ----------------------------------------------------------------- #
+            token_id = next_tokens.to_numpy()[0]
 
-            if False:
-                # update generated ids, model inputs, and length for next step
-                next_tokens = next_tokens.to_torch().cpu()
+            output_tokens_list.append(token_id)
+            model_kwargs["next_token"] = token_id
 
-                next_token = next_tokens[
-                    0
-                ].item()  # 将 torch 中的数据 转为 python的int类型
-            else:
-                next_token = next_tokens.to_numpy()[0]
-
-            output_tokens_list.append(next_token)
-            model_kwargs["next_token"] = next_token
-
-            output_str = tokenizer.decode([next_token], skip_special_tokens=True)
+            output_str = tokenizer.decode([token_id], skip_special_tokens=True)
             output_content += output_str
 
             print(output_str, end="", flush=True)
-            cur_len += 1
-            cur_count += 1
+            if token_id in eos_token_id_list:
+                break
         print()
         return output_tokens_list, output_content

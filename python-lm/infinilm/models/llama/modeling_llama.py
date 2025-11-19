@@ -70,7 +70,7 @@ def multi_head_attention(
     # => [ num_heads, total_seq_len, head_dim]
     V = values.permute((1, 0, 2))
 
-    # [ num_heads, seq_len, head_dim] @ [ num_heads, head_dim, total_seq_len]
+    # [num_heads, seq_len, head_dim] @ [ num_heads, head_dim, total_seq_len]
     # => [ num_heads, seq_len, total_seq_len]
     attn_weight = Q @ K.permute((1, 2, 0))
 
@@ -210,11 +210,10 @@ class LlamaAttention(infinicore.nn.Module):
 
         query_states = rope_instance(query_states, cache_position)
         key_states = rope_instance(key_states, cache_position)
+
         # --------------------------------------------------------------------------------------- #
         #                           kv cache
         # --------------------------------------------------------------------------------------- #
-
-        # kv cache
         if past_key_values is not None:
             cache_kwargs = {}
             key_states_total, value_states_total = past_key_values.update(
@@ -227,45 +226,28 @@ class LlamaAttention(infinicore.nn.Module):
         # --------------------------------------------------------------------------------------- #
         #                           注意力计算
         # --------------------------------------------------------------------------------------- #
-        if False:
-            #  [bs, num_key_value_heads, seq_len, head_dim]
-            query_states_infini = query_states.permute((0, 2, 1, 3)).contiguous()
-            key_states_infini = key_states_total.permute((0, 2, 1, 3)).contiguous()
-            value_states_infini = value_states_total.permute((0, 2, 1, 3)).contiguous()
-
-            # att_val => [bs,  num_attention_heads, seq_len, head_dim]
-            att_val = infinicore.nn.functional.self_attention(
-                query_states_infini,  # [bs, num_attention_heads, seq_len, head_dim]
-                key_states_infini,  # [bs, num_key_value_heads, all_tok, head_dim]
-                value_states_infini,  # [bs, num_key_value_heads, all_tok, head_dim]
+        total_seq_len = key_states_total.shape[1]
+        attn_output = infinicore.empty_like(query_states)
+        for i in range(0, bs):
+            query_states_i = query_states.narrow(0, i, 1).view(
+                (seq_len, self.num_attention_heads, self.head_dim)
+            )
+            key_states_i = key_states_total.narrow(0, i, 1).view(
+                (total_seq_len, self.num_key_value_heads, self.head_dim)
+            )
+            value_states_i = value_states_total.narrow(0, i, 1).view(
+                (total_seq_len, self.num_key_value_heads, self.head_dim)
             )
 
-            # => [bs, seq_len, num_attention_heads, dh ]
-            attn_output = att_val.permute((0, 2, 1, 3)).contiguous()
+            attn_output_i = attn_output.narrow(0, i, 1).view(
+                (seq_len, self.num_attention_heads, self.head_dim)
+            )
 
-        else:
-            total_seq_len = key_states_total.shape[1]
-            attn_output = infinicore.empty_like(query_states)
-            for i in range(0, bs):
-                query_states_i = query_states.narrow(0, i, 1).view(
-                    (seq_len, self.num_attention_heads, self.head_dim)
-                )
-                key_states_i = key_states_total.narrow(0, i, 1).view(
-                    (total_seq_len, self.num_key_value_heads, self.head_dim)
-                )
-                value_states_i = value_states_total.narrow(0, i, 1).view(
-                    (total_seq_len, self.num_key_value_heads, self.head_dim)
-                )
+            attention_i = grouped_query_attention(
+                query_states_i, key_states_i, value_states_i, scaling=self.scaling
+            )
 
-                attn_output_i = attn_output.narrow(0, i, 1).view(
-                    (seq_len, self.num_attention_heads, self.head_dim)
-                )
-
-                attention_i = grouped_query_attention(
-                    query_states_i, key_states_i, value_states_i, scaling=self.scaling
-                )
-
-                attn_output_i.copy_(attention_i)
+            attn_output_i.copy_(attention_i)
 
         # --------------------------------------------------------------------------------------- #
         #                           out project
@@ -432,8 +414,8 @@ class LlamaForCausalLM(infinicore.nn.Module, GenerationMixin):
     def from_pretrained(
         cls,
         model_path: Optional[Union[str, os.PathLike]],
-        device=None,
-        dtype=None,
+        device: infinicore.device,
+        dtype=infinicore.dtype,
     ):
         def load_config_json(dir_path_: str):
             with open(os.path.join(dir_path_, "config.json"), "r") as f:

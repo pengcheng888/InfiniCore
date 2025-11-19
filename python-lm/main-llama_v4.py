@@ -2,31 +2,35 @@ import sys
 import time
 
 import infinilm
-import torch
 from infinilm.modeling_utils import get_model_state_dict
+from tokenizers import decoders as _dec
+from transformers import AutoTokenizer
 
 import infinicore
 
 
-def test(model_path, device_type="cuda"):
-    # ---------------------------------------------------------------------------- #
-    #                        创建 tokenizer
-    # ---------------------------------------------------------------------------- #
-    from transformers import AutoTokenizer
-
-    tokenizer = AutoTokenizer.from_pretrained(model_path)
+def test(model_path, device_str="cuda", max_new_tokens=100):
+    max_new_tokens = 10
 
     # ---------------------------------------------------------------------------- #
-    #                        创建模型, 加载权重
+    #                        创建模型,
     # ---------------------------------------------------------------------------- #
-    infini_device = infinicore.device(device_type, 0)
+    infini_device = infinicore.device(device_str, 0)
     infini_dtype = infinicore.float16
 
     model = infinilm.LlamaForCausalLM.from_pretrained(
-        model_path=model_path, device=infini_device, dtype=infini_dtype
+        model_path,
+        device=infini_device,
+        dtype=infini_dtype,
     )
+
+    # ---------------------------------------------------------------------------- #
+    #                        加载权重
+    # ---------------------------------------------------------------------------- #
     model_param_infini = get_model_state_dict(
-        model_path=model_path, infini_device=infini_device, infini_dtype=infini_dtype
+        model_path,
+        device=infini_device,
+        dtype=infini_dtype,
     )
 
     assert (
@@ -35,70 +39,127 @@ def test(model_path, device_type="cuda"):
 
     model.load_state_dict(model_param_infini)
 
+    config = model.config
+
+    # ---------------------------------------------------------------------------- #
+    #                        创建 tokenizer
+    # ---------------------------------------------------------------------------- #
+
+    tokenizer = AutoTokenizer.from_pretrained(model_path)
+
+    if "llama" == config.model_type:
+        backend = getattr(tokenizer, "backend_tokenizer", None)
+        target = getattr(backend, "_tokenizer", backend)
+        norm = getattr(target, "normalizer", None)
+        dec = getattr(target, "decoder", None)
+        sn = repr(norm)[:800] if norm is not None else ""
+        sd = repr(dec)[:800] if dec is not None else ""
+        has_prepend = "Prepend" in sn
+        has_strip = "Strip" in sd
+        if has_prepend and has_strip:
+            target.decoder = _dec.Sequence(
+                [
+                    _dec.Replace("▁", " "),
+                    _dec.ByteFallback(),
+                    _dec.Fuse(),
+                ]
+            )
+
     # ---------------------------------------------------------------------------- #
     #                        token编码
     # ---------------------------------------------------------------------------- #
-    # prompt = ["How are you,"]
-    prompt = "How are you,"
-    # 'input_ids': tensor([[ 1, 1128, 526, 366, 29892]]
+    prompt = ["How are you,"]
     input_ids = tokenizer(
         prompt,
         padding=True,  # 自动填充到相同长度
         truncation=True,  # 自动截断到最大长度
         max_length=128,  # 设置最大长度
-        return_tensors="pt",
     )
-    input_ids = input_ids.to(device_type)
 
     # ---------------------------------------------------------------------------- #
     #                        自回归生成
     # ---------------------------------------------------------------------------- #
-    inputs_tensor = input_ids["input_ids"]
-    input_ids_infini = inputs_tensor.cpu().to_infini()
 
+    input_ids_list = input_ids["input_ids"]  # List: [[1, 1128, 526, 366, 29892]]
+    input_ids_infini = infinicore.from_list(input_ids_list)
     t1 = time.time()
+
     output_tokens_list, output_content = model.generate(
-        input_ids_infini, max_new_tokens=10, device=infini_device, tokenizer=tokenizer
+        input_ids_infini,
+        max_new_tokens=max_new_tokens,
+        device=infini_device,
+        tokenizer=tokenizer,
+        config=config,
     )
     t2 = time.time()
-    print("generate time: ", (t2 - t1) * 1000)
-    # print(output_tokens_list)
+
+    print(
+        f"generate time: {(t2 - t1) * 1000} ms",
+    )
+    print(
+        f"avg time: {(t2 - t1) * 1000 / max_new_tokens} ms",
+    )
+
     return
 
-    # ---------------------------------------------------------------------------- #
-    #                        解码成字符显示
-    # ---------------------------------------------------------------------------- #
-    outputs = torch.tensor([output_tokens_list])
-    print("prompt:\n", "How are you,")
-    for output in outputs:
-        print(tokenizer.decode(output, skip_special_tokens=True))
-    print("\n\nover!")
+
+def get_args():
+    import argparse
+
+    parser = argparse.ArgumentParser(description="run Llama args")
+
+    parser.add_argument(
+        "--cpu",
+        action="store_true",
+        help="Run CPU test",
+    )
+    parser.add_argument(
+        "--nvidia",
+        action="store_true",
+        help="Run CPU test",
+    )
+    parser.add_argument(
+        "--model_path",
+        type=str,
+        required=True,
+        help="模型文件夹的路径",
+    )
+    parser.add_argument(
+        "--max_new_tokens",
+        type=int,
+        default=100,
+        help="模型文件夹的路径",
+    )
+
+    return parser.parse_args()
 
 
 if __name__ == "__main__":
-    model_path = r"/home/ubuntu/workspace_aisys/tensorRT_quantization-main/Llama/Llama2-TinyLlama-1.1B-Chat-v1.0/"
-    model_path = r"/home/ubuntu/workspace_aisys/tensorRT_quantization-main/Llama/TinyLlama-1.1B-Chat-v1.0-small/"
-    # model_path = r"/home/ubuntu/models/TinyLlama-1.1B-Chat-v1.0-small/"
-    # model_path = r"/home/ubuntu/models/TinyLlama-1.1B-Chat-v1.0/"
+    if True:
+        model_path = r"/home/ubuntu/workspace_aisys/tensorRT_quantization-main/Llama/Llama2-TinyLlama-1.1B-Chat-v1.0/"
+        model_path = r"/home/ubuntu/workspace_aisys/tensorRT_quantization-main/Llama/TinyLlama-1.1B-Chat-v1.0-small/"
+        # model_path = r"/home/ubuntu/models/TinyLlama-1.1B-Chat-v1.0-small/"
+        # model_path = r"/home/ubuntu/models/TinyLlama-1.1B-Chat-v1.0/"
+        device_type = "cuda"
+        test(model_path, device_type)
+        exit(-1)
 
-    device_type = "cuda"
-    test(model_path, device_type)
-    exit(-1)
-
-    if len(sys.argv) < 1:
-        print("Usage: python main-llama.py [--cpu | --nvidia] <path/to/model_dir> ")
-        sys.exit(1)
+    args = get_args()
+    print(args)
 
     # Parse command line arguments
-    model_path = sys.argv[2]
-
     device_type = "cpu"
-    if sys.argv[1] == "--cpu":
+    if args.cpu:
         device_type = "cpu"
-    elif sys.argv[1] == "--nvidia":
+    elif args.nvidia:
         device_type = "cuda"
     else:
-        print("Usage:  python main-llama.py [--cpu | --nvidia] <path/to/model_dir>")
+        print(
+            "Usage:  python examples/llama.py [--cpu | --nvidia] --model_path = <path/to/model_dir>"
+        )
         sys.exit(1)
 
-    test(model_path, device_type)
+    model_path = args.model_path
+    max_new_tokens = args.max_new_tokens
+
+    test(model_path, device_type, max_new_tokens)

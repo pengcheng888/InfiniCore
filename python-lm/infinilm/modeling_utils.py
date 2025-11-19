@@ -69,7 +69,9 @@ def load_state_dict(
 
 
 def get_model_state_dict(
-    model_path, infini_device="cuda", infini_dtype=torch.float32
+    model_path: str,
+    device: infinicore.device,
+    dtype=infinicore.dtype,
 ) -> Dict[str, infinicore.Tensor]:
     """
     Load the model weights.
@@ -77,8 +79,8 @@ def get_model_state_dict(
     path = os.path.join(model_path, "model.safetensors")
     model_param = load_state_dict(path)
 
-    torch_device = infini_device.type
-    torch_dtype = infinicore.to_torch_dtype(infini_dtype)
+    torch_device = device.type
+    torch_dtype = infinicore.to_torch_dtype(dtype)
 
     model_param_infini = {}
     for key, value in model_param.items():
