@@ -93,7 +93,6 @@ def test(model_path, device_str="cuda", max_new_tokens=100):
     input_ids_infini = infinicore.from_list(input_ids_list)
 
     t1 = time.time()
-
     output_tokens_list, output_content = model.generate(
         input_ids_infini,
         max_new_tokens=max_new_tokens,
@@ -126,6 +125,11 @@ def get_args():
         help="Run CPU test",
     )
     parser.add_argument(
+        "--metax",
+        action="store_true",
+        help="Run CPU test",
+    )
+    parser.add_argument(
         "--model_path",
         type=str,
         required=True,
@@ -142,11 +146,14 @@ def get_args():
 
 
 if __name__ == "__main__":
-    if False:
+    if True:
         model_path = r"/home/ubuntu/workspace_aisys/tensorRT_quantization-main/Llama/Llama2-TinyLlama-1.1B-Chat-v1.0/"
         model_path = r"/home/ubuntu/workspace_aisys/tensorRT_quantization-main/Llama/TinyLlama-1.1B-Chat-v1.0-small/"
         # model_path = r"/home/ubuntu/models/TinyLlama-1.1B-Chat-v1.0-small/"
         # model_path = r"/home/ubuntu/models/TinyLlama-1.1B-Chat-v1.0/"
+
+        model_path = r"/data-aisoft/mechdancer/models/TinyLlama-1.1B-Chat-v1.0/"
+
         device_type = "cuda"
         max_new_tokens = 10
         test(model_path, device_type, max_new_tokens=max_new_tokens)
@@ -156,14 +163,17 @@ if __name__ == "__main__":
     print(args)
 
     # Parse command line arguments
+    # python python-lm/main-llama_v4.py --metax --model_path /data-aisoft/mechdancer/models/TinyLlama-1.1B-Chat-v1.0/
     device_type = "cpu"
     if args.cpu:
         device_type = "cpu"
     elif args.nvidia:
         device_type = "cuda"
+    elif args.metax:
+        device_type = "cuda"
     else:
         print(
-            "Usage:  python examples/llama.py [--cpu | --nvidia] --model_path = <path/to/model_dir>"
+            "Usage:  python examples/llama.py [--cpu | --nvidia] --model_path=<path/to/model_dir>"
         )
         sys.exit(1)
 

@@ -80,6 +80,18 @@ def test2():
     print("abs error: ", torch.abs(ans2_torch_ref - torch_ans2_result).max())
 
 
+def test5():
+    shape=(2,2)
+    x1_torch = torch.rand(shape, dtype=torch.float32, device="cpu")
+    x2_torch = torch.rand(shape, dtype=torch.float32, device="cpu")
+
+    x1_infini = infinicore.from_torch(x1_torch.clone())
+    x2_infini = infinicore.from_torch(x2_torch.clone())
+
+    ans_infini = x1_infini @ x2_infini
+
+    print(ans_infini)
+
 if __name__ == "__main__":
     # test()
-    test2()
+    test5()
