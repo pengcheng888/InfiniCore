@@ -10,6 +10,7 @@
 #include <hcblas/hcblas.h>
 #include <hcdnn/hcdnn.h>
 #endif
+#include <functional>
 #include <memory>
 
 #define CHECK_MCBLAS(API) CHECK_INTERNAL(API, HCBLAS_STATUS_SUCCESS)
