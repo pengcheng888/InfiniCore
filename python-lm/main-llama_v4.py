@@ -67,8 +67,8 @@ def test(model_path, device_str="cuda", max_new_tokens=100):
     #                        token编码
     # ---------------------------------------------------------------------------- #
     prompt = "How are you,"
-    prompt = "山东最高的山是？"
-    if False:
+    # prompt = "山东最高的山是？"
+    if True:
         input_ids = tokenizer(
             prompt,
             padding=True,  # 自动填充到相同长度
@@ -76,6 +76,7 @@ def test(model_path, device_str="cuda", max_new_tokens=100):
             max_length=128,  # 设置最大长度
         )
         print("prompt: ", prompt)
+        input_ids = input_ids["input_ids"]
     else:
         input_content = tokenizer.apply_chat_template(
             conversation=[{"role": "user", "content": prompt}],
@@ -152,7 +153,7 @@ if __name__ == "__main__":
         # model_path = r"/home/ubuntu/models/TinyLlama-1.1B-Chat-v1.0-small/"
         # model_path = r"/home/ubuntu/models/TinyLlama-1.1B-Chat-v1.0/"
 
-        model_path = r"/data-aisoft/mechdancer/models/TinyLlama-1.1B-Chat-v1.0/"
+        # model_path = r"/data-aisoft/mechdancer/models/TinyLlama-1.1B-Chat-v1.0/"
 
         device_type = "cuda"
         max_new_tokens = 10
