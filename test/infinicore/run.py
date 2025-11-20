@@ -1,6 +1,7 @@
 import os
 import sys
 import argparse
+import traceback
 from pathlib import Path
 import importlib.util
 
@@ -110,7 +111,12 @@ def import_operator_test(test_file_path):
 
 
 def run_all_op_tests(
-    ops_dir=None, specific_ops=None, bench=False, bench_mode="both", verbose=False
+    ops_dir=None,
+    specific_ops=None,
+    bench=False,
+    bench_mode="both",
+    verbose=False,
+    debug=False,
 ):
     """
     Run all operator test scripts in the ops directory using direct import.
@@ -368,6 +374,10 @@ def run_all_op_tests(
                     f"VERBOSE MODE: Stopping execution due to exception in {test_name}"
                 )
                 print(f"{'!'*60}")
+                break
+
+            if debug:
+                traceback.print_exc()
                 break
 
     return results, cumulative_timing
@@ -646,6 +656,11 @@ def main():
         help="Enable verbose mode to stop on first error with full traceback",
     )
     parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Enable debug mode to debug value mismatches",
+    )
+    parser.add_argument(
         "--bench",
         nargs="?",
         const="both",
@@ -729,6 +744,7 @@ def main():
         bench=bool(args.bench),
         bench_mode=args.bench if args.bench else "both",
         verbose=args.verbose,
+        debug=args.debug,
     )
 
     # Print summary and exit with appropriate code
