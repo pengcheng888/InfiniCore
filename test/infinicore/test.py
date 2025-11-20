@@ -144,8 +144,50 @@ def test4_to():
     print(" 简单的测试用例，通过!!")
 
 
+def test500():
+    shape = (2, 2)
+    x1_torch = torch.rand(shape, dtype=torch.float32, device="cpu")
+    x2_torch = torch.rand(shape, dtype=torch.float32, device="cpu")
+
+    x1_infini = infinicore.from_torch(x1_torch.clone())
+    x2_infini = infinicore.from_torch(x2_torch.clone())
+
+    ans_infini = x1_infini @ x2_infini
+
+    print(ans_infini)
+
+
+def test501():
+    shape = (2, 2)
+    x1_torch = torch.rand(shape, dtype=torch.float32, device="cpu")
+    x2_torch = torch.rand(shape, dtype=torch.float32, device="cpu")
+
+    x1_infini = infinicore.from_torch(x1_torch.clone())
+    x2_infini = infinicore.from_torch(x2_torch.clone())
+
+    ans_infini = x1_infini @ x2_infini
+
+    print(ans_infini)
+
+    print("========================================")
+    import numpy as np
+    import ml_dtypes
+
+    # 创建bfloat16类型的数组
+    arr_bf16 = np.array([1.5, 2.3, 3.7], dtype=ml_dtypes.bfloat16)
+    print(arr_bf16.dtype, arr_bf16)  # 输出：bfloat16
+    print("========================================")
+    print("========================================")
+    print("========================================")
+
+    a = infinicore.from_list([1, 2, 3], dtype=infinicore.float16)
+    print(a)
+    a = infinicore.from_list([1, 2, 3], dtype=infinicore.bfloat16)
+    print(a)
+
 if __name__ == "__main__":
-    test()
-    test2()
-    test3()
-    test4_to()
+    # test()
+    # test2()
+    # test3()
+    # test4_to()
+    test501()

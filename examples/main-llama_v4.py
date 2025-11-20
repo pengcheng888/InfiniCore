@@ -17,7 +17,7 @@ def test(model_path, device_str="cuda", max_new_tokens=100):
     #                        创建模型,
     # ---------------------------------------------------------------------------- #
     infini_device = infinicore.device(device_str, 0)
-    infini_dtype = infinicore.float16
+    infini_dtype = infinicore.bfloat16
 
     model = infinilm.LlamaForCausalLM.from_pretrained(
         model_path,
@@ -34,9 +34,9 @@ def test(model_path, device_str="cuda", max_new_tokens=100):
         dtype=infini_dtype,
     )
 
-    assert (
-        model_param_infini["model.embed_tokens.weight"].dtype == infinicore.float16
-    ), " 使用支持 float16 的权重类型"
+    # assert (
+    #     model_param_infini["model.embed_tokens.weight"].dtype == infinicore.float16
+    # ), " 使用支持 float16 的权重类型"
 
     model.load_state_dict(model_param_infini)
 

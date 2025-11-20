@@ -111,6 +111,57 @@ class Tensor:
         return infinicore.narrow(self, dim, start, length)
 
 
+# -------------------------------------------
+import torch
+
+
+def to_torch_dtype(infini_dtype):
+    """Convert infinicore data type to PyTorch data type"""
+    if infini_dtype == infinicore.float16:
+        return torch.float16
+    elif infini_dtype == infinicore.float32:
+        return torch.float32
+    elif infini_dtype == infinicore.float64:
+        return torch.float64
+    elif infini_dtype == infinicore.bfloat16:
+        return torch.bfloat16
+    elif infini_dtype == infinicore.int8:
+        return torch.int8
+    elif infini_dtype == infinicore.int16:
+        return torch.int16
+    elif infini_dtype == infinicore.int32:
+        return torch.int32
+    elif infini_dtype == infinicore.int64:
+        return torch.int64
+    elif infini_dtype == infinicore.uint8:
+        return torch.uint8
+    else:
+        raise ValueError(f"Unsupported infinicore dtype: {infini_dtype}")
+
+
+def infini__str__(self):
+    torch_tensor = torch.zeros(
+        self.shape,
+        dtype=to_torch_dtype(self.dtype),
+        device=self.device.type,
+    )
+
+    infini_device = infinicore.device(torch_tensor.device.type, 0)
+    temp_tensor = infinicore.from_blob(
+        torch_tensor.data_ptr(),
+        list(torch_tensor.shape),
+        dtype=to_infinicore_dtype(torch_tensor.dtype),
+        device=infini_device,
+    )
+    temp_tensor.copy_(self)
+
+    return "infinicore::\n" + torch_tensor.__str__()
+
+
+Tensor.__str__ = infini__str__
+# -------------------------------------------
+
+
 def empty(size, *, dtype=None, device=None, pin_memory=False):
     return Tensor(
         _infinicore.empty(size, dtype._underlying, device._underlying, pin_memory)

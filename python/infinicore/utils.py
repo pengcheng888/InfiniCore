@@ -71,6 +71,8 @@ def numpy_to_infinicore_dtype(numpy_dtype):
 
 
 def infinicore_to_numpy_dtype(infini_dtype):
+    import ml_dtypes
+
     """Convert infinicore data type to numpy data type"""
     if infini_dtype == infinicore.float32:
         return np.float32
@@ -78,6 +80,8 @@ def infinicore_to_numpy_dtype(infini_dtype):
         return np.float64
     elif infini_dtype == infinicore.float16:
         return np.float16
+    elif infini_dtype == infinicore.bfloat16:
+        return ml_dtypes.bfloat16
     elif infini_dtype == infinicore.int8:
         return np.int8
     elif infini_dtype == infinicore.int16:
