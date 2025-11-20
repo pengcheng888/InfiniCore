@@ -144,8 +144,33 @@ def test4_to():
     print(" 简单的测试用例，通过!!")
 
 
+def test5_bf16():
+    """
+    测试 from_list的bf16的数据类型.
+    """
+    aa = [1.1, 2.2, 3.3]
+    torch_tensor = torch.tensor(aa, dtype=torch.bfloat16)
+    print("torch的bf16的数据\n", torch_tensor.dtype, torch_tensor)
+
+    infini_tensor = infinicore.from_list(aa, dtype=infinicore.bfloat16)
+    print("\n\ninfini的bf16的数据类型\n", infini_tensor.dtype)
+
+    print("----------------------------------------")
+    torch_ans_result = torch.zeros(infini_tensor.shape, dtype=torch.bfloat16)
+    torch_ans = infinicore.from_blob(
+        torch_ans_result.data_ptr(),
+        infini_tensor.shape,
+        dtype=infinicore.bfloat16,
+        device=infinicore.device("cpu", 0),
+    )
+    torch_ans.copy_(infini_tensor)
+
+    print("误差:", torch_tensor - torch_ans_result)
+
+
 if __name__ == "__main__":
     test()
     test2()
     test3()
     test4_to()
+    test5_bf16()

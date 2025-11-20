@@ -1,3 +1,4 @@
+import ml_dtypes
 import numpy as np
 import torch
 
@@ -56,6 +57,8 @@ def numpy_to_infinicore_dtype(numpy_dtype):
         return infinicore.float64
     elif numpy_dtype == np.float16:
         return infinicore.float16
+    elif numpy_dtype == ml_dtypes.bfloat16:
+        return infinicore.bfloat16
     elif numpy_dtype == np.int8:
         return infinicore.int8
     elif numpy_dtype == np.int16:
@@ -82,6 +85,8 @@ def infinicore_to_numpy_dtype(infini_dtype):
         return np.int8
     elif infini_dtype == infinicore.int16:
         return np.int16
+    elif infini_dtype == infinicore.bfloat16:
+        return ml_dtypes.bfloat16
     elif infini_dtype == infinicore.int32:
         return np.int32
     elif infini_dtype == infinicore.int64:
