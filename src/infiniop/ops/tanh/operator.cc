@@ -8,9 +8,9 @@
 #if defined(ENABLE_NVIDIA_API) || defined(ENABLE_ILUVATAR_API) || defined(ENABLE_QY_API)
 #include "nvidia/tanh_nvidia.cuh"
 #endif
-#ifdef ENABLE_METAX_API
-#include "metax/tanh_metax.h"
-#endif
+// #ifdef ENABLE_METAX_API
+// #include "metax/tanh_metax.h"
+// #endif
 
 __C infiniStatus_t infiniopCreateTanhDescriptor(
     infiniopHandle_t handle,
@@ -40,9 +40,9 @@ __C infiniStatus_t infiniopCreateTanhDescriptor(
 #ifdef ENABLE_QY_API
         CREATE(INFINI_DEVICE_QY, nvidia);
 #endif
-#ifdef ENABLE_METAX_API
-        CREATE(INFINI_DEVICE_METAX, metax);
-#endif
+// #ifdef ENABLE_METAX_API
+//         CREATE(INFINI_DEVICE_METAX, metax);
+// #endif
 
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
@@ -71,9 +71,9 @@ __C infiniStatus_t infiniopGetTanhWorkspaceSize(infiniopTanhDescriptor_t desc, s
 #ifdef ENABLE_QY_API
         GET(INFINI_DEVICE_QY, nvidia);
 #endif
-#ifdef ENABLE_METAX_API
-        GET(INFINI_DEVICE_METAX, metax);
-#endif
+// #ifdef ENABLE_METAX_API
+//         GET(INFINI_DEVICE_METAX, metax);
+// #endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
@@ -109,9 +109,9 @@ __C infiniStatus_t infiniopTanh(
 #ifdef ENABLE_QY_API
         CALCULATE(INFINI_DEVICE_QY, nvidia);
 #endif
-#ifdef ENABLE_METAX_API
-        CALCULATE(INFINI_DEVICE_METAX, metax);
-#endif
+// #ifdef ENABLE_METAX_API
+//         CALCULATE(INFINI_DEVICE_METAX, metax);
+// #endif
 
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
@@ -142,9 +142,9 @@ infiniopDestroyTanhDescriptor(infiniopTanhDescriptor_t desc) {
 #ifdef ENABLE_QY_API
         DELETE(INFINI_DEVICE_QY, nvidia);
 #endif
-#ifdef ENABLE_METAX_API
-        DELETE(INFINI_DEVICE_METAX, metax);
-#endif
+// #ifdef ENABLE_METAX_API
+//         DELETE(INFINI_DEVICE_METAX, metax);
+// #endif
 
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
