@@ -35,10 +35,15 @@
 #define HCDNN_DATA_INT64 MCDNN_DATA_INT64
 #define HCDNN_DATA_UINT8 MCDNN_DATA_UINT8
 #define hcEventCreate mcEventCreate
+#define hcEventCreateWithFlags mcEventCreateWithFlags
+#define hcEventDefault mcEventDefault
+#define hcEventDisableTiming mcEventDisableTiming
+#define hcEventBlockingSync mcEventBlockingSync
 #define hcEventRecord mcEventRecord
 #define hcEventQuery mcEventQuery
 #define hcEventSynchronize mcEventSynchronize
 #define hcEventDestroy mcEventDestroy
+#define hcEventElapsedTime mcEventElapsedTime
 #define hcMalloc mcMalloc
 #define hpccDataType macaDataType
 #define hcblasComputeType_t mcblasComputeType_t
