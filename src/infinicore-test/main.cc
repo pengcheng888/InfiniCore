@@ -39,6 +39,7 @@ void printUsage() {
               << "  metax" << std::endl
               << "  moore" << std::endl
               << "  iluvatar" << std::endl
+              << "  qy" << std::endl
               << "  kunlun" << std::endl
               << "  hygon" << std::endl
               << std::endl
@@ -77,6 +78,8 @@ ParsedArgs parseArgs(int argc, char *argv[]) {
             args.device_type = INFINI_DEVICE_MOORE;
         } else if (arg == "--iluvatar") {
             args.device_type = INFINI_DEVICE_ILUVATAR;
+        } else if (arg == "--qy") {
+            args.device_type = INFINI_DEVICE_QY;
         } else if (arg == "--kunlun") {
             args.device_type = INFINI_DEVICE_KUNLUN;
         } else if (arg == "--hygon") {

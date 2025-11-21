@@ -63,6 +63,7 @@ xmake build infinicore-test
 ./infinicore-test --metax
 ./infinicore-test --moore
 ./infinicore-test --iluvatar
+./infinicore-test --qy
 ./infinicore-test --kunlun
 ./infinicore-test --hygon
 ```

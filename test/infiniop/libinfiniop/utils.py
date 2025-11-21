@@ -94,9 +94,17 @@ class TestTensor(CTensor):
         elif mode == "randint":
             randint_low = -2000000000 if randint_low is None else randint_low
             randint_high = 2000000000 if randint_high is None else randint_high
-            self._torch_tensor = torch.randint(randint_low,randint_high, torch_shape,dtype=to_torch_dtype(dt), device=torch_device_map[device])
+            self._torch_tensor = torch.randint(
+                randint_low,
+                randint_high,
+                torch_shape,
+                dtype=to_torch_dtype(dt),
+                device=torch_device_map[device],
+            )
         elif mode == "float8_e4m3fn":
-            self._torch_tensor = torch.rand(shape, dtype=torch.float32, device=torch_device_map[device]).to(dtype=torch.float8_e4m3fn)
+            self._torch_tensor = torch.rand(
+                shape, dtype=torch.float32, device=torch_device_map[device]
+            ).to(dtype=torch.float8_e4m3fn)
         elif mode == "manual":
             assert set_tensor is not None
             assert torch_shape == list(set_tensor.shape)
@@ -136,14 +144,19 @@ class TestTensor(CTensor):
 
     def is_broadcast(self):
         return self.strides is not None and 0 in self.strides
-    
+
     @staticmethod
-    def from_binary(binary_file, shape, strides, dt: InfiniDtype, device: InfiniDeviceEnum):
+    def from_binary(
+        binary_file, shape, strides, dt: InfiniDtype, device: InfiniDeviceEnum
+    ):
         data = np.fromfile(binary_file, dtype=to_numpy_dtype(dt))
         base = torch.from_numpy(data)
-        torch_tensor = torch.as_strided(base, size=shape, stride=strides).to(torch_device_map[device])
+        torch_tensor = torch.as_strided(base, size=shape, stride=strides).to(
+            torch_device_map[device]
+        )
         return TestTensor(
-            shape, strides, dt, device, mode="binary", set_tensor=torch_tensor)
+            shape, strides, dt, device, mode="binary", set_tensor=torch_tensor
+        )
 
     @staticmethod
     def from_torch(torch_tensor, dt: InfiniDtype, device: InfiniDeviceEnum):
@@ -152,6 +165,9 @@ class TestTensor(CTensor):
         return TestTensor(
             shape_, strides_, dt, device, mode="manual", set_tensor=torch_tensor
         )
+
+    def update_torch_tensor(self, new_tensor: torch.Tensor):
+        self._torch_tensor = new_tensor
 
     def update_torch_tensor(self, new_tensor: torch.Tensor):
         self._torch_tensor = new_tensor
@@ -225,7 +241,6 @@ def to_numpy_dtype(dt: InfiniDtype, compatability_mode=False):
         raise ValueError("Unsupported data type")
 
 
-
 class TestWorkspace:
     def __init__(self, size, device):
         if size != 0:
@@ -294,7 +309,18 @@ def rearrange_tensor(tensor, new_strides):
     new_positions += offset
 
     # Copy the original data to the new tensor
-    if tensor.dtype in [torch.bool, torch.uint8, torch.int8, torch.int16, torch.int32,torch.int64, torch.float16,torch.bfloat16,torch.float32,torch.float64]:
+    if tensor.dtype in [
+        torch.bool,
+        torch.uint8,
+        torch.int8,
+        torch.int16,
+        torch.int32,
+        torch.int64,
+        torch.float16,
+        torch.bfloat16,
+        torch.float32,
+        torch.float64,
+    ]:
         new_tensor.view(-1).index_add_(0, new_positions, tensor.view(-1))
     elif tensor.dtype in [torch.uint16, torch.uint32, torch.uint64]:
         new_tensor_int64 = new_tensor.to(dtype=torch.int64)
@@ -303,12 +329,14 @@ def rearrange_tensor(tensor, new_strides):
         new_tensor = new_tensor_int64.to(dtype=tensor.dtype)
     elif tensor.dtype in [torch.float8_e4m3fn]:
         new_tensor_float64 = new_tensor.to(dtype=torch.float64)
-        tensor_float64  = tensor.to(dtype=torch.float64)
-        new_tensor_float64.view(-1).index_add_(0, new_positions, tensor_float64.view(-1))
+        tensor_float64 = tensor.to(dtype=torch.float64)
+        new_tensor_float64.view(-1).index_add_(
+            0, new_positions, tensor_float64.view(-1)
+        )
         new_tensor = new_tensor_float64.to(dtype=tensor.dtype)
     else:
         raise ValueError("Unsupported data type")
-    
+
     new_tensor.set_(new_tensor.untyped_storage(), offset, shape, tuple(new_strides))
 
     return new_tensor
@@ -354,6 +382,11 @@ def get_args():
         "--iluvatar",
         action="store_true",
         help="Run Iluvatar GPU test",
+    )
+    parser.add_argument(
+        "--qy",
+        action="store_true",
+        help="Run Qy GPU test",
     )
     parser.add_argument(
         "--cambricon",
@@ -515,7 +548,7 @@ def print_discrepancy(
 
     actual = actual.to("cpu")
     expected = expected.to("cpu")
-    
+
     actual_isnan = torch.isnan(actual)
     expected_isnan = torch.isnan(expected)
 
@@ -525,7 +558,8 @@ def print_discrepancy(
     )
 
     diff_mask = nan_mismatch | (
-        torch.abs(actual.to(dtype=torch.float64) - expected.to(dtype=torch.float64)) > (atol + rtol * torch.abs(expected.to(dtype=torch.float64)))
+        torch.abs(actual.to(dtype=torch.float64) - expected.to(dtype=torch.float64))
+        > (atol + rtol * torch.abs(expected.to(dtype=torch.float64)))
     )
     diff_indices = torch.nonzero(diff_mask, as_tuple=False)
     delta = actual.to(dtype=torch.float64) - expected.to(dtype=torch.float64)
@@ -670,6 +704,8 @@ def get_test_devices(args):
         devices_to_test.append(InfiniDeviceEnum.NVIDIA)
     if args.iluvatar:
         devices_to_test.append(InfiniDeviceEnum.ILUVATAR)
+    if args.qy:
+        devices_to_test.append(InfiniDeviceEnum.QY)
     if args.cambricon:
         import torch_mlu
 

@@ -96,27 +96,27 @@ NUM_ITERATIONS = 1000
 
 
 def conv(x, w, stride, padding, dilation, y_tensor, bias=None):
-    match len(x.shape) - 2:
-        case 1:
-            y_tensor.copy_(
-                F.conv1d(
-                    x, w, bias=bias, stride=stride, padding=padding, dilation=dilation
-                )
+    ndim = len(x.shape) - 2#不要使用match，会导致CI无法通过
+    if ndim == 1:
+        y_tensor.copy_(
+            F.conv1d(
+                x, w, bias=bias, stride=stride, padding=padding, dilation=dilation
             )
-        case 2:
-            y_tensor.copy_(
-                F.conv2d(
-                    x, w, bias=bias, stride=stride, padding=padding, dilation=dilation
-                )
+        )
+    elif ndim == 2:
+        y_tensor.copy_(
+            F.conv2d(
+                x, w, bias=bias, stride=stride, padding=padding, dilation=dilation
             )
-        case 3:
-            y_tensor.copy_(
-                F.conv3d(
-                    x, w, bias=bias, stride=stride, padding=padding, dilation=dilation
-                )
+        )
+    elif ndim == 3:
+        y_tensor.copy_(
+            F.conv3d(
+                x, w, bias=bias, stride=stride, padding=padding, dilation=dilation
             )
-        case _:
-            print("Error: Pytorch -> Unsupported tensor dimension")
+        )
+    else:
+        print("Error: Pytorch -> Unsupported tensor dimension")
 
 
 # infer the shape of the output given the inputs for a N-ary convolution

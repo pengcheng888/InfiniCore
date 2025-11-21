@@ -23,6 +23,7 @@ def get_supported_hardware_platforms():
         ("--moore", "Moore Threads GPUs (requires torch_musa)"),
         ("--kunlun", "Kunlun XPUs (requires torch_xmlir)"),
         ("--hygon", "Hygon DCUs"),
+        ("--qy", "QY GPUs"),
     ]
 
 
@@ -194,6 +195,15 @@ def get_test_devices(args):
             devices_to_test.append(InfiniDeviceEnum.HYGON)
         except ImportError:
             print("Warning: Hygon DCU support not available")
+            
+    if args.qy:
+        try:
+            # Iluvatar GPU detection
+            import torch
+
+            devices_to_test.append(InfiniDeviceEnum.QY)
+        except ImportError:
+            print("Warning: QY GPU support not available")
 
     # Default to CPU if no devices specified
     if not devices_to_test:

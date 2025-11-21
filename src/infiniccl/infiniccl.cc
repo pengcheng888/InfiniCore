@@ -20,6 +20,7 @@ __C infiniStatus_t infinicclCommInitAll(
     switch (device_type) {
         COMM_INIT_ALL(INFINI_DEVICE_NVIDIA, cuda);
         COMM_INIT_ALL(INFINI_DEVICE_ILUVATAR, cuda);
+        COMM_INIT_ALL(INFINI_DEVICE_QY, cuda);
         COMM_INIT_ALL(INFINI_DEVICE_HYGON, cuda);
         COMM_INIT_ALL(INFINI_DEVICE_ASCEND, ascend);
         COMM_INIT_ALL(INFINI_DEVICE_CAMBRICON, cambricon);
@@ -45,6 +46,7 @@ __C infiniStatus_t infinicclCommDestroy(infinicclComm_t comm) {
     switch (comm->device_type) {
         COMM_DESTROY(INFINI_DEVICE_NVIDIA, cuda);
         COMM_DESTROY(INFINI_DEVICE_ILUVATAR, cuda);
+        COMM_DESTROY(INFINI_DEVICE_QY, cuda);
         COMM_DESTROY(INFINI_DEVICE_HYGON, cuda);
         COMM_DESTROY(INFINI_DEVICE_ASCEND, ascend);
         COMM_DESTROY(INFINI_DEVICE_CAMBRICON, cambricon);
@@ -77,6 +79,7 @@ __C infiniStatus_t infinicclAllReduce(
     switch (comm->device_type) {
         ALL_REDUCE(INFINI_DEVICE_NVIDIA, cuda);
         ALL_REDUCE(INFINI_DEVICE_ILUVATAR, cuda);
+        ALL_REDUCE(INFINI_DEVICE_QY, cuda);
         ALL_REDUCE(INFINI_DEVICE_HYGON, cuda);
         ALL_REDUCE(INFINI_DEVICE_ASCEND, ascend);
         ALL_REDUCE(INFINI_DEVICE_CAMBRICON, cambricon);

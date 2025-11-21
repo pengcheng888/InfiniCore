@@ -22,8 +22,13 @@ public:
             __nv_bfloat16 denominator = __float2bfloat16(__fadd_rn(1.0f, __expf(__bfloat162float(-x))));
             return __float2bfloat16(1.0f) / denominator;
         } else if constexpr (std::is_same_v<T, float>) {
-            float denominator = __fadd_rn(1.0f, __expf(-x));
-            return __frcp_rn(denominator);
+            if (x >= 0.0f) {
+                float z = expf(-x);
+                return 1.0f / (1.0f + z);
+            } else {
+                float z = expf(x);
+                return z / (1.0f + z);
+            }
         } else { // double
             return 1.0 / (1.0 + exp(-x));
         }

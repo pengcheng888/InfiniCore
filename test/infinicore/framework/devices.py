@@ -8,6 +8,7 @@ class InfiniDeviceEnum:
     ILUVATAR = 6
     KUNLUN = 7
     HYGON = 8
+    QY = 9
 
 
 InfiniDeviceNames = {
@@ -18,6 +19,7 @@ InfiniDeviceNames = {
     InfiniDeviceEnum.METAX: "Metax",
     InfiniDeviceEnum.MOORE: "Moore",
     InfiniDeviceEnum.ILUVATAR: "Iluvatar",
+    InfiniDeviceEnum.QY: "Qy",
     InfiniDeviceEnum.KUNLUN: "Kunlun",
     InfiniDeviceEnum.HYGON: "Hygon",
 }
@@ -32,4 +34,5 @@ torch_device_map = {
     InfiniDeviceEnum.ILUVATAR: "cuda",
     InfiniDeviceEnum.KUNLUN: "cuda",
     InfiniDeviceEnum.HYGON: "cuda",
+    InfiniDeviceEnum.QY: "cuda",
 }

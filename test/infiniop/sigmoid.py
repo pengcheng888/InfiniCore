@@ -43,6 +43,7 @@ class Inplace(Enum):
     OUT_OF_PLACE = auto()
     INPLACE_X = auto()
 
+
 # Inplace options applied for each test case in _TEST_CASES_
 _INPLACE = [
     Inplace.OUT_OF_PLACE,
@@ -71,8 +72,10 @@ PROFILE = False
 NUM_PRERUN = 10
 NUM_ITERATIONS = 1000
 
+
 def torch_sigmoid(y, x):
     torch.sigmoid(x, out=y)
+
 
 def test(
     handle,
@@ -169,4 +172,3 @@ if __name__ == "__main__":
         test_operator(device, test, _TEST_CASES, _TENSOR_DTYPES)
 
     print("\033[92m  Test passed!  \033[0m")
-

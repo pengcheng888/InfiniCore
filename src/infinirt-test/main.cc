@@ -20,6 +20,7 @@ void printUsage() {
               << "  metax" << std::endl
               << "  moore" << std::endl
               << "  iluvatar" << std::endl
+              << "  qy" << std::endl
               << "  kunlun" << std::endl
               << "  hygon" << std::endl
               << std::endl;
@@ -51,6 +52,7 @@ ParsedArgs parseArgs(int argc, char *argv[]) {
         else PARSE_DEVICE("--metax", INFINI_DEVICE_METAX)
         else PARSE_DEVICE("--moore", INFINI_DEVICE_MOORE)
         else PARSE_DEVICE("--iluvatar", INFINI_DEVICE_ILUVATAR)
+        else PARSE_DEVICE("--qy", INFINI_DEVICE_QY)
         else PARSE_DEVICE("--kunlun", INFINI_DEVICE_KUNLUN)
         else PARSE_DEVICE("--hygon", INFINI_DEVICE_HYGON)
         else {

@@ -35,6 +35,8 @@ std::string Device::toString(const Type &type) {
         return "MOORE";
     case Type::ILUVATAR:
         return "ILUVATAR";
+    case Type::QY:
+        return "QY";
     case Type::KUNLUN:
         return "KUNLUN";
     case Type::HYGON:
