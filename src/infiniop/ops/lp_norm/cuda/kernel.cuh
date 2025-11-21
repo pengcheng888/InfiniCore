@@ -17,7 +17,11 @@ __device__ void blockLPNormKernel(
         local_max = max(local_max, fabsf((float)input[tid + ind * stride]));
     }
     __shared__ float global_max;
+#if CUDART_VERSION >= 12090
+    float max_block = BlockReduce(temp_storage).Reduce(local_max, ::cuda::maximum());
+#else
     float max_block = BlockReduce(temp_storage).Reduce(local_max, cub::Max());
+#endif
     if (threadIdx.x == 0) { // must set threadIdx.x = 0 write the output to memory
         global_max = max_block;
     }
@@ -30,7 +34,7 @@ __device__ void blockLPNormKernel(
     }
 
     __shared__ float p_total;
-    float p_block = BlockReduce(temp_storage).Reduce(p_partial, cub::Sum());
+    float p_block = BlockReduce(temp_storage).Sum(p_partial);
     if (threadIdx.x == 0) { // must set threadIdx.x = 0 write the output to memory
         p_total = powf(p_block, 1.0f / p);
     }
@@ -69,7 +73,11 @@ __device__ void blockLPNormStridesKernel(
         local_max = max(local_max, fabsf((float)input[ind_i + ind]));
     }
     __shared__ float global_max;
+#if CUDART_VERSION >= 12090
+    float max_block = BlockReduce(temp_storage).Reduce(local_max, ::cuda::maximum());
+#else
     float max_block = BlockReduce(temp_storage).Reduce(local_max, cub::Max());
+#endif
     if (threadIdx.x == 0) { // must set threadIdx.x = 0 write the output to memory
         global_max = max_block;
     }
@@ -82,7 +90,7 @@ __device__ void blockLPNormStridesKernel(
     }
 
     __shared__ float p_total;
-    float p_block = BlockReduce(temp_storage).Reduce(p_partial, cub::Sum());
+    float p_block = BlockReduce(temp_storage).Sum(p_partial);
     if (threadIdx.x == 0) { // must set threadIdx.x = 0 write the output to memory
         p_total = powf(p_block, 1.0f / p);
     }

@@ -81,7 +81,7 @@ __device__ void blockLayernormKernel(T *output, T const *input, T const *weight,
     }
 
     __shared__ float sigma2;
-    float sigma2_block = BlockReduce(temp_storage).Reduce(sigma2_partial, cub::Sum());
+    float sigma2_block = BlockReduce(temp_storage).Sum(sigma2_partial);
     if (threadIdx.x == 0) {
         float sigma_tmp = sqrt(sigma2_block * __fdividef(1.0F, dimsize) + eps);
         sigma2 = __fdividef(1.0F, sigma_tmp);
