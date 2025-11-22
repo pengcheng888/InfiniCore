@@ -133,88 +133,57 @@ static bool registered = []() {
 
 ### 5. Python 测试
 
-在实现了 Python 接口后，你需要在 `/test/infinicore/ops/` 中添加相应的算子测试脚本，并确保测试通过。该目录下的测试使用了统一的测试框架，大部分测试功能已经实现，比如根据形状构建随机张量、自动测试算子的正确性和性能等。你需要继承 `BaseOperatorTest` 类并实现 `get_test_cases`、`get_tensor_dtypes`、`get_tolerance_map`、`torch_operator`、`infinicore_operator` 等跟算子有关的方法。其中 `torch_operator` 为对比用的 pytorch 版算子实现，而 `infinicore_operator` 为你所实现的 InfiniCore 版算子。以 silu 算子为例：
+在实现了 Python 接口后，你需要在 `/test/infinicore/ops/` 中添加相应的算子测试脚本，并确保测试通过。该目录下的测试使用了统一的测试框架，大部分测试功能已经实现，比如根据形状构建随机张量、自动测试算子的正确性和性能等。
+
+你需要继承 `BaseOperatorTest` 类并实现以下方法：
+
+`get_test_cases()`: 返回测试用例列表
+
+`torch_operator()`: PyTorch 参考实现
+
+`infinicore_operator()`: InfiniCore 算子实现
 
 ```python
 class OpTest(BaseOperatorTest):
-    """SiLU test with simplified test case parsing"""
+    """Add operator test with simplified implementation"""
 
     def __init__(self):
-        super().__init__("SiLU")
+        super().__init__("Add")
 
     def get_test_cases(self):
-        return _TEST_CASES
+        return parse_test_cases()
 
-    def get_tensor_dtypes(self):
-        return _TENSOR_DTYPES
+    def torch_operator(self, *args, **kwargs):
+        """PyTorch add implementation"""
+        return torch.add(*args, **kwargs)
 
-    def get_tolerance_map(self):
-        return _TOLERANCE_MAP
-
-    def torch_operator(self, input, out=None, **kwargs):
-        # SiLU implementation: input * sigmoid(input)
-        sigmoid_input = torch.sigmoid(input)
-        result = input * sigmoid_input
-        if out is not None:
-            out.copy_(result)
-            return out
-        return result
-
-    def infinicore_operator(self, input, out=None, **kwargs):
-        return infinicore.silu(input, out=out)
+    def infinicore_operator(self, *args, **kwargs):
+        """InfiniCore add implementation"""
+        return infinicore.add(*args, **kwargs)
 ```
 
-在测试脚本中你需要为算子测试脚本添加测例。请参考 `TestCase` 类的定义，提供输入输出张量的形状、数据类型、步长，以及其他参数的数值等。你可以指定算子计算是否涉及 in-place 或 out-of-place 模式。你可以像示例一样将测例写的更简洁，并通过 `parse_test_cases` 函数来解析测例数据。
+在测试脚本中你需要为算子测试脚本添加测例。你可以使用统一的格式简洁地准备测试所需数据，如`_TEST_CASES_DATA`。
 
 ```python
+# Test cases format: (shape, a_strides, b_strides, c_strides)
 _TEST_CASES_DATA = [
-    # Basic 2D SiLU
-    (TestCase.BOTH, (2, 4), None, None),
-    (TestCase.BOTH, (128, 64), None, None),
-    # 3D SiLU
-    (TestCase.BOTH, (2, 4, 8), None, None),
-    (TestCase.BOTH, (4, 48, 6), None, None),
-    # Strided tensors
-    (TestCase.BOTH, (1, 2048), (4096, 1), (4096, 1)),
-    (TestCase.BOTH, (6, 2560), (2048, 1), (2560, 1)),
-    # Mixed cases
-    (TestCase.BOTH, (8, 16, 32), None, None),
+    # Basic cases
+    ((13, 4), None, None, None),
+    ((13, 4), (10, 1), (10, 1), None),
+    # Strided cases
+    ((13, 4), None, None, (10, 1)),
+    ((13, 4), (10, 1), (10, 1), (10, 1)),
+    # 3D cases
+    ((13, 4, 4), None, None, None),
+    ((13, 4, 4), (20, 4, 1), (20, 4, 1), None),
+    # Broadcast cases
+    ((13, 4, 4), (4, 0, 1), (0, 4, 1), None),
     # Large tensors
-    (TestCase.BOTH, (16, 5632), None, None),
-    (TestCase.BOTH, (4, 4, 5632), None, None),
+    ((16, 5632), None, None, None),
+    ((16, 5632), (13312, 1), (13312, 1), None),
 ]
-
-def parse_test_cases(data):
-    """
-    Parse silu test case data according to format:
-    (operation_mode, shape, input_strides, output_strides)
-    """
-    operation_mode = data[0]
-    shape = data[1]
-    input_strides = data[2] if len(data) > 2 else None
-    output_strides = data[3] if len(data) > 3 else None
-
-    # Create input specifications
-    inputs = []
-
-    # Tensor input
-    if input_strides is not None:
-        inputs.append(TensorSpec.from_strided_tensor(shape, input_strides))
-    else:
-        inputs.append(TensorSpec.from_tensor(shape))
-
-    # Output tensor
-    if output_strides is not None:
-        output = TensorSpec.from_strided_tensor(shape, output_strides)
-    else:
-        output = TensorSpec.from_tensor(shape)
-
-    return TestCase(operation_mode, inputs, output)
-
-
-# Parse test cases
-_TEST_CASES = [parse_test_cases(data) for data in _TEST_CASES_DATA]
 ```
+
 
 对于支持多种精度的算子，你可以指定测试通过的误差范围。
 
@@ -229,8 +198,97 @@ _TOLERANCE_MAP = {
 }
 ```
 
+通过 `parse_test_cases` 函数来解析测例数据，构建具体的测例。OUT OF PLACE以及各种INPLACE操作，需要作为不同的测例传入`get_test_cases`函数。
+
+```python
+# Parse test cases
+def parse_test_cases():
+    """
+    Parse test case data and return list of TestCase objects for all operation types.
+    Each test case contains all necessary information for execution and validation.
+    """
+    test_cases = []
+
+    for data in _TEST_CASES_DATA:
+        shape = data[0]
+        a_strides = data[1] if len(data) > 1 else None
+        b_strides = data[2] if len(data) > 2 else None
+        c_strides = data[3] if len(data) > 3 else None
+
+        # Check if tensors support in-place operations
+        a_supports_inplace = not is_broadcast(a_strides)
+        b_supports_inplace = not is_broadcast(b_strides)
+        c_supports_inplace = not is_broadcast(c_strides)
+
+        # Generate test cases for all data types
+        for dtype in _TENSOR_DTYPES:
+            tolerance = _TOLERANCE_MAP.get(dtype, {"atol": 0, "rtol": 1e-3})
+
+            # Create typed tensor specs
+            a_spec = TensorSpec.from_tensor(shape, a_strides, dtype, name="a")
+            b_spec = TensorSpec.from_tensor(shape, b_strides, dtype, name="b")
+            c_spec = TensorSpec.from_tensor(shape, c_strides, dtype, name="c")
+
+            # Test Case 1: Out-of-place (return value)
+            test_cases.append(
+                TestCase(
+                    inputs=[a_spec, b_spec],
+                    kwargs={},
+                    output_spec=None,
+                    comparison_target=None,
+                    tolerance=tolerance,
+                    description=f"Add - OUT_OF_PLACE",
+                )
+            )
+
+            # Test Case 2: In-place with explicit output tensor (add(a, b, out=c))
+            if c_supports_inplace:
+                test_cases.append(
+                    TestCase(
+                        inputs=[a_spec, b_spec],
+                        kwargs={},
+                        output_spec=c_spec,  # Specify the output tensor spec
+                        comparison_target="out",
+                        tolerance=tolerance,
+                        description=f"Add - INPLACE(out)",
+                    )
+                )
+
+            # Test Case 3: In-place on first input (add(a, b, out=a))
+            if a_supports_inplace:
+                test_cases.append(
+                    TestCase(
+                        inputs=[a_spec, b_spec],
+                        kwargs={"out": 0},  # Use index 0 for first input
+                        output_spec=None,
+                        comparison_target=0,  # Compare first input
+                        tolerance=tolerance,
+                        description=f"Add - INPLACE(a)",
+                    )
+                )
+
+            # Test Case 4: In-place on second input (add(a, b, out=b))
+            if b_supports_inplace:
+                test_cases.append(
+                    TestCase(
+                        inputs=[a_spec, b_spec],
+                        kwargs={"out": 1},  # Use index 1 for second input
+                        output_spec=None,
+                        comparison_target=1,  # Compare second input
+                        tolerance=tolerance,
+                        description=f"Add - INPLACE(b)",
+                    )
+                )
+
+    return test_cases
+
+```
+
 运行测试指令检查算子的正确性和性能：
 
 ```bash
-python test/infinicore/run.py --ops matmul --nvidia --verbose --bench
+python test/infinicore/ops/add --nvidia --verbose --bench --debug
+```
+```bash
+python test/infinicore/run.py --ops add matmul --nvidia --verbose --bench
 ```
