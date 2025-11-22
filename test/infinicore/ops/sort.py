@@ -5,9 +5,10 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import torch
 import infinicore
-from framework.base import BaseOperatorTest, TensorSpec, TestCase
+from framework.base import BaseOperatorTest, TensorSpec, TestCase, TestResult
 from framework.runner import GenericTestRunner
 from framework.utils import is_broadcast
+from framework.devices import InfiniDeviceEnum
 
 # ==============================================================================
 # Operator-specific configuration for sort
@@ -165,6 +166,37 @@ class OpTest(BaseOperatorTest):
     ):
         # forward to torch.sort; stable kwarg included for compatibility
         return torch.sort(x, dim=dim, descending=descending, stable=stable, out=out)
+
+    def run_test(self, device, test_case, config):
+        """Skip non-contiguous tensor tests on Moore platform (muDNN Sort only supports contiguous tensors)."""
+        if device == InfiniDeviceEnum.MOORE:
+            # Check input tensor
+            if (
+                test_case.inputs
+                and isinstance(test_case.inputs[0], TensorSpec)
+                and test_case.inputs[0].strides is not None
+            ):
+                return TestResult(
+                    success=False,
+                    return_code=-2,
+                    test_case=test_case,
+                    device=device,
+                    error_message="muDNN Sort only supports contiguous tensors",
+                )
+            # Check output tensors (values and indices)
+            output_specs = getattr(test_case, "output_specs", None) or (
+                [test_case.output_spec] if test_case.output_spec else []
+            )
+            for spec in output_specs:
+                if isinstance(spec, TensorSpec) and spec.strides is not None:
+                    return TestResult(
+                        success=False,
+                        return_code=-2,
+                        test_case=test_case,
+                        device=device,
+                        error_message="muDNN Sort only supports contiguous tensors",
+                    )
+        return super().run_test(device, test_case, config)
 
     # def infinicore_operator(self, x, dim=-1, descending=False, stable=False, out=None, **kwargs):
     #     # assume infinicore provides a similar API
