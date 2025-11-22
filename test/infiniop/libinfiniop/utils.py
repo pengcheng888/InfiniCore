@@ -463,11 +463,8 @@ def debug(actual, desired, atol=0, rtol=1e-2, equal_nan=False, verbose=True):
 
 
 def filter_tensor_dtypes_by_device(device, tensor_dtypes):
-    if device in (InfiniDeviceEnum.CPU, InfiniDeviceEnum.NVIDIA):
+    if device in (InfiniDeviceEnum.CPU, InfiniDeviceEnum.NVIDIA, InfiniDeviceEnum.METAX, InfiniDeviceEnum.ASCEND, InfiniDeviceEnum.ILUVATAR, InfiniDeviceEnum.CAMBRICON):
         return tensor_dtypes
-    elif device == InfiniDeviceEnum.MOORE:
-        # 过滤掉 BF16 和 F64（PyTorch 在摩尔平台上不支持这些类型的某些操作）
-        return [dt for dt in tensor_dtypes if dt != InfiniDtype.BF16 and dt != InfiniDtype.F64]
     else:
         # 过滤掉 torch.bfloat16
         return [dt for dt in tensor_dtypes if dt != torch.bfloat16]
