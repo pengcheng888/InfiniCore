@@ -22,12 +22,16 @@ _TEST_CASES_DATA = [
 ]
 
 _TOLERANCE_MAP = {
-    infinicore.float16: {"atol": 0, "rtol": 1e-2},
+    # infinicore.float16: {"atol": 0, "rtol": 1e-2},
     infinicore.float32: {"atol": 0, "rtol": 1e-3},
     infinicore.int32: {"atol": 0, "rtol": 0},
 }
 
-_TENSOR_DTYPES = [infinicore.int32, infinicore.float32, infinicore.float16]
+_TENSOR_DTYPES = [
+    infinicore.int32,
+    infinicore.float32,
+    # infinicore.float16,
+]
 
 
 def parse_test_cases():

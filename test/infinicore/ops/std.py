@@ -5,9 +5,10 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import torch
 import infinicore
-from framework.base import BaseOperatorTest, TensorSpec, TestCase
+from framework.base import BaseOperatorTest, TensorSpec, TestCase, TestResult
 from framework.runner import GenericTestRunner
 from framework.utils import is_broadcast
+from framework.devices import InfiniDeviceEnum
 
 # Test cases format:
 # (in_shape, in_strides_or_None, dim_or_None, correction_or_None, keepdim_or_None, out_strides_or_None)
@@ -107,6 +108,37 @@ class OpTest(BaseOperatorTest):
 
     def torch_operator(self, *args, **kwargs):
         return torch.std(*args, **kwargs)
+
+    def run_test(self, device, test_case, config):
+        """Skip non-contiguous tensor tests on Moore platform (muDNN VARIANCE & STD only support contiguous tensors)."""
+        if device == InfiniDeviceEnum.MOORE:
+            # Check input tensor
+            if (
+                test_case.inputs
+                and isinstance(test_case.inputs[0], TensorSpec)
+                and test_case.inputs[0].strides is not None
+            ):
+                return TestResult(
+                    success=False,
+                    return_code=-2,
+                    test_case=test_case,
+                    device=device,
+                    error_message="muDNN VARIANCE & STD only support contiguous tensors",
+                )
+            # Check output tensor
+            if (
+                test_case.output_spec
+                and isinstance(test_case.output_spec, TensorSpec)
+                and test_case.output_spec.strides is not None
+            ):
+                return TestResult(
+                    success=False,
+                    return_code=-2,
+                    test_case=test_case,
+                    device=device,
+                    error_message="muDNN VARIANCE & STD only support contiguous tensors",
+                )
+        return super().run_test(device, test_case, config)
 
     # def infinicore_operator(self, *args, **kwargs):
     #     """InfiniCore implementation (operator not yet available)."""

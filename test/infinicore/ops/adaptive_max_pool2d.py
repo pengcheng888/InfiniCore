@@ -5,9 +5,10 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import torch
 import infinicore
-from framework.base import BaseOperatorTest, TensorSpec, TestCase
+from framework.base import BaseOperatorTest, TensorSpec, TestCase, TestResult
 from framework.runner import GenericTestRunner
 from framework.utils import is_broadcast
+from framework.devices import InfiniDeviceEnum
 
 # Test cases format: (in_shape, in_strides_or_None, output_size_or_None)
 
@@ -62,6 +63,23 @@ class OpTest(BaseOperatorTest):
 
     def torch_operator(self, *args, **kwargs):
         return torch.nn.functional.adaptive_max_pool2d(*args, **kwargs)
+
+    def run_test(self, device, test_case, config):
+        """Skip non-contiguous tensor tests on Moore platform (muDNN only supports contiguous tensors for pooling operations)."""
+        if device == InfiniDeviceEnum.MOORE:
+            if (
+                test_case.inputs
+                and isinstance(test_case.inputs[0], TensorSpec)
+                and test_case.inputs[0].strides is not None
+            ):
+                return TestResult(
+                    success=False,
+                    return_code=-2,
+                    test_case=test_case,
+                    device=device,
+                    error_message="muDNN only supports contiguous tensors for pooling operations",
+                )
+        return super().run_test(device, test_case, config)
 
     # def infinicore_operator(self, *args, **kwargs):
     #     """InfiniCore implementation (operator not yet available)."""
