@@ -215,7 +215,8 @@ __device__ void primitive_cast(const float *x, int *y, int len) {
         float32x16_t Y = vload_lm_float32x16(x);
         __asm__ __volatile__("vfloat2fix.rz vr0, %0\t\n"
                              "vstore_mask16.mz vr0{mr1}, 0(%1)" ::"v"(Y),
-                             "r"(y) : "vr0");
+                             "r"(y)
+                             : "vr0");
         x += 16;
         y += 16;
     }
@@ -227,7 +228,8 @@ __device__ void primitive_cast(const int *x, float *y, int len) {
         int32x16_t Y = vload_lm_int32x16(x);
         __asm__ __volatile__("vfix2float.rn vr0, %0\t\n"
                              "vstore_mask16.mz vr0{mr1}, 0(%1)" ::"v"(Y),
-                             "r"(y) : "vr0");
+                             "r"(y)
+                             : "vr0");
         x += 16;
         y += 16;
     }
