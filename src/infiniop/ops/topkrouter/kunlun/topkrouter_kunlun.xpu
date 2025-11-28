@@ -45,8 +45,8 @@ infiniStatus_t launch_topkrouter(float *d_values_out, int *d_indices_out, const 
     if (xtype == INFINI_DTYPE_F32) {
         topkrouter_kernel<float, BLOCK_SIZE, 256, 8, 4, 2>
             <<<N, BLOCK_SIZE, stream>>>(
-                d_values_out, 
-                d_indices_out, 
+                d_values_out,
+                d_indices_out,
                 (float *)d_input,
                 (const float *)d_correction_bias,
                 routed_scaling_factor,
@@ -57,8 +57,19 @@ infiniStatus_t launch_topkrouter(float *d_values_out, int *d_indices_out, const 
         topkrouter_kernel<half, BLOCK_SIZE, 256, 8, 4, 2>
             <<<N, BLOCK_SIZE, stream>>>(
                 d_values_out,
-                d_indices_out, 
+                d_indices_out,
                 (half *)d_input,
+                (const float *)d_correction_bias,
+                routed_scaling_factor,
+                N,
+                width,
+                topk);
+    } else if (xtype == INFINI_DTYPE_BF16) {
+        topkrouter_kernel<bfloat16_t, BLOCK_SIZE, 256, 8, 4, 2>
+            <<<N, BLOCK_SIZE, stream>>>(
+                d_values_out,
+                d_indices_out,
+                (bfloat16_t *)d_input,
                 (const float *)d_correction_bias,
                 routed_scaling_factor,
                 N,

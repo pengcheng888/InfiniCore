@@ -3,7 +3,6 @@
 
 #include "../../../devices/kunlun/kunlun_kernel_common.h"
 #include "../../../sort/kunlun/heap.h"
-#include <xpu/kernel/xtdk_io.h>
 #include <float.h>
 
 using namespace device::kunlun::kernel;
@@ -34,11 +33,11 @@ inline __device__ void descending_sort(T *x, TID *idx, int32_t n) {
     mfence_lm();
 }
 
-template <typename T, int32_t BLOCK_THREADS=64, int32_t MAX_EXPERTS=256,
-          int32_t N_GROUPS=8, int32_t TOPK_GROUP=4, int32_t TOPK_PER_GROUP=2>
+template <typename T, int32_t BLOCK_THREADS = 64, int32_t MAX_EXPERTS = 256,
+          int32_t N_GROUPS = 8, int32_t TOPK_GROUP = 4, int32_t TOPK_PER_GROUP = 2>
 __global__ void topkrouter_kernel(
     float *values_topk,             // 输出数据, 形状[N, topk]
-    int32_t *indices_topk,              // 输出索引, 形状[N, topk]
+    int32_t *indices_topk,          // 输出索引, 形状[N, topk]
     const T *input,                 // 输入数据 [N, n_experts]
     const float *d_correction_bias, // 输入数据 [n_experts]
     const float routed_scaling_factor,
@@ -56,14 +55,14 @@ __global__ void topkrouter_kernel(
 
     __shared__ T input_shm[MAX_EXPERTS]; // input shm for i-th token, total N
     __shared__ float correction_bias_sm[MAX_EXPERTS];
-    
+
     // Copy data into SM
     if (thread_idx == 0) {
         GM2SM_ASYNC(input + block_idx * n_experts, input_shm, n_experts * sizeof(T));
         GM2SM_ASYNC(d_correction_bias, correction_bias_sm, n_experts * sizeof(float));
     }
     sync_cluster();
-    
+
     // Calculate sigmoid scores and add bias
     __shared__ float scores[MAX_EXPERTS];
     __shared__ float scores_with_bias_shm[MAX_EXPERTS];
