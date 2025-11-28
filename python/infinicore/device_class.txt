@@ -1,20 +1,11 @@
 from infinicore.lib import _infinicore
 import infinicore
 
-import time
-
 
 class device:
-    s_time = 0
-    s_count = 0
-
-    type: str
-    index: int
-    _underlying:_infinicore.Device
-
     def __init__(self, type=None, index=None):
-        device.s_count += 1
-        t1 = time.time()
+        # print("???---------> device.device", type)
+
         if isinstance(type, device):
             self.type = type.type
             self.index = type.index
@@ -33,17 +24,15 @@ class device:
             index = int(index)
 
         self.type = type
+
         self.index = index
 
         _type, _index = device._to_infinicore_device(type, index if index else 0)
         self._underlying = _infinicore.Device(_type, _index)
-        # global python_2_infinicore_dict
-        # type, index = python_2_infinicore_dict[type][index]
-        # self._underlying = _infinicore.Device(type, index)
 
-        t2 = time.time()
-        device.s_time += t2 - t1
- 
+        # global python_2_infinicore_dict
+        # self._underlying = python_2_infinicore_dict[type][index]
+
     def __repr__(self):
         return f"device(type='{self.type}'{f', index={self.index}' if self.index is not None else ''})"
 
@@ -95,7 +84,7 @@ class device:
 
                 index -= 1
 
-    # @staticmethod
+    @staticmethod
     # def _from_infinicore_device_old(infinicore_device):
     #     type = _TORCH_DEVICE_MAP[infinicore_device.type]
 
@@ -111,24 +100,11 @@ class device:
     #         base_index += _infinicore.get_device_count(infinicore_type)
 
     #     return device(type, base_index + infinicore_device.index)
-    
-    @staticmethod
-    def from_infinicore_device(device:_infinicore.Device):
+
+    def _from_infinicore_device(infinicore_device):
         global infinicore_2_python_dict
-        type, index = infinicore_2_python_dict[device.type][  device.index
-        ]
-        return device(type, index)
-    
-    def to_infinicore_device(self):
-        global python_2_infinicore_dict
-        type, index = python_2_infinicore_dict[self.type][  self.index
-        ]
-        return _infinicore.Device(type, index)
-    
 
-
-        # type, index = python_2_infinicore_dict[type][index]
-        # self._underlying = _infinicore.Device(type, index)
+        return infinicore_2_python_dict[infinicore_device.type][infinicore_device.index]
 
 
 _TORCH_DEVICE_MAP = {
@@ -178,20 +154,20 @@ for infinicore_devices_type, count in zip(all_device_types, all_device_count):
 
         if infinicore_2_python_dict.get(infinicore_devices_type) is not None:
             infinicore_2_python_dict[infinicore_devices_type].append(
-                (python_devices_type, python_devices_index)
+                device(python_devices_type, python_devices_index)
             )
         else:
             infinicore_2_python_dict[infinicore_devices_type] = [
-                (python_devices_type, python_devices_index)
+                device(python_devices_type, python_devices_index)
             ]
 
         if python_2_infinicore_dict.get(python_devices_type) is not None:
             python_2_infinicore_dict[python_devices_type].append(
-                (infinicore_devices_type, infinicore_devices_index)
+                _infinicore.Device(infinicore_devices_type, infinicore_devices_index)
             )
         else:
             python_2_infinicore_dict[python_devices_type] = [
-                (infinicore_devices_type, infinicore_devices_index)
+                _infinicore.Device(infinicore_devices_type, infinicore_devices_index)
             ]
 
 

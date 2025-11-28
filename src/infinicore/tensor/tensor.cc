@@ -19,9 +19,15 @@ inline infinicore::Strides calculate_contiguous_strides(const infinicore::Shape 
 } // namespace
 
 namespace infinicore {
-TensorImpl *Tensor::operator->() { return impl_.get(); }
+TensorImpl *Tensor::operator->() {
 
-const TensorImpl *Tensor::operator->() const { return impl_.get(); }
+    return impl_.get();
+}
+
+const TensorImpl *Tensor::operator->() const {
+
+    return impl_.get();
+}
 
 Tensor Tensor::empty(const Shape &shape,
                      const DataType &dtype,
@@ -134,6 +140,7 @@ Stride TensorImpl::stride(size_t dim) const {
 }
 
 DataType TensorImpl::dtype() const {
+
     return meta_.dtype;
 }
 

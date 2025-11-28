@@ -1,4 +1,5 @@
 import ctypes
+import time
 
 import numpy as np
 
@@ -14,18 +15,25 @@ from .utils import (
 
 
 class Tensor:
+    s_time = 0
+    s_count = 0
+
     def __init__(self, underlying, *, _torch_ref=None):
         """An internal method. Please do not use this directly."""
+        Tensor.s_count += 1
 
         self._underlying = underlying
 
         self._dtype = infinicore.dtype(self._underlying.dtype)
 
+        t1 = time.time()
         self._device = infinicore.device._from_infinicore_device(
             self._underlying.device
         )
-
+        t2 = time.time()
         self._torch_ref = _torch_ref
+
+        Tensor.s_time += t2 - t1
 
     @property
     def shape(self):

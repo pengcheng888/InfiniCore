@@ -168,9 +168,49 @@ def test5_bf16():
     print("误差:", torch_tensor - torch_ans_result)
 
 
+def func8():
+    class Data:
+        def __init__(self, data):
+            self.data = data
+
+    import time
+
+    t1 = time.time()
+    for i in range(20060):
+        Data(i)
+
+    t2 = time.time()
+
+    print("---------------- func8 -------------")
+
+    x = infinicore.empty(
+        (2, 3), dtype=infinicore.float32, device=infinicore.device("cuda", 0)
+    )
+
+    from dataclasses import dataclass
+
+    @dataclass(slots=True)
+    class mydtype:
+        _underlying: type
+
+    t1 = time.time()
+
+    print(":: ", x._underlying)
+    print(":: ", x._underlying.dtype)
+    for i in range(20060):  # 20060
+        d = mydtype(x._underlying.dtype)
+
+        # d = infinicore.dtype(x._underlying.dtype)
+
+    t2 = time.time()
+    print((t2 - t1) * 1000)
+
+
 if __name__ == "__main__":
-    test()
-    test2()
-    test3()
-    test4_to()
-    test5_bf16()
+    # test()
+    # test2()
+    # test3()
+    # test4_to()
+    # test5_bf16()
+
+    func8()
