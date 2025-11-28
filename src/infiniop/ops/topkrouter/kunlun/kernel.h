@@ -78,8 +78,8 @@ __global__ void topkrouter_kernel(
     if (thread_idx < N_GROUPS) {
         int32_t base = thread_idx * GROUP_SIZE;
         float tmp[TOPK_PER_GROUP];
-        // 初始化为负无穷，便于找topk
-        #pragma unroll
+// 初始化为负无穷，便于找topk
+#pragma unroll
         for (int32_t k = 0; k < TOPK_PER_GROUP; ++k) {
             tmp[k] = -FLT_MAX;
         }
@@ -110,8 +110,8 @@ __global__ void topkrouter_kernel(
         float values_group[TOPK_GROUP];
         int32_t indices_tmp[TOPK_GROUP];
 
-        // 初始化为负无穷和-1
-        #pragma unroll
+// 初始化为负无穷和-1
+#pragma unroll
         for (int32_t k = 0; k < TOPK_GROUP; ++k) {
             values_group[k] = -FLT_MAX;
             indices_tmp[k] = -1;
@@ -130,8 +130,8 @@ __global__ void topkrouter_kernel(
                 indices_tmp[pos] = i;
             }
         }
-        // 写入共享内存
-        #pragma unroll
+// 写入共享内存
+#pragma unroll
         for (int32_t k = 0; k < TOPK_GROUP; ++k) {
             indices_group[k] = indices_tmp[k];
         }
