@@ -39,6 +39,7 @@ from infinicore.dtype import (
     uint8,
 )
 from infinicore.ops.add import add
+from infinicore.ops.baddbmm import baddbmm
 from infinicore.ops.attention import attention
 from infinicore.ops.matmul import matmul
 from infinicore.ops.mul import mul
@@ -98,6 +99,7 @@ __all__ = [
     "uint8",
     # Operations.
     "add",
+    "baddbmm",
     "attention",
     "matmul",
     "mul",

@@ -16,12 +16,12 @@ from framework import (
 # Test cases format: (input_shape, batch1_shape, batch2_shape, input_strides_or_None, batch1_strides_or_None, batch2_strides_or_None, beta_or_None, alpha_or_None)
 
 _TEST_CASES_DATA = [
-    ((3, 5), (2, 3, 4), (2, 4, 5), None, None, None, None, None),
-    ((8, 8), (4, 8, 8), (4, 8, 8), None, None, None, 0.5, 2.0),
-    ((5, 7), (2, 5, 6), (2, 6, 7), (30, 1), (0, 5, 1), None, None, None),
-    ((16, 16), (2, 16, 16), (2, 16, 16), None, None, (512, 1, 1), 1.0, None),
-    ((1, 1), (1, 1, 1), (1, 1, 1), None, None, None, None, None),
-    ((6, 8), (3, 6, 7), (3, 7, 8), None, None, None, None, 0.2),
+    ((2, 3, 5), (2, 3, 4), (2, 4, 5), None, None, None, None, None),
+    ((4, 8, 8), (4, 8, 8), (4, 8, 8), None, None, None, 0.5, 2.0),
+    ((2, 5, 7), (2, 5, 6), (2, 6, 7), (0, 30, 1), (0, 5, 1), None, None, None),
+    ((2, 16, 16), (2, 16, 16), (2, 16, 16), None, None, (512, 1, 1), 1.0, None),
+    ((1, 1, 1), (1, 1, 1), (1, 1, 1), None, None, None, None, None),
+    ((3, 6, 8), (3, 6, 7), (3, 7, 8), None, None, None, None, 0.2),
 ]
 
 _TOLERANCE_MAP = {
@@ -50,7 +50,7 @@ def parse_test_cases():
             tol = _TOLERANCE_MAP.get(dtype, {"atol": 0, "rtol": 1e-3})
             in_spec = TensorSpec.from_tensor(in_shape, in_strides, dtype)
             out_spec = TensorSpec.from_tensor(
-                (b1_shape[0], in_shape[0], b2_shape[2]), None, dtype
+                (b1_shape[0], in_shape[1], b2_shape[2]), None, dtype
             )
             b1_spec = TensorSpec.from_tensor(b1_shape, b1_strides, dtype)
             b2_spec = TensorSpec.from_tensor(b2_shape, b2_strides, dtype)
@@ -99,9 +99,9 @@ class OpTest(BaseOperatorTest):
     def torch_operator(self, *args, **kwargs):
         return torch.baddbmm(*args, **kwargs)
 
-    # def infinicore_operator(self, *args, **kwargs):
-    #     """InfiniCore implementation (operator not yet available)."""
-    #     return infinicore.baddbmm(*args, **kwargs)
+    def infinicore_operator(self, *args, **kwargs):
+        """InfiniCore implementation (operator not yet available)."""
+        return infinicore.baddbmm(*args, **kwargs)
 
 
 def main():
