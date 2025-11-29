@@ -18,41 +18,60 @@ class Tensor:
     s_time = 0
     s_count = 0
 
+    _underlying: _infinicore.Tensor
+    _dtype: infinicore.dtype
+    _device: infinicore.device
+    _torch_ref: "torch.Tensor | None"
+
     def __init__(self, underlying, *, _torch_ref=None):
         """An internal method. Please do not use this directly."""
-        Tensor.s_count += 1
+        self.l_count = 0
+        t1 = time.time()
 
         self._underlying = underlying
 
-        self._dtype = infinicore.dtype(self._underlying.dtype)
+        # self._dtype = infinicore.dtype(self._underlying.dtype)
+        # self._device = infinicore.device.from_infinicore_device(self._underlying.device)
 
-        t1 = time.time()
-        self._device = infinicore.device._from_infinicore_device(
-            self._underlying.device
-        )
-        t2 = time.time()
         self._torch_ref = _torch_ref
 
+        t2 = time.time()
         Tensor.s_time += t2 - t1
+
+    def __del__(self):
+        if 0 == self.l_count:
+            Tensor.s_count += 1
+        pass
+
+    @property
+    def dtype(self):
+        return infinicore.dtype(self._underlying.dtype)
+
+    @property
+    def device(self):
+        return infinicore.device.from_infinicore_device(self._underlying.device)
 
     @property
     def shape(self):
         return self._underlying.shape
 
     @property
-    def dtype(self):
-        return self._dtype
-
-    @property
-    def device(self):
-        return self._device
-
-    @property
     def ndim(self):
         return self._underlying.ndim
 
     def data_ptr(self):
+        self.l_count += 1
+
         return self._underlying.data_ptr()
+
+    def numel(self):
+        return self._underlying.numel()
+
+    def is_contiguous(self):
+        return self._underlying.is_contiguous()
+
+    def is_pinned(self):
+        return self._underlying.is_pinned()
 
     def size(self, dim=None):
         if dim is None:
@@ -65,15 +84,6 @@ class Tensor:
             return self._underlying.strides
 
         return self._underlying.strides[dim]
-
-    def numel(self):
-        return self._underlying.numel()
-
-    def is_contiguous(self):
-        return self._underlying.is_contiguous()
-
-    def is_pinned(self):
-        return self._underlying.is_pinned()
 
     def copy_(self, src):
         self._underlying.copy_(src._underlying)

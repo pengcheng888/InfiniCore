@@ -187,23 +187,83 @@ def func8():
         (2, 3), dtype=infinicore.float32, device=infinicore.device("cuda", 0)
     )
 
-    from dataclasses import dataclass
-
-    @dataclass(slots=True)
     class mydtype:
         _underlying: type
+
+        def __init__(self, d):
+            self._underlying = d
 
     t1 = time.time()
 
     print(":: ", x._underlying)
     print(":: ", x._underlying.dtype)
-    for i in range(20060):  # 20060
+    for i in range(20000):
         d = mydtype(x._underlying.dtype)
-
+        # d = mydtype(i)
         # d = infinicore.dtype(x._underlying.dtype)
 
     t2 = time.time()
     print((t2 - t1) * 1000)
+
+
+def func9():
+    class DynamicAttributes:
+        def __init__(self):
+            self.existing_attr = "我是一个已存在的属性"
+
+        def __getattr__(self, name):
+            print("type(name)", type(name), name)
+            # 当访问不存在的属性时，会进入这个方法
+            if name == "color":
+                return "红色"
+            else:
+                # 如果这个属性也不处理，就抛出AttributeError
+                print("????????????????????????")
+                raise AttributeError(
+                    f"'{self.__class__.__name__}' object has no attribute '{name}'"
+                )
+
+        # def shape(self):
+        #     return (2, 3)
+
+    # obj = DynamicAttributes()
+    # print(obj.existing_attr)  # 输出：我是一个已存在的属性
+    # print(obj.color)  # 输出：红色
+    # print(obj.shape)  # 输出：(2, 3)
+
+    class DataFoo:
+        data0: str
+        data1: int
+        data2: str
+
+        def __init__(self):
+            self.data0 = 0
+
+        @staticmethod
+        def data1(x):
+            return 11111
+
+        def data2(self):
+            return 222222
+
+    class Data:
+        data0: str
+        data1: int
+        data2: str
+
+        def __init__(self):
+            self.data0 = 0
+            self.func = DataFoo()
+
+        def __getattr__(self, name):
+            setattr(self, name, getattr(DataFoo, name)("x"))
+            return getattr(self, name)
+
+    print("========================================")
+    d = Data()
+    print(d.data0)
+    print(d.data1)
+    print(d.data1)
 
 
 if __name__ == "__main__":
@@ -213,4 +273,4 @@ if __name__ == "__main__":
     # test4_to()
     # test5_bf16()
 
-    func8()
+    func9()
