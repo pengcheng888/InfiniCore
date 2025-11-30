@@ -106,6 +106,10 @@ class Tensor:
     def __add__(self, other):
         return infinicore.add(self, other)
 
+    def __iadd__(self, other):
+        infinicore.add(self, other, out=self)
+        return self
+
     def __matmul__(self, other):
         return infinicore.matmul(self, other)
 
