@@ -194,8 +194,7 @@ def test(
         )
 
     lib_topkrouter()
-    
-    torch.cuda.synchronize()
+
 
     lable_values, lable_indices = torch_topkrouter(x.actual_tensor(), correction_bias.actual_tensor(), routed_scaling_factor, topk)
     atol, rtol = get_tolerance(_TOLERANCE_MAP, dtype)
