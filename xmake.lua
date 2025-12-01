@@ -326,6 +326,7 @@ target("infiniccl")
     end
     if has_config("qy-gpu") then
         add_deps("infiniccl-qy")
+        add_files("build/.objs/infiniccl-qy/rules/qy.cuda/src/infiniccl/cuda/*.cu.o", {public = true})
     end
 
     if has_config("moore-gpu") then
