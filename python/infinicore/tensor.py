@@ -43,6 +43,25 @@ class Tensor:
             Tensor.s_count += 1
         pass
 
+    def __getattr__(self, name):
+        # print("type(name)", type(name), name)
+        if name == "shape":
+            setattr(self, name, getattr(self._underlying, name))
+
+        # elif name == "dtype":
+        #     setattr(self, name, infinicore.dtype(getattr(self._underlying, name)))
+        # elif name == "device":
+        #     setattr(
+        #         self,
+        #         name,
+        #         infinicore.device.from_infinicore_device(
+        #             getattr(self._underlying, name)
+        #         ),
+        #     )
+        # elif name == "ndim":
+        #     setattr(self, name, getattr(self._underlying, name))
+        return getattr(self, name)
+
     @property
     def dtype(self):
         return infinicore.dtype(self._underlying.dtype)
@@ -51,9 +70,9 @@ class Tensor:
     def device(self):
         return infinicore.device.from_infinicore_device(self._underlying.device)
 
-    @property
-    def shape(self):
-        return self._underlying.shape
+    # @property
+    # def shape(self):
+    #     return self._underlying.shape
 
     @property
     def ndim(self):

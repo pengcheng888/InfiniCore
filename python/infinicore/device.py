@@ -82,8 +82,8 @@ class device:
     index: int
 
     def __init__(self, type=None, index=None):
-        device.s_count += 1
         t1 = time.time()
+        self.l_count = 0
 
         if isinstance(type, device):
             self.type = type.type
@@ -113,9 +113,21 @@ class device:
         t2 = time.time()
         device.s_time += t2 - t1
 
-    @property
-    def _underlying(self):
-        return self.to_infinicore_device()
+    def __del__(self):
+        if 2 < self.l_count:
+            device.s_count += 1
+        pass
+
+    def __getattr__(self, name):
+        # print("type(name)", type(name), name)
+        if name == "_underlying":
+            setattr(self, name, getattr(self, "to_infinicore_device")())
+        return getattr(self, name)
+
+    # @property
+    # def _underlying(self):
+    #     self.l_count += 1
+    #     return self.to_infinicore_device()
 
     def __repr__(self):
         return f"device(type='{self.type}'{f', index={self.index}' if self.index is not None else ''})"

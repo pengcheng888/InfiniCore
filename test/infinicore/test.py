@@ -266,6 +266,32 @@ def func9():
     print(d.data1)
 
 
+def func10():
+    import time
+
+    x = infinicore.empty(
+        (1, 2048), dtype=infinicore.bfloat16, device=infinicore.device("cuda", 0)
+    )
+    w = infinicore.empty(
+        (4096, 2048),
+        dtype=infinicore.bfloat16,
+        device=infinicore.device("cuda", 0),
+    )
+
+    print("::  ??", x._underlying.dtype)
+    y = x @ w.permute((1, 0))
+
+    infinicore.sync_device()
+    t1 = time.time()
+    for i in range(100000):  #
+        w_t = w.permute((1, 0))
+        y = x @ w_t
+
+    infinicore.sync_device()
+    t2 = time.time()
+    print((t2 - t1) * 1000)
+
+
 if __name__ == "__main__":
     # test()
     # test2()
@@ -273,4 +299,5 @@ if __name__ == "__main__":
     # test4_to()
     # test5_bf16()
 
-    func9()
+    # func9()
+    func10()
