@@ -1,4 +1,5 @@
 #include "infinicore/nn/module.hpp"
+#include <spdlog/spdlog.h>
 #include <stdexcept>
 
 namespace infinicore::nn {
@@ -21,28 +22,28 @@ void Module::load_state_dict(const std::unordered_map<std::string, Tensor> &_sta
         // Look up the corresponding tensor in the input state dict using the full name
         auto it = _state_dict.find(param_full_name);
         if (it != _state_dict.end()) {
-            // Assert dtype matches
-            if (param->dtype() != it->second->dtype()) {
-                throw std::runtime_error(
-                    "dtype mismatch for parameter '" + param_full_name + "': "
-                                                                         "expected "
-                    + std::to_string(static_cast<int>(param->dtype())) + ", got " + std::to_string(static_cast<int>(it->second->dtype())));
-            }
-            param->copy_from(it->second);
+            this->load_parameter(param_full_name, it->second);
+        } else {
+            spdlog::warn("Parameter '{}' provided but not found in module.", param_full_name);
         }
     }
 }
 
 void Module::load_parameter(const std::string &name, const Tensor &param) {
-    auto existing_param = parameters_[name];
-    // Assert dtype matches
-    if (existing_param->dtype() != param->dtype()) {
-        throw std::runtime_error(
-            "dtype mismatch for parameter '" + name + "': "
-                                                      "expected "
-            + std::to_string(static_cast<int>(existing_param->dtype())) + ", got " + std::to_string(static_cast<int>(param->dtype())));
+    auto it = parameters_.find(name);
+    if (it != parameters_.end()) {
+        auto existing_param = it->second;
+        // Assert dtype matches
+        if (existing_param->dtype() != param->dtype()) {
+            throw std::runtime_error(
+                "dtype mismatch for parameter '" + name + "': "
+                                                          "expected "
+                + std::to_string(static_cast<int>(existing_param->dtype())) + ", got " + std::to_string(static_cast<int>(param->dtype())));
+        }
+        existing_param.load(param);
+    } else {
+        throw std::runtime_error("Parameter '" + name + "' not found in module.");
     }
-    existing_param->copy_from(param);
 }
 
 void Module::load_parameter_from_blob(const std::string &name, const void *data) {
