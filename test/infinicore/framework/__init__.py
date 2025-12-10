@@ -2,6 +2,7 @@ from .base import TestConfig, TestRunner, BaseOperatorTest
 from .test_case import TestCase, TestResult
 from .benchmark import BenchmarkUtils, BenchmarkResult
 from .config import (
+    add_common_test_args,
     get_args,
     get_hardware_args_group,
     get_test_devices,
@@ -38,6 +39,7 @@ __all__ = [
     "TestRunner",
     "TestReporter",
     # Core functions
+    "add_common_test_args",
     "compare_results",
     "convert_infinicore_to_torch",
     "create_test_comparator",
