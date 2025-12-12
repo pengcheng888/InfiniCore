@@ -355,7 +355,11 @@ class BaseOperatorTest(ABC):
                     inp, comparison_target == i
                 )
                 infini_inputs.append(infini_list)
-                cloned_tensors.append(cloned_list)
+                # assuming no input lists are operated inplace
+                if len(cloned_list) > 0:
+                    raise Exception(
+                        "Unconsidered case: inplace operation on input list"
+                    )
             else:
                 infini_inputs.append(inp)
 
@@ -376,7 +380,10 @@ class BaseOperatorTest(ABC):
                 infini_list, cloned_list = self.prepare_infinicore_list(
                     value, key == "out"
                 )
-                cloned_tensors.append(cloned_list)
+                if key == "out" and len(cloned_list) > 0:
+                    # not expected to reach here until an operator supports inplace on list output
+                    # torch.broadcast_tensors returns a list of tensors but doesn't require an out kwarg.
+                    cloned_tensors.append(cloned_list)
                 infini_kwargs[key] = infini_list
             else:
                 infini_kwargs[key] = value
