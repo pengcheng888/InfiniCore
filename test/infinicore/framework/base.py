@@ -30,8 +30,10 @@ class TestConfig:
         num_prerun=10,
         num_iterations=1000,
         verbose=False,
+        equal_nan=False,
     ):
         self.debug = debug
+        self.equal_nan = equal_nan
         self.bench = bench
         self.num_prerun = num_prerun
         self.num_iterations = num_iterations
@@ -540,7 +542,11 @@ class BaseOperatorTest(ABC):
                 rtol = test_case.tolerance.get("rtol", 1e-3)
 
                 compare_fn = create_test_comparator(
-                    config, atol, rtol, f"{test_case.description} - output_{i}"
+                    config,
+                    atol,
+                    rtol,
+                    f"{test_case.description} - output_{i}",
+                    equal_nan=config.equal_nan,
                 )
 
                 is_valid = compare_fn(infini_out, torch_out)
@@ -589,7 +595,11 @@ class BaseOperatorTest(ABC):
             rtol = test_case.tolerance.get("rtol", 1e-3)
 
             compare_fn = create_test_comparator(
-                config, atol, rtol, test_case.description
+                config,
+                atol,
+                rtol,
+                test_case.description,
+                equal_nan=config.equal_nan,
             )
 
             is_valid = compare_fn(infini_comparison, torch_comparison)
