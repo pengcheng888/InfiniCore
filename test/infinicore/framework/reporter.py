@@ -61,35 +61,61 @@ class TestReporter:
 
             # --- B. Build Kwargs ---
             display_kwargs = {}
-            
-            # B1. Process existing kwargs
             for k, v in tc.kwargs.items():
-                # Handle Inplace: "out": index -> "out": "input_name"
+                # 1. Handle Inplace output index: "out": 0 -> "out": "in_0" / "a_spec"
                 if k == "out" and isinstance(v, int):
                     if 0 <= v < len(tc.inputs):
-                        display_kwargs[k] = tc.inputs[v].name
+                        # Prioritize the input's name; otherwise, default to index-based name
+                        display_kwargs[k] = getattr(tc.inputs[v], "name", None) or f"in_{v}"
                     else:
                         display_kwargs[k] = f"Invalid_Index_{v}"
+                
+                # 2. Handle TensorSpec objects
+                elif isinstance(v, TensorSpec):
+                    spec_dict = TestReporter._spec_to_dict(v)
+                    # If the object has a name, explicitly overwrite it; otherwise, keep original
+                    if getattr(v, "name", None):
+                        spec_dict["name"] = v.name
+                    display_kwargs[k] = spec_dict
+                
+                # 3. Direct assignment for other types
                 else:
-                    display_kwargs[k] = (TestReporter._spec_to_dict(v) if isinstance(v, TensorSpec) else v)
+                    display_kwargs[k] = v
 
-            # B2. Inject Outputs into Kwargs
-            if hasattr(tc, "output_specs") and tc.output_specs:
+            # --- B2. Inject Outputs ---
+            # Handle output list (output_specs)
+            if getattr(tc, "output_specs", None):
                 for i, spec in enumerate(tc.output_specs):
-                    display_kwargs[f"out_{i}"] = TestReporter._spec_to_dict(spec)
-            elif tc.output_spec:
-                if "out" not in display_kwargs:
-                    display_kwargs["out"] = TestReporter._spec_to_dict(tc.output_spec)
+                    out_dict = TestReporter._spec_to_dict(spec)
+                    # Prioritize intrinsic name; otherwise, default to "out_i"
+                    out_dict["name"] = getattr(spec, "name", None) or f"out_{i}"
+                    display_kwargs[f"out_{i}"] = out_dict
+            
+            # Handle single output (output_spec), preventing overwrite of existing "out"
+            elif tc.output_spec and "out" not in display_kwargs:
+                out_dict = TestReporter._spec_to_dict(tc.output_spec)
+                # Prioritize intrinsic name; otherwise, default to "out" (fixes null issue)
+                out_dict["name"] = getattr(tc.output_spec, "name", "out")
+                display_kwargs["out"] = out_dict
 
-            # --- C. Build Test Case Dictionary ---
+            # --- C. Build Inputs ---
+            # Iterate inputs: prioritize original name, fallback to "in_i"
+            processed_inputs = []
+            for i, inp in enumerate(tc.inputs):
+                inp_dict = TestReporter._spec_to_dict(inp)
+                # Simplified logic: Use "name" attribute if present and non-empty, else use f"in_{i}"
+                inp_dict["name"] = getattr(inp, "name", None) or f"in_{i}"
+                processed_inputs.append(inp_dict)
+
+            
             case_data = {
                 "description": tc.description,
-                "inputs": [TestReporter._spec_to_dict(i) for i in tc.inputs],
+                "inputs": processed_inputs,
                 "kwargs": display_kwargs, 
                 "comparison_target": tc.comparison_target,
                 "tolerance": tc.tolerance,
             }
-
+            
             # --- D. Inject Result ---
             if res:
                 case_data["result"] = TestReporter._fmt_result(res)
@@ -117,7 +143,7 @@ class TestReporter:
         indent_12 = ' ' * 12
         indent_16 = ' ' * 16
         indent_20 = ' ' * 20
-
+        
         print(f"💾 Saving to: {final_path}")
         try:
             with open(final_path, "w", encoding="utf-8") as f:
@@ -125,8 +151,8 @@ class TestReporter:
 
                 for i, entry in enumerate(total_results):
                     f.write(f"{indent_4}{{\n")
-                    keys = list(entry.keys())
 
+                    keys = list(entry.keys())
                     for j, key in enumerate(keys):
                         val = entry[key]
                         comma = "," if j < len(keys) - 1 else ""
@@ -204,7 +230,109 @@ class TestReporter:
             import traceback; traceback.print_exc()
             print(f"   ❌ Save failed: {e}")
 
+    @staticmethod
+    def print_header(ops_dir, count):
+        print(f"InfiniCore Operator Test Runner")
+        print(f"Directory: {ops_dir}")
+        print(f"Tests found: {count}\n")
+
+    @staticmethod
+    def print_live_result(result, verbose=False):
+        """Print single-line result in real-time."""
+        
+        print(f"{result.status_icon}  {result.name}: {result.status_text} (code: {result.return_code})")
+        
+        if result.stdout:
+            print(result.stdout.rstrip())
+            
+        if result.stderr:
+            print("\nSTDERR:", result.stderr.rstrip())
+            
+        if result.error_message:
+            print(f"💥 Error: {result.error_message}")
+
+        if result.stdout or result.stderr or verbose:
+            print("-" * 40)
+
+    @staticmethod
+    def print_summary(results, cumulative_timing, total_expected=0):
+        """Prints the final comprehensive test summary and statistics, ensuring consistency with original output."""
+        print(f"\n{'='*80}\nCUMULATIVE TEST SUMMARY\n{'='*80}")
+        
+        passed = [r for r in results if r.return_code == 0]
+        failed = [r for r in results if r.return_code == -1]
+        skipped = [r for r in results if r.return_code == -2]
+        partial = [r for r in results if r.return_code == -3]
+
+        total = len(results)
+        print(f"Total tests run: {total}")
+        print(f"Passed: {len(passed)}")
+        print(f"Failed: {len(failed)}")
+        if skipped: print(f"Skipped: {len(skipped)}")
+        if partial: print(f"Partial: {len(partial)}")
+
+        # 1. Print Benchmark data
+        if cumulative_timing:
+            # Assuming bench_mode is "both" for simplicity in this file, or passed via a config
+            # We call the modified _print_timing to handle the display logic.
+            TestReporter._print_timing(cumulative_timing, bench_mode="both")
+
+        # 2. Restore PASSED OPERATORS list
+        if passed:
+            print(f"\n✅ PASSED OPERATORS ({len(passed)}):")
+            # Print operators, grouped (assuming 10 per line as per the old pattern)
+            operators = [r.name for r in passed]
+            for i in range(0, len(operators), 10):
+                print("  " + ", ".join(operators[i : i + 10]))
+        else:
+            print(f"\n✅ PASSED OPERATORS: None")
+
+        # 3. Restore Success Rate
+        if total > 0:
+            # Calculate success rate based on actually executed tests (excluding skipped)
+            executed_tests = total - len(skipped)
+            if executed_tests > 0:
+                success_rate = len(passed) / executed_tests * 100
+                print(f"\nSuccess rate: {success_rate:.1f}%")
+
+        if not failed:
+            print(f"\n🎉 All tests passed!")
+        else:
+            print(f"\n❌ {len(failed)} tests failed")
+            
+        return len(failed) == 0
+
     # --- Internal Helpers ---
+    @staticmethod
+    def _print_timing(t, bench_mode="both"):
+        """Prints detailed timing breakdown for host and device, based on bench_mode."""
+        
+        print(f"{'-'*40}")
+        
+        # Restore Operators Tested field using the new dataclass field
+        if hasattr(t, 'operators_tested'):
+            print(f"BENCHMARK SUMMARY:")
+            print(f"  Operators Tested: {t.operators_tested}")
+        
+        # Restore detailed Host/Device distinction
+        if bench_mode in ["host", "both"]:
+            print(
+                f"  PyTorch Host Total Time:     {t.torch_host:12.3f} ms"
+            )
+            print(
+                f"  InfiniCore Host Total Time:  {t.infini_host:12.3f} ms"
+            )
+        
+        if bench_mode in ["device", "both"]:
+            print(
+                f"  PyTorch Device Total Time:   {t.torch_device:12.3f} ms"
+            )
+            print(
+                f"  InfiniCore Device Total Time: {t.infini_device:12.3f} ms"
+            )
+        
+        print(f"{'-'*40}")
+
     @staticmethod
     def _write_smart_field(f, key, value, indent, sub_indent, close_comma=""):
         """
