@@ -2,7 +2,7 @@ import sys
 import importlib.util
 from io import StringIO
 from contextlib import contextmanager
-from .datatypes import SingleTestResult, TestTiming
+from .types import OperatorTestResult, TestTiming
 
 @contextmanager
 def capture_output():
@@ -15,9 +15,9 @@ def capture_output():
     finally:
         sys.stdout, sys.stderr = old_out, old_err
 
-class SingleTestExecutor:
-    def run(self, file_path) -> SingleTestResult:
-        result = SingleTestResult(name=file_path.stem)
+class TestDriver:
+    def drive(self, file_path) -> OperatorTestResult:
+        result = OperatorTestResult(name=file_path.stem)
         
         try:
             # 1. Dynamically import the module
@@ -79,15 +79,22 @@ class SingleTestExecutor:
 
     def _analyze_return_code(self, result, test_results):
         # Logic consistent with original code: determine if all passed, partially passed, or skipped
-        if not result.success:
-            result.return_code = -1
+        if result.success:
+            result.return_code = 0
             return
             
-        codes = [r.return_code for r in test_results]
-        if -1 in codes: result.return_code = -1
-        elif -3 in codes: result.return_code = -3
-        elif -2 in codes: result.return_code = -2
-        else: result.return_code = 0
+        has_failures = any(r.return_code == -1 for r in test_results)
+        has_partial = any(r.return_code == -3 for r in test_results)
+        has_skipped = any(r.return_code == -2 for r in test_results)
+
+        if has_failures:
+            result.return_code = -1
+        elif has_partial:
+            result.return_code = -3
+        elif has_skipped:
+            result.return_code = -2
+        else:
+            result.return_code = -1
 
     def _extract_timing(self, result, test_results):
         # Accumulate timing

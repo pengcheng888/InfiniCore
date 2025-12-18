@@ -21,6 +21,18 @@ class TestDiscoverer:
         files = self.scan()
         return sorted([f.stem for f in files])
 
+    def get_raw_python_files(self):
+        """
+        Get all .py files in the directory (excluding run.py) without content validation.
+        Used for debugging: helps identify files that exist but failed validation.
+        """
+        if not self.ops_dir or not self.ops_dir.exists():
+            return []
+            
+        files = list(self.ops_dir.glob("*.py"))
+        # Exclude run.py itself and __init__.py
+        return [f.name for f in files if f.name != "run.py" and not f.name.startswith("__")]
+        
     def scan(self, specific_ops=None):
         """Scans and returns a list of Path objects that meet the criteria."""
         if not self.ops_dir or not self.ops_dir.exists():
@@ -29,17 +41,23 @@ class TestDiscoverer:
         # 1. Find all .py files
         files = list(self.ops_dir.glob("*.py"))
         
+        target_ops_set = set(specific_ops) if specific_ops else None
+
         # 2. Filter out non-test files (via content check)
         valid_files = []
         for f in files:
+            # A. Basic Name Filtering
             if f.name.startswith("_") or f.name == "run.py":
                 continue
+
+            # B. Specific Ops Filtering
+            if target_ops_set and f.stem not in target_ops_set:
+                continue
+
+            # C. Content Check (Expensive I/O)
+            # Only perform this check if the file passed the name filters above.
             if self._is_operator_test(f):
                 valid_files.append(f)
-
-        # 3. If specific operators are specified, filter them
-        if specific_ops:
-            return [f for f in valid_files if f.stem in specific_ops]
         
         return valid_files
 

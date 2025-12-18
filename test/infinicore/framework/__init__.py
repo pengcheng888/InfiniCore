@@ -1,5 +1,5 @@
 from .base import TestConfig, TestRunner, BaseOperatorTest
-from .test_case import TestCase, TestResult
+from .entities import TestCase
 from .benchmark import BenchmarkUtils, BenchmarkResult
 from .config import (
     add_common_test_args,
@@ -11,6 +11,9 @@ from .datatypes import to_torch_dtype, to_infinicore_dtype
 from .devices import InfiniDeviceEnum, InfiniDeviceNames, torch_device_map
 from .runner import GenericTestRunner
 from .tensor import TensorSpec, TensorInitializer
+from .types import TestTiming, OperatorTestResult, TestResult
+from .driver import TestDriver
+from .printer import ConsolePrinter
 from .utils import (
     compare_results,
     create_test_comparator,
@@ -38,6 +41,10 @@ __all__ = [
     "TestResult",
     "TestRunner",
     "TestReporter",
+    "TestTiming",
+    "OperatorTestResult",
+    "TestDriver",
+    "ConsolePrinter",
     # Core functions
     "add_common_test_args",
     "compare_results",
