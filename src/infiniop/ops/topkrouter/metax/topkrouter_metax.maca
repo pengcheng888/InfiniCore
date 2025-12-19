@@ -1,8 +1,16 @@
 #include "../../../devices/metax/metax_common.h"
 #include "../../../devices/metax/metax_kernel_common.h"
-#include "../cuda/kernel.cuh"
+
 #include "topkrouter_metax.h"
+
+#include <cfloat>
+#include <cub/block/block_load.cuh>
+#include <cub/block/block_radix_sort.cuh>
 #include <cub/block/block_reduce.cuh>
+#include <cub/block/block_store.cuh>
+#include <cub/cub.cuh>
+
+#include "../cuda/kernel.cuh"
 
 namespace op::topkrouter::metax {
 

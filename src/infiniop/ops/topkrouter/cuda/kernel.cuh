@@ -1,14 +1,5 @@
 #ifndef _TOPKROUTER_KERNEL_CUH__
 #define _TOPKROUTER_KERNEL_CUH__
-#include <cfloat>
-#include <cub/block/block_load.cuh>
-#include <cub/block/block_radix_sort.cuh>
-#include <cub/block/block_reduce.cuh>
-#include <cub/block/block_store.cuh>
-#include <cub/cub.cuh>
-// #include <cuda_bf16.h>
-// #include <cuda_fp16.h>
-// #include <cuda_runtime.h>
 
 template <typename T>
 inline __device__ float exp_func(T x) {
