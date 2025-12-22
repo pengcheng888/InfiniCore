@@ -238,11 +238,9 @@ def main():
     driver = TestDriver()
     cumulative_timing = TestTiming()
     test_summary = TestSummary(args.verbose, args.bench)
-    # printer = ConsolePrinter()
     results = []
 
     test_summary.print_header(discoverer.ops_dir, len(test_files))
-    # printer.print_header(discoverer.ops_dir, len(test_files))
 
     # 3. Execution Loop
     for f in test_files:
