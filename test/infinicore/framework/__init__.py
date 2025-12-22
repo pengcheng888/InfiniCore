@@ -22,7 +22,6 @@ from .utils.compare_utils import (
 )
 from .utils.json_utils import save_json_report
 from .utils.tensor_utils import (
-    
     infinicore_tensor_from_torch,
     convert_infinicore_to_torch,
     rearrange_tensor,
@@ -37,7 +36,6 @@ __all__ = [
     # Core types and classes
     "BaseOperatorTest",
     "CaseResult",
-    "ConsolePrinter",
     "GenericTestRunner",
     "InfiniDeviceEnum",
     "InfiniDeviceNames",
@@ -47,7 +45,7 @@ __all__ = [
     "TestCase",
     "TestConfig",
     "TestDriver",
-    "TestReporter",
+    "TestSummary",
     "TestRunner",
     "TestTiming",
     # Core functions

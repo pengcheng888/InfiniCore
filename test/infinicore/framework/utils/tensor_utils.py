@@ -15,6 +15,8 @@ def synchronize_device(torch_device):
         torch.npu.synchronize()
     elif torch_device == "mlu":
         torch.mlu.synchronize()
+    elif torch_device == "musa":
+        torch.musa.synchronize()
 
 
 # =================================================================
