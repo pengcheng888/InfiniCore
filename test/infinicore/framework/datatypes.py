@@ -1,6 +1,6 @@
 import torch
 import infinicore
-from dataclasses import dataclass, field
+
 
 def to_torch_dtype(infini_dtype):
     """Convert infinicore data type to PyTorch data type"""

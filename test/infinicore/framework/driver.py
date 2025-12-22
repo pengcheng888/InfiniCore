@@ -2,7 +2,9 @@ import sys
 import importlib.util
 from io import StringIO
 from contextlib import contextmanager
-from .types import OperatorTestResult, TestTiming
+from .structs import OperatorResult
+from .summary import TestSummary
+
 
 @contextmanager
 def capture_output():
@@ -15,18 +17,19 @@ def capture_output():
     finally:
         sys.stdout, sys.stderr = old_out, old_err
 
+
 class TestDriver:
-    def drive(self, file_path) -> OperatorTestResult:
-        result = OperatorTestResult(name=file_path.stem)
-        
+    def drive(self, file_path) -> OperatorResult:
+        result = OperatorResult(name=file_path.stem)
+
         try:
             # 1. Dynamically import the module
             module = self._import_module(file_path)
-            
+
             # 2. Look for TestRunner
             if not hasattr(module, "GenericTestRunner"):
                 raise ImportError("No GenericTestRunner found in module")
-            
+
             # 3. Look for TestClass (subclass of BaseOperatorTest)
             test_class = self._find_test_class(module)
             if not test_class:
@@ -44,11 +47,13 @@ class TestDriver:
             result.success = success
             result.stdout = out.getvalue()
             result.stderr = err.getvalue()
-            
+
             # Extract detailed results from internal_runner
             test_results = internal_runner.get_test_results() if internal_runner else []
-            self._analyze_return_code(result, test_results)
-            self._extract_timing(result, test_results)
+
+            test_summary = TestSummary()
+            test_summary.process_operator_result(result, test_results)
+            # test_summary._extract_timing(result, test_results)
 
         except Exception as e:
             result.success = False
@@ -76,30 +81,3 @@ class TestDriver:
                 if any("BaseOperatorTest" in str(b) for b in attr.__bases__):
                     return attr
         return None
-
-    def _analyze_return_code(self, result, test_results):
-        # Logic consistent with original code: determine if all passed, partially passed, or skipped
-        if result.success:
-            result.return_code = 0
-            return
-            
-        has_failures = any(r.return_code == -1 for r in test_results)
-        has_partial = any(r.return_code == -3 for r in test_results)
-        has_skipped = any(r.return_code == -2 for r in test_results)
-
-        if has_failures:
-            result.return_code = -1
-        elif has_partial:
-            result.return_code = -3
-        elif has_skipped:
-            result.return_code = -2
-        else:
-            result.return_code = -1
-
-    def _extract_timing(self, result, test_results):
-        # Accumulate timing
-        t = result.timing
-        t.torch_host = sum(r.torch_host_time for r in test_results)
-        t.torch_device = sum(r.torch_device_time for r in test_results)
-        t.infini_host = sum(r.infini_host_time for r in test_results)
-        t.infini_device = sum(r.infini_device_time for r in test_results)

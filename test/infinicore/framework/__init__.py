@@ -11,40 +11,45 @@ from .datatypes import to_torch_dtype, to_infinicore_dtype
 from .devices import InfiniDeviceEnum, InfiniDeviceNames, torch_device_map
 from .runner import GenericTestRunner
 from .tensor import TensorSpec, TensorInitializer
-from .types import TestTiming, OperatorTestResult, TestResult
+from .structs import TestTiming, OperatorResult, CaseResult
+from .summary import TestSummary
 from .driver import TestDriver
-from .printer import ConsolePrinter
-from .utils import (
+from .utils.compare_utils import (
     compare_results,
     create_test_comparator,
     debug,
     get_tolerance,
+)
+from .utils.json_utils import save_json_report
+from .utils.tensor_utils import (
+    
     infinicore_tensor_from_torch,
-    rearrange_tensor,
     convert_infinicore_to_torch,
+    rearrange_tensor,
     is_broadcast,
+    is_integer_dtype,
     is_complex_dtype,
     is_floating_dtype,
-    is_integer_dtype,
 )
+
 
 __all__ = [
     # Core types and classes
     "BaseOperatorTest",
+    "CaseResult",
+    "ConsolePrinter",
     "GenericTestRunner",
     "InfiniDeviceEnum",
     "InfiniDeviceNames",
+    "OperatorResult",
     "TensorInitializer",
     "TensorSpec",
     "TestCase",
     "TestConfig",
-    "TestResult",
-    "TestRunner",
-    "TestReporter",
-    "TestTiming",
-    "OperatorTestResult",
     "TestDriver",
-    "ConsolePrinter",
+    "TestReporter",
+    "TestRunner",
+    "TestTiming",
     # Core functions
     "add_common_test_args",
     "compare_results",
@@ -57,6 +62,8 @@ __all__ = [
     "get_tolerance",
     "infinicore_tensor_from_torch",
     "rearrange_tensor",
+    # Json utilites
+    "save_json_report",
     # Utility functions
     "to_infinicore_dtype",
     "to_torch_dtype",

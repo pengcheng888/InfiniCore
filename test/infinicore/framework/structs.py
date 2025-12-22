@@ -1,10 +1,10 @@
 from dataclasses import dataclass, field
 from typing import Any
 
-# TODO: Rename it, current class name is abstract.
+
 @dataclass
-class TestResult:
-    """Test result data structure"""
+class CaseResult:
+    """Test case result data structure"""
 
     success: bool
     return_code: int  # 0: success, -1: failure, -2: skipped, -3: partial
@@ -16,19 +16,23 @@ class TestResult:
     test_case: Any = None
     device: Any = None
 
+
 @dataclass
 class TestTiming:
     """Stores performance timing metrics."""
+
     torch_host: float = 0.0
     torch_device: float = 0.0
     infini_host: float = 0.0
     infini_device: float = 0.0
     # Added field to support the logic in your print_summary
-    operators_tested: int = 0 
+    operators_tested: int = 0
+
 
 @dataclass
-class OperatorTestResult:
+class OperatorResult:
     """Stores the execution results of a single operator."""
+
     name: str
     success: bool = False
     return_code: int = -1
@@ -39,14 +43,20 @@ class OperatorTestResult:
 
     @property
     def status_icon(self):
-        if self.return_code == 0: return "✅"
-        if self.return_code == -2: return "⏭️"
-        if self.return_code == -3: return "⚠️"
+        if self.return_code == 0:
+            return "✅"
+        if self.return_code == -2:
+            return "⏭️"
+        if self.return_code == -3:
+            return "⚠️"
         return "❌"
 
     @property
     def status_text(self):
-        if self.return_code == 0: return "PASSED"
-        if self.return_code == -2: return "SKIPPED"
-        if self.return_code == -3: return "PARTIAL"
+        if self.return_code == 0:
+            return "PASSED"
+        if self.return_code == -2:
+            return "SKIPPED"
+        if self.return_code == -3:
+            return "PARTIAL"
         return "FAILED"
