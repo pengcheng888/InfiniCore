@@ -19,6 +19,7 @@ DECLARE_INFINIOP_TEST(silu)
 DECLARE_INFINIOP_TEST(sub)
 DECLARE_INFINIOP_TEST(zeros)
 DECLARE_INFINIOP_TEST(ones)
+DECLARE_INFINIOP_TEST(paged_attention)
 
 DECLARE_INFINIOP_TEST(sigmoid)
 DECLARE_INFINIOP_TEST(topkrouter)
@@ -55,6 +56,7 @@ DECLARE_INFINIOP_TEST(topksoftmax)
         REGISTER_INFINIOP_TEST(topkrouter)     \
         REGISTER_INFINIOP_TEST(topksoftmax)    \
         REGISTER_INFINIOP_TEST(silu)           \
+        REGISTER_INFINIOP_TEST(paged_attention) \
     }
 
 namespace infiniop_test {
