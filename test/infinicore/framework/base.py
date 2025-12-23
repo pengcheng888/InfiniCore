@@ -8,7 +8,7 @@ import infinicore
 import traceback
 from abc import ABC, abstractmethod
 
-from .structs import CaseResult
+from .results import CaseResult
 from .datatypes import to_torch_dtype, to_infinicore_dtype
 from .devices import InfiniDeviceNames, torch_device_map
 from .tensor import TensorSpec, TensorInitializer

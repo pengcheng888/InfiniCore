@@ -3,9 +3,8 @@ import argparse
 from pathlib import Path
 
 # Import components from the unified framework package
-from framework.driver import TestDriver
-from framework.summary import TestSummary
-from framework.structs import TestTiming
+from framework.executor import TestExecutor
+from framework.results import TestSummary, TestTiming
 from framework import get_hardware_args_group, add_common_test_args
 
 
@@ -235,7 +234,7 @@ def main():
         sys.exit(0)
 
     # 2. Preparation
-    driver = TestDriver()
+    executor = TestExecutor()
     cumulative_timing = TestTiming()
     test_summary = TestSummary(args.verbose, args.bench)
     results = []
@@ -244,7 +243,7 @@ def main():
 
     # 3. Execution Loop
     for f in test_files:
-        result = driver.drive(f)
+        result = executor.execute(f)
         results.append(result)
 
         # Real-time reporting and printing of stdout

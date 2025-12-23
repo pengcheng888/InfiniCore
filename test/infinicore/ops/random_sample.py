@@ -222,8 +222,8 @@ class OpTest(BaseOperatorTest):
 
             # Re-run operations with the same logits to get results for comparison
             # prepare_pytorch_inputs_and_kwargs will reuse self._current_logits if it exists
-            from framework.base import CaseResult
-            from framework.utils import (
+            from framework.results import CaseResult
+            from framework.utils.tensor_utils import (
                 convert_infinicore_to_torch,
                 infinicore_tensor_from_torch,
             )

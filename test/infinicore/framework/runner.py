@@ -7,7 +7,7 @@ import os
 import inspect
 import re
 from . import TestConfig, TestRunner, get_args, get_test_devices
-from .summary import TestSummary
+from .results import TestSummary
 
 
 class GenericTestRunner:

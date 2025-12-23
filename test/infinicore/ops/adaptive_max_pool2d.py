@@ -7,6 +7,7 @@ import torch
 import infinicore
 from framework import (
     BaseOperatorTest,
+    CaseResult,
     TensorSpec,
     TestCase,
     GenericTestRunner,

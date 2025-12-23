@@ -19,7 +19,7 @@ def save_json_report(save_path, total_results):
     print(f"💾 Saving to: {final_path}")
 
     # Helper for JSON stringify to avoid repetition
-    def _j(obj):
+    def _to_json(obj):
         return json.dumps(obj, ensure_ascii=False)
 
     try:
@@ -58,16 +58,16 @@ def save_json_report(save_path, total_results):
                                 )
 
                                 if c_key in ["kwargs", "inputs"]:
-                                    _write_smart_field(
+                                    _write_field(
                                         f, c_key, c_val, I16, I20, close_comma=c_comma
                                     )
                                 else:
-                                    f.write(f'{I16}"{c_key}": {_j(c_val)}{c_comma}\n')
+                                    f.write(f'{I16}"{c_key}": {_to_json(c_val)}{c_comma}\n')
 
                             # Handle trailing comparison/tolerance fields uniformly
                             if "comparison_target" in case_item:
-                                cmp = _j(case_item.get("comparison_target"))
-                                tol = _j(case_item.get("tolerance"))
+                                cmp = _to_json(case_item.get("comparison_target"))
+                                tol = _to_json(case_item.get("tolerance"))
                                 f.write(
                                     f'{I16}"comparison_target": {cmp}, "tolerance": {tol}\n'
                                 )
@@ -77,7 +77,7 @@ def save_json_report(save_path, total_results):
                         f.write(f"{I8}]{comma}\n")
                     else:
                         # Standard top-level fields
-                        f.write(f"{I8}{_j(key)}: {_j(val)}{comma}\n")
+                        f.write(f"{I8}{_to_json(key)}: {_to_json(val)}{comma}\n")
 
                 close_entry = "}," if i < len(total_results) - 1 else "}"
                 f.write(f"{I4}{close_entry}\n")
@@ -90,9 +90,9 @@ def save_json_report(save_path, total_results):
         print(f"   ❌ Save failed: {e}")
 
 
-def _write_smart_field(f, key, value, indent, sub_indent, close_comma=""):
+def _write_field(f, key, value, indent, sub_indent, close_comma=""):
     """
-    Internal Helper: Write a JSON field with smart wrapping.
+    Internal Helper: Write a JSON field with wrapping.
     """
     # 1. Try Compact Mode
     compact_json = json.dumps(value, ensure_ascii=False)

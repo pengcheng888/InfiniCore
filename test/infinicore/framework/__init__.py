@@ -9,11 +9,10 @@ from .config import (
 )
 from .datatypes import to_torch_dtype, to_infinicore_dtype
 from .devices import InfiniDeviceEnum, InfiniDeviceNames, torch_device_map
+from .results import TestTiming, OperatorResult, CaseResult, TestSummary
 from .runner import GenericTestRunner
 from .tensor import TensorSpec, TensorInitializer
-from .structs import TestTiming, OperatorResult, CaseResult
-from .summary import TestSummary
-from .driver import TestDriver
+from .executor import TestExecutor
 from .utils.compare_utils import (
     compare_results,
     create_test_comparator,
@@ -44,7 +43,7 @@ __all__ = [
     "TensorSpec",
     "TestCase",
     "TestConfig",
-    "TestDriver",
+    "TestExecutor",
     "TestSummary",
     "TestRunner",
     "TestTiming",

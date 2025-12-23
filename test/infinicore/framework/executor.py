@@ -2,8 +2,7 @@ import sys
 import importlib.util
 from io import StringIO
 from contextlib import contextmanager
-from .structs import OperatorResult
-from .summary import TestSummary
+from .results import OperatorResult, TestSummary
 
 
 @contextmanager
@@ -18,8 +17,8 @@ def capture_output():
         sys.stdout, sys.stderr = old_out, old_err
 
 
-class TestDriver:
-    def drive(self, file_path) -> OperatorResult:
+class TestExecutor:
+    def execute(self, file_path) -> OperatorResult:
         result = OperatorResult(name=file_path.stem)
 
         try:
@@ -53,7 +52,6 @@ class TestDriver:
 
             test_summary = TestSummary()
             test_summary.process_operator_result(result, test_results)
-            # test_summary._extract_timing(result, test_results)
 
         except Exception as e:
             result.success = False
