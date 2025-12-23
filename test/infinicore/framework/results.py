@@ -4,6 +4,7 @@ from .devices import InfiniDeviceEnum
 from .tensor import TensorSpec
 from .utils.json_utils import save_json_report
 
+
 @dataclass
 class CaseResult:
     """Test case result data structure"""
@@ -62,6 +63,7 @@ class OperatorResult:
         if self.return_code == -3:
             return "PARTIAL"
         return "FAILED"
+
 
 class TestSummary:
     """

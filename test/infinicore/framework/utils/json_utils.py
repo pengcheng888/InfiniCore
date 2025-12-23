@@ -62,7 +62,9 @@ def save_json_report(save_path, total_results):
                                         f, c_key, c_val, I16, I20, close_comma=c_comma
                                     )
                                 else:
-                                    f.write(f'{I16}"{c_key}": {_to_json(c_val)}{c_comma}\n')
+                                    f.write(
+                                        f'{I16}"{c_key}": {_to_json(c_val)}{c_comma}\n'
+                                    )
 
                             # Handle trailing comparison/tolerance fields uniformly
                             if "comparison_target" in case_item:

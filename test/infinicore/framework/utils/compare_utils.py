@@ -231,7 +231,6 @@ def print_discrepancy(
     import sys
 
     is_terminal = sys.stdout.isatty()
-
     actual_isnan = torch.isnan(actual)
     expected_isnan = torch.isnan(expected)
 
