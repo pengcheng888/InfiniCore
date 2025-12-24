@@ -18,6 +18,8 @@ public:
     std::vector<ptrdiff_t> y_strides;
     std::vector<ptrdiff_t> a_strides;
     std::vector<ptrdiff_t> b_strides;
+    std::vector<ptrdiff_t> residual_out_strides;
+    bool has_residual_out;
 
     size_t ndim() const { return shape.size(); }
     size_t dim() const { return shape[ndim() - 1]; }
@@ -27,7 +29,8 @@ public:
         infiniopTensorDescriptor_t a_desc,
         infiniopTensorDescriptor_t b_desc,
         infiniopTensorDescriptor_t weight_desc,
-        float epsilon) {
+        float epsilon,
+        infiniopTensorDescriptor_t residual_out_desc) {
 
         auto atype = y_desc->dtype();
         auto wtype = weight_desc->dtype();
@@ -95,6 +98,27 @@ public:
             return INFINI_STATUS_BAD_TENSOR_STRIDES;
         }
 
+        // Check residual_out_desc if provided
+        bool has_residual_out = (residual_out_desc != nullptr);
+        if (has_residual_out) {
+            const size_t residual_out_ndim = residual_out_desc->ndim();
+            if (residual_out_ndim != y_ndim) {
+                return INFINI_STATUS_BAD_TENSOR_SHAPE;
+            }
+            if (residual_out_desc->dtype() != atype) {
+                return INFINI_STATUS_BAD_TENSOR_DTYPE;
+            }
+            // Check shape matches
+            for (size_t i = 0; i < y_ndim; i++) {
+                if (residual_out_desc->dim(i) != y_desc->dim(i)) {
+                    return INFINI_STATUS_BAD_TENSOR_SHAPE;
+                }
+            }
+            if (residual_out_desc->stride(residual_out_ndim - 1) != 1) {
+                return INFINI_STATUS_BAD_TENSOR_STRIDES;
+            }
+        }
+
         AddRMSNormInfo info;
         info.wtype = wtype;
         info.atype = atype;
@@ -103,6 +127,10 @@ public:
         info.y_strides = y_desc->strides();
         info.a_strides = a_desc->strides();
         info.b_strides = b_desc->strides();
+        info.has_residual_out = has_residual_out;
+        if (has_residual_out) {
+            info.residual_out_strides = residual_out_desc->strides();
+        }
         return utils::Result<AddRMSNormInfo>(info);
     }
 };

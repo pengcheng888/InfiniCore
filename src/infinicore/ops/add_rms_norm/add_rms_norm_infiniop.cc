@@ -15,8 +15,8 @@ thread_local common::OpCache<size_t, infiniopAddRMSNormDescriptor_t> caches(
         }
     });
 
-void calculate(Tensor y, Tensor a, Tensor b, Tensor weight, float epsilon) {
-    size_t seed = hash_combine(y, a, b, weight, epsilon);
+void calculate(Tensor y, Tensor residual_out, Tensor a, Tensor b, Tensor weight, float epsilon) {
+    size_t seed = hash_combine(y, residual_out, a, b, weight, epsilon);
 
     auto device = context::getDevice();
     auto &cache = caches.getCache(device);
@@ -27,7 +27,7 @@ void calculate(Tensor y, Tensor a, Tensor b, Tensor weight, float epsilon) {
     if (!desc_opt) {
         INFINICORE_CHECK_ERROR(infiniopCreateAddRMSNormDescriptor(
             context::getInfiniopHandle(device), &desc,
-            y->desc(), a->desc(), b->desc(), weight->desc(), epsilon));
+            y->desc(), a->desc(), b->desc(), weight->desc(), epsilon, residual_out->desc()));
         cache.put(seed, desc);
     } else {
         desc = *desc_opt;
@@ -39,7 +39,7 @@ void calculate(Tensor y, Tensor a, Tensor b, Tensor weight, float epsilon) {
 
     INFINICORE_CHECK_ERROR(infiniopAddRMSNorm(
         desc, workspace->data(), workspace_size,
-        y->data(), a->data(), b->data(), weight->data(), context::getStream()));
+        y->data(), a->data(), b->data(), weight->data(), residual_out->data(), context::getStream()));
 }
 
 static bool registered = []() {

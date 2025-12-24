@@ -86,60 +86,32 @@ def parse_test_cases():
                 )  # Weight is always contiguous
                 y_spec = TensorSpec.from_tensor(y_shape, y_strides, input_dtype)
 
-                # Test Case 1: Out-of-place (return value)
+                # Test Case 1: Out-of-place (return value) - returns (normalized_result, add_result)
+                residual_out_spec = TensorSpec.from_tensor(a_shape, a_strides, input_dtype)
                 test_cases.append(
                     TestCase(
                         inputs=[a_spec, b_spec, w_spec],
                         kwargs={"epsilon": _EPSILON},
-                        output_spec=None,
+                        output_specs=[y_spec, residual_out_spec],  # Two outputs
                         comparison_target=None,
                         tolerance=tolerance,
+                        output_count=2,  # Two outputs: normalized_result and add_result
                         description=f"AddRMSNorm - OUT_OF_PLACE",
                     )
                 )
 
-                # Test Case 2: In-place with explicit output tensor (add_rms_norm(a, b, w, out=y))
+                # Test Case 2: In-place with explicit output tensors (add_rms_norm_(y, residual_out, a, b, w))
                 if y_supports_inplace:
+                    residual_out_spec = TensorSpec.from_tensor(a_shape, a_strides, input_dtype)
                     test_cases.append(
                         TestCase(
                             inputs=[a_spec, b_spec, w_spec],
-                            kwargs={"epsilon": _EPSILON},
-                            output_spec=y_spec,  # Specify the output tensor spec
+                            kwargs={"epsilon": _EPSILON, "out": (y_spec, residual_out_spec)},
+                            output_specs=[y_spec, residual_out_spec],  # Two outputs
                             comparison_target="out",
                             tolerance=tolerance,
+                            output_count=2,
                             description=f"AddRMSNorm - INPLACE(out)",
-                        )
-                    )
-
-                # Test Case 3: In-place on first input (add_rms_norm(a, b, w, out=a))
-                if a_supports_inplace:
-                    test_cases.append(
-                        TestCase(
-                            inputs=[a_spec, b_spec, w_spec],
-                            kwargs={
-                                "out": 0,
-                                "epsilon": _EPSILON,
-                            },  # Use index 0 for first input
-                            output_spec=None,
-                            comparison_target=0,  # Compare first input
-                            tolerance=tolerance,
-                            description=f"AddRMSNorm - INPLACE(a)",
-                        )
-                    )
-
-                # Test Case 4: In-place on second input (add_rms_norm(a, b, w, out=b))
-                if b_supports_inplace:
-                    test_cases.append(
-                        TestCase(
-                            inputs=[a_spec, b_spec, w_spec],
-                            kwargs={
-                                "out": 1,
-                                "epsilon": _EPSILON,
-                            },  # Use index 1 for second input
-                            output_spec=None,
-                            comparison_target=1,  # Compare second input
-                            tolerance=tolerance,
-                            description=f"AddRMSNorm - INPLACE(b)",
                         )
                     )
 
@@ -156,7 +128,7 @@ class OpTest(BaseOperatorTest):
         return parse_test_cases()
 
     def torch_operator(self, a, b, weight, epsilon=_EPSILON, out=None, **kwargs):
-        """PyTorch AddRMSNorm implementation"""
+        """PyTorch AddRMSNorm implementation - returns (normalized_result, add_result)"""
         input_dtype = a.dtype
 
         # Compute add(a, b)
@@ -165,18 +137,27 @@ class OpTest(BaseOperatorTest):
 
         # Calculate RMSNorm: (a + b) * weight / sqrt(mean((a+b)^2) + epsilon)
         variance = sum_tensor.pow(2).mean(-1, keepdim=True)
-        result = sum_tensor * torch.rsqrt(variance + epsilon) * weight_fp32
+        normalized_result = sum_tensor * torch.rsqrt(variance + epsilon) * weight_fp32
 
         # Convert back to original dtype
-        result = result.to(input_dtype)
+        normalized_result = normalized_result.to(input_dtype)
+        add_result = sum_tensor.to(input_dtype)
 
         if out is not None:
-            out.copy_(result)
-            return out
-        return result
+            # For in-place operations, we need to handle the output tuple
+            if isinstance(out, (tuple, list)) and len(out) == 2:
+                out[0].copy_(normalized_result)
+                out[1].copy_(add_result)
+                return tuple(out)
+            else:
+                # Single output - just return normalized result for backward compatibility
+                out.copy_(normalized_result)
+                return out
+        
+        return (normalized_result, add_result)
 
     def infinicore_operator(self, a, b, weight, epsilon=_EPSILON, out=None, **kwargs):
-        """InfiniCore AddRMSNorm implementation"""
+        """InfiniCore AddRMSNorm implementation - returns (normalized_result, add_result)"""
         return infinicore.add_rms_norm(a, b, weight, epsilon, out=out)
 
 

@@ -13,15 +13,16 @@ infiniStatus_t Descriptor::create(
     infiniopTensorDescriptor_t a_desc,
     infiniopTensorDescriptor_t b_desc,
     infiniopTensorDescriptor_t weight_desc,
-    float epsilon) {
-    auto result = AddRMSNormInfo::create(y_desc, a_desc, b_desc, weight_desc, epsilon);
+    float epsilon,
+    infiniopTensorDescriptor_t residual_out_desc) {
+    auto result = AddRMSNormInfo::create(y_desc, a_desc, b_desc, weight_desc, epsilon, residual_out_desc);
     CHECK_RESULT(result);
     *desc_ptr = new Descriptor(nullptr, result.take(), 0, handle->device, handle->device_id);
     return INFINI_STATUS_SUCCESS;
 }
 
 template <typename T>
-infiniStatus_t add_rmsnorm(const AddRMSNormInfo *info, T *y, const T *a, const T *b, const T *w) {
+infiniStatus_t add_rmsnorm(const AddRMSNormInfo *info, T *y, const T *a, const T *b, const T *w, T *residual_out) {
     const size_t batch_size = info->shape[0];
     const size_t nhead = info->ndim() > 2 ? info->shape[1] : 1;
     const size_t dim = info->dim();
@@ -35,12 +36,16 @@ infiniStatus_t add_rmsnorm(const AddRMSNormInfo *info, T *y, const T *a, const T
         const T *a_ptr = a + i * info->a_strides[0] + j * info->a_strides[1];
         const T *b_ptr = b + i * info->b_strides[0] + j * info->b_strides[1];
         T *y_ptr = y + i * info->y_strides[0] + j * info->y_strides[1];
+        T *residual_out_ptr = info->has_residual_out ? 
+            (residual_out + i * info->residual_out_strides[0] + j * info->residual_out_strides[1]) : nullptr;
 
-        // First, compute add(a, b) and store sum values
-        // We'll compute RMS norm directly on the sum
+        // Compute add(a, b) once and store it
         T sum_squared = (T)0;
         for (size_t k = 0; k < dim; k++) {
             T sum_val = a_ptr[k] + b_ptr[k];
+            if (residual_out_ptr != nullptr) {
+                residual_out_ptr[k] = sum_val;  // Store add result
+            }
             sum_squared += sum_val * sum_val;
         }
 
@@ -49,10 +54,18 @@ infiniStatus_t add_rmsnorm(const AddRMSNormInfo *info, T *y, const T *a, const T
         T rms = (T)1 / std::sqrt(sum_squared / (T)(dim) + (T)(info->epsilon));
 
         // Apply normalization: y = (a + b) * w * rms
-        // Recompute sum to avoid storing temporary array
-        for (size_t k = 0; k < dim; k++) {
-            T sum_val = a_ptr[k] + b_ptr[k];
-            y_ptr[k] = sum_val * w[k] * rms;
+        // Reuse the stored sum values if residual_out was computed, otherwise recompute
+        if (residual_out_ptr != nullptr) {
+            // Reuse stored values
+            for (size_t k = 0; k < dim; k++) {
+                y_ptr[k] = residual_out_ptr[k] * w[k] * rms;
+            }
+        } else {
+            // Recompute sum
+            for (size_t k = 0; k < dim; k++) {
+                T sum_val = a_ptr[k] + b_ptr[k];
+                y_ptr[k] = sum_val * w[k] * rms;
+            }
         }
     }
 
@@ -60,7 +73,7 @@ infiniStatus_t add_rmsnorm(const AddRMSNormInfo *info, T *y, const T *a, const T
 }
 
 template <typename T, typename Tw>
-infiniStatus_t add_rmsnormHalfPrecision(const AddRMSNormInfo *info, T *y, const T *a, const T *b, const Tw *w) {
+infiniStatus_t add_rmsnormHalfPrecision(const AddRMSNormInfo *info, T *y, const T *a, const T *b, const Tw *w, T *residual_out) {
     static_assert(std::is_same<T, fp16_t>::value || std::is_same<T, bf16_t>::value,
                   "T must be fp16_t or bf16_t");
 
@@ -77,11 +90,16 @@ infiniStatus_t add_rmsnormHalfPrecision(const AddRMSNormInfo *info, T *y, const 
         const T *a_ptr = a + i * info->a_strides[0] + j * info->a_strides[1];
         const T *b_ptr = b + i * info->b_strides[0] + j * info->b_strides[1];
         T *y_ptr = y + i * info->y_strides[0] + j * info->y_strides[1];
+        T *residual_out_ptr = info->has_residual_out ? 
+            (residual_out + i * info->residual_out_strides[0] + j * info->residual_out_strides[1]) : nullptr;
 
-        // Compute sum of squares for RMS normalization
+        // Compute sum of squares for RMS normalization and store add result
         float sum_squared = 0.0f;
         for (size_t k = 0; k < dim; k++) {
             float sum_val = utils::cast<float>(a_ptr[k]) + utils::cast<float>(b_ptr[k]);
+            if (residual_out_ptr != nullptr) {
+                residual_out_ptr[k] = utils::cast<T>(sum_val);  // Store add result
+            }
             sum_squared += sum_val * sum_val;
         }
 
@@ -89,17 +107,35 @@ infiniStatus_t add_rmsnormHalfPrecision(const AddRMSNormInfo *info, T *y, const 
         float rms = 1.f / std::sqrt(sum_squared / (float)(dim) + info->epsilon);
 
         // Apply normalization: y = (a + b) * w * rms
-        for (size_t k = 0; k < dim; k++) {
-            float sum_val = utils::cast<float>(a_ptr[k]) + utils::cast<float>(b_ptr[k]);
-            float val;
-            if constexpr (std::is_same<Tw, float>::value) {
-                val = sum_val * w[k] * rms;
-            } else if constexpr (std::is_same<Tw, T>::value || std::is_same_v<Tw, fp16_t> || std::is_same_v<Tw, bf16_t>) {
-                val = sum_val * utils::cast<float>(w[k]) * rms;
-            } else {
-                std::abort();
+        // Reuse stored values if residual_out was computed, otherwise recompute
+        if (residual_out_ptr != nullptr) {
+            // Reuse stored values
+            for (size_t k = 0; k < dim; k++) {
+                float sum_val = utils::cast<float>(residual_out_ptr[k]);
+                float val;
+                if constexpr (std::is_same<Tw, float>::value) {
+                    val = sum_val * w[k] * rms;
+                } else if constexpr (std::is_same<Tw, T>::value || std::is_same_v<Tw, fp16_t> || std::is_same_v<Tw, bf16_t>) {
+                    val = sum_val * utils::cast<float>(w[k]) * rms;
+                } else {
+                    std::abort();
+                }
+                y_ptr[k] = utils::cast<T>(val);
             }
-            y_ptr[k] = utils::cast<T>(val);
+        } else {
+            // Recompute sum
+            for (size_t k = 0; k < dim; k++) {
+                float sum_val = utils::cast<float>(a_ptr[k]) + utils::cast<float>(b_ptr[k]);
+                float val;
+                if constexpr (std::is_same<Tw, float>::value) {
+                    val = sum_val * w[k] * rms;
+                } else if constexpr (std::is_same<Tw, T>::value || std::is_same_v<Tw, fp16_t> || std::is_same_v<Tw, bf16_t>) {
+                    val = sum_val * utils::cast<float>(w[k]) * rms;
+                } else {
+                    std::abort();
+                }
+                y_ptr[k] = utils::cast<T>(val);
+            }
         }
     }
 
@@ -109,31 +145,31 @@ infiniStatus_t add_rmsnormHalfPrecision(const AddRMSNormInfo *info, T *y, const 
 infiniStatus_t Descriptor::calculate(
     void *workspace, size_t workspace_size,
     void *y, const void *a, const void *b, const void *weight,
-    void *stream) const {
+    void *residual_out, void *stream) const {
     if (_info.atype == INFINI_DTYPE_F16) {
         if (_info.wtype == INFINI_DTYPE_F16) {
-            CHECK_STATUS(add_rmsnormHalfPrecision(&_info, (fp16_t *)y, (const fp16_t *)a, (const fp16_t *)b, (const fp16_t *)weight));
+            CHECK_STATUS(add_rmsnormHalfPrecision(&_info, (fp16_t *)y, (const fp16_t *)a, (const fp16_t *)b, (const fp16_t *)weight, (fp16_t *)residual_out));
         } else if (_info.wtype == INFINI_DTYPE_F32) {
-            CHECK_STATUS(add_rmsnormHalfPrecision(&_info, (fp16_t *)y, (const fp16_t *)a, (const fp16_t *)b, (const float *)weight));
+            CHECK_STATUS(add_rmsnormHalfPrecision(&_info, (fp16_t *)y, (const fp16_t *)a, (const fp16_t *)b, (const float *)weight, (fp16_t *)residual_out));
         } else if (_info.wtype == INFINI_DTYPE_BF16) {
-            CHECK_STATUS(add_rmsnormHalfPrecision(&_info, (fp16_t *)y, (const fp16_t *)a, (const fp16_t *)b, (const bf16_t *)weight));
+            CHECK_STATUS(add_rmsnormHalfPrecision(&_info, (fp16_t *)y, (const fp16_t *)a, (const fp16_t *)b, (const bf16_t *)weight, (fp16_t *)residual_out));
         } else {
             return INFINI_STATUS_BAD_TENSOR_DTYPE;
         }
     } else if (_info.atype == INFINI_DTYPE_BF16) {
         if (_info.wtype == INFINI_DTYPE_BF16) {
-            CHECK_STATUS(add_rmsnormHalfPrecision(&_info, (bf16_t *)y, (const bf16_t *)a, (const bf16_t *)b, (const bf16_t *)weight));
+            CHECK_STATUS(add_rmsnormHalfPrecision(&_info, (bf16_t *)y, (const bf16_t *)a, (const bf16_t *)b, (const bf16_t *)weight, (bf16_t *)residual_out));
         } else if (_info.wtype == INFINI_DTYPE_F32) {
-            CHECK_STATUS(add_rmsnormHalfPrecision(&_info, (bf16_t *)y, (const bf16_t *)a, (const bf16_t *)b, (const float *)weight));
+            CHECK_STATUS(add_rmsnormHalfPrecision(&_info, (bf16_t *)y, (const bf16_t *)a, (const bf16_t *)b, (const float *)weight, (bf16_t *)residual_out));
         } else if (_info.wtype == INFINI_DTYPE_F16) {
-            CHECK_STATUS(add_rmsnormHalfPrecision(&_info, (bf16_t *)y, (const bf16_t *)a, (const bf16_t *)b, (const fp16_t *)weight));
+            CHECK_STATUS(add_rmsnormHalfPrecision(&_info, (bf16_t *)y, (const bf16_t *)a, (const bf16_t *)b, (const fp16_t *)weight, (bf16_t *)residual_out));
         } else {
             return INFINI_STATUS_BAD_TENSOR_DTYPE;
         }
     } else if (_info.atype == INFINI_DTYPE_F32) {
-        CHECK_STATUS(add_rmsnorm(&_info, (float *)y, (const float *)a, (const float *)b, (const float *)weight));
+        CHECK_STATUS(add_rmsnorm(&_info, (float *)y, (const float *)a, (const float *)b, (const float *)weight, (float *)residual_out));
     } else if (_info.atype == INFINI_DTYPE_F64) {
-        CHECK_STATUS(add_rmsnorm(&_info, (double *)y, (const double *)a, (const double *)b, (const double *)weight));
+        CHECK_STATUS(add_rmsnorm(&_info, (double *)y, (const double *)a, (const double *)b, (const double *)weight, (double *)residual_out));
     } else {
         return INFINI_STATUS_BAD_TENSOR_DTYPE;
     }

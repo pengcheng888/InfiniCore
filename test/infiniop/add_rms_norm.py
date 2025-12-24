@@ -91,6 +91,7 @@ def test(
     )
 
     y = TestTensor(y_shape, y_stride, dtype, device, mode="ones")
+    residual_out = TestTensor(a_shape, a_stride, dtype, device, mode="ones")
     a = TestTensor(a_shape, a_stride, dtype, device, scale=0.01)
     b = TestTensor(b_shape, b_stride, dtype, device, scale=0.01)
     w = TestTensor(w_shape, None, w_dtype, device)
@@ -112,11 +113,12 @@ def test(
             b.descriptor,
             w.descriptor,
             eps,
+            residual_out.descriptor,
         )
     )
 
     # Invalidate the shape and strides in the descriptor to prevent them from being directly used by the kernel
-    for tensor in [a, b, y, w]:
+    for tensor in [a, b, y, w, residual_out]:
         tensor.destroy_desc()
 
     workspace_size = c_uint64(0)
@@ -137,6 +139,7 @@ def test(
                 a.data(),
                 b.data(),
                 w.data(),
+                residual_out.data(),
                 None,
             )
         )
@@ -144,9 +147,18 @@ def test(
     lib_add_rms_norm()
 
     atol, rtol = get_tolerance(_TOLERANCE_MAP, dtype)
+    
+    # Verify normalized result (y)
     if DEBUG:
         debug(y.actual_tensor(), y.torch_tensor(), atol=atol, rtol=rtol)
     assert torch.allclose(y.actual_tensor(), y.torch_tensor(), atol=atol, rtol=rtol)
+    
+    # Verify add result (residual_out) - should be a + b
+    expected_residual = a.torch_tensor().to(torch.float32) + b.torch_tensor().to(torch.float32)
+    expected_residual = expected_residual.to(a.torch_tensor().dtype)
+    if DEBUG:
+        debug(residual_out.actual_tensor(), expected_residual, atol=atol, rtol=rtol)
+    assert torch.allclose(residual_out.actual_tensor(), expected_residual, atol=atol, rtol=rtol)
 
     # Profiling workflow
     if PROFILE:

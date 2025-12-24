@@ -37,7 +37,8 @@ __C infiniStatus_t infiniopCreateAddRMSNormDescriptor(
     infiniopTensorDescriptor_t a_desc,
     infiniopTensorDescriptor_t b_desc,
     infiniopTensorDescriptor_t weight_desc,
-    float epsilon) {
+    float epsilon,
+    infiniopTensorDescriptor_t residual_out_desc) {
 
 #define CREATE(CASE, NAMESPACE)                                                      \
     case CASE:                                                                       \
@@ -48,7 +49,8 @@ __C infiniStatus_t infiniopCreateAddRMSNormDescriptor(
             a_desc,                                                                  \
             b_desc,                                                                  \
             weight_desc,                                                             \
-            epsilon)
+            epsilon,                                                                 \
+            residual_out_desc)
 
     switch (handle->device) {
 #ifdef ENABLE_CPU_API
@@ -118,12 +120,13 @@ __C infiniStatus_t infiniopAddRMSNorm(
     const void *a,
     const void *b,
     const void *weight,
+    void *residual_out,
     void *stream) {
 
 #define CALCULATE(CASE, NAMESPACE)                                                              \
     case CASE:                                                                                   \
         return reinterpret_cast<const op::add_rms_norm::NAMESPACE::Descriptor *>(desc)          \
-            ->calculate(workspace, workspace_size, y, a, b, weight, stream)
+            ->calculate(workspace, workspace_size, y, a, b, weight, residual_out, stream)
 
     switch (desc->device_type) {
 

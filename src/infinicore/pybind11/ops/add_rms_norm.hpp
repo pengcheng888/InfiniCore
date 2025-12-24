@@ -24,12 +24,14 @@ Args:
     epsilon: Small constant for numerical stability, default is 1e-5
 
 Returns:
-    Normalized tensor: RMSNorm(a + b) * weight
+    Tuple of (normalized_result, add_result): (RMSNorm(a + b) * weight, a + b)
+    The add_result can be used as residual for subsequent layers.
 )doc");
 
     m.def("add_rms_norm_",
           &op::add_rms_norm_,
           py::arg("y"),
+          py::arg("residual_out"),
           py::arg("a"),
           py::arg("b"),
           py::arg("weight"),
@@ -37,7 +39,8 @@ Returns:
           R"doc(In-place Fused Add and RMS Normalization.
 
 Args:
-    y: Output tensor
+    y: Output tensor for normalized result
+    residual_out: Output tensor for add result (a + b) before normalization
     a: First input tensor
     b: Second input tensor
     weight: Scale weights

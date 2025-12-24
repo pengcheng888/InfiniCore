@@ -12,7 +12,8 @@ __C __export infiniStatus_t infiniopCreateAddRMSNormDescriptor(
     infiniopTensorDescriptor_t a_desc,
     infiniopTensorDescriptor_t b_desc,
     infiniopTensorDescriptor_t weight_desc,
-    float epsilon);
+    float epsilon,
+    infiniopTensorDescriptor_t residual_out_desc);
 
 __C __export infiniStatus_t infiniopGetAddRMSNormWorkspaceSize(infiniopAddRMSNormDescriptor_t desc, size_t *size);
 
@@ -23,6 +24,7 @@ __C __export infiniStatus_t infiniopAddRMSNorm(infiniopAddRMSNormDescriptor_t de
                                                 const void *a,
                                                 const void *b,
                                                 const void *weight,
+                                                void *residual_out,
                                                 void *stream);
 
 __C __export infiniStatus_t infiniopDestroyAddRMSNormDescriptor(infiniopAddRMSNormDescriptor_t desc);
