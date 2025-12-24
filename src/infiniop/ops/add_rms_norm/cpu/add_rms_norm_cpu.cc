@@ -36,16 +36,13 @@ infiniStatus_t add_rmsnorm(const AddRMSNormInfo *info, T *y, const T *a, const T
         const T *a_ptr = a + i * info->a_strides[0] + j * info->a_strides[1];
         const T *b_ptr = b + i * info->b_strides[0] + j * info->b_strides[1];
         T *y_ptr = y + i * info->y_strides[0] + j * info->y_strides[1];
-        T *residual_out_ptr = info->has_residual_out ? 
-            (residual_out + i * info->residual_out_strides[0] + j * info->residual_out_strides[1]) : nullptr;
+        T *residual_out_ptr = residual_out + i * info->residual_out_strides[0] + j * info->residual_out_strides[1];
 
         // Compute add(a, b) once and store it
         T sum_squared = (T)0;
         for (size_t k = 0; k < dim; k++) {
             T sum_val = a_ptr[k] + b_ptr[k];
-            if (residual_out_ptr != nullptr) {
-                residual_out_ptr[k] = sum_val;  // Store add result
-            }
+            residual_out_ptr[k] = sum_val; // Store add result
             sum_squared += sum_val * sum_val;
         }
 
@@ -54,18 +51,9 @@ infiniStatus_t add_rmsnorm(const AddRMSNormInfo *info, T *y, const T *a, const T
         T rms = (T)1 / std::sqrt(sum_squared / (T)(dim) + (T)(info->epsilon));
 
         // Apply normalization: y = (a + b) * w * rms
-        // Reuse the stored sum values if residual_out was computed, otherwise recompute
-        if (residual_out_ptr != nullptr) {
-            // Reuse stored values
-            for (size_t k = 0; k < dim; k++) {
-                y_ptr[k] = residual_out_ptr[k] * w[k] * rms;
-            }
-        } else {
-            // Recompute sum
-            for (size_t k = 0; k < dim; k++) {
-                T sum_val = a_ptr[k] + b_ptr[k];
-                y_ptr[k] = sum_val * w[k] * rms;
-            }
+        // Reuse stored values from residual_out
+        for (size_t k = 0; k < dim; k++) {
+            y_ptr[k] = residual_out_ptr[k] * w[k] * rms;
         }
     }
 
@@ -90,16 +78,13 @@ infiniStatus_t add_rmsnormHalfPrecision(const AddRMSNormInfo *info, T *y, const 
         const T *a_ptr = a + i * info->a_strides[0] + j * info->a_strides[1];
         const T *b_ptr = b + i * info->b_strides[0] + j * info->b_strides[1];
         T *y_ptr = y + i * info->y_strides[0] + j * info->y_strides[1];
-        T *residual_out_ptr = info->has_residual_out ? 
-            (residual_out + i * info->residual_out_strides[0] + j * info->residual_out_strides[1]) : nullptr;
+        T *residual_out_ptr = residual_out + i * info->residual_out_strides[0] + j * info->residual_out_strides[1];
 
         // Compute sum of squares for RMS normalization and store add result
         float sum_squared = 0.0f;
         for (size_t k = 0; k < dim; k++) {
             float sum_val = utils::cast<float>(a_ptr[k]) + utils::cast<float>(b_ptr[k]);
-            if (residual_out_ptr != nullptr) {
-                residual_out_ptr[k] = utils::cast<T>(sum_val);  // Store add result
-            }
+            residual_out_ptr[k] = utils::cast<T>(sum_val); // Store add result
             sum_squared += sum_val * sum_val;
         }
 
@@ -107,35 +92,18 @@ infiniStatus_t add_rmsnormHalfPrecision(const AddRMSNormInfo *info, T *y, const 
         float rms = 1.f / std::sqrt(sum_squared / (float)(dim) + info->epsilon);
 
         // Apply normalization: y = (a + b) * w * rms
-        // Reuse stored values if residual_out was computed, otherwise recompute
-        if (residual_out_ptr != nullptr) {
-            // Reuse stored values
-            for (size_t k = 0; k < dim; k++) {
-                float sum_val = utils::cast<float>(residual_out_ptr[k]);
-                float val;
-                if constexpr (std::is_same<Tw, float>::value) {
-                    val = sum_val * w[k] * rms;
-                } else if constexpr (std::is_same<Tw, T>::value || std::is_same_v<Tw, fp16_t> || std::is_same_v<Tw, bf16_t>) {
-                    val = sum_val * utils::cast<float>(w[k]) * rms;
-                } else {
-                    std::abort();
-                }
-                y_ptr[k] = utils::cast<T>(val);
+        // Reuse stored values from residual_out
+        for (size_t k = 0; k < dim; k++) {
+            float sum_val = utils::cast<float>(residual_out_ptr[k]);
+            float val;
+            if constexpr (std::is_same<Tw, float>::value) {
+                val = sum_val * w[k] * rms;
+            } else if constexpr (std::is_same<Tw, T>::value || std::is_same_v<Tw, fp16_t> || std::is_same_v<Tw, bf16_t>) {
+                val = sum_val * utils::cast<float>(w[k]) * rms;
+            } else {
+                std::abort();
             }
-        } else {
-            // Recompute sum
-            for (size_t k = 0; k < dim; k++) {
-                float sum_val = utils::cast<float>(a_ptr[k]) + utils::cast<float>(b_ptr[k]);
-                float val;
-                if constexpr (std::is_same<Tw, float>::value) {
-                    val = sum_val * w[k] * rms;
-                } else if constexpr (std::is_same<Tw, T>::value || std::is_same_v<Tw, fp16_t> || std::is_same_v<Tw, bf16_t>) {
-                    val = sum_val * utils::cast<float>(w[k]) * rms;
-                } else {
-                    std::abort();
-                }
-                y_ptr[k] = utils::cast<T>(val);
-            }
+            y_ptr[k] = utils::cast<T>(val);
         }
     }
 

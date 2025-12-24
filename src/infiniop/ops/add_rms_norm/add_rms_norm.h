@@ -6,8 +6,8 @@
 
 #define DESCRIPTOR(NAMESPACE)                                    \
                                                                  \
-    namespace op::add_rms_norm::NAMESPACE {                     \
-    class Descriptor final : public InfiniopDescriptor {        \
+    namespace op::add_rms_norm::NAMESPACE {                      \
+    class Descriptor final : public InfiniopDescriptor {         \
         struct Opaque;                                           \
         Opaque *_opaque;                                         \
         AddRMSNormInfo _info;                                    \
@@ -19,7 +19,7 @@
             size_t workspace_size,                               \
             infiniDevice_t device_type,                          \
             int device_id)                                       \
-            : InfiniopDescriptor{device_type, device_id},       \
+            : InfiniopDescriptor{device_type, device_id},        \
               _opaque(opaque),                                   \
               _info(info),                                       \
               _workspace_size(workspace_size) {}                 \
@@ -29,24 +29,24 @@
                                                                  \
         size_t workspaceSize() const { return _workspace_size; } \
                                                                  \
-        static infiniStatus_t create(                           \
+        static infiniStatus_t create(                            \
             infiniopHandle_t handle,                             \
             Descriptor **desc_ptr,                               \
-            infiniopTensorDescriptor_t y_desc,                  \
+            infiniopTensorDescriptor_t y_desc,                   \
             infiniopTensorDescriptor_t a_desc,                   \
             infiniopTensorDescriptor_t b_desc,                   \
-            infiniopTensorDescriptor_t weight_desc,               \
-            float epsilon,                                      \
-            infiniopTensorDescriptor_t residual_out_desc);      \
+            infiniopTensorDescriptor_t weight_desc,              \
+            float epsilon,                                       \
+            infiniopTensorDescriptor_t residual_out_desc);       \
                                                                  \
-        infiniStatus_t calculate(                               \
+        infiniStatus_t calculate(                                \
             void *workspace, size_t workspace_size,              \
             void *y,                                             \
             const void *a,                                       \
             const void *b,                                       \
             const void *weight,                                  \
             void *residual_out,                                  \
-            void *stream) const;                                \
+            void *stream) const;                                 \
     };                                                           \
     }
 

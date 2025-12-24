@@ -34,12 +34,12 @@ public:
 
         auto atype = y_desc->dtype();
         auto wtype = weight_desc->dtype();
-        
+
         // Check that all input tensors have the same dtype
         if (a_desc->dtype() != atype || b_desc->dtype() != atype) {
             return INFINI_STATUS_BAD_TENSOR_DTYPE;
         }
-        
+
         if (atype == INFINI_DTYPE_F16 || atype == INFINI_DTYPE_BF16) {
             // For half-precision types (FP16/BF16), weights can be the same half-precision type or FP32
             if (wtype != atype && wtype != INFINI_DTYPE_F32 && wtype != INFINI_DTYPE_BF16 && wtype != INFINI_DTYPE_F16) {
@@ -71,9 +71,7 @@ public:
             batch = y_desc->dim(0);
             dim = y_desc->dim(1);
 
-            if (a_desc->dim(0) != batch || a_desc->dim(1) != dim ||
-                b_desc->dim(0) != batch || b_desc->dim(1) != dim ||
-                weight_desc->dim(0) != dim) {
+            if (a_desc->dim(0) != batch || a_desc->dim(1) != dim || b_desc->dim(0) != batch || b_desc->dim(1) != dim || weight_desc->dim(0) != dim) {
                 return INFINI_STATUS_BAD_TENSOR_SHAPE;
             }
         } else if (y_ndim == 3) {
@@ -81,9 +79,7 @@ public:
             nhead = y_desc->dim(1);
             dim = y_desc->dim(2);
 
-            if (a_desc->dim(0) != batch || a_desc->dim(1) != nhead || a_desc->dim(2) != dim ||
-                b_desc->dim(0) != batch || b_desc->dim(1) != nhead || b_desc->dim(2) != dim ||
-                weight_desc->dim(0) != dim) {
+            if (a_desc->dim(0) != batch || a_desc->dim(1) != nhead || a_desc->dim(2) != dim || b_desc->dim(0) != batch || b_desc->dim(1) != nhead || b_desc->dim(2) != dim || weight_desc->dim(0) != dim) {
                 return INFINI_STATUS_BAD_TENSOR_SHAPE;
             }
         } else {
@@ -91,32 +87,30 @@ public:
         }
 
         // Check contiguity of the last dimension
-        if (y_desc->stride(y_ndim - 1) != 1 || 
-            a_desc->stride(a_ndim - 1) != 1 || 
-            b_desc->stride(b_ndim - 1) != 1 ||
-            weight_desc->stride(w_ndim - 1) != 1) {
+        if (y_desc->stride(y_ndim - 1) != 1 || a_desc->stride(a_ndim - 1) != 1 || b_desc->stride(b_ndim - 1) != 1 || weight_desc->stride(w_ndim - 1) != 1) {
             return INFINI_STATUS_BAD_TENSOR_STRIDES;
         }
 
-        // Check residual_out_desc if provided
-        bool has_residual_out = (residual_out_desc != nullptr);
-        if (has_residual_out) {
-            const size_t residual_out_ndim = residual_out_desc->ndim();
-            if (residual_out_ndim != y_ndim) {
+        // residual_out_desc is required (always needed for fused operator)
+        if (residual_out_desc == nullptr) {
+            return INFINI_STATUS_BAD_PARAM;
+        }
+
+        const size_t residual_out_ndim = residual_out_desc->ndim();
+        if (residual_out_ndim != y_ndim) {
+            return INFINI_STATUS_BAD_TENSOR_SHAPE;
+        }
+        if (residual_out_desc->dtype() != atype) {
+            return INFINI_STATUS_BAD_TENSOR_DTYPE;
+        }
+        // Check shape matches
+        for (size_t i = 0; i < y_ndim; i++) {
+            if (residual_out_desc->dim(i) != y_desc->dim(i)) {
                 return INFINI_STATUS_BAD_TENSOR_SHAPE;
             }
-            if (residual_out_desc->dtype() != atype) {
-                return INFINI_STATUS_BAD_TENSOR_DTYPE;
-            }
-            // Check shape matches
-            for (size_t i = 0; i < y_ndim; i++) {
-                if (residual_out_desc->dim(i) != y_desc->dim(i)) {
-                    return INFINI_STATUS_BAD_TENSOR_SHAPE;
-                }
-            }
-            if (residual_out_desc->stride(residual_out_ndim - 1) != 1) {
-                return INFINI_STATUS_BAD_TENSOR_STRIDES;
-            }
+        }
+        if (residual_out_desc->stride(residual_out_ndim - 1) != 1) {
+            return INFINI_STATUS_BAD_TENSOR_STRIDES;
         }
 
         AddRMSNormInfo info;
@@ -127,10 +121,8 @@ public:
         info.y_strides = y_desc->strides();
         info.a_strides = a_desc->strides();
         info.b_strides = b_desc->strides();
-        info.has_residual_out = has_residual_out;
-        if (has_residual_out) {
-            info.residual_out_strides = residual_out_desc->strides();
-        }
+        info.has_residual_out = true; // Always true now
+        info.residual_out_strides = residual_out_desc->strides();
         return utils::Result<AddRMSNormInfo>(info);
     }
 };
