@@ -84,7 +84,7 @@ def parse_test_cases():
 
         # Create metadata: variable context lengths for each sequence in the batch
         context_lens_torch = torch.randint(
-            1, max_seq_len + 1, (num_seqs,), dtype=torch.int32
+            1, max_seq_len + 1, (num_seqs,), dtype=torch.int64
         )
         ntok = torch.sum(context_lens_torch).item()
 
@@ -98,11 +98,11 @@ def parse_test_cases():
             current_slot += length.item()
 
         # Ensure we don't exceed the total number of slots in the cache
-        assert current_slot <= num_blocks * block_size, (
-            "Not enough blocks in the cache pool for this test case"
-        )
+        assert (
+            current_slot <= num_blocks * block_size
+        ), "Not enough blocks in the cache pool for this test case"
 
-        slot_mapping = torch.tensor(slot_mapping_list, dtype=torch.int32)
+        slot_mapping = torch.tensor(slot_mapping_list, dtype=torch.int64)
 
         # print("slot_mapping", slot_mapping)
         slot_mapping_shape = slot_mapping.shape
@@ -125,7 +125,7 @@ def parse_test_cases():
                 slot_mapping_shape,
                 init_mode=TensorInitializer.MANUAL,
                 set_tensor=slot_mapping,
-                dtype=infinicore.int32,
+                dtype=infinicore.int64,
             )
 
             # In-place operation: modifies k_cache (index 2) and v_cache (index 3)

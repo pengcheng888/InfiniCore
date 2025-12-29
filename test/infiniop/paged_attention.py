@@ -148,7 +148,7 @@ def test(
         (num_blocks, num_kv_heads, block_size, head_size), None, dtype, device
     )
 
-    seq_lens_torch = torch.randint(1, 1024, (num_seqs,), dtype=torch.int64)
+    seq_lens_torch = torch.randint(1, max_seq_len, (num_seqs,), dtype=torch.int64)
 
     seq_lens = TestTensor.from_torch(seq_lens_torch, InfiniDtype.I64, device)
 

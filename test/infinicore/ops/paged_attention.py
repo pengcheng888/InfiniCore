@@ -22,10 +22,10 @@ from framework import (
 _TEST_CASES_DATA = [
     # (num_seqs, num_heads, num_kv_heads, head_size, block_size, max_seq_len, use_alibi)
     (1, 1, 1, 128, 16, 15, False),
-    # (4, 40, 40, 128, 16, 1024, False),
-    # (6, 40, 40, 128, 16, 1024, False),
-    # (3, 8, 8, 128, 16, 1024, False),
-    # (8, 64, 8, 128, 16, 2048, False),
+    (4, 40, 40, 128, 16, 1024, False),
+    (6, 40, 40, 128, 16, 1024, False),
+    (3, 8, 8, 128, 16, 1024, False),
+    (8, 64, 8, 128, 16, 2048, False),
 ]
 
 # Tolerance configuration
@@ -62,14 +62,10 @@ def parse_test_cases():
         max_blocks_per_seq = (max_seq_len + block_size - 1) // block_size
         num_blocks = num_seqs * max_blocks_per_seq  # A reasonable number for testing
 
-        seq_lens_torch = torch.randint(1, 1024, (num_seqs,), dtype=torch.int32)
-
-        # seq_lens_torch = torch.ones(
-        #     (num_seqs,), dtype=torch.int32
-        # )
+        seq_lens_torch = torch.randint(1, max_seq_len, (num_seqs,), dtype=torch.int64)
 
         block_tables = torch.arange(
-            0, num_seqs * max_blocks_per_seq, dtype=torch.int32
+            0, num_seqs * max_blocks_per_seq, dtype=torch.int64
         ).view(num_seqs, max_blocks_per_seq)
 
         print("block_tables.shape", block_tables.shape, block_tables)
@@ -93,13 +89,13 @@ def parse_test_cases():
                 block_tables_shape,
                 init_mode=TensorInitializer.MANUAL,
                 set_tensor=block_tables,
-                dtype=infinicore.int32,
+                dtype=infinicore.int64,
             )
             seq_lens_spec = TensorSpec.from_tensor(
                 seq_lens_shape,
                 init_mode=TensorInitializer.MANUAL,
                 set_tensor=seq_lens_torch,
-                dtype=infinicore.int32,
+                dtype=infinicore.int64,
             )
 
             # Paged attention operation: returns output tensor
