@@ -5,6 +5,8 @@
 #include "ops/causal_softmax.hpp"
 #include "ops/matmul.hpp"
 #include "ops/ones.hpp"
+#include "ops/paged_attention.hpp"
+#include "ops/paged_caching.hpp"
 #include "ops/random_sample.hpp"
 #include "ops/rearrange.hpp"
 #include "ops/rms_norm.hpp"
