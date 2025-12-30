@@ -62,7 +62,7 @@ def parse_test_cases():
         max_blocks_per_seq = (max_seq_len + block_size - 1) // block_size
         num_blocks = num_seqs * max_blocks_per_seq  # A reasonable number for testing
 
-        seq_lens_torch = torch.randint(1, max_seq_len, (num_seqs,), dtype=torch.int64)
+        cache_lens_torch = torch.randint(1, max_seq_len, (num_seqs,), dtype=torch.int64)
 
         block_tables = torch.arange(
             0, num_seqs * max_blocks_per_seq, dtype=torch.int64
@@ -75,7 +75,7 @@ def parse_test_cases():
         v_cache_shape = (num_blocks, num_kv_heads, block_size, head_size)
 
         block_tables_shape = block_tables.shape
-        seq_lens_shape = seq_lens_torch.shape
+        cache_lens_shape = cache_lens_torch.shape
 
         # Generate test cases for all data types
         for dtype in _TENSOR_DTYPES:
@@ -91,10 +91,10 @@ def parse_test_cases():
                 set_tensor=block_tables,
                 dtype=infinicore.int64,
             )
-            seq_lens_spec = TensorSpec.from_tensor(
-                seq_lens_shape,
+            cache_lens_spec = TensorSpec.from_tensor(
+                cache_lens_shape,
                 init_mode=TensorInitializer.MANUAL,
-                set_tensor=seq_lens_torch,
+                set_tensor=cache_lens_torch,
                 dtype=infinicore.int64,
             )
 
@@ -108,7 +108,7 @@ def parse_test_cases():
                         k_cache_spec,
                         v_cache_spec,
                         block_tables_spec,
-                        seq_lens_spec,
+                        cache_lens_spec,
                     ],
                     kwargs={"alibi_slopes": None, "scale": scale},
                     output_spec=None,
@@ -132,7 +132,7 @@ def ref_masked_attention(query, key, value, scale, attn_mask=None):
 
 
 def ref_single_query_cached_kv_attention(
-    query, key_cache, value_cache, block_tables, seq_lens, alibi_slopes, scale
+    query, key_cache, value_cache, block_tables, cache_lens, alibi_slopes, scale
 ):
     # Reference implementation for paged attention, iterating through each sequence.
     output = torch.empty_like(query)
@@ -143,7 +143,7 @@ def ref_single_query_cached_kv_attention(
 
     for i in range(num_seqs):
         q = query[i].unsqueeze(0)
-        seq_len = seq_lens[i].item()
+        seq_len = cache_lens[i].item()
         block_table = block_tables[i]
 
         keys_lst, values_lst = [], []

@@ -2,12 +2,14 @@ from infinicore.lib import _infinicore
 from infinicore.tensor import Tensor
 
 
-def paged_attention(
+def paged_attention_prefill(
     q: Tensor,
     k_cache: Tensor,
     v_cache: Tensor,
     block_tables: Tensor,
     cache_lens: Tensor,
+    seq_lens: Tensor,
+    seq_offsets: Tensor,
     alibi_slopes: Tensor | None = None,
     scale: float = 1.0,
     *,
@@ -15,24 +17,28 @@ def paged_attention(
 ):
     if out is None:
         return Tensor(
-            _infinicore.paged_attention(
+            _infinicore.paged_attention_prefill(
                 q._underlying,
                 k_cache._underlying,
                 v_cache._underlying,
                 block_tables._underlying,
                 cache_lens._underlying,
+                seq_lens._underlying,
+                seq_offsets._underlying,
                 alibi_slopes._underlying if alibi_slopes is not None else None,
                 scale,
             )
         )
 
-    _infinicore.paged_attention_(
+    _infinicore.paged_attention_prefill_(
         out._underlying,
         q._underlying,
         k_cache._underlying,
         v_cache._underlying,
         block_tables._underlying,
         cache_lens._underlying,
+        seq_lens._underlying,
+        seq_offsets._underlying,
         alibi_slopes._underlying if alibi_slopes is not None else None,
         scale,
     )
