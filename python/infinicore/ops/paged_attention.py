@@ -7,7 +7,7 @@ def paged_attention(
     k_cache: Tensor,
     v_cache: Tensor,
     block_tables: Tensor,
-    seq_lens: Tensor,
+    cache_lens: Tensor,
     alibi_slopes: Tensor | None = None,
     scale: float = 1.0,
     *,
@@ -20,7 +20,7 @@ def paged_attention(
                 k_cache._underlying,
                 v_cache._underlying,
                 block_tables._underlying,
-                seq_lens._underlying,
+                cache_lens._underlying,
                 alibi_slopes._underlying if alibi_slopes is not None else None,
                 scale,
             )
@@ -32,7 +32,7 @@ def paged_attention(
         k_cache._underlying,
         v_cache._underlying,
         block_tables._underlying,
-        seq_lens._underlying,
+        cache_lens._underlying,
         alibi_slopes._underlying if alibi_slopes is not None else None,
         scale,
     )
