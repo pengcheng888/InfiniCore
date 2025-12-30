@@ -16,7 +16,7 @@ thread_local common::OpCache<size_t, infiniopPagedAttentionDescriptor_t> caches(
     });
 
 void calculate(Tensor out, Tensor q, Tensor k_cache, Tensor v_cache, Tensor block_tables, Tensor cache_lens, std::optional<Tensor> alibi_slopes, float scale) {
-    size_t seed = hash_combine(out, q, k_cache, v_cache, block_tables, cache_lens);
+    size_t seed = hash_combine(out, q, k_cache, v_cache, block_tables, cache_lens, alibi_slopes, scale);
 
     auto device = context::getDevice();
     auto &cache = caches.getCache(device);

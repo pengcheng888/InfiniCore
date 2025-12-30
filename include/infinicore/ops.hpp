@@ -6,6 +6,7 @@
 #include "ops/matmul.hpp"
 #include "ops/ones.hpp"
 #include "ops/paged_attention.hpp"
+#include "ops/paged_attention_prefill.hpp"
 #include "ops/paged_caching.hpp"
 #include "ops/random_sample.hpp"
 #include "ops/rearrange.hpp"
