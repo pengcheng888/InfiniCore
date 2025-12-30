@@ -15,6 +15,9 @@
 #include "infiniop/ops/lp_norm.h"
 #include "infiniop/ops/mul.h"
 #include "infiniop/ops/ones.h"
+#include "infiniop/ops/paged_attention.h"
+#include "infiniop/ops/paged_attention_prefill.h"
+#include "infiniop/ops/paged_caching.h"
 #include "infiniop/ops/random_sample.h"
 #include "infiniop/ops/rearrange.h"
 #include "infiniop/ops/relu.h"
@@ -31,7 +34,5 @@
 #include "infiniop/ops/topksoftmax.h"
 #include "infiniop/ops/zeros.h"
 #include "infiniop/tensor_descriptor.h"
-#include "infiniop/ops/paged_attention.h"
-#include "infiniop/ops/paged_caching.h"
 
 #endif // __INFINIOP_API_H__
