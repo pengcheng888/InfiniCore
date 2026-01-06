@@ -133,6 +133,8 @@ public:
 
     void debug() const;
 
+    Tensor to_blob() const;
+
     ///
     /// Data Transfer APIs
     ///
@@ -294,7 +296,7 @@ protected:
 
     friend class Tensor;
 
-private:
+protected:
     TensorMetaData meta_;
     TensorData data_;
 };

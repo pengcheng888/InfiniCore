@@ -1,5 +1,7 @@
 #include "pinnable_block_allocator.hpp"
 
+#include "../context_impl.hpp"
+
 #include "../../utils.hpp"
 
 #include <algorithm>

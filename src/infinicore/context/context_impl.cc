@@ -39,6 +39,10 @@ void ContextImpl::setDevice(Device device) {
         return;
     }
 
+    if (getCurrentRuntime()->isGraphRecording()) {
+        spdlog::warn("Switching device runtime during graph recording may break the graph!");
+    }
+
     if (runtime_table_[int(device.getType())][device.getIndex()] == nullptr) {
         // Lazy initialization of runtime if never set before.
         runtime_table_[int(device.getType())][device.getIndex()] = std::unique_ptr<Runtime>(new Runtime(device));
@@ -178,6 +182,21 @@ void streamWaitEvent(infinirtStream_t stream, infinirtEvent_t event) {
     ContextImpl::singleton().getCurrentRuntime()->streamWaitEvent(stream, event);
 }
 
+bool isGraphRecording() {
+    return ContextImpl::singleton().getCurrentRuntime()->isGraphRecording();
+}
+
+void startGraphRecording() {
+    ContextImpl::singleton().getCurrentRuntime()->startGraphRecording();
+}
+
+void addGraphOperator(std::shared_ptr<graph::GraphOperator> op) {
+    ContextImpl::singleton().getCurrentRuntime()->addGraphOperator(op);
+}
+
+std::shared_ptr<graph::Graph> stopGraphRecording() {
+    return ContextImpl::singleton().getCurrentRuntime()->stopGraphRecording();
+}
 } // namespace context
 
 } // namespace infinicore
