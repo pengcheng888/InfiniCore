@@ -11,15 +11,22 @@ typedef struct InfiniopDescriptor *infiniopPagedAttentionPrefillDescriptor_t;
  * @param handle The handle to the InfiniOP library context.
  * @param desc_ptr A pointer to store the created descriptor.
  * @param out_desc Descriptor for the output tensor.
+ * Shape: [total_q_tokens, num_heads, head_size]
  * @param q_desc Descriptor for the query tensor (packed/flattened).
+ * Shape: [total_q_tokens, num_heads, head_size]
  * @param k_cache_desc Descriptor for the global physical key cache.
+ * Shape: [max_num_blocks, num_kv_heads, block_size, head_size]
  * @param v_cache_desc Descriptor for the global physical value cache.
+ * Shape: [max_num_blocks, num_kv_heads, block_size, head_size]
  * @param block_tables_desc Descriptor for the block tables mapping logic to physical blocks.
- * @param cache_lens_desc Descriptor for the total sequence lengths (history + current).
- * @param seq_lens_desc Descriptor for the current prefill sequence lengths.
- * @param offset_desc Descriptor for the start position of each sequence in the packed Q tensor.
+ * Shape: [batch_size, max_blocks_per_seq]
+ * @param history_lens_desc Descriptor for the KV history lengths of each sequence.
+ * Shape: [batch_size]
+ * @param cum_seq_lens_q_desc Descriptor for the cumulative start position (prefix sum) of each Q sequence.
+ * Shape: [batch_size + 1]
  * @param alibi_slopes_desc Optional descriptor for the ALiBi slopes tensor. Can be NULL.
- * @param scale The attention scaling factor.
+ * Shape: [num_heads]
+ * @param scale The attention scaling factor (typically 1.0 / sqrt(head_size)).
  * @return infiniStatus_t Status code of the operation.
  */
 __C __export infiniStatus_t infiniopCreatePagedAttentionPrefillDescriptor(
@@ -30,9 +37,8 @@ __C __export infiniStatus_t infiniopCreatePagedAttentionPrefillDescriptor(
     infiniopTensorDescriptor_t k_cache_desc,
     infiniopTensorDescriptor_t v_cache_desc,
     infiniopTensorDescriptor_t block_tables_desc,
-    infiniopTensorDescriptor_t cache_lens_desc,
-    infiniopTensorDescriptor_t seq_lens_desc,
-    infiniopTensorDescriptor_t offset_desc,
+    infiniopTensorDescriptor_t history_lens_desc,
+    infiniopTensorDescriptor_t cum_seq_lens_q_desc,
     infiniopTensorDescriptor_t alibi_slopes_desc,
     float scale);
 
@@ -52,11 +58,10 @@ __C __export infiniStatus_t infiniopGetPagedAttentionPrefillWorkspaceSize(
  * @param k_cache Pointer to the global key cache data.
  * @param v_cache Pointer to the global value cache data.
  * @param block_tables Pointer to the block tables data.
- * @param cache_lens Pointer to the total sequence lengths data.
- * @param seq_lens Pointer to the current prefill sequence lengths data.
- * @param offset Pointer to the sequence start offsets data.
+ * @param history_lens Pointer to the KV history lengths data.
+ * @param cum_seq_lens_q Pointer to the Q cumulative sequence lengths data (prefix sum).
  * @param alibi_slopes Pointer to the ALiBi slopes data. Can be NULL.
- * @param stream The CUDA/device stream for the operation.
+ * @param stream The device stream (e.g., cudaStream_t) for the operation.
  * @return infiniStatus_t Status code of the operation.
  */
 __C __export infiniStatus_t infiniopPagedAttentionPrefill(
@@ -68,9 +73,8 @@ __C __export infiniStatus_t infiniopPagedAttentionPrefill(
     const void *k_cache,
     const void *v_cache,
     const void *block_tables,
-    const void *cache_lens,
-    const void *seq_lens,
-    const void *offset,
+    const void *history_lens,
+    const void *cum_seq_lens_q,
     const void *alibi_slopes,
     void *stream);
 

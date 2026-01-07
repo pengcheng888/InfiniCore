@@ -15,8 +15,11 @@ thread_local common::OpCache<size_t, infiniopPagedAttentionPrefillDescriptor_t> 
         }
     });
 
-void calculate(Tensor out, Tensor q, Tensor k_cache, Tensor v_cache, Tensor block_tables, Tensor cache_lens, Tensor seq_lens, Tensor seq_offsets, std::optional<Tensor> alibi_slopes, float scale) {
-    size_t seed = hash_combine(out, q, k_cache, v_cache, block_tables, cache_lens, seq_lens, seq_offsets, alibi_slopes, scale);
+void calculate(Tensor out, Tensor q, Tensor k_cache, Tensor v_cache,
+               Tensor block_tables, Tensor history_lens, Tensor cu_seqlens_q,
+               std::optional<Tensor> alibi_slopes, float scale) {
+
+    size_t seed = hash_combine(out, q, k_cache, v_cache, block_tables, history_lens, cu_seqlens_q, alibi_slopes, scale);
 
     auto device = context::getDevice();
     auto &cache = caches.getCache(device);
@@ -27,8 +30,13 @@ void calculate(Tensor out, Tensor q, Tensor k_cache, Tensor v_cache, Tensor bloc
     if (!desc_opt) {
         INFINICORE_CHECK_ERROR(infiniopCreatePagedAttentionPrefillDescriptor(
             context::getInfiniopHandle(device), &desc,
-            out->desc(), q->desc(), k_cache->desc(), v_cache->desc(), block_tables->desc(),
-            cache_lens->desc(), seq_lens->desc(), seq_offsets->desc(),
+            out->desc(),
+            q->desc(),
+            k_cache->desc(),
+            v_cache->desc(),
+            block_tables->desc(),
+            history_lens->desc(),
+            cu_seqlens_q->desc(),
             alibi_slopes.has_value() ? alibi_slopes.value()->desc() : nullptr,
             scale));
         cache.put(seed, desc);
@@ -41,8 +49,16 @@ void calculate(Tensor out, Tensor q, Tensor k_cache, Tensor v_cache, Tensor bloc
     std::shared_ptr<Memory> workspace = context::allocateMemory(workspace_size);
 
     INFINICORE_CHECK_ERROR(infiniopPagedAttentionPrefill(
-        desc, workspace->data(), workspace_size,
-        out->data(), q->data(), k_cache->data(), v_cache->data(), block_tables->data(), cache_lens->data(), seq_lens->data(), seq_offsets->data(),
+        desc,
+        workspace->data(),
+        workspace_size,
+        out->data(),
+        q->data(),
+        k_cache->data(),
+        v_cache->data(),
+        block_tables->data(),
+        history_lens->data(),
+        cu_seqlens_q->data(),
         alibi_slopes.has_value() ? alibi_slopes.value()->data() : nullptr,
         context::getStream()));
 }

@@ -11,6 +11,7 @@
 #include "ops/matmul.hpp"
 #include "ops/mul.hpp"
 #include "ops/paged_attention.hpp"
+#include "ops/paged_attention_prefill.hpp"
 #include "ops/paged_caching.hpp"
 #include "ops/random_sample.hpp"
 #include "ops/rearrange.hpp"
@@ -33,6 +34,7 @@ inline void bind(py::module &m) {
     bind_matmul(m);
     bind_mul(m);
     bind_paged_attention(m);
+    bind_paged_attention_prefill(m);
     bind_paged_caching(m);
     bind_rearrange(m);
     bind_rms_norm(m);
