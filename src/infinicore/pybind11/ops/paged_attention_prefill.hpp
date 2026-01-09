@@ -19,7 +19,8 @@ Tensor py_paged_attention_prefill(Tensor q,
     if (!alibi_slopes.is_none()) {
         alibi_slopes_tensor = alibi_slopes.cast<Tensor>();
     }
-    return op::paged_attention_prefill(q, k_cache, v_cache, block_tables, history_lens, cu_seqlens_q, alibi_slopes_tensor, scale);
+    return op::paged_attention_prefill(
+        q, k_cache, v_cache, block_tables, history_lens, cu_seqlens_q, alibi_slopes_tensor, scale);
 }
 
 void py_paged_attention_prefill_(Tensor out,

@@ -1,21 +1,22 @@
-import torch
 import ctypes
 from ctypes import c_uint64
+
+import torch
 from libinfiniop import (
     LIBINFINIOP,
-    TestTensor,
-    get_test_devices,
-    check_error,
-    test_operator,
-    get_args,
-    debug,
-    get_tolerance,
-    profile_operation,
+    InfiniDeviceNames,
     InfiniDtype,
     InfiniDtypeNames,
-    InfiniDeviceNames,
-    infiniopOperatorDescriptor_t,
+    TestTensor,
     TestWorkspace,
+    check_error,
+    debug,
+    get_args,
+    get_test_devices,
+    get_tolerance,
+    infiniopOperatorDescriptor_t,
+    profile_operation,
+    test_operator,
 )
 
 # ==============================================================================
@@ -81,8 +82,8 @@ def ref_paged_attention_multi_turn(
     num_seqs = len(cum_seq_lens_q) - 1
     for i in range(num_seqs):
         num_new = cum_seq_lens_q[i + 1].item() - cum_seq_lens_q[i].item()
-        cache_len = seq_lens[i].item()
-        total_len = seq_lens[i].item() + num_new
+        total_len = seq_lens[i].item()
+        cache_len = seq_lens[i].item() - num_new
 
         table = block_tables[i]
         keys_all, values_all = [], []
@@ -166,7 +167,7 @@ def test(
             cur_q_len = query_lens_cpu[i].item()
             table, total_len = manager.allocate_slots(i, cur_q_len)
             cur_seq_lens = total_len - cur_q_len
-            seq_lens_list.append(cur_seq_lens)
+            seq_lens_list.append(total_len)
             all_block_tables.append(table)
 
             # Simulated KV insertion

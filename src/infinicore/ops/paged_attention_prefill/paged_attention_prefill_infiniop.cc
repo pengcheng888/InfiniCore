@@ -16,10 +16,9 @@ thread_local common::OpCache<size_t, infiniopPagedAttentionPrefillDescriptor_t> 
     });
 
 void calculate(Tensor out, Tensor q, Tensor k_cache, Tensor v_cache,
-               Tensor block_tables, Tensor history_lens, Tensor cu_seqlens_q,
+               Tensor block_tables, Tensor kv_lens, Tensor cum_seqlens_q,
                std::optional<Tensor> alibi_slopes, float scale) {
-
-    size_t seed = hash_combine(out, q, k_cache, v_cache, block_tables, history_lens, cu_seqlens_q, alibi_slopes, scale);
+    size_t seed = hash_combine(out, q, k_cache, v_cache, block_tables, kv_lens, cum_seqlens_q, alibi_slopes, scale);
 
     auto device = context::getDevice();
     auto &cache = caches.getCache(device);
@@ -35,8 +34,8 @@ void calculate(Tensor out, Tensor q, Tensor k_cache, Tensor v_cache,
             k_cache->desc(),
             v_cache->desc(),
             block_tables->desc(),
-            history_lens->desc(),
-            cu_seqlens_q->desc(),
+            kv_lens->desc(),
+            cum_seqlens_q->desc(),
             alibi_slopes.has_value() ? alibi_slopes.value()->desc() : nullptr,
             scale));
         cache.put(seed, desc);
@@ -57,8 +56,8 @@ void calculate(Tensor out, Tensor q, Tensor k_cache, Tensor v_cache,
         k_cache->data(),
         v_cache->data(),
         block_tables->data(),
-        history_lens->data(),
-        cu_seqlens_q->data(),
+        kv_lens->data(),
+        cum_seqlens_q->data(),
         alibi_slopes.has_value() ? alibi_slopes.value()->data() : nullptr,
         context::getStream()));
 }

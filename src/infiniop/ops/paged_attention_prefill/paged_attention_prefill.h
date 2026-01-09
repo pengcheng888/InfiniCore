@@ -37,7 +37,7 @@
             infiniopTensorDescriptor_t k_cache_desc,                            \
             infiniopTensorDescriptor_t v_cache_desc,                            \
             infiniopTensorDescriptor_t block_tables_desc,                       \
-            infiniopTensorDescriptor_t history_lens_desc,                       \
+            infiniopTensorDescriptor_t seq_lens_desc,                           \
             infiniopTensorDescriptor_t cum_seq_lens_q_desc,                     \
             const std::optional<infiniopTensorDescriptor_t> &alibi_slopes_desc, \
             float scale);                                                       \
@@ -46,7 +46,7 @@
             void *workspace, size_t workspace_size,                             \
             void *out, const void *q, const void *k_cache, const void *v_cache, \
             const void *block_tables,                                           \
-            const void *history_lens,                                           \
+            const void *seq_lens,                                               \
             const void *cum_seq_lens_q,                                         \
             const void *alibi_slopes,                                           \
             void *stream) const;                                                \

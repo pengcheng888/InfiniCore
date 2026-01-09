@@ -20,7 +20,7 @@ typedef struct InfiniopDescriptor *infiniopPagedAttentionPrefillDescriptor_t;
  * Shape: [max_num_blocks, num_kv_heads, block_size, head_size]
  * @param block_tables_desc Descriptor for the block tables mapping logic to physical blocks.
  * Shape: [batch_size, max_blocks_per_seq]
- * @param history_lens_desc Descriptor for the KV history lengths of each sequence.
+ * @param seq_lens_desc Descriptor for the total KV lengths of each sequence.
  * Shape: [batch_size]
  * @param cum_seq_lens_q_desc Descriptor for the cumulative start position (prefix sum) of each Q sequence.
  * Shape: [batch_size + 1]
@@ -37,7 +37,7 @@ __C __export infiniStatus_t infiniopCreatePagedAttentionPrefillDescriptor(
     infiniopTensorDescriptor_t k_cache_desc,
     infiniopTensorDescriptor_t v_cache_desc,
     infiniopTensorDescriptor_t block_tables_desc,
-    infiniopTensorDescriptor_t history_lens_desc,
+    infiniopTensorDescriptor_t seq_lens_desc,
     infiniopTensorDescriptor_t cum_seq_lens_q_desc,
     infiniopTensorDescriptor_t alibi_slopes_desc,
     float scale);
@@ -58,7 +58,7 @@ __C __export infiniStatus_t infiniopGetPagedAttentionPrefillWorkspaceSize(
  * @param k_cache Pointer to the global key cache data.
  * @param v_cache Pointer to the global value cache data.
  * @param block_tables Pointer to the block tables data.
- * @param history_lens Pointer to the KV history lengths data.
+ * @param seq_lens Pointer to the KV lengths data.
  * @param cum_seq_lens_q Pointer to the Q cumulative sequence lengths data (prefix sum).
  * @param alibi_slopes Pointer to the ALiBi slopes data. Can be NULL.
  * @param stream The device stream (e.g., cudaStream_t) for the operation.
@@ -73,7 +73,7 @@ __C __export infiniStatus_t infiniopPagedAttentionPrefill(
     const void *k_cache,
     const void *v_cache,
     const void *block_tables,
-    const void *history_lens,
+    const void *seq_lens,
     const void *cum_seq_lens_q,
     const void *alibi_slopes,
     void *stream);

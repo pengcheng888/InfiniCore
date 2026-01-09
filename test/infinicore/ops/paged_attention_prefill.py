@@ -1,16 +1,18 @@
-import sys
 import os
+import sys
+
 import torch
+
 import infinicore
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from framework import (
     BaseOperatorTest,
-    TensorSpec,
-    TestCase,
     GenericTestRunner,
     TensorInitializer,
+    TensorSpec,
+    TestCase,
 )
 
 # Test Cases: (num_seqs, num_heads, num_kv_heads, head_size, block_size, max_step_len, num_rounds)
@@ -71,16 +73,17 @@ def parse_test_cases():
         scale = head_size**-0.5
         num_blocks = 8192
         manager = SimpleCacheManager(num_blocks, block_size)
-        current_history_lens = torch.zeros(num_seqs, dtype=torch.int64)
+        kv_lens = torch.zeros(num_seqs, dtype=torch.int64)
 
         persistent_k = torch.zeros((num_blocks, num_kv_heads, block_size, head_size))
         persistent_v = torch.zeros((num_blocks, num_kv_heads, block_size, head_size))
 
         for r in range(num_rounds):
             q_lens = torch.randint(1, max_step_len + 1, (num_seqs,), dtype=torch.int64)
+            kv_lens = kv_lens + q_lens
             total_q_tokens = q_lens.sum().item()
-            cu_seqlens_q = torch.zeros(num_seqs + 1, dtype=torch.int64)
-            cu_seqlens_q[1:] = torch.cumsum(q_lens, dim=0)
+            cum_seqlens_q = torch.zeros(num_seqs + 1, dtype=torch.int64)
+            cum_seqlens_q[1:] = torch.cumsum(q_lens, dim=0)
 
             query_base = torch.randn((total_q_tokens, num_heads, head_size))
 
@@ -89,8 +92,7 @@ def parse_test_cases():
                 p_blocks, total_len = manager.allocate_slots(i, q_lens[i].item())
                 round_block_tables_list.append(p_blocks)
 
-                h_len = current_history_lens[i].item()
-                q_start = cu_seqlens_q[i].item()
+                h_len = kv_lens[i].item() - q_lens[i].item()
 
                 for t in range(q_lens[i].item()):
                     logical_pos = h_len + t
@@ -135,15 +137,15 @@ def parse_test_cases():
                                 dtype=infinicore.int64,
                             ),
                             TensorSpec.from_tensor(
-                                current_history_lens.shape,
+                                kv_lens.shape,
                                 init_mode=TensorInitializer.MANUAL,
-                                set_tensor=current_history_lens.clone(),
+                                set_tensor=kv_lens.clone(),
                                 dtype=infinicore.int64,
                             ),
                             TensorSpec.from_tensor(
-                                cu_seqlens_q.shape,
+                                cum_seqlens_q.shape,
                                 init_mode=TensorInitializer.MANUAL,
-                                set_tensor=cu_seqlens_q.clone(),
+                                set_tensor=cum_seqlens_q.clone(),
                                 dtype=infinicore.int64,
                             ),
                         ],
@@ -153,23 +155,21 @@ def parse_test_cases():
                     )
                 )
 
-            current_history_lens += q_lens
-
     return test_cases
 
 
 def ref_paged_attention_multi_turn(
-    query, k_cache, v_cache, block_tables, history_lens, cu_seqlens_q, scale
+    query, k_cache, v_cache, block_tables, kv_lens, cum_seqlens_q, scale
 ):
     output = torch.zeros_like(query)
-    num_seqs = len(history_lens)
+    num_seqs = len(kv_lens)
     block_size = k_cache.shape[2]
 
     for i in range(num_seqs):
-        q_start, q_end = cu_seqlens_q[i].item(), cu_seqlens_q[i + 1].item()
+        q_start, q_end = cum_seqlens_q[i].item(), cum_seqlens_q[i + 1].item()
         cur_q = query[q_start:q_end]
-        h_len = history_lens[i].item()
         q_len = q_end - q_start
+        h_len = kv_lens[i].item() - q_len
         total_len = h_len + q_len
 
         table = block_tables[i]
@@ -206,12 +206,12 @@ class OpTest(BaseOperatorTest):
         k_cache,
         v_cache,
         block_tables,
-        history_lens,
-        cu_seqlens_q,
+        kv_lens,
+        cum_seqlens_q,
         scale=1.0,
     ):
         return ref_paged_attention_multi_turn(
-            query, k_cache, v_cache, block_tables, history_lens, cu_seqlens_q, scale
+            query, k_cache, v_cache, block_tables, kv_lens, cum_seqlens_q, scale
         )
 
     def infinicore_operator(
@@ -220,8 +220,8 @@ class OpTest(BaseOperatorTest):
         k_cache,
         v_cache,
         block_tables,
-        history_lens,
-        cu_seqlens_q,
+        kv_lens,
+        cum_seqlens_q,
         scale=1.0,
     ):
         out = infinicore.paged_attention_prefill(
@@ -229,8 +229,8 @@ class OpTest(BaseOperatorTest):
             k_cache,
             v_cache,
             block_tables,
-            history_lens,
-            cu_seqlens_q,
+            kv_lens,
+            cum_seqlens_q,
             alibi_slopes=None,
             scale=scale,
         )

@@ -25,6 +25,7 @@ public:
     size_t total_q_tokens;
 
     ptrdiff_t q_stride;
+    ptrdiff_t q_head_stride;
     ptrdiff_t kv_block_stride;
     ptrdiff_t kv_head_stride;
     ptrdiff_t o_stride;
@@ -35,7 +36,7 @@ public:
         infiniopTensorDescriptor_t k_cache_desc,
         infiniopTensorDescriptor_t v_cache_desc,
         infiniopTensorDescriptor_t block_tables_desc,
-        infiniopTensorDescriptor_t history_lens_desc,
+        infiniopTensorDescriptor_t seq_lens_desc,
         infiniopTensorDescriptor_t cum_seq_lens_q_desc,
         const std::optional<infiniopTensorDescriptor_t> &alibi_slopes_desc,
         float scale) {
@@ -47,7 +48,7 @@ public:
             return INFINI_STATUS_BAD_TENSOR_DTYPE;
         }
 
-        if (cum_seq_lens_q_desc->dtype() != INFINI_DTYPE_I64 || history_lens_desc->dtype() != INFINI_DTYPE_I64) {
+        if (cum_seq_lens_q_desc->dtype() != INFINI_DTYPE_I64 || seq_lens_desc->dtype() != INFINI_DTYPE_I64) {
             return INFINI_STATUS_BAD_TENSOR_DTYPE;
         }
 
@@ -57,7 +58,7 @@ public:
         auto k_shape = k_cache_desc->shape();
         auto v_shape = v_cache_desc->shape();
         auto block_tables_shape = block_tables_desc->shape();
-        auto history_lens_shape = history_lens_desc->shape();
+        auto seq_lens_shape = seq_lens_desc->shape();
         auto cum_seq_lens_q_shape = cum_seq_lens_q_desc->shape();
 
         if (k_shape.size() != 4 || v_shape.size() != 4) {
@@ -68,10 +69,11 @@ public:
             return INFINI_STATUS_BAD_TENSOR_SHAPE;
         }
 
-        if (history_lens_shape.size() != 1 || cum_seq_lens_q_shape.size() != 1) {
+        if (seq_lens_shape.size() != 1 || cum_seq_lens_q_shape.size() != 1) {
             return INFINI_STATUS_BAD_TENSOR_SHAPE;
         }
-        if (cum_seq_lens_q_shape[0] != history_lens_shape[0] + 1) {
+
+        if (cum_seq_lens_q_shape[0] != seq_lens_shape[0] + 1) {
             return INFINI_STATUS_BAD_PARAM;
         }
 
@@ -88,13 +90,13 @@ public:
             return INFINI_STATUS_BAD_PARAM;
         }
 
-        size_t num_seqs = history_lens_shape[0];
-
+        size_t num_seqs = seq_lens_shape[0];
         size_t num_kv_heads = k_shape[1];
         size_t block_size = k_shape[2];
         size_t max_num_blocks_per_seq = block_tables_shape[1];
 
         ptrdiff_t q_stride = q_desc->stride(0);
+        ptrdiff_t q_head_stride = q_desc->stride(1);
         ptrdiff_t kv_block_stride = k_cache_desc->stride(0);
         ptrdiff_t kv_head_stride = k_cache_desc->stride(1);
         ptrdiff_t o_stride = out_desc->stride(0);
@@ -110,6 +112,7 @@ public:
             max_num_blocks_per_seq,
             total_q_tokens,
             q_stride,
+            q_head_stride,
             kv_block_stride,
             kv_head_stride,
             o_stride});
