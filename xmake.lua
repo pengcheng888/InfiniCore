@@ -268,6 +268,9 @@ target("infinirt")
         add_deps("infinirt-hygon")
     end
     set_languages("cxx17")
+    if not is_plat("windows") then
+        add_cxflags("-fPIC")
+    end
     set_installdir(os.getenv("INFINI_ROOT") or (os.getenv(is_host("windows") and "HOMEPATH" or "HOME") .. "/.infini"))
     add_files("src/infinirt/*.cc")
     add_installfiles("include/infinirt.h", {prefixdir = "include"})

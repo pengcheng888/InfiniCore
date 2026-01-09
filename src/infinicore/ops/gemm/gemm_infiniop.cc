@@ -1,30 +1,9 @@
-#include "../../utils.hpp"
-#include "infinicore/common/hash.hpp"
-#include "infinicore/ops/common/cache.hpp"
+#include "../infiniop_impl.hpp"
 #include "infinicore/ops/gemm.hpp"
-#include <infiniop.h>
 
 namespace infinicore::op::gemm_impl::infiniop {
-// A desc holder to make it a shared pointer that can auto clean-up
-struct Descriptor {
-    infiniopGemmDescriptor_t desc;
-    Descriptor(infiniopGemmDescriptor_t desc) : desc(desc) {}
-    ~Descriptor() {
-        if (desc != nullptr) {
-            infiniopDestroyGemmDescriptor(desc);
-            desc = nullptr;
-        }
-    }
-};
 
-thread_local common::OpCache<size_t, std::shared_ptr<Descriptor>>
-    caches(
-        // capacity
-        100,
-        // on evict
-        [](std::shared_ptr<Descriptor> &desc) {
-            desc = nullptr;
-        });
+INFINIOP_CACHABLE_DESCRIPTOR(Descriptor, Gemm, 100);
 
 struct PlannedMeta {
     std::shared_ptr<Descriptor> descriptor;
@@ -33,25 +12,13 @@ struct PlannedMeta {
 };
 
 void *plan(Tensor c, Tensor a, Tensor b, float alpha, float beta) {
-    size_t seed = hash_combine(c, b, a, alpha, beta);
+    size_t seed = hash_combine(c, a, b);
 
-    auto device = context::getDevice();
-    auto &cache = caches.getCache(device);
+    INFINIOP_CACHABLE_DESCRIPTOR_GET_OR_CREATE(
+        Descriptor, descriptor, Gemm,
+        seed, c->desc(), a->desc(), b->desc());
 
-    auto descriptor = cache.get(seed).value_or(nullptr);
-
-    if (!descriptor) {
-        descriptor = std::make_shared<Descriptor>(nullptr);
-        INFINICORE_CHECK_ERROR(infiniopCreateGemmDescriptor(
-            context::getInfiniopHandle(device),
-            &descriptor->desc,
-            c->desc(), a->desc(), b->desc()));
-        cache.put(seed, descriptor);
-    }
-
-    size_t workspace_size = 0;
-    INFINICORE_CHECK_ERROR(infiniopGetGemmWorkspaceSize(descriptor->desc, &workspace_size));
-    Tensor workspace = Tensor::empty({workspace_size}, DataType::U8, device);
+    INFINIOP_WORKSPACE_TENSOR(workspace, Gemm, descriptor);
 
     auto planned = new PlannedMeta{
         descriptor,
@@ -77,18 +44,6 @@ void cleanup(void **planned_meta_ptr) {
     *planned_meta_ptr = nullptr;
 }
 
-void calculate(Tensor c, Tensor a, Tensor b, float alpha, float beta) {
-    auto planned = plan(c, a, b, alpha, beta);
-    run(planned);
-    cleanup(&planned);
-}
-
-static bool registered = []() {
-    Gemm::dispatcher().registerAll(&calculate, false);
-    Gemm::plan_dispatcher().registerAll(&plan, false);
-    Gemm::run_dispatcher().registerAll(&run, false);
-    Gemm::cleanup_dispatcher().registerAll(&cleanup, false);
-    return true;
-}();
+INFINICORE_GRAPH_OP_REGISTER_ALLDEVICE(Gemm, &plan, &run, &cleanup);
 
 } // namespace infinicore::op::gemm_impl::infiniop

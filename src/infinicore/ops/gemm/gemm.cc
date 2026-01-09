@@ -3,40 +3,15 @@
 #include "../../utils.hpp"
 
 namespace infinicore::op {
-
-common::OpDispatcher<Gemm::schema> &Gemm::dispatcher() {
-    static common::OpDispatcher<Gemm::schema> dispatcher_;
-    return dispatcher_;
-};
-
-common::OpDispatcher<Gemm::plan_schema> &Gemm::plan_dispatcher() {
-    static common::OpDispatcher<Gemm::plan_schema> dispatcher_;
-    return dispatcher_;
-}
-common::OpDispatcher<Gemm::run_schema> &Gemm::run_dispatcher() {
-    static common::OpDispatcher<Gemm::run_schema> dispatcher_;
-    return dispatcher_;
-}
-common::OpDispatcher<Gemm::cleanup_schema> &Gemm::cleanup_dispatcher() {
-    static common::OpDispatcher<Gemm::cleanup_schema> dispatcher_;
-    return dispatcher_;
-}
+INFINICORE_GRAPH_OP_DISPATCHERS_IMPL(Gemm);
 
 Gemm::Gemm(Tensor c, Tensor a, Tensor b, float alpha, float beta) {
     INFINICORE_ASSERT_TENSORS_SAME_DEVICE(c, a, b);
-    planned_meta_ = plan_dispatcher().lookup(c->device().getType())(c, a, b, alpha, beta);
-    runner_ = run_dispatcher().lookup(c->device().getType());
-    deleter_ = cleanup_dispatcher().lookup(c->device().getType());
+    INFINICORE_GRAPH_OP_DISPATCH(c->device().getType(), c, a, b, alpha, beta);
 }
 
 void Gemm::execute(Tensor c, Tensor a, Tensor b, float alpha, float beta) {
-
-    auto op = std::make_shared<Gemm>(c, a, b, alpha, beta);
-    if (context::isGraphRecording()) {
-        context::addGraphOperator(op);
-    } else {
-        op->run();
-    }
+    INFINICORE_GRAPH_OP_RECORD_OR_RUN(Gemm, c, a, b, alpha, beta);
 }
 
 Tensor gemm(Tensor a, Tensor b, float alpha, float beta) {

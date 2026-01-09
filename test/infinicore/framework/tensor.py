@@ -60,7 +60,12 @@ class TensorInitializer:
 
         # Handle real floating-point types
         if mode == TensorInitializer.RANDOM:
-            return torch.rand(shape, dtype=torch_dtype, device=torch_device_str)
+            scale = kwargs.get("scale", 1.0)
+            bias = kwargs.get("bias", 0.0)
+            return (
+                torch.rand(shape, dtype=torch_dtype, device=torch_device_str) * scale
+                + bias
+            )
         elif mode == TensorInitializer.ZEROS:
             return torch.zeros(shape, dtype=torch_dtype, device=torch_device_str)
         elif mode == TensorInitializer.ONES:

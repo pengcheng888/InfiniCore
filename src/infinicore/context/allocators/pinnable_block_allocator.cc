@@ -37,6 +37,9 @@ PinnableBlockAllocator::PinnableBlockAllocator(Device device)
 
 // ------------------- allocate -------------------
 std::byte *PinnableBlockAllocator::allocate(size_t size) {
+    if (size == 0) {
+        return nullptr;
+    }
     std::lock_guard<std::mutex> lock(mutex_);
 
     // Align size to 256 bytes for GPU
@@ -94,7 +97,7 @@ std::byte *PinnableBlockAllocator::allocate(size_t size) {
 
 // ------------------- deallocate -------------------
 void PinnableBlockAllocator::deallocate(std::byte *ptr) {
-    if (!ptr) {
+    if (ptr == nullptr) {
         return;
     }
 
