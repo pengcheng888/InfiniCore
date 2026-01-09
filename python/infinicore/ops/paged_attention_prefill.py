@@ -7,14 +7,15 @@ def paged_attention_prefill(
     k_cache: Tensor,
     v_cache: Tensor,
     block_tables: Tensor,
-    cache_lens: Tensor,
-    seq_lens: Tensor,
-    seq_offsets: Tensor,
+    history_lens: Tensor,
+    cu_seqlens_q: Tensor,
     alibi_slopes: Tensor | None = None,
     scale: float = 1.0,
     *,
     out: Tensor | None = None,
 ):
+    alibi_ptr = alibi_slopes._underlying if alibi_slopes is not None else None
+
     if out is None:
         return Tensor(
             _infinicore.paged_attention_prefill(
@@ -22,10 +23,9 @@ def paged_attention_prefill(
                 k_cache._underlying,
                 v_cache._underlying,
                 block_tables._underlying,
-                cache_lens._underlying,
-                seq_lens._underlying,
-                seq_offsets._underlying,
-                alibi_slopes._underlying if alibi_slopes is not None else None,
+                history_lens._underlying,
+                cu_seqlens_q._underlying,
+                alibi_ptr,
                 scale,
             )
         )
@@ -36,10 +36,9 @@ def paged_attention_prefill(
         k_cache._underlying,
         v_cache._underlying,
         block_tables._underlying,
-        cache_lens._underlying,
-        seq_lens._underlying,
-        seq_offsets._underlying,
-        alibi_slopes._underlying if alibi_slopes is not None else None,
+        history_lens._underlying,
+        cu_seqlens_q._underlying,
+        alibi_ptr,
         scale,
     )
 

@@ -1,21 +1,22 @@
-import torch
 import ctypes
 from ctypes import c_uint64
+
+import torch
 from libinfiniop import (
     LIBINFINIOP,
-    TestTensor,
-    get_test_devices,
-    check_error,
-    test_operator,
-    get_args,
-    debug,
-    get_tolerance,
-    profile_operation,
+    InfiniDeviceNames,
     InfiniDtype,
     InfiniDtypeNames,
-    InfiniDeviceNames,
-    infiniopOperatorDescriptor_t,
+    TestTensor,
     TestWorkspace,
+    check_error,
+    debug,
+    get_args,
+    get_test_devices,
+    get_tolerance,
+    infiniopOperatorDescriptor_t,
+    profile_operation,
+    test_operator,
 )
 
 # ==============================================================================
@@ -74,14 +75,15 @@ class SimpleCacheManager:
 
 
 def ref_paged_attention_multi_turn(
-    query_new, k_cache, v_cache, block_tables, seq_lens, new_lens, offset, scale
+    query_new, k_cache, v_cache, block_tables, seq_lens, cum_seq_lens_q, scale
 ):
     block_size = k_cache.shape[2]
     outputs = torch.zeros_like(query_new)
-    for i in range(len(offset) - 1):
+    num_seqs = len(cum_seq_lens_q) - 1
+    for i in range(num_seqs):
+        num_new = cum_seq_lens_q[i + 1].item() - cum_seq_lens_q[i].item()
         total_len = seq_lens[i].item()
-        num_new = new_lens[i].item()
-        history_len = total_len - num_new
+        cache_len = seq_lens[i].item() - num_new
 
         table = block_tables[i]
         keys_all, values_all = [], []
@@ -93,19 +95,19 @@ def ref_paged_attention_multi_turn(
 
         K = torch.stack(keys_all, dim=0)
         V = torch.stack(values_all, dim=0)
-        Q = query_new[offset[i] : offset[i] + num_new, :, :]
+        Q = query_new[cum_seq_lens_q[i] : cum_seq_lens_q[i + 1], :, :]
 
         scores = torch.einsum("qhd,khd->hqk", Q, K).float() * scale
 
         mask = torch.full((num_new, total_len), float("-inf"), device=Q.device)
         for q_idx in range(num_new):
-            mask[q_idx, : history_len + q_idx + 1] = 0.0
+            mask[q_idx, : cache_len + q_idx + 1] = 0.0
 
         scores = scores + mask.unsqueeze(0)
         attn_weights = torch.softmax(scores, dim=-1).to(Q.dtype)
         out = torch.einsum("hqk,khd->qhd", attn_weights, V)
 
-        outputs[offset[i] : offset[i] + num_new, :, :] = out
+        outputs[cum_seq_lens_q[i] : cum_seq_lens_q[i + 1], :, :] = out
 
     return outputs
 
@@ -147,43 +149,43 @@ def test(
     # Multi-turn testing loop
     for r in range(num_rounds):
         # Prepare dynamic inputs for this round
-        seq_lens_cpu = torch.randint(
+        query_lens_cpu = torch.randint(
             1, max_step_len + 1, (num_seqs,), dtype=torch.int64
         )
 
-        q_total_tokens = seq_lens_cpu.sum().item()
+        q_total_tokens = query_lens_cpu.sum().item()
         q_packed_tensors = torch.zeros(q_total_tokens, num_heads, head_size)
 
-        cache_lens_list = []
+        seq_lens_list = []
         all_block_tables = []
 
-        offset_list = []
-        cur_offset = 0
+        cum_seq_lens_q_list = []
+        cum_q_lens = 0
         for i in range(num_seqs):
-            offset_list.append(cur_offset)
+            cum_seq_lens_q_list.append(cum_q_lens)
 
-            cur_new_len = seq_lens_cpu[i].item()
-            table, cache_len = manager.allocate_slots(i, cur_new_len)
-            cache_lens_list.append(cache_len)
+            cur_q_len = query_lens_cpu[i].item()
+            table, total_len = manager.allocate_slots(i, cur_q_len)
+            cur_seq_lens = total_len - cur_q_len
+            seq_lens_list.append(total_len)
             all_block_tables.append(table)
 
             # Simulated KV insertion
-            k_new = torch.randn(cur_new_len, num_kv_heads, head_size)
-            v_new = torch.randn(cur_new_len, num_kv_heads, head_size)
-            q_val = torch.randn(cur_new_len, num_heads, head_size)
-            q_packed_tensors[cur_offset : cur_offset + cur_new_len] = q_val
+            k_new = torch.randn(cur_q_len, num_kv_heads, head_size)
+            v_new = torch.randn(cur_q_len, num_kv_heads, head_size)
+            q_val = torch.randn(cur_q_len, num_heads, head_size)
+            q_packed_tensors[cum_q_lens : cum_q_lens + cur_q_len] = q_val
 
-            cur_offset = cur_offset + cur_new_len
+            cum_q_lens = cum_q_lens + cur_q_len
 
-            history_len = cache_len - cur_new_len
-            for t in range(cur_new_len):
-                logical_pos = history_len + t
+            for t in range(cur_q_len):
+                logical_pos = cur_seq_lens + t
                 b_id = table[logical_pos // block_size]
                 off = logical_pos % block_size
                 k_cache.torch_tensor()[b_id, :, off, :] = k_new[t]
                 v_cache.torch_tensor()[b_id, :, off, :] = v_new[t]
 
-        offset_list.append(cur_offset)
+        cum_seq_lens_q_list.append(cum_q_lens)
 
         k_cache.actual_tensor().copy_(k_cache._torch_tensor)
         v_cache.actual_tensor().copy_(v_cache._torch_tensor)
@@ -193,13 +195,14 @@ def test(
         out = TestTensor.from_torch(q_packed_tensors, dtype, device)
         out.actual_tensor().zero_()
 
-        cache_lens = TestTensor.from_torch(
-            torch.tensor(cache_lens_list, dtype=torch.int64), InfiniDtype.I64, device
+        seq_lens = TestTensor.from_torch(
+            torch.tensor(seq_lens_list, dtype=torch.int64), InfiniDtype.I64, device
         )
-        seq_lens = TestTensor.from_torch(seq_lens_cpu, InfiniDtype.I64, device)
 
-        offset = TestTensor.from_torch(
-            torch.tensor(offset_list, dtype=torch.int64), InfiniDtype.I64, device
+        cum_seq_lens_q = TestTensor.from_torch(
+            torch.tensor(cum_seq_lens_q_list, dtype=torch.int64),
+            InfiniDtype.I64,
+            device,
         )
 
         max_blocks = max(len(t) for t in all_block_tables)
@@ -215,9 +218,8 @@ def test(
                 k_cache.torch_tensor(),
                 v_cache.torch_tensor(),
                 block_tables.torch_tensor(),
-                cache_lens.torch_tensor(),
                 seq_lens.torch_tensor(),
-                offset.torch_tensor(),
+                cum_seq_lens_q.torch_tensor(),
                 scale,
             )
 
@@ -234,10 +236,9 @@ def test(
                 k_cache.descriptor,
                 v_cache.descriptor,
                 block_tables.descriptor,
-                cache_lens.descriptor,
                 seq_lens.descriptor,
-                offset.descriptor,
-                None,  # alibi_slopes_desc
+                cum_seq_lens_q.descriptor,
+                None,
                 scale,
             )
         )
@@ -261,9 +262,8 @@ def test(
                     k_cache.data(),
                     v_cache.data(),
                     block_tables.data(),
-                    cache_lens.data(),
                     seq_lens.data(),
-                    offset.data(),
+                    cum_seq_lens_q.data(),
                     None,
                     None,
                 )

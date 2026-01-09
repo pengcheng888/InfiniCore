@@ -1115,7 +1115,6 @@ def paged_attention_prefill_(lib):
         infiniopTensorDescriptor_t,
         infiniopTensorDescriptor_t,
         infiniopTensorDescriptor_t,
-        infiniopTensorDescriptor_t,
         c_float,
     ]
 
@@ -1130,7 +1129,6 @@ def paged_attention_prefill_(lib):
         infiniopOperatorDescriptor_t,
         c_void_p,
         c_size_t,
-        c_void_p,
         c_void_p,
         c_void_p,
         c_void_p,

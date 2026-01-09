@@ -1,5 +1,5 @@
-#ifndef __PAGED_ATTENTION_PREFILL_INFO_H__
-#define __PAGED_ATTENTION_PREFILL_INFO_H__
+#ifndef __INFINIOP_PAGED_ATTENTION_PREFILL_INFO_H__
+#define __INFINIOP_PAGED_ATTENTION_PREFILL_INFO_H__
 
 #include "../../../utils.h"
 #include "../../tensor.h"
@@ -25,6 +25,7 @@ public:
     size_t total_q_tokens;
 
     ptrdiff_t q_stride;
+    ptrdiff_t q_head_stride;
     ptrdiff_t kv_block_stride;
     ptrdiff_t kv_head_stride;
     ptrdiff_t o_stride;
@@ -35,9 +36,8 @@ public:
         infiniopTensorDescriptor_t k_cache_desc,
         infiniopTensorDescriptor_t v_cache_desc,
         infiniopTensorDescriptor_t block_tables_desc,
-        infiniopTensorDescriptor_t cache_lens_desc,
         infiniopTensorDescriptor_t seq_lens_desc,
-        infiniopTensorDescriptor_t offset_desc,
+        infiniopTensorDescriptor_t cum_seq_lens_q_desc,
         const std::optional<infiniopTensorDescriptor_t> &alibi_slopes_desc,
         float scale) {
 
@@ -47,40 +47,56 @@ public:
         if (out_desc->dtype() != dtype || k_cache_desc->dtype() != dtype || v_cache_desc->dtype() != dtype) {
             return INFINI_STATUS_BAD_TENSOR_DTYPE;
         }
-        if (offset_desc->dtype() != INFINI_DTYPE_I64 || seq_lens_desc->dtype() != INFINI_DTYPE_I64) {
+
+        if (cum_seq_lens_q_desc->dtype() != INFINI_DTYPE_I64 || seq_lens_desc->dtype() != INFINI_DTYPE_I64) {
             return INFINI_STATUS_BAD_TENSOR_DTYPE;
         }
 
         if (alibi_slopes_desc.has_value() && alibi_slopes_desc.value() != nullptr) {
-            std::cerr << "[Error] PagedAttentionPrefill: ALiBi slopes are not supported yet." << std::endl;
+        }
+
+        auto k_shape = k_cache_desc->shape();
+        auto v_shape = v_cache_desc->shape();
+        auto block_tables_shape = block_tables_desc->shape();
+        auto seq_lens_shape = seq_lens_desc->shape();
+        auto cum_seq_lens_q_shape = cum_seq_lens_q_desc->shape();
+
+        if (k_shape.size() != 4 || v_shape.size() != 4) {
+            return INFINI_STATUS_BAD_TENSOR_SHAPE;
+        }
+
+        if (block_tables_shape.size() != 2) {
+            return INFINI_STATUS_BAD_TENSOR_SHAPE;
+        }
+
+        if (seq_lens_shape.size() != 1 || cum_seq_lens_q_shape.size() != 1) {
+            return INFINI_STATUS_BAD_TENSOR_SHAPE;
+        }
+
+        if (cum_seq_lens_q_shape[0] != seq_lens_shape[0] + 1) {
             return INFINI_STATUS_BAD_PARAM;
         }
 
-        // Q shape: [total_tokens, heads, dim] (3D)
+        // Q shape: [total_tokens, heads, dim]
         auto q_shape = q_desc->shape();
-        if (q_shape.size() < 3) {
+        if (q_shape.size() != 3) {
             return INFINI_STATUS_BAD_TENSOR_SHAPE;
         }
         size_t total_q_tokens = q_shape[0];
+        size_t num_heads = q_shape[1];
+        size_t head_size = q_shape[2];
 
-        size_t num_heads = q_shape[q_shape.size() - 2];
-        size_t head_size = q_shape[q_shape.size() - 1];
-
-        if (head_size != 128) {
-            std::cerr << "[Error] PagedAttentionPrefill head_size = 128 supported, got " << head_size << std::endl;
-            return INFINI_STATUS_BAD_TENSOR_SHAPE;
+        if (head_size > 1024) {
+            return INFINI_STATUS_BAD_PARAM;
         }
 
-        // 从 seq_lens 获取 num_seqs
-        size_t num_seqs = seq_lens_desc->shape()[0];
+        size_t num_seqs = seq_lens_shape[0];
+        size_t num_kv_heads = k_shape[1];
+        size_t block_size = k_shape[2];
+        size_t max_num_blocks_per_seq = block_tables_shape[1];
 
-        auto k_cache_shape = k_cache_desc->shape();
-        size_t num_kv_heads = k_cache_shape[1];
-        size_t block_size = v_cache_desc->shape()[2];
-        size_t max_num_blocks_per_seq = block_tables_desc->shape()[1];
-
-        // 提取步长,需要保持多个请求的 Q 连续
         ptrdiff_t q_stride = q_desc->stride(0);
+        ptrdiff_t q_head_stride = q_desc->stride(1);
         ptrdiff_t kv_block_stride = k_cache_desc->stride(0);
         ptrdiff_t kv_head_stride = k_cache_desc->stride(1);
         ptrdiff_t o_stride = out_desc->stride(0);
@@ -96,6 +112,7 @@ public:
             max_num_blocks_per_seq,
             total_q_tokens,
             q_stride,
+            q_head_stride,
             kv_block_stride,
             kv_head_stride,
             o_stride});
