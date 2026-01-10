@@ -2,8 +2,6 @@
 
 #include "memory_allocator.hpp"
 
-#include "../context_impl.hpp"
-
 #include <mutex>
 #include <unordered_map>
 #include <vector>
@@ -25,7 +23,7 @@ class PinnableBlockAllocator : public MemoryAllocator {
     };
 
 public:
-    explicit PinnableBlockAllocator(Device device);
+    PinnableBlockAllocator(Device device);
     ~PinnableBlockAllocator();
 
     std::byte *allocate(size_t size) override;

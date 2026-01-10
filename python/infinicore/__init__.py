@@ -8,7 +8,10 @@ from infinicore.context import (
     get_device,
     get_device_count,
     get_stream,
+    is_graph_recording,
     set_device,
+    start_graph_recording,
+    stop_graph_recording,
     sync_device,
     sync_stream,
 )
@@ -81,6 +84,9 @@ __all__ = [
     "set_device",
     "sync_device",
     "sync_stream",
+    "is_graph_recording",
+    "start_graph_recording",
+    "stop_graph_recording",
     # Data Types.
     "bfloat16",
     "bool",
