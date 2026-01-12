@@ -126,6 +126,7 @@ std::shared_ptr<Memory> allocateMemory(size_t size) {
 }
 
 std::shared_ptr<Memory> allocateHostMemory(size_t size) {
+    setDevice(Device::cpu());
     return ContextImpl::singleton().getCpuRuntime()->allocateMemory(size);
 }
 
