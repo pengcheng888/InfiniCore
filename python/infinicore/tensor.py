@@ -339,4 +339,4 @@ def from_list(data, *, dtype=None, device=None) -> Tensor:
 
     # Reuse from_numpy to create the tensor
     # This avoids code duplication and ensures consistent behavior
-    return from_numpy(np_array, dtype=dtype, device=device)
+    return from_numpy(np_array, device=device)
