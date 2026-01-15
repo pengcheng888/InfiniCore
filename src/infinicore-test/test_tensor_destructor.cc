@@ -311,13 +311,6 @@ TestResult TensorDestructorTest::testPrintOptions() {
 
         std::cout << "\n=== Testing Print Options for Different Data Types ===" << std::endl;
 
-        // Reset to defaults before each test
-        set_precision(-1);
-        set_line_width(80);
-        set_threshold(1000);
-        set_edge_items(3);
-        set_sci_mode(-1);
-
         // Process each test case
         for (const auto &test_case : case_list) {
             // Extract tuple elements
@@ -327,11 +320,6 @@ TestResult TensorDestructorTest::testPrintOptions() {
             std::cout << tensor << std::endl;
         }
 
-        // Test print options with F32 tensor
-        set_precision(-1);
-        set_line_width(80);
-        set_threshold(1000);
-        set_edge_items(3);
         set_sci_mode(-1);
         std::cout << "\n=== Testing  Print Options with F32 Tensor ===" << std::endl;
         {

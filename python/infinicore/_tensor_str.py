@@ -26,7 +26,6 @@ def set_printoptions(
     sci_mode=None,
 ):
     r"""Set options for printing.
-
     Args:
         precision: Number of digits of precision for floating point output (default = 4).
         threshold: Total number of array elements which trigger summarization rather than full `repr` (default = 1000).
@@ -41,7 +40,6 @@ def set_printoptions(
         >>> torch.set_printoptions(precision=2)
         >>> torch.tensor([1.12345])
         tensor([1.12])
-
     """
     if profile is not None:
         if profile == "default":

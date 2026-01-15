@@ -5,7 +5,11 @@
 #include <cmath>
 #include <cstdint>
 #include <iomanip>
+#include <ios>
 #include <iostream>
+#include <ostream>
+#include <sstream>
+#include <string>
 #include <vector>
 
 namespace {
