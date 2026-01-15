@@ -1,6 +1,11 @@
 import ml_dtypes
 import numpy as np
-import torch
+
+try:
+    import torch
+except ImportError:
+    torch = None
+
 
 import infinicore
 
