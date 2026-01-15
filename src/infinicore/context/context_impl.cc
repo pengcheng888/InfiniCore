@@ -29,18 +29,16 @@ Runtime *ContextImpl::getCurrentRuntime() {
     return current_runtime_;
 }
 
-Runtime *ContextImpl::getCpuRuntime() {
-    return runtime_table_[int(Device::Type::CPU)][0].get();
-}
-
 void ContextImpl::setDevice(Device device) {
     if (device == getCurrentRuntime()->device()) {
         // Do nothing if the device is already set.
         return;
     }
 
-    if (getCurrentRuntime()->isGraphRecording()) {
+    thread_local bool warn_switch_runtime = false;
+    if (getCurrentRuntime()->isGraphRecording() && !warn_switch_runtime) {
         spdlog::warn("Switching device runtime during graph recording may break the graph!");
+        warn_switch_runtime = true;
     }
 
     if (runtime_table_[int(device.getType())][device.getIndex()] == nullptr) {
@@ -104,11 +102,8 @@ infinirtStream_t getStream() {
 }
 
 infiniopHandle_t getInfiniopHandle(Device device) {
-    if (device.getType() == Device::Type::CPU) {
-        return ContextImpl::singleton().getCpuRuntime()->infiniopHandle();
-    }
     if (device != getDevice()) {
-        throw std::runtime_error("Requested device doesn't match current runtime.");
+        setDevice(device);
     }
     return ContextImpl::singleton().getCurrentRuntime()->infiniopHandle();
 }
@@ -127,7 +122,7 @@ std::shared_ptr<Memory> allocateMemory(size_t size) {
 
 std::shared_ptr<Memory> allocateHostMemory(size_t size) {
     setDevice(Device::cpu());
-    return ContextImpl::singleton().getCpuRuntime()->allocateMemory(size);
+    return allocateMemory(size);
 }
 
 std::shared_ptr<Memory> allocatePinnedHostMemory(size_t size) {
@@ -147,7 +142,8 @@ void memcpyD2D(void *dst, const void *src, size_t size, bool async) {
 }
 
 void memcpyH2H(void *dst, const void *src, size_t size) {
-    return ContextImpl::singleton().getCpuRuntime()->memcpyD2D(dst, src, size);
+    setDevice(Device::cpu());
+    return ContextImpl::singleton().getCurrentRuntime()->memcpyD2D(dst, src, size);
 }
 
 // Timing API implementations
