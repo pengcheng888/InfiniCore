@@ -23,14 +23,17 @@ inline struct SpdlogInitializer {
 #define STRINGIZE_(x) #x
 #define STRINGIZE(x) STRINGIZE_(x)
 
-#define INFINICORE_CHECK_ERROR(call)                                                                         \
-    do {                                                                                                     \
-        SPDLOG_DEBUG("Entering `" #call "` at `" __FILE__ ":" STRINGIZE(__LINE__) "`.");                     \
-        infiniStatus_t ret = (call);                                                                         \
-        SPDLOG_DEBUG("Exiting `" #call "` at `" __FILE__ ":" STRINGIZE(__LINE__) "`.");                      \
-        if (ret != INFINI_STATUS_SUCCESS) {                                                                  \
-            throw std::runtime_error(#call " failed with error: " + std::string(infini_status_string(ret))); \
-        }                                                                                                    \
+#define INFINICORE_CHECK_ERROR(call)                                                                            \
+    do {                                                                                                        \
+        SPDLOG_DEBUG("Entering `" #call "` at `" __FILE__ ":" STRINGIZE(__LINE__) "`.");                        \
+        infiniStatus_t ret = (call);                                                                            \
+        SPDLOG_DEBUG("Exiting `" #call "` at `" __FILE__ ":" STRINGIZE(__LINE__) "`.");                         \
+        if (ret != INFINI_STATUS_SUCCESS) {                                                                     \
+            throw std::runtime_error("`" #call "` failed with error: " + std::string(infini_status_string(ret)) \
+                                     + " from " + std::string(__func__)                                         \
+                                     + " at " + std::string(__FILE__)                                           \
+                                     + ":" + std::to_string(__LINE__) + ".");                                   \
+        }                                                                                                       \
     } while (false)
 
 #define INFINICORE_ASSERT_TENSORS_SAME_DEVICE(FIRST___, ...)                      \
