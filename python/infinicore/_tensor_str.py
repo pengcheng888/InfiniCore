@@ -94,7 +94,6 @@ def printoptions(
 ):
     r"""Context manager that temporarily changes the print options."""
     old_kwargs = get_printoptions()
-
     set_printoptions(
         precision=precision,
         threshold=threshold,
@@ -110,5 +109,15 @@ def printoptions(
 
 def _str(self):
     cpp_tensor_str = self._underlying.__str__()
-    py_dtype_str = "dtype=" + self.dtype.__repr__()
-    return cpp_tensor_str.split("dtype=INFINI.")[0] + py_dtype_str + ")\n"
+    py_dtype_str = ", dtype=" + self.dtype.__repr__()
+
+    py_tensor_str = cpp_tensor_str.split(", d")[0]
+    if self.device.type != "cpu":
+        py_device_str = ", device='" + self.device.__str__() + "'"
+        py_tensor_str += py_device_str
+    py_tensor_str += py_dtype_str + ")"
+
+    return py_tensor_str
+
+
+set_printoptions()

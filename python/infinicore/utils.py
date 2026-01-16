@@ -78,6 +78,8 @@ def numpy_to_infinicore_dtype(numpy_dtype):
         return infinicore.int64
     elif numpy_dtype == np.uint8:
         return infinicore.uint8
+    elif numpy_dtype == np.bool_:
+        return infinicore.bool
     else:
         raise ValueError(f"Unsupported numpy dtype: {numpy_dtype}")
 

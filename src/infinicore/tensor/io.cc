@@ -135,7 +135,7 @@ struct PrintOptionsImpl {
     int edge_items = 3;   // default edge items: 3 means print 3 items of each dimension.
     int line_width = 80;  // default line width: 75 means print 75 chars per line.
     int threshold = 1000; // default threshold: 1000 means print 1000 elements of the tensor.
-    int precision = -1;   // default precision: -1 means no precision limit.
+    int precision = 4;    // default precision: -1 means no precision limit.
     int sci_mode = -1;    // default sci_mode: -1 means auto decision.
 };
 
@@ -206,16 +206,8 @@ struct Printer<T, std::enable_if_t<std::is_floating_point<T>::value>> {
     explicit Printer(std::streamsize precision, int sci_mode = 0) : m_precision(precision), m_sci_mode(sci_mode) {}
 
     void calculate() {
-        m_precision = m_required_precision < m_precision ? m_required_precision : m_precision;
+        m_precision = m_precision > m_required_precision ? m_required_precision : m_precision;
         m_it = m_cache.cbegin();
-
-        // if (1 == m_sci_mode) {
-        //     m_scientific = true;
-        //     // m_large_exponent = true;
-        // } else if (0 == m_sci_mode) {
-        //     m_scientific = false;
-        //     // m_large_exponent = false;
-        // }
 
         if (m_scientific) {
             // 3 = sign, number and dot and 4 = "e+00"
@@ -506,7 +498,7 @@ std::ostream &xoutput(std::ostream &out,
             elems_on_line++;
 
             if ((view->ndim() == 1) && !(line_lim != 0 && elems_on_line >= line_lim)) {
-                out << ' ';
+                ; // out << ' ';
             } else if (view->ndim() > 1) {
                 out << std::endl
                     << indents;
@@ -527,8 +519,13 @@ std::ostream &xoutput(std::ostream &out,
 }
 
 template <class T>
-std::ostream &pretty_print(const Tensor &tensor,
+std::ostream &pretty_print(const Tensor &original_tensor,
                            std::ostream &out = std::cout) {
+    Tensor tensor = original_tensor->to(Device::Type::CPU);
+    bool on_cpu = original_tensor->device() == Device::Type::CPU;
+    std::string device_str = original_tensor->device().toString();
+    infinicore::context::syncDevice();
+
     fmtflags_guard<std::ostream> guard(out);
 
     std::size_t edge_items = 0;
@@ -547,7 +544,6 @@ std::ostream &pretty_print(const Tensor &tensor,
     auto precision = temp_precision;
 
     if (po.precision != -1) {
-
         out.precision(static_cast<std::streamsize>(po.precision));
         precision = static_cast<std::streamsize>(po.precision);
     }
@@ -560,15 +556,21 @@ std::ostream &pretty_print(const Tensor &tensor,
     printer.calculate();
     indexes.clear();
 
+    auto element_width = printer.width();
+
     out << "tensor(";
     xoutput(out,
             tensor,
             indexes,
             printer,
             1 + 7,
-            printer.width(),
+            element_width,
             edge_items,
             static_cast<std::size_t>(po.line_width));
+
+    if (!on_cpu) {
+        out << ", device=" << '\'' << device_str << '\'';
+    }
 
     out << ", dtype=INFINI." << toString(tensor->dtype()) << ")\n";
     out.precision(temp_precision); // restore precision
@@ -580,9 +582,6 @@ std::ostream &pretty_print(const Tensor &tensor,
 
 namespace infinicore {
 std::ostream &operator<<(std::ostream &out, const Tensor &tensor) {
-    if (tensor->device() != Device::Type::CPU) {
-        throw std::runtime_error("cant not print tensor on non-CPU device !!!");
-    }
 
     switch (tensor->dtype()) {
     case DataType::BYTE: // 1
