@@ -1,4 +1,4 @@
-import infinicore.device
+import python.infinicore._device
 from infinicore.lib import _infinicore
 
 
@@ -98,7 +98,7 @@ class DeviceEvent:
     @property
     def device(self):
         """Get the device where this event was created."""
-        return infinicore.device._from_infinicore_device(self._underlying.device)
+        return infinicore._device._from_infinicore_device(self._underlying.device)
 
     @property
     def is_recorded(self):

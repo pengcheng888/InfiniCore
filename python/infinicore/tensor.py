@@ -3,8 +3,10 @@ from typing import Any, Union
 
 import numpy as np
 
-import infinicore.device
-import infinicore.dtype
+import infinicore._device
+import infinicore._dtype
+from infinicore._dtype import dtype
+from infinicore._device import device
 from infinicore.lib import _infinicore
 
 from ._tensor_str import _str
@@ -21,8 +23,8 @@ class Tensor:
     _torch_ref: "torch.Tensor"  # noqa: F821
     _numpy_ref: np.ndarray  # noqa: F821
     shape: list[int]
-    dtype: infinicore.dtype
-    device: infinicore.device
+    dtype: dtype
+    device: device
 
     def __init__(self, underlying, *, _torch_ref=None, _numpy_ref=None):
         """An internal method. Please do not use this directly."""
@@ -141,8 +143,8 @@ class Tensor:
 def tensor(
     data: Any,
     *,
-    dtype: Union[infinicore.dtype, None] = None,
-    device: Union[infinicore.device, str, int, None] = None,
+    dtype: Union[dtype, None] = None,
+    device: Union[device, str, int, None] = None,
     pin_memory: bool = False,
 ) -> Tensor:
     r"""
@@ -235,7 +237,7 @@ def from_torch(torch_tensor) -> Tensor:
 def from_numpy(
     np_array,
     *,
-    device: infinicore.device = None,
+    device: device = None,
 ) -> Tensor:
     """
     Creates a Tensor from a numpy.ndarray.
