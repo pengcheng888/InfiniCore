@@ -1,4 +1,4 @@
-import python.infinicore._device
+import infinicore._device
 from infinicore.lib import _infinicore
 
 

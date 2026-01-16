@@ -5,8 +5,8 @@ import numpy as np
 
 import infinicore._device
 import infinicore._dtype
-from infinicore._dtype import dtype
 from infinicore._device import device
+from infinicore._dtype import dtype
 from infinicore.lib import _infinicore
 
 from ._tensor_str import _str
