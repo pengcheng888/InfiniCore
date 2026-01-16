@@ -16,9 +16,9 @@ from infinicore.context import (
     sync_device,
     sync_stream,
 )
-from infinicore.device import device
-from infinicore.device_event import DeviceEvent
-from infinicore.dtype import (
+
+from infinicore._device import device
+from infinicore._dtype import (
     bfloat16,
     bool,
     cdouble,
@@ -43,6 +43,20 @@ from infinicore.dtype import (
     short,
     uint8,
 )
+
+# Import context functions
+from infinicore.context import (
+    get_device,
+    get_device_count,
+    get_stream,
+    is_graph_recording,
+    set_device,
+    start_graph_recording,
+    stop_graph_recording,
+    sync_device,
+    sync_stream,
+)
+from infinicore.device_event import DeviceEvent
 from infinicore.ops.add import add
 from infinicore.ops.add_rms_norm import add_rms_norm
 from infinicore.ops.attention import attention

@@ -32,7 +32,7 @@ from typing import (
 
 import infinicore
 
-from ...device import device as InfiniCoreDevice
+from ..._device import device as InfiniCoreDevice
 from ...tensor import Tensor
 from ..parameter import InfiniCoreParameter as Parameter
 
