@@ -3,10 +3,6 @@
 #include "tensor.hpp"
 #include <iostream>
 
-namespace infinicore {
-std::ostream &operator<<(std::ostream &out, const Tensor &tensor);
-}
-
 namespace infinicore::print_options {
 
 /**

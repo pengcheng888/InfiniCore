@@ -92,6 +92,7 @@ protected:
     friend class TensorImpl;
 
     void resume_from_blob_() const;
+    friend std::ostream &operator<<(std::ostream &out, const Tensor &tensor);
 };
 
 class TensorImpl : public std::enable_shared_from_this<TensorImpl> {
