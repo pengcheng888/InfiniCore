@@ -1146,3 +1146,85 @@ def paged_attention_prefill_(lib):
     lib.infiniopDestroyPagedAttentionPrefillDescriptor.argtypes = [
         infiniopOperatorDescriptor_t,
     ]
+
+
+
+@OpRegister.operator
+def avg_pool2d_(lib):
+    lib.infiniopCreateAvgPool2dDescriptor.restype = c_int32
+    lib.infiniopCreateAvgPool2dDescriptor.argtypes = [
+        infiniopHandle_t,
+        POINTER(infiniopOperatorDescriptor_t),
+        infiniopTensorDescriptor_t,
+        infiniopTensorDescriptor_t,
+        c_int32,
+        c_int32,
+        c_int32,
+        c_int32,
+        c_int32,
+        c_int32,
+        c_int32,
+        c_int32,
+        c_int32,
+    ]
+
+    lib.infiniopGetAvgPool2dWorkspaceSize.restype = c_int32
+    lib.infiniopGetAvgPool2dWorkspaceSize.argtypes = [
+        infiniopOperatorDescriptor_t,
+        POINTER(c_size_t),
+    ]
+
+    lib.infiniopAvgPool2d.restype = c_int32
+    lib.infiniopAvgPool2d.argtypes = [
+        infiniopOperatorDescriptor_t,
+        c_void_p,
+        c_size_t,
+        c_void_p,
+        c_void_p,
+        c_void_p,
+    ]
+
+    lib.infiniopDestroyAvgPool2dDescriptor.restype = c_int32
+    lib.infiniopDestroyAvgPool2dDescriptor.argtypes = [
+        infiniopOperatorDescriptor_t,
+    ]
+
+@OpRegister.operator
+def max_pool2d_(lib):
+    lib.infiniopCreateMaxPool2dDescriptor.restype = c_int32
+    lib.infiniopCreateMaxPool2dDescriptor.argtypes = [
+        infiniopHandle_t,
+        POINTER(infiniopOperatorDescriptor_t),
+        infiniopTensorDescriptor_t,
+        infiniopTensorDescriptor_t,
+        c_int32,
+        c_int32,
+        c_int32,
+        c_int32,
+        c_int32,
+        c_int32,
+        c_int32,
+        c_int32,
+        c_int32,
+    ]
+
+    lib.infiniopGetMaxPool2dWorkspaceSize.restype = c_int32
+    lib.infiniopGetMaxPool2dWorkspaceSize.argtypes = [
+        infiniopOperatorDescriptor_t,
+        POINTER(c_size_t),
+    ]
+
+    lib.infiniopMaxPool2d.restype = c_int32
+    lib.infiniopMaxPool2d.argtypes = [
+        infiniopOperatorDescriptor_t,
+        c_void_p,
+        c_size_t,
+        c_void_p,
+        c_void_p,
+        c_void_p,
+    ]
+
+    lib.infiniopDestroyMaxPool2dDescriptor.restype = c_int32
+    lib.infiniopDestroyMaxPool2dDescriptor.argtypes = [
+        infiniopOperatorDescriptor_t,
+    ]

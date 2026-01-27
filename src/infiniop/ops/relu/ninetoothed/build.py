@@ -5,14 +5,14 @@ import infiniop.ninetoothed.build
 
 
 def build():
-    MAX_NDIM = 5
+    MAX_NDIM = 4
 
     ndim_values = range(1, MAX_NDIM + 1)
     dtype_values = (
-        ninetoothed.float16,
+        #ninetoothed.float16,
         ninetoothed.bfloat16,
         ninetoothed.float32,
-        ninetoothed.float64,
+        # ninetoothed.float64,
     )
 
     constexpr_param_grid = {

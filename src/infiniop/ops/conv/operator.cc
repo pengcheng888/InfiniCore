@@ -2,11 +2,20 @@
 #include "../../handle.h"
 #include "infiniop/ops/conv.h"
 
+////************************************************ */
+
+#undef ENABLE_NINETOOTHED
+
+// ******************************************** //
 #ifdef ENABLE_CPU_API
 #include "cpu/conv_cpu.h"
 #endif
 #if defined(ENABLE_NVIDIA_API) || defined(ENABLE_ILUVATAR_API) || defined(ENABLE_QY_API)
+#if defined(ENABLE_NINETOOTHED)
+#include "ninetoothed/conv.h"
+#else
 #include "nvidia/conv_nvidia.cuh"
+#endif
 #endif
 
 __C __export infiniStatus_t infiniopCreateConvDescriptor(infiniopHandle_t handle,
@@ -37,7 +46,11 @@ __C __export infiniStatus_t infiniopCreateConvDescriptor(infiniopHandle_t handle
         CREATE(INFINI_DEVICE_CPU, cpu);
 #endif
 #ifdef ENABLE_NVIDIA_API
+#ifdef ENABLE_NINETOOTHED
+        CREATE(INFINI_DEVICE_NVIDIA, ninetoothed);
+#else
         CREATE(INFINI_DEVICE_NVIDIA, nvidia);
+#endif
 #endif
 #ifdef ENABLE_ILUVATAR_API
         CREATE(INFINI_DEVICE_ILUVATAR, nvidia);
@@ -68,7 +81,11 @@ infiniopGetConvWorkspaceSize(
         GET(INFINI_DEVICE_CPU, cpu);
 #endif
 #ifdef ENABLE_NVIDIA_API
+#ifdef ENABLE_NINETOOTHED
+        GET(INFINI_DEVICE_NVIDIA, ninetoothed);
+#else
         GET(INFINI_DEVICE_NVIDIA, nvidia);
+#endif
 #endif
 #ifdef ENABLE_ILUVATAR_API
         GET(INFINI_DEVICE_ILUVATAR, nvidia);
@@ -107,7 +124,11 @@ __C infiniStatus_t infiniopConv(
         CALCULATE(INFINI_DEVICE_CPU, cpu);
 #endif
 #ifdef ENABLE_NVIDIA_API
+#ifdef ENABLE_NINETOOTHED
+        CALCULATE(INFINI_DEVICE_NVIDIA, ninetoothed);
+#else
         CALCULATE(INFINI_DEVICE_NVIDIA, nvidia);
+#endif
 #endif
 #ifdef ENABLE_ILUVATAR_API
         CALCULATE(INFINI_DEVICE_ILUVATAR, nvidia);
@@ -134,7 +155,11 @@ infiniopDestroyConvDescriptor(infiniopConvDescriptor_t desc) {
         DELETE(INFINI_DEVICE_CPU, cpu);
 #endif
 #ifdef ENABLE_NVIDIA_API
+#ifdef ENABLE_NINETOOTHED
+        DELETE(INFINI_DEVICE_NVIDIA, ninetoothed);
+#else
         DELETE(INFINI_DEVICE_NVIDIA, nvidia);
+#endif
 #endif
 #ifdef ENABLE_ILUVATAR_API
         DELETE(INFINI_DEVICE_ILUVATAR, nvidia);

@@ -73,6 +73,7 @@ target("infiniop-nvidia")
     add_files("../src/infiniop/devices/nvidia/*.cu", "../src/infiniop/ops/*/nvidia/*.cu")
 
     if has_config("ninetoothed") then
+        add_files("../build/ninetoothed/*.cpp")
         add_files("../build/ninetoothed/*.c")
     end
 target_end()
