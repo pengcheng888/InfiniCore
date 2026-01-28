@@ -10,9 +10,9 @@
 #ifdef ENABLE_CPU_API
 #include "cpu/conv_cpu.h"
 #endif
-#if defined(ENABLE_NVIDIA_API) || defined(ENABLE_ILUVATAR_API) || defined(ENABLE_QY_API)
+#if defined(ENABLE_NVIDIA_API) || defined(ENABLE_ILUVATAR_API) || defined(ENABLE_QY_API) || defined(ENABLE_HYGON_API)
 #if defined(ENABLE_NINETOOTHED)
-#include "ninetoothed/conv.h"
+#include "ninetoothed/conv2d.h"
 #else
 #include "nvidia/conv_nvidia.cuh"
 #endif
@@ -53,13 +53,29 @@ __C __export infiniStatus_t infiniopCreateConvDescriptor(infiniopHandle_t handle
 #endif
 #endif
 #ifdef ENABLE_ILUVATAR_API
+#ifdef ENABLE_NINETOOTHED
+        CREATE(INFINI_DEVICE_ILUVATAR, ninetoothed);
+#else
         CREATE(INFINI_DEVICE_ILUVATAR, nvidia);
 #endif
+#endif
 #ifdef ENABLE_QY_API
+#ifdef ENABLE_NINETOOTHED
+        CREATE(INFINI_DEVICE_QY, ninetoothed);
+#else
         CREATE(INFINI_DEVICE_QY, nvidia);
+#endif
+#endif
+#ifdef ENABLE_HYGON_API
+#ifdef ENABLE_NINETOOTHED
+        CREATE(INFINI_DEVICE_HYGON, ninetoothed);
+#else
+        CREATE(INFINI_DEVICE_HYGON, nvidia);
+#endif
 #endif
 
     default:
+        printf("infiniopCreateConvDescriptor not support device type ... \n");
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
 #undef CREATE
@@ -88,13 +104,29 @@ infiniopGetConvWorkspaceSize(
 #endif
 #endif
 #ifdef ENABLE_ILUVATAR_API
+#ifdef ENABLE_NINETOOTHED
+        GET(INFINI_DEVICE_ILUVATAR, ninetoothed);
+#else
         GET(INFINI_DEVICE_ILUVATAR, nvidia);
 #endif
+#endif
 #ifdef ENABLE_QY_API
+#ifdef ENABLE_NINETOOTHED
+        GET(INFINI_DEVICE_QY, ninetoothed);
+#else
         GET(INFINI_DEVICE_QY, nvidia);
+#endif
+#endif
+#ifdef ENABLE_HYGON_API
+#ifdef ENABLE_NINETOOTHED
+        GET(INFINI_DEVICE_HYGON, ninetoothed);
+#else
+        GET(INFINI_DEVICE_HYGON, nvidia);
+#endif
 #endif
 
     default:
+        printf("infiniopGetConvWorkspaceSize not support device type \n");
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
 
@@ -131,13 +163,29 @@ __C infiniStatus_t infiniopConv(
 #endif
 #endif
 #ifdef ENABLE_ILUVATAR_API
+#ifdef ENABLE_NINETOOTHED
+        CALCULATE(INFINI_DEVICE_ILUVATAR, ninetoothed);
+#else
         CALCULATE(INFINI_DEVICE_ILUVATAR, nvidia);
 #endif
+#endif
 #ifdef ENABLE_QY_API
+#ifdef ENABLE_NINETOOTHED
+        CALCULATE(INFINI_DEVICE_QY, ninetoothed);
+#else
         CALCULATE(INFINI_DEVICE_QY, nvidia);
+#endif
+#endif
+#ifdef ENABLE_HYGON_API
+#ifdef ENABLE_NINETOOTHED
+        CALCULATE(INFINI_DEVICE_HYGON, ninetoothed);
+#else
+        CALCULATE(INFINI_DEVICE_HYGON, nvidia);
+#endif
 #endif
 
     default:
+        printf("infiniopConv not support device type \n");
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
 #undef CALCULATE
@@ -162,13 +210,29 @@ infiniopDestroyConvDescriptor(infiniopConvDescriptor_t desc) {
 #endif
 #endif
 #ifdef ENABLE_ILUVATAR_API
+#ifdef ENABLE_NINETOOTHED
+        DELETE(INFINI_DEVICE_ILUVATAR, ninetoothed);
+#else
         DELETE(INFINI_DEVICE_ILUVATAR, nvidia);
 #endif
+#endif
 #ifdef ENABLE_QY_API
+#ifdef ENABLE_NINETOOTHED
+        DELETE(INFINI_DEVICE_QY, ninetoothed);
+#else
         DELETE(INFINI_DEVICE_QY, nvidia);
+#endif
+#endif
+#ifdef ENABLE_HYGON_API
+#ifdef ENABLE_NINETOOTHED
+        DELETE(INFINI_DEVICE_HYGON, ninetoothed);
+#else
+        DELETE(INFINI_DEVICE_HYGON, nvidia);
+#endif
 #endif
 
     default:
+        printf("infiniopDestroyConvDescriptor not support device type \n");
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
 #undef DELETE
