@@ -71,7 +71,8 @@ infiniStatus_t avg_pool2d_cpu_impl(
         zero_val = static_cast<T>(0);
     }
 
-#pragma omp parallel for collapse(2)
+    // MSVC doesn't support OpenMP collapse clause, so we parallelize only the outer loop
+#pragma omp parallel for
     for (ptrdiff_t n = 0; n < static_cast<ptrdiff_t>(N); ++n) {
         for (ptrdiff_t c = 0; c < static_cast<ptrdiff_t>(C); ++c) {
             const T *input_base = input + n * input_stride_n + c * input_stride_c;

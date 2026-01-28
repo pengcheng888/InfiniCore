@@ -424,7 +424,7 @@ target("_infinicore")
     end
 
     set_default(false)
-    add_rules("python.library", {soabi = true})
+    add_rules("python.module", {soabi = true})
     add_packages("pybind11")
     set_languages("cxx17")
 
