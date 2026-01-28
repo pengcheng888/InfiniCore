@@ -3,7 +3,7 @@
 #include "infiniop/ops/avg_pool2d.h"
 
 #ifdef ENABLE_CPU_API
-// #include "cpu/avg_pool2d_cpu.h"
+#include "cpu/avg_pool2d_cpu.h"
 #endif
 #if defined(ENABLE_NINETOOTHED)
 #if defined(ENABLE_NVIDIA_API) || defined(ENABLE_MOORE_API) || defined(ENABLE_METAX_API) || defined(ENABLE_ILUVATAR_API) || defined(ENABLE_HYGON_API)
@@ -44,6 +44,9 @@ __C infiniStatus_t infiniopCreateAvgPool2dDescriptor(
             ceil_mode);
 
     switch (handle->device) {
+#ifdef ENABLE_CPU_API
+        CREATE(INFINI_DEVICE_CPU, cpu);
+#endif
 
 #if defined(ENABLE_NINETOOTHED)
 #if defined(ENABLE_NVIDIA_API)
@@ -83,6 +86,9 @@ __C infiniStatus_t infiniopGetAvgPool2dWorkspaceSize(
         return INFINI_STATUS_SUCCESS;
 
     switch (desc->device_type) {
+#ifdef ENABLE_CPU_API
+        GET_SIZE(INFINI_DEVICE_CPU, cpu);
+#endif
 
 #if defined(ENABLE_NINETOOTHED)
 #if defined(ENABLE_NVIDIA_API)
@@ -122,6 +128,9 @@ __C infiniStatus_t infiniopAvgPool2d(
             ->calculate(workspace, workspace_size, output, input, stream);
 
     switch (desc->device_type) {
+#ifdef ENABLE_CPU_API
+        CALCULATE(INFINI_DEVICE_CPU, cpu);
+#endif
 
 #if defined(ENABLE_NINETOOTHED)
 #if defined(ENABLE_NVIDIA_API)
@@ -156,6 +165,9 @@ __C infiniStatus_t infiniopDestroyAvgPool2dDescriptor(
         return INFINI_STATUS_SUCCESS;
 
     switch (desc->device_type) {
+#ifdef ENABLE_CPU_API
+        DESTROY(INFINI_DEVICE_CPU, cpu);
+#endif
 
 #if defined(ENABLE_NINETOOTHED)
 #if defined(ENABLE_NVIDIA_API)

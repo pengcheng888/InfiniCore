@@ -3,8 +3,8 @@
 #include "infiniop/ops/max_pool2d.h"
 #include <cstdio>
 
-#ifdef ENABLE_CPU_API
-// #include "cpu/max_pool2d_cpu.h"
+#if defined(ENABLE_CPU_API)
+#include "cpu/max_pool2d_cpu.h"
 #endif
 #if defined(ENABLE_NINETOOTHED)
 #if defined(ENABLE_NVIDIA_API) || defined(ENABLE_MOORE_API) || defined(ENABLE_METAX_API) || defined(ENABLE_ILUVATAR_API) || defined(ENABLE_HYGON_API)
@@ -45,6 +45,9 @@ __C infiniStatus_t infiniopCreateMaxPool2dDescriptor(
             ceil_mode);
 
     switch (handle->device) {
+#if defined(ENABLE_CPU_API)
+        CREATE(INFINI_DEVICE_CPU, cpu);
+#endif
 
 #if defined(ENABLE_NINETOOTHED)
 #if defined(ENABLE_NVIDIA_API)
@@ -85,6 +88,10 @@ __C infiniStatus_t infiniopGetMaxPool2dWorkspaceSize(
 
     switch (desc->device_type) {
 
+#if defined(ENABLE_CPU_API)
+        GET_SIZE(INFINI_DEVICE_CPU, cpu);
+#endif
+
 #if defined(ENABLE_NINETOOTHED)
 #if defined(ENABLE_NVIDIA_API)
         GET_SIZE(INFINI_DEVICE_NVIDIA, ninetoothed);
@@ -123,7 +130,9 @@ __C infiniStatus_t infiniopMaxPool2d(
             ->calculate(workspace, workspace_size, output, input, stream);
 
     switch (desc->device_type) {
-
+#if defined(ENABLE_CPU_API)
+        CALCULATE(INFINI_DEVICE_CPU, cpu);
+#endif
 #if defined(ENABLE_NINETOOTHED)
 #if defined(ENABLE_NVIDIA_API)
         CALCULATE(INFINI_DEVICE_NVIDIA, ninetoothed);
@@ -157,7 +166,9 @@ __C infiniStatus_t infiniopDestroyMaxPool2dDescriptor(
         return INFINI_STATUS_SUCCESS;
 
     switch (desc->device_type) {
-
+#if defined(ENABLE_CPU_API)
+        DESTROY(INFINI_DEVICE_CPU, cpu);
+#endif
 #if defined(ENABLE_NINETOOTHED)
 #if defined(ENABLE_NVIDIA_API)
         DESTROY(INFINI_DEVICE_NVIDIA, ninetoothed);
