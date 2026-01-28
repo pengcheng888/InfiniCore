@@ -4,7 +4,7 @@
 
 ////************************************************ */
 
-#undef ENABLE_NINETOOTHED
+// #undef ENABLE_NINETOOTHED
 
 // ******************************************** //
 #ifdef ENABLE_CPU_API
@@ -75,7 +75,6 @@ __C __export infiniStatus_t infiniopCreateConvDescriptor(infiniopHandle_t handle
 #endif
 
     default:
-        printf("infiniopCreateConvDescriptor not support device type ... \n");
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
 #undef CREATE
@@ -85,6 +84,9 @@ __C infiniStatus_t
 infiniopGetConvWorkspaceSize(
     infiniopConvDescriptor_t desc,
     size_t *size) {
+
+    *size = 0;
+    return INFINI_STATUS_SUCCESS;
 
 #define GET(CASE, NAMESPACE)                                                                      \
     case CASE:                                                                                    \
@@ -126,7 +128,7 @@ infiniopGetConvWorkspaceSize(
 #endif
 
     default:
-        printf("infiniopGetConvWorkspaceSize not support device type \n");
+        // printf("infiniopGetConvWorkspaceSize not support device type: %d, %d, %d\n", ENABLE_NVIDIA_API, ENABLE_NINETOOTHED, desc->device_type);
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
 
@@ -185,7 +187,6 @@ __C infiniStatus_t infiniopConv(
 #endif
 
     default:
-        printf("infiniopConv not support device type \n");
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
 #undef CALCULATE
@@ -232,7 +233,6 @@ infiniopDestroyConvDescriptor(infiniopConvDescriptor_t desc) {
 #endif
 
     default:
-        printf("infiniopDestroyConvDescriptor not support device type \n");
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
 #undef DELETE
