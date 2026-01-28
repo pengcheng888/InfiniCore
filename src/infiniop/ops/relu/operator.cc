@@ -2,10 +2,16 @@
 #include "../../handle.h"
 #include "infiniop/ops/relu.h"
 
+////************************************************ */
+
+#undef ENABLE_NINETOOTHED
+
+// ******************************************** //
+
 #ifdef ENABLE_CPU_API
 #include "cpu/relu_cpu.h"
 #endif
-#if defined(ENABLE_NVIDIA_API) || defined(ENABLE_ILUVATAR_API) || defined(ENABLE_QY_API)
+#if defined(ENABLE_NVIDIA_API) || defined(ENABLE_ILUVATAR_API) || defined(ENABLE_HYGON_API) || defined(ENABLE_QY_API)
 #include "nvidia/relu_nvidia.cuh"
 #endif
 #ifdef ENABLE_METAX_API

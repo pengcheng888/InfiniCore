@@ -76,6 +76,7 @@ target("infiniop-hygon")
     add_files("../src/infiniop/ops/swiglu/nvidia/*.cu")
 
     if has_config("ninetoothed") then
+        add_files("../build/ninetoothed/*.cpp", {cxflags = {"-Wno-return-type"}})
         add_files("../build/ninetoothed/*.c", {cxflags = {"-Wno-return-type"}})
     end
 target_end()

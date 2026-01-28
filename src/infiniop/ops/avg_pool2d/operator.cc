@@ -6,7 +6,7 @@
 // #include "cpu/avg_pool2d_cpu.h"
 #endif
 #if defined(ENABLE_NINETOOTHED)
-#if defined(ENABLE_NVIDIA_API) || defined(ENABLE_MOORE_API) || defined(ENABLE_METAX_API) || defined(ENABLE_IlUVATAR_API) || defined(ENABLE_HYGON_API)
+#if defined(ENABLE_NVIDIA_API) || defined(ENABLE_MOORE_API) || defined(ENABLE_METAX_API) || defined(ENABLE_ILUVATAR_API) || defined(ENABLE_HYGON_API)
 #include "ninetoothed/descriptor.h"
 #endif
 #endif
@@ -58,7 +58,7 @@ __C infiniStatus_t infiniopCreateAvgPool2dDescriptor(
         CREATE(INFINI_DEVICE_METAX, ninetoothed);
 #endif
 
-#if defined(ENABLE_IlUVATAR_API)
+#if defined(ENABLE_ILUVATAR_API)
         CREATE(INFINI_DEVICE_ILUVATAR, ninetoothed);
 #endif
 
@@ -94,7 +94,7 @@ __C infiniStatus_t infiniopGetAvgPool2dWorkspaceSize(
 #if defined(ENABLE_METAX_API)
         GET_SIZE(INFINI_DEVICE_METAX, ninetoothed);
 #endif
-#if defined(ENABLE_IlUVATAR_API)
+#if defined(ENABLE_ILUVATAR_API)
         GET_SIZE(INFINI_DEVICE_ILUVATAR, ninetoothed);
 #endif
 #if defined(ENABLE_HYGON_API)
@@ -133,7 +133,7 @@ __C infiniStatus_t infiniopAvgPool2d(
 #if defined(ENABLE_METAX_API)
         CALCULATE(INFINI_DEVICE_METAX, ninetoothed);
 #endif
-#if defined(ENABLE_IlUVATAR_API)
+#if defined(ENABLE_ILUVATAR_API)
         CALCULATE(INFINI_DEVICE_ILUVATAR, ninetoothed);
 #endif
 #if defined(ENABLE_HYGON_API)
@@ -167,7 +167,7 @@ __C infiniStatus_t infiniopDestroyAvgPool2dDescriptor(
 #if defined(ENABLE_METAX_API)
         DESTROY(INFINI_DEVICE_METAX, ninetoothed);
 #endif
-#if defined(ENABLE_IlUVATAR_API)
+#if defined(ENABLE_ILUVATAR_API)
         DESTROY(INFINI_DEVICE_ILUVATAR, ninetoothed);
 #endif
 #if defined(ENABLE_HYGON_API)

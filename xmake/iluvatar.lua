@@ -35,6 +35,8 @@ target("infiniop-iluvatar")
     add_deps("infini-utils")
     on_install(function (target) end)
 
+    add_includedirs("/usr/local/corex/include/", {public = true})
+
     set_toolchains("iluvatar.toolchain")
     add_rules("iluvatar.env")
     set_values("cuda.rdc", false)
@@ -43,7 +45,7 @@ target("infiniop-iluvatar")
 
     set_warnings("all", "error")
     add_cuflags("-Wno-error=unused-private-field")
-    add_cuflags("-fPIC", "-x", "ivcore", "-std=c++17", {force = true})
+    add_cuflags("-fPIC", "-x", "ivcore", "-std=c++17", "--cuda-gpu-arch=ivcore20",{force = true})
     if has_config("ivcore-20") then
         add_cuflags("--cuda-gpu-arch=ivcore20", {force = true})
     end
@@ -57,6 +59,7 @@ target("infiniop-iluvatar")
     add_files("../src/infiniop/ops/dequantize_awq/iluvatar/*.cu")
 
     if has_config("ninetoothed") then
+        add_files("../build/ninetoothed/*.cpp", {cxflags = {"-Wno-return-type"}})
         add_files("../build/ninetoothed/*.c", {cxflags = {"-Wno-return-type"}})
     end
 target_end()

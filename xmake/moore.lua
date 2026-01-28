@@ -47,6 +47,12 @@ target("infiniop-moore")
 
     -- Add source files for Moore muBLAS/muDNN GEMM backends.
     add_files("../src/infiniop/ops/gemm/moore/*/*.mu", {rule = "mu"})
+
+    if has_config("ninetoothed") then
+        add_files("../build/ninetoothed/*.cpp", {cxflags = {"-include stdlib.h", "-Wno-return-type"}})
+        add_files("../build/ninetoothed/*.c", {cxflags = {"-include stdlib.h", "-Wno-return-type"}})
+    end
+
 target_end()
 
 target("infinirt-moore")

@@ -1,3 +1,9 @@
+////************************************************ */
+
+#undef ENABLE_NINETOOTHED
+
+// ******************************************** //
+
 #ifdef ENABLE_NINETOOTHED
 #include "../../../../../build/ninetoothed/relu.h"
 #endif

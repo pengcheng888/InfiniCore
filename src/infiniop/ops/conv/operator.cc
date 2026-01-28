@@ -3,9 +3,7 @@
 #include "infiniop/ops/conv.h"
 
 ////************************************************ */
-
-// #undef ENABLE_NINETOOTHED
-
+#undef ENABLE_NINETOOTHED
 // ******************************************** //
 #ifdef ENABLE_CPU_API
 #include "cpu/conv_cpu.h"
@@ -85,8 +83,8 @@ infiniopGetConvWorkspaceSize(
     infiniopConvDescriptor_t desc,
     size_t *size) {
 
-    *size = 0;
-    return INFINI_STATUS_SUCCESS;
+    //     *size = 0;
+    //     return INFINI_STATUS_SUCCESS;
 
 #define GET(CASE, NAMESPACE)                                                                      \
     case CASE:                                                                                    \
