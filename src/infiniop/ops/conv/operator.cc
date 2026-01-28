@@ -65,11 +65,7 @@ __C __export infiniStatus_t infiniopCreateConvDescriptor(infiniopHandle_t handle
 #endif
 #endif
 #ifdef ENABLE_HYGON_API
-#ifdef ENABLE_NINETOOTHED
-        CREATE(INFINI_DEVICE_HYGON, ninetoothed);
-#else
         CREATE(INFINI_DEVICE_HYGON, nvidia);
-#endif
 #endif
 
     default:
@@ -118,13 +114,8 @@ infiniopGetConvWorkspaceSize(
 #endif
 #endif
 #ifdef ENABLE_HYGON_API
-#ifdef ENABLE_NINETOOTHED
-        GET(INFINI_DEVICE_HYGON, ninetoothed);
-#else
         GET(INFINI_DEVICE_HYGON, nvidia);
 #endif
-#endif
-
     default:
         // printf("infiniopGetConvWorkspaceSize not support device type: %d, %d, %d\n", ENABLE_NVIDIA_API, ENABLE_NINETOOTHED, desc->device_type);
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
@@ -177,11 +168,7 @@ __C infiniStatus_t infiniopConv(
 #endif
 #endif
 #ifdef ENABLE_HYGON_API
-#ifdef ENABLE_NINETOOTHED
-        CALCULATE(INFINI_DEVICE_HYGON, ninetoothed);
-#else
         CALCULATE(INFINI_DEVICE_HYGON, nvidia);
-#endif
 #endif
 
     default:
@@ -223,11 +210,7 @@ infiniopDestroyConvDescriptor(infiniopConvDescriptor_t desc) {
 #endif
 #endif
 #ifdef ENABLE_HYGON_API
-#ifdef ENABLE_NINETOOTHED
-        DELETE(INFINI_DEVICE_HYGON, ninetoothed);
-#else
         DELETE(INFINI_DEVICE_HYGON, nvidia);
-#endif
 #endif
 
     default:
