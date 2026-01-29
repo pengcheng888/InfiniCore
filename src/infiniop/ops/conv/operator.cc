@@ -15,9 +15,11 @@
 #include "nvidia/conv_nvidia.cuh"
 #endif
 #endif
-
 #ifdef ENABLE_MOORE_API
 #include "moore/conv_moore.h"
+#endif
+#ifdef ENABLE_METAX_API
+#include "metax/conv_metax.h"
 #endif
 
 __C __export infiniStatus_t infiniopCreateConvDescriptor(infiniopHandle_t handle,
@@ -74,6 +76,9 @@ __C __export infiniStatus_t infiniopCreateConvDescriptor(infiniopHandle_t handle
 #ifdef ENABLE_MOORE_API
         CREATE(INFINI_DEVICE_MOORE, moore);
 #endif
+#ifdef ENABLE_METAX_API
+        CREATE(INFINI_DEVICE_METAX, metax);
+#endif
 
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
@@ -85,9 +90,6 @@ __C infiniStatus_t
 infiniopGetConvWorkspaceSize(
     infiniopConvDescriptor_t desc,
     size_t *size) {
-
-    //     *size = 0;
-    //     return INFINI_STATUS_SUCCESS;
 
 #define GET(CASE, NAMESPACE)                                                                      \
     case CASE:                                                                                    \
@@ -126,6 +128,10 @@ infiniopGetConvWorkspaceSize(
 #ifdef ENABLE_MOORE_API
         GET(INFINI_DEVICE_MOORE, moore);
 #endif
+#ifdef ENABLE_METAX_API
+        GET(INFINI_DEVICE_METAX, metax);
+#endif
+
     default:
         // printf("infiniopGetConvWorkspaceSize not support device type: %d, %d, %d\n", ENABLE_NVIDIA_API, ENABLE_NINETOOTHED, desc->device_type);
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
@@ -183,6 +189,9 @@ __C infiniStatus_t infiniopConv(
 #ifdef ENABLE_MOORE_API
         CALCULATE(INFINI_DEVICE_MOORE, moore);
 #endif
+#ifdef ENABLE_METAX_API
+        CALCULATE(INFINI_DEVICE_METAX, metax);
+#endif
 
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
@@ -227,6 +236,9 @@ infiniopDestroyConvDescriptor(infiniopConvDescriptor_t desc) {
 #endif
 #ifdef ENABLE_MOORE_API
         DELETE(INFINI_DEVICE_MOORE, moore);
+#endif
+#ifdef ENABLE_METAX_API
+        DELETE(INFINI_DEVICE_METAX, metax);
 #endif
 
     default:

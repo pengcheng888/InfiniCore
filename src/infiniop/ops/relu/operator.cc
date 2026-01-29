@@ -2,12 +2,6 @@
 #include "../../handle.h"
 #include "infiniop/ops/relu.h"
 
-////************************************************ */
-
-#undef ENABLE_NINETOOTHED
-
-// ******************************************** //
-
 #ifdef ENABLE_CPU_API
 #include "cpu/relu_cpu.h"
 #endif
