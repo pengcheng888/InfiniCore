@@ -131,7 +131,7 @@ Linear::Linear(size_t in_features, size_t out_features,
         this->register_parameter("qweight", weight_);
         weight_zeros_ = infinicore::nn::Parameter({out_features, in_features}, infinicore::DataType::I32, device);
         this->register_parameter("qzeros", weight_zeros_);
-        weight_scale_ = infinicore::nn::Parameter({out_features, in_features}, infinicore::DataType::F16, device);
+        weight_scale_ = infinicore::nn::Parameter({out_features, in_features}, dtype_, device);
         this->register_parameter("scales", weight_scale_);
         if (bias) {
             INFINICORE_NN_PARAMETER_INIT(bias, ({out_features}, dtype_, device));
