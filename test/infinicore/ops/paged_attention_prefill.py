@@ -31,6 +31,8 @@ _TOLERANCE_MAP = {
 
 _TENSOR_DTYPES = [infinicore.float16, infinicore.bfloat16]
 
+_INDEX_DTYPES = [infinicore.int32, infinicore.int64]
+
 
 class SimpleCacheManager:
     def __init__(self, num_blocks, block_size):
@@ -72,16 +74,16 @@ def parse_test_cases():
         scale = head_size**-0.5
         num_blocks = 8192
         manager = SimpleCacheManager(num_blocks, block_size)
-        kv_lens = torch.zeros(num_seqs, dtype=torch.int64)
+        kv_lens = torch.zeros(num_seqs, dtype=torch.int32)
 
         persistent_k = torch.zeros((num_blocks, num_kv_heads, block_size, head_size))
         persistent_v = torch.zeros((num_blocks, num_kv_heads, block_size, head_size))
 
         for r in range(num_rounds):
-            q_lens = torch.randint(1, max_step_len + 1, (num_seqs,), dtype=torch.int64)
+            q_lens = torch.randint(1, max_step_len + 1, (num_seqs,), dtype=torch.int32)
             kv_lens = kv_lens + q_lens
             total_q_tokens = q_lens.sum().item()
-            cum_seqlens_q = torch.zeros(num_seqs + 1, dtype=torch.int64)
+            cum_seqlens_q = torch.zeros(num_seqs + 1, dtype=torch.int32)
             cum_seqlens_q[1:] = torch.cumsum(q_lens, dim=0)
 
             query_base = torch.randn((total_q_tokens, num_heads, head_size))
@@ -106,53 +108,53 @@ def parse_test_cases():
             )
 
             for dtype in _TENSOR_DTYPES:
-                tolerance = _TOLERANCE_MAP.get(dtype)
-
-                test_cases.append(
-                    TestCase(
-                        inputs=[
-                            TensorSpec.from_tensor(
-                                query_base.shape,
-                                init_mode=TensorInitializer.MANUAL,
-                                set_tensor=query_base.clone(),
-                                dtype=dtype,
-                            ),
-                            TensorSpec.from_tensor(
-                                persistent_k.shape,
-                                init_mode=TensorInitializer.MANUAL,
-                                set_tensor=persistent_k.clone(),
-                                dtype=dtype,
-                            ),
-                            TensorSpec.from_tensor(
-                                persistent_v.shape,
-                                init_mode=TensorInitializer.MANUAL,
-                                set_tensor=persistent_v.clone(),
-                                dtype=dtype,
-                            ),
-                            TensorSpec.from_tensor(
-                                padded_tables.shape,
-                                init_mode=TensorInitializer.MANUAL,
-                                set_tensor=padded_tables.clone(),
-                                dtype=infinicore.int64,
-                            ),
-                            TensorSpec.from_tensor(
-                                kv_lens.shape,
-                                init_mode=TensorInitializer.MANUAL,
-                                set_tensor=kv_lens.clone(),
-                                dtype=infinicore.int64,
-                            ),
-                            TensorSpec.from_tensor(
-                                cum_seqlens_q.shape,
-                                init_mode=TensorInitializer.MANUAL,
-                                set_tensor=cum_seqlens_q.clone(),
-                                dtype=infinicore.int64,
-                            ),
-                        ],
-                        kwargs={"scale": scale},
-                        tolerance=tolerance,
-                        description=f"PagedAttentionPrefill_Round_{r}_{str(dtype).split('.')[-1]}",
+                for idx_dtype in _INDEX_DTYPES:  # Loop through both I32 and I64
+                    tolerance = _TOLERANCE_MAP.get(dtype)
+                    test_cases.append(
+                        TestCase(
+                            inputs=[
+                                TensorSpec.from_tensor(
+                                    query_base.shape,
+                                    init_mode=TensorInitializer.MANUAL,
+                                    set_tensor=query_base.clone(),
+                                    dtype=dtype,
+                                ),
+                                TensorSpec.from_tensor(
+                                    persistent_k.shape,
+                                    init_mode=TensorInitializer.MANUAL,
+                                    set_tensor=persistent_k.clone(),
+                                    dtype=dtype,
+                                ),
+                                TensorSpec.from_tensor(
+                                    persistent_v.shape,
+                                    init_mode=TensorInitializer.MANUAL,
+                                    set_tensor=persistent_v.clone(),
+                                    dtype=dtype,
+                                ),
+                                TensorSpec.from_tensor(
+                                    padded_tables.shape,
+                                    init_mode=TensorInitializer.MANUAL,
+                                    set_tensor=padded_tables.clone(),
+                                    dtype=idx_dtype,
+                                ),
+                                TensorSpec.from_tensor(
+                                    kv_lens.shape,
+                                    init_mode=TensorInitializer.MANUAL,
+                                    set_tensor=kv_lens.clone(),
+                                    dtype=idx_dtype,
+                                ),
+                                TensorSpec.from_tensor(
+                                    cum_seqlens_q.shape,
+                                    init_mode=TensorInitializer.MANUAL,
+                                    set_tensor=cum_seqlens_q.clone(),
+                                    dtype=idx_dtype,
+                                ),
+                            ],
+                            kwargs={"scale": scale},
+                            tolerance=tolerance,
+                            description=f"PagedAttentionPrefill_Round_{r}_{str(dtype).split('.')[-1]}",
+                        )
                     )
-                )
 
     return test_cases
 

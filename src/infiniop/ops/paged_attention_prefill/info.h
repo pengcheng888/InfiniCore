@@ -80,9 +80,13 @@ public:
             return INFINI_STATUS_BAD_TENSOR_DTYPE;
         }
 
-        // Keep it simple: require total_kv_lens + cum_seqlens_q to be int64 for now
-        // (matches current paged_attention_prefill signature). We will convert to int32 internally later.
-        if (total_kv_lens_desc->dtype() != INFINI_DTYPE_I64 || cum_seqlens_q_desc->dtype() != INFINI_DTYPE_I64) {
+        // Index tensors use int32_t to match mainstream paged-attention implementations
+        // (e.g., vLLM / FlashAttention2). 32-bit indices needed, but now we also support int64_t.
+        if (!((total_kv_lens_desc->dtype() == INFINI_DTYPE_I64) || (total_kv_lens_desc->dtype() == INFINI_DTYPE_I32) || (total_kv_lens_desc->dtype() == INFINI_DTYPE_U32))) {
+            return INFINI_STATUS_BAD_TENSOR_DTYPE;
+        }
+
+        if (!((cum_seqlens_q_desc->dtype() == INFINI_DTYPE_I64) || (cum_seqlens_q_desc->dtype() == INFINI_DTYPE_I32) || (cum_seqlens_q_desc->dtype() == INFINI_DTYPE_U32))) {
             return INFINI_STATUS_BAD_TENSOR_DTYPE;
         }
 
