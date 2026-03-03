@@ -29,14 +29,14 @@ __device__ void kvCachingKernel(
     ptrdiff_t v_strides_1,
     ptrdiff_t v_strides_2,
     ptrdiff_t v_strides_3) {
-    // 总元素数 = B * H * seq_len * D
+    // num of ele = B * H * seq_len * D
     int tid = blockIdx.x * blockDim.x + threadIdx.x;
     int total = batch_size * num_kv_heads * seq_len * hidden_dim;
 
     const int grid_size = blockDim.x * gridDim.x;
 
     for (int idx = tid; idx < total; idx += grid_size) {
-        // 反解 index
+        // unravel index
 
         int d = idx % hidden_dim;
         idx /= hidden_dim;
@@ -48,7 +48,7 @@ __device__ void kvCachingKernel(
         int b = idx / num_kv_heads;
 
         int past_len = static_cast<int32_t>(past_kv_lengths[b]);
-        // 写入位置
+        // write position
         int cache_s = past_len + s;
         int k_cache_offset = d * (int)k_cache_strides_3 + cache_s * (int)k_cache_strides_2 + h * (int)k_cache_strides_1 + b * (int)k_cache_strides_0;
         int v_cache_offset = d * (int)v_cache_strides_3 + cache_s * (int)v_cache_strides_2 + h * (int)v_cache_strides_1 + b * (int)v_cache_strides_0;

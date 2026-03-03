@@ -2,14 +2,11 @@
 #include "../../handle.h"
 #include "infiniop/ops/kv_caching.h"
 
-#if defined(ENABLE_NINETOOTHED)
-#if defined(ENABLE_NVIDIA_API) || defined(ENABLE_ILUVATAR_API) || defined(ENABLE_METAX_API) || defined(ENABLE_MOORE_API)
-#include "ninetoothed/kv_caching.h"
-#endif
-#endif
-
-#if defined(ENABLE_NVIDIA_API) || defined(ENABLE_QY_API)
+#if defined(ENABLE_NVIDIA_API) || defined(ENABLE_QY_API) || defined(ENABLE_ILUVATAR_API) || defined(ENABLE_ALI_API) || defined(ENABLE_HYGON_API)
 #include "nvidia/kv_caching_nvidia.cuh"
+#endif
+#if defined(ENABLE_METAX_API)
+#include "metax/kv_caching_metax.h"
 #endif
 
 __C infiniStatus_t infiniopCreateKVCachingDescriptor(
@@ -34,23 +31,23 @@ __C infiniStatus_t infiniopCreateKVCachingDescriptor(
 
     switch (handle->device) {
 
-#if defined(ENABLE_NINETOOTHED)
-#if defined(ENABLE_NVIDIA_API)
-        CREATE(INFINI_DEVICE_NVIDIA, ninetoothed);
-#endif
-#if defined(ENABLE_ILUVATAR_API)
-        CREATE(INFINI_DEVICE_ILUVATAR, ninetoothed);
-#endif
-#if defined(ENABLE_METAX_API)
-        CREATE(INFINI_DEVICE_METAX, ninetoothed);
-#endif
-#endif
-
 #ifdef ENABLE_NVIDIA_API
         CREATE(INFINI_DEVICE_NVIDIA, nvidia);
 #endif
 #ifdef ENABLE_QY_API
         CREATE(INFINI_DEVICE_QY, nvidia);
+#endif
+#ifdef ENABLE_ILUVATAR_API
+        CREATE(INFINI_DEVICE_ILUVATAR, nvidia);
+#endif
+#ifdef ENABLE_ALI_API
+        CREATE(INFINI_DEVICE_ALI, nvidia);
+#endif
+#ifdef ENABLE_HYGON_API
+        CREATE(INFINI_DEVICE_HYGON, nvidia);
+#endif
+#if defined(ENABLE_METAX_API)
+        CREATE(INFINI_DEVICE_METAX, metax);
 #endif
 
     default:
@@ -72,24 +69,25 @@ __C infiniStatus_t infiniopGetKVCachingWorkspaceSize(
 
     switch (desc->device_type) {
 
-#if defined(ENABLE_NINETOOTHED)
-#if defined(ENABLE_NVIDIA_API)
-        GET_SIZE(INFINI_DEVICE_NVIDIA, ninetoothed);
-#endif
-#if defined(ENABLE_ILUVATAR_API)
-        GET_SIZE(INFINI_DEVICE_ILUVATAR, ninetoothed);
-#endif
-#if defined(ENABLE_METAX_API)
-        GET_SIZE(INFINI_DEVICE_METAX, ninetoothed);
-#endif
-#endif
-
 #ifdef ENABLE_NVIDIA_API
         GET_SIZE(INFINI_DEVICE_NVIDIA, nvidia);
 #endif
 #ifdef ENABLE_QY_API
         GET_SIZE(INFINI_DEVICE_QY, nvidia);
 #endif
+#ifdef ENABLE_ILUVATAR_API
+        GET_SIZE(INFINI_DEVICE_ILUVATAR, nvidia);
+#endif
+#ifdef ENABLE_ALI_API
+        GET_SIZE(INFINI_DEVICE_ALI, nvidia);
+#endif
+#ifdef ENABLE_HYGON_API
+        GET_SIZE(INFINI_DEVICE_HYGON, nvidia);
+#endif
+#if defined(ENABLE_METAX_API)
+        GET_SIZE(INFINI_DEVICE_METAX, metax);
+#endif
+
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
@@ -115,24 +113,25 @@ __C infiniStatus_t infiniopKVCaching(
 
     switch (desc->device_type) {
 
-#if defined(ENABLE_NINETOOTHED)
-#if defined(ENABLE_NVIDIA_API)
-        CALCULATE(INFINI_DEVICE_NVIDIA, ninetoothed);
-#endif
-#if defined(ENABLE_ILUVATAR_API)
-        CALCULATE(INFINI_DEVICE_ILUVATAR, ninetoothed);
-#endif
-#if defined(ENABLE_METAX_API)
-        CALCULATE(INFINI_DEVICE_METAX, ninetoothed);
-#endif
-#endif
-
 #ifdef ENABLE_NVIDIA_API
         CALCULATE(INFINI_DEVICE_NVIDIA, nvidia);
 #endif
 #ifdef ENABLE_QY_API
         CALCULATE(INFINI_DEVICE_QY, nvidia);
 #endif
+#ifdef ENABLE_ILUVATAR_API
+        CALCULATE(INFINI_DEVICE_ILUVATAR, nvidia);
+#endif
+#ifdef ENABLE_ALI_API
+        CALCULATE(INFINI_DEVICE_ALI, nvidia);
+#endif
+#ifdef ENABLE_HYGON_API
+        CALCULATE(INFINI_DEVICE_HYGON, nvidia);
+#endif
+#if defined(ENABLE_METAX_API)
+        CALCULATE(INFINI_DEVICE_METAX, metax);
+#endif
+
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
@@ -150,26 +149,28 @@ __C infiniStatus_t infiniopDestroyKVCachingDescriptor(
 
     switch (desc->device_type) {
 
-#if defined(ENABLE_NINETOOTHED)
-#if defined(ENABLE_NVIDIA_API)
-        DELETE(INFINI_DEVICE_NVIDIA, ninetoothed);
-#endif
-#if defined(ENABLE_ILUVATAR_API)
-        DELETE(INFINI_DEVICE_ILUVATAR, ninetoothed);
-#endif
-#if defined(ENABLE_METAX_API)
-        DELETE(INFINI_DEVICE_METAX, ninetoothed);
-#endif
-#endif
-
 #ifdef ENABLE_NVIDIA_API
         DELETE(INFINI_DEVICE_NVIDIA, nvidia);
 #endif
 #ifdef ENABLE_QY_API
         DELETE(INFINI_DEVICE_QY, nvidia);
 #endif
+#ifdef ENABLE_ILUVATAR_API
+        DELETE(INFINI_DEVICE_ILUVATAR, nvidia);
+#endif
+#ifdef ENABLE_ALI_API
+        DELETE(INFINI_DEVICE_ALI, nvidia);
+#endif
+#ifdef ENABLE_HYGON_API
+        DELETE(INFINI_DEVICE_HYGON, nvidia);
+#endif
+#if defined(ENABLE_METAX_API)
+        DELETE(INFINI_DEVICE_METAX, metax);
+#endif
+
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
+
 #undef DELETE
 }

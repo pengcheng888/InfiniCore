@@ -32,6 +32,7 @@ public:
 
         const infiniDtype_t dtype = k_cache->dtype();
         CHECK_DTYPE(dtype, INFINI_DTYPE_F16, INFINI_DTYPE_BF16, INFINI_DTYPE_F32);
+        CHECK_DTYPE(past_kv_lengths->dtype(), INFINI_DTYPE_I64);
 
         CHECK_OR_RETURN(k_cache->ndim() == 4
                             && v_cache->ndim() == 4
