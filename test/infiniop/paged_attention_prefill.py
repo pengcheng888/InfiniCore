@@ -23,13 +23,20 @@ from libinfiniop import (
 # Configuration (Internal Use Only)
 # ==============================================================================
 _TEST_CASES = [
-    # num_seqs, num_heads, num_kv_heads, head_size, block_size, max_step_len, num_rounds
-    (1, 1, 1, 128, 8, 16, 1),
-    (1, 4, 4, 128, 8, 16, 4),
-    (2, 8, 8, 128, 16, 32, 2),
-    (4, 16, 16, 128, 8, 64, 3),
-    (8, 64, 64, 128, 8, 16, 5),
-    (16, 128, 128, 128, 8, 16, 4),
+    # num_seqs, num_heads, num_kv_heads, head_size, block_size, max_step_len, num_rounds, index_dtypes
+    # index_dtype: The data type used for memory indexing of block_tables, cum_seq_lens and seq_lens
+    (1, 1, 1, 128, 8, 16, 1, InfiniDtype.I32),
+    (1, 1, 1, 128, 8, 16, 1, InfiniDtype.I64),
+    (1, 4, 4, 128, 8, 16, 4, InfiniDtype.I32),
+    (1, 4, 4, 128, 8, 16, 4, InfiniDtype.I64),
+    (2, 8, 8, 128, 16, 32, 2, InfiniDtype.I32),
+    (2, 8, 8, 128, 16, 32, 2, InfiniDtype.I64),
+    (4, 16, 16, 128, 8, 64, 3, InfiniDtype.I32),
+    (4, 16, 16, 128, 8, 64, 3, InfiniDtype.I64),
+    (8, 64, 64, 128, 8, 16, 5, InfiniDtype.I32),
+    (8, 64, 64, 128, 8, 16, 5, InfiniDtype.I64),
+    (16, 128, 128, 128, 8, 16, 4, InfiniDtype.I32),
+    (16, 128, 128, 128, 8, 16, 4, InfiniDtype.I64),
 ]
 
 _TENSOR_DTYPES = [InfiniDtype.BF16, InfiniDtype.F16]
@@ -124,13 +131,15 @@ def test(
     block_size,
     max_step_len,
     num_rounds,
+    index_dtype=InfiniDtype.I64,
     dtype=InfiniDtype.F16,
     sync=None,
 ):
     print(
         f"Testing PagedAttentionPrefill on {InfiniDeviceNames[device]} with "
         f"seqs:{num_seqs}, heads:{num_heads}, head_size:{head_size}, "
-        f"block:{block_size}, max_step_len:{max_step_len}, num_rounds:{num_rounds}, dtype:{InfiniDtypeNames[dtype]}"
+        f"block:{block_size}, max_step_len:{max_step_len}, num_rounds:{num_rounds}, dtype:{InfiniDtypeNames[dtype]}, "
+        f"index_dtype:{InfiniDtypeNames[index_dtype]}"
     )
 
     # 1. Initialize persistent resources
@@ -194,23 +203,26 @@ def test(
         out = TestTensor.from_torch(q_packed_tensors, dtype, device)
         out.actual_tensor().zero_()
 
+        # 3. Referencing index_dtype to set torch dtype
+        torch_idx_type = torch.int32 if index_dtype == InfiniDtype.I32 else torch.int64
+
         seq_lens = TestTensor.from_torch(
-            torch.tensor(seq_lens_list, dtype=torch.int64), InfiniDtype.I64, device
+            torch.tensor(seq_lens_list, dtype=torch_idx_type), index_dtype, device
         )
 
         cum_seq_lens_q = TestTensor.from_torch(
-            torch.tensor(cum_seq_lens_q_list, dtype=torch.int64),
-            InfiniDtype.I64,
+            torch.tensor(cum_seq_lens_q_list, dtype=torch_idx_type),
+            index_dtype,
             device,
         )
 
         max_blocks = max(len(t) for t in all_block_tables)
         padded_tables = [t + [0] * (max_blocks - len(t)) for t in all_block_tables]
         block_tables = TestTensor.from_torch(
-            torch.tensor(padded_tables, dtype=torch.int64), InfiniDtype.I64, device
+            torch.tensor(padded_tables, dtype=torch_idx_type), index_dtype, device
         )
 
-        # 3. Reference Calculation
+        # 4. Reference Calculation
         def torch_paged_attention_multi_turn():
             return ref_paged_attention_multi_turn(
                 q_new.torch_tensor(),
@@ -224,7 +236,7 @@ def test(
 
         ans = torch_paged_attention_multi_turn()
 
-        # 4. Infiniop Operator Execution
+        # 5. Infiniop Operator Execution
         descriptor = infiniopOperatorDescriptor_t()
         check_error(
             LIBINFINIOP.infiniopCreatePagedAttentionPrefillDescriptor(
@@ -272,7 +284,7 @@ def test(
         if sync:
             sync()
 
-        # 5. Validation
+        # 6. Validation
         atol, rtol = get_tolerance(_TOLERANCE_MAP, dtype)
         if DEBUG:
             debug(out.actual_tensor(), ans, atol=atol, rtol=rtol)

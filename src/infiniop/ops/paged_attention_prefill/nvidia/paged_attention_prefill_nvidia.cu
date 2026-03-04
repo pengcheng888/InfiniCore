@@ -47,8 +47,8 @@ INFINIOP_CUDA_KERNEL PagedAttentionPrefillHd128Warp(
     const Tdata *k_cache,
     const Tdata *v_cache,
     const Tindex *block_tables,
-    const int64_t *total_kv_lens,
-    const int64_t *cu_seqlens_q,
+    const Tindex *total_kv_lens,
+    const Tindex *cu_seqlens_q,
     const float *alibi_slopes,
     size_t num_kv_heads,
     float scale,
@@ -80,8 +80,8 @@ INFINIOP_CUDA_KERNEL PagedAttentionPrefillHd64Warp(
     const Tdata *k_cache,
     const Tdata *v_cache,
     const Tindex *block_tables,
-    const int64_t *total_kv_lens,
-    const int64_t *cu_seqlens_q,
+    const Tindex *total_kv_lens,
+    const Tindex *cu_seqlens_q,
     const float *alibi_slopes,
     size_t num_kv_heads,
     float scale,
@@ -113,8 +113,8 @@ INFINIOP_CUDA_KERNEL PagedAttentionPrefillHd128WarpCta(
     const Tdata *k_cache,
     const Tdata *v_cache,
     const Tindex *block_tables,
-    const int64_t *total_kv_lens,
-    const int64_t *cu_seqlens_q,
+    const Tindex *total_kv_lens,
+    const Tindex *cu_seqlens_q,
     const float *alibi_slopes,
     size_t num_kv_heads,
     float scale,
@@ -149,8 +149,8 @@ INFINIOP_CUDA_KERNEL PagedAttentionPrefillHd64WarpCta(
     const Tdata *k_cache,
     const Tdata *v_cache,
     const Tindex *block_tables,
-    const int64_t *total_kv_lens,
-    const int64_t *cu_seqlens_q,
+    const Tindex *total_kv_lens,
+    const Tindex *cu_seqlens_q,
     const float *alibi_slopes,
     size_t num_kv_heads,
     float scale,
@@ -185,8 +185,8 @@ INFINIOP_CUDA_KERNEL PagedAttentionPrefillHd128WarpCta8(
     const Tdata *k_cache,
     const Tdata *v_cache,
     const Tindex *block_tables,
-    const int64_t *total_kv_lens,
-    const int64_t *cu_seqlens_q,
+    const Tindex *total_kv_lens,
+    const Tindex *cu_seqlens_q,
     const float *alibi_slopes,
     size_t num_kv_heads,
     float scale,
@@ -221,8 +221,8 @@ INFINIOP_CUDA_KERNEL PagedAttentionPrefillHd128WarpCta8N128(
     const Tdata *k_cache,
     const Tdata *v_cache,
     const Tindex *block_tables,
-    const int64_t *total_kv_lens,
-    const int64_t *cu_seqlens_q,
+    const Tindex *total_kv_lens,
+    const Tindex *cu_seqlens_q,
     const float *alibi_slopes,
     size_t num_kv_heads,
     float scale,
@@ -258,8 +258,8 @@ INFINIOP_CUDA_KERNEL PagedAttentionPrefillHd64WarpCta8(
     const Tdata *k_cache,
     const Tdata *v_cache,
     const Tindex *block_tables,
-    const int64_t *total_kv_lens,
-    const int64_t *cu_seqlens_q,
+    const Tindex *total_kv_lens,
+    const Tindex *cu_seqlens_q,
     const float *alibi_slopes,
     size_t num_kv_heads,
     float scale,
@@ -294,8 +294,8 @@ INFINIOP_CUDA_KERNEL PagedAttentionPrefillHd128WarpCta8Pipe(
     const Tdata *k_cache,
     const Tdata *v_cache,
     const Tindex *block_tables,
-    const int64_t *total_kv_lens,
-    const int64_t *cu_seqlens_q,
+    const Tindex *total_kv_lens,
+    const Tindex *cu_seqlens_q,
     const float *alibi_slopes,
     size_t num_kv_heads,
     float scale,
@@ -330,8 +330,8 @@ INFINIOP_CUDA_KERNEL PagedAttentionPrefillHd128WarpCta8Mma(
     const half *k_cache,
     const half *v_cache,
     const Tindex *block_tables,
-    const int64_t *total_kv_lens,
-    const int64_t *cu_seqlens_q,
+    const Tindex *total_kv_lens,
+    const Tindex *cu_seqlens_q,
     const float *alibi_slopes,
     size_t num_kv_heads,
     float scale,
@@ -365,8 +365,8 @@ INFINIOP_CUDA_KERNEL PagedAttentionPrefillHd64WarpCta8Pipe(
     const Tdata *k_cache,
     const Tdata *v_cache,
     const Tindex *block_tables,
-    const int64_t *total_kv_lens,
-    const int64_t *cu_seqlens_q,
+    const Tindex *total_kv_lens,
+    const Tindex *cu_seqlens_q,
     const float *alibi_slopes,
     size_t num_kv_heads,
     float scale,
@@ -405,8 +405,8 @@ INFINIOP_CUDA_KERNEL PagedAttentionPrefillHd128WarpCta8PipeSplitKv(
     const Tdata *k_cache,
     const Tdata *v_cache,
     const Tindex *block_tables,
-    const int64_t *total_kv_lens,
-    const int64_t *cu_seqlens_q,
+    const Tindex *total_kv_lens,
+    const Tindex *cu_seqlens_q,
     const float *alibi_slopes,
     size_t num_kv_heads,
     float scale,
@@ -448,8 +448,8 @@ INFINIOP_CUDA_KERNEL PagedAttentionPrefillHd64WarpCta8PipeSplitKv(
     const Tdata *k_cache,
     const Tdata *v_cache,
     const Tindex *block_tables,
-    const int64_t *total_kv_lens,
-    const int64_t *cu_seqlens_q,
+    const Tindex *total_kv_lens,
+    const Tindex *cu_seqlens_q,
     const float *alibi_slopes,
     size_t num_kv_heads,
     float scale,
@@ -513,8 +513,8 @@ INFINIOP_CUDA_KERNEL PagedAttentionPrefillHd128WarpCta16(
     const Tdata *k_cache,
     const Tdata *v_cache,
     const Tindex *block_tables,
-    const int64_t *total_kv_lens,
-    const int64_t *cu_seqlens_q,
+    const Tindex *total_kv_lens,
+    const Tindex *cu_seqlens_q,
     const float *alibi_slopes,
     size_t num_kv_heads,
     float scale,
@@ -549,8 +549,8 @@ INFINIOP_CUDA_KERNEL PagedAttentionPrefillHd64WarpCta16(
     const Tdata *k_cache,
     const Tdata *v_cache,
     const Tindex *block_tables,
-    const int64_t *total_kv_lens,
-    const int64_t *cu_seqlens_q,
+    const Tindex *total_kv_lens,
+    const Tindex *cu_seqlens_q,
     const float *alibi_slopes,
     size_t num_kv_heads,
     float scale,
@@ -585,8 +585,8 @@ infiniStatus_t launch_prefill_ref(
     const Tdata *k_cache,
     const Tdata *v_cache,
     const Tindex *block_tables,
-    const int64_t *total_kv_lens,
-    const int64_t *cu_seqlens_q,
+    const Tindex *total_kv_lens,
+    const Tindex *cu_seqlens_q,
     const float *alibi_slopes,
     size_t num_heads,
     size_t num_seqs,
@@ -646,8 +646,8 @@ infiniStatus_t launch_prefill_warp(
     const Tdata *k_cache,
     const Tdata *v_cache,
     const Tindex *block_tables,
-    const int64_t *total_kv_lens,
-    const int64_t *cu_seqlens_q,
+    const Tindex *total_kv_lens,
+    const Tindex *cu_seqlens_q,
     const float *alibi_slopes,
     size_t num_heads,
     size_t num_seqs,
@@ -713,8 +713,8 @@ infiniStatus_t launch_prefill(
     const Tdata *k_cache,
     const Tdata *v_cache,
     const Tindex *block_tables,
-    const int64_t *total_kv_lens,
-    const int64_t *cu_seqlens_q,
+    const Tindex *total_kv_lens,
+    const Tindex *cu_seqlens_q,
     const float *alibi_slopes,
     size_t num_heads,
     size_t num_seqs,
@@ -779,8 +779,8 @@ infiniStatus_t launch_prefill_warpcta8(
     const Tdata *k_cache,
     const Tdata *v_cache,
     const Tindex *block_tables,
-    const int64_t *total_kv_lens,
-    const int64_t *cu_seqlens_q,
+    const Tindex *total_kv_lens,
+    const Tindex *cu_seqlens_q,
     const float *alibi_slopes,
     size_t num_heads,
     size_t num_seqs,
@@ -845,8 +845,8 @@ infiniStatus_t launch_prefill_warpcta8pipe(
     const Tdata *k_cache,
     const Tdata *v_cache,
     const Tindex *block_tables,
-    const int64_t *total_kv_lens,
-    const int64_t *cu_seqlens_q,
+    const Tindex *total_kv_lens,
+    const Tindex *cu_seqlens_q,
     const float *alibi_slopes,
     size_t num_heads,
     size_t num_seqs,
@@ -911,8 +911,8 @@ infiniStatus_t launch_prefill_warpcta8mma(
     const Tdata *k_cache,
     const Tdata *v_cache,
     const Tindex *block_tables,
-    const int64_t *total_kv_lens,
-    const int64_t *cu_seqlens_q,
+    const Tindex *total_kv_lens,
+    const Tindex *cu_seqlens_q,
     const float *alibi_slopes,
     size_t num_heads,
     size_t num_seqs,
@@ -1028,8 +1028,8 @@ infiniStatus_t launch_prefill_warpcta8pipe_splitkv(
     const Tdata *k_cache,
     const Tdata *v_cache,
     const Tindex *block_tables,
-    const int64_t *total_kv_lens,
-    const int64_t *cu_seqlens_q,
+    const Tindex *total_kv_lens,
+    const Tindex *cu_seqlens_q,
     const float *alibi_slopes,
     size_t num_heads,
     size_t num_seqs,
@@ -1123,8 +1123,8 @@ infiniStatus_t launch_prefill_warpcta8n128(
     const Tdata *k_cache,
     const Tdata *v_cache,
     const Tindex *block_tables,
-    const int64_t *total_kv_lens,
-    const int64_t *cu_seqlens_q,
+    const Tindex *total_kv_lens,
+    const Tindex *cu_seqlens_q,
     const float *alibi_slopes,
     size_t num_heads,
     size_t num_seqs,
@@ -1178,8 +1178,8 @@ infiniStatus_t launch_prefill_warpcta16(
     const Tdata *k_cache,
     const Tdata *v_cache,
     const Tindex *block_tables,
-    const int64_t *total_kv_lens,
-    const int64_t *cu_seqlens_q,
+    const Tindex *total_kv_lens,
+    const Tindex *cu_seqlens_q,
     const float *alibi_slopes,
     size_t num_heads,
     size_t num_seqs,
@@ -1311,8 +1311,10 @@ infiniStatus_t Descriptor::calculate(
     auto stream = static_cast<cudaStream_t>(stream_);
 
     const float *alibi_ptr = (alibi_slopes == nullptr) ? nullptr : static_cast<const float *>(alibi_slopes);
-    const auto *total_kv_lens_i64 = static_cast<const int64_t *>(total_kv_lens);
-    const auto *cu_seqlens_q_i64 = static_cast<const int64_t *>(cum_seqlens_q);
+    // const auto *total_kv_lens_i64 = static_cast<const int64_t *>(total_kv_lens);
+    // const auto *cu_seqlens_q_i64 = static_cast<const int64_t *>(cum_seqlens_q);
+    const void *total_kv_lens_i64 = total_kv_lens;
+    const void *cu_seqlens_q_i64 = cum_seqlens_q;
 
     bool use_splitkv = false;
     if (const char *env = std::getenv("INFINIOP_FLASH_PREFILL_SPLITKV")) {
@@ -1346,7 +1348,7 @@ infiniStatus_t Descriptor::calculate(
         float *partial_m = partial_acc + static_cast<size_t>(num_splits) * n * _info.head_size;
         float *partial_l = partial_m + static_cast<size_t>(num_splits) * n;
 
-        // Dispatch by (Tdata, Tindex). total_kv_lens + cu_seqlens_q are currently always int64.
+        // Dispatch by (Tdata, Tindex). total_kv_lens + cu_seqlens_q are always int32,  but now we also support int64_t.
 #define DISPATCH_SPLITKV(Tindex, Tdata, BT_PTR)                                            \
     return launch_prefill_warpcta8pipe_splitkv<Tindex, Tdata>(                             \
         partial_acc, partial_m, partial_l, num_splits,                                     \
@@ -1355,7 +1357,9 @@ infiniStatus_t Descriptor::calculate(
         static_cast<const Tdata *>(k_cache),                                               \
         static_cast<const Tdata *>(v_cache),                                               \
         static_cast<const Tindex *>(BT_PTR),                                               \
-        total_kv_lens_i64, cu_seqlens_q_i64, alibi_ptr,                                    \
+        static_cast<const Tindex *>(total_kv_lens_i64),                                    \
+        static_cast<const Tindex *>(cu_seqlens_q_i64),                                     \
+        alibi_ptr,                                                                         \
         _info.num_heads, _info.num_seqs, _info.num_kv_heads, _info.total_q_tokens,         \
         _info.head_size, _info.scale, _info.max_num_blocks_per_seq, _info.page_block_size, \
         _info.block_table_batch_stride,                                                    \
@@ -1363,7 +1367,6 @@ infiniStatus_t Descriptor::calculate(
         _info.k_batch_stride, _info.k_row_stride, _info.k_head_stride,                     \
         _info.v_batch_stride, _info.v_row_stride, _info.v_head_stride,                     \
         _info.o_stride, _info.o_head_stride, stream)
-
         if (_info.dtype == INFINI_DTYPE_F16) {
             if (_info.index_dtype == INFINI_DTYPE_I64) {
                 DISPATCH_SPLITKV(int64_t, half, block_tables);
@@ -1425,7 +1428,7 @@ infiniStatus_t Descriptor::calculate(
             return launch_prefill_warp<Tindex, Tdata>(                                                                                                                                                                                                                                                                                 \
                 static_cast<Tdata *>(out), static_cast<const Tdata *>(q),                                                                                                                                                                                                                                                              \
                 static_cast<const Tdata *>(k_cache), static_cast<const Tdata *>(v_cache),                                                                                                                                                                                                                                              \
-                static_cast<const Tindex *>(block_tables), total_kv_lens_i64, cu_seqlens_q_i64, alibi_ptr,                                                                                                                                                                                                                             \
+                static_cast<const Tindex *>(block_tables), static_cast<const Tindex *>(total_kv_lens_i64), static_cast<const Tindex *>(cu_seqlens_q_i64), alibi_ptr,                                                                                                                                                                   \
                 _info.num_heads, _info.num_seqs, _info.num_kv_heads, _info.total_q_tokens,                                                                                                                                                                                                                                             \
                 _info.head_size, _info.scale, _info.max_num_blocks_per_seq, _info.page_block_size,                                                                                                                                                                                                                                     \
                 _info.block_table_batch_stride,                                                                                                                                                                                                                                                                                        \
@@ -1438,7 +1441,7 @@ infiniStatus_t Descriptor::calculate(
             return launch_prefill<Tindex, Tdata>(                                                                                                                                                                                                                                                                                      \
                 static_cast<Tdata *>(out), static_cast<const Tdata *>(q),                                                                                                                                                                                                                                                              \
                 static_cast<const Tdata *>(k_cache), static_cast<const Tdata *>(v_cache),                                                                                                                                                                                                                                              \
-                static_cast<const Tindex *>(block_tables), total_kv_lens_i64, cu_seqlens_q_i64, alibi_ptr,                                                                                                                                                                                                                             \
+                static_cast<const Tindex *>(block_tables), static_cast<const Tindex *>(total_kv_lens_i64), static_cast<const Tindex *>(cu_seqlens_q_i64), alibi_ptr,                                                                                                                                                                   \
                 _info.num_heads, _info.num_seqs, _info.num_kv_heads, _info.total_q_tokens,                                                                                                                                                                                                                                             \
                 _info.head_size, _info.scale, _info.max_num_blocks_per_seq, _info.page_block_size,                                                                                                                                                                                                                                     \
                 _info.block_table_batch_stride,                                                                                                                                                                                                                                                                                        \
@@ -1451,7 +1454,7 @@ infiniStatus_t Descriptor::calculate(
             return launch_prefill_warpcta8<Tindex, Tdata>(                                                                                                                                                                                                                                                                             \
                 static_cast<Tdata *>(out), static_cast<const Tdata *>(q),                                                                                                                                                                                                                                                              \
                 static_cast<const Tdata *>(k_cache), static_cast<const Tdata *>(v_cache),                                                                                                                                                                                                                                              \
-                static_cast<const Tindex *>(block_tables), total_kv_lens_i64, cu_seqlens_q_i64, alibi_ptr,                                                                                                                                                                                                                             \
+                static_cast<const Tindex *>(block_tables), static_cast<const Tindex *>(total_kv_lens_i64), static_cast<const Tindex *>(cu_seqlens_q_i64), alibi_ptr,                                                                                                                                                                   \
                 _info.num_heads, _info.num_seqs, _info.num_kv_heads, _info.total_q_tokens,                                                                                                                                                                                                                                             \
                 _info.head_size, _info.scale, _info.max_num_blocks_per_seq, _info.page_block_size,                                                                                                                                                                                                                                     \
                 _info.block_table_batch_stride,                                                                                                                                                                                                                                                                                        \
@@ -1464,7 +1467,7 @@ infiniStatus_t Descriptor::calculate(
             return launch_prefill_warpcta8pipe<Tindex, Tdata>(                                                                                                                                                                                                                                                                         \
                 static_cast<Tdata *>(out), static_cast<const Tdata *>(q),                                                                                                                                                                                                                                                              \
                 static_cast<const Tdata *>(k_cache), static_cast<const Tdata *>(v_cache),                                                                                                                                                                                                                                              \
-                static_cast<const Tindex *>(block_tables), total_kv_lens_i64, cu_seqlens_q_i64, alibi_ptr,                                                                                                                                                                                                                             \
+                static_cast<const Tindex *>(block_tables), static_cast<const Tindex *>(total_kv_lens_i64), static_cast<const Tindex *>(cu_seqlens_q_i64), alibi_ptr,                                                                                                                                                                   \
                 _info.num_heads, _info.num_seqs, _info.num_kv_heads, _info.total_q_tokens,                                                                                                                                                                                                                                             \
                 _info.head_size, _info.scale, _info.max_num_blocks_per_seq, _info.page_block_size,                                                                                                                                                                                                                                     \
                 _info.block_table_batch_stride,                                                                                                                                                                                                                                                                                        \
@@ -1478,7 +1481,7 @@ infiniStatus_t Descriptor::calculate(
                 return launch_prefill_warpcta8mma<Tindex, Tdata>(                                                                                                                                                                                                                                                                      \
                     static_cast<Tdata *>(out), static_cast<const Tdata *>(q),                                                                                                                                                                                                                                                          \
                     static_cast<const Tdata *>(k_cache), static_cast<const Tdata *>(v_cache),                                                                                                                                                                                                                                          \
-                    static_cast<const Tindex *>(block_tables), total_kv_lens_i64, cu_seqlens_q_i64, alibi_ptr,                                                                                                                                                                                                                         \
+                    static_cast<const Tindex *>(block_tables), static_cast<const Tindex *>(total_kv_lens_i64), static_cast<const Tindex *>(cu_seqlens_q_i64), alibi_ptr,                                                                                                                                                               \
                     _info.num_heads, _info.num_seqs, _info.num_kv_heads, _info.total_q_tokens,                                                                                                                                                                                                                                         \
                     _info.head_size, _info.scale, _info.max_num_blocks_per_seq, _info.page_block_size,                                                                                                                                                                                                                                 \
                     _info.block_table_batch_stride,                                                                                                                                                                                                                                                                                    \
@@ -1492,7 +1495,7 @@ infiniStatus_t Descriptor::calculate(
             return launch_prefill_warpcta8n128<Tindex, Tdata>(                                                                                                                                                                                                                                                                         \
                 static_cast<Tdata *>(out), static_cast<const Tdata *>(q),                                                                                                                                                                                                                                                              \
                 static_cast<const Tdata *>(k_cache), static_cast<const Tdata *>(v_cache),                                                                                                                                                                                                                                              \
-                static_cast<const Tindex *>(block_tables), total_kv_lens_i64, cu_seqlens_q_i64, alibi_ptr,                                                                                                                                                                                                                             \
+                static_cast<const Tindex *>(block_tables), static_cast<const Tindex *>(total_kv_lens_i64), static_cast<const Tindex *>(cu_seqlens_q_i64), alibi_ptr,                                                                                                                                                                   \
                 _info.num_heads, _info.num_seqs, _info.num_kv_heads, _info.total_q_tokens,                                                                                                                                                                                                                                             \
                 _info.head_size, _info.scale, _info.max_num_blocks_per_seq, _info.page_block_size,                                                                                                                                                                                                                                     \
                 _info.block_table_batch_stride,                                                                                                                                                                                                                                                                                        \
@@ -1505,7 +1508,7 @@ infiniStatus_t Descriptor::calculate(
             return launch_prefill_warpcta16<Tindex, Tdata>(                                                                                                                                                                                                                                                                            \
                 static_cast<Tdata *>(out), static_cast<const Tdata *>(q),                                                                                                                                                                                                                                                              \
                 static_cast<const Tdata *>(k_cache), static_cast<const Tdata *>(v_cache),                                                                                                                                                                                                                                              \
-                static_cast<const Tindex *>(block_tables), total_kv_lens_i64, cu_seqlens_q_i64, alibi_ptr,                                                                                                                                                                                                                             \
+                static_cast<const Tindex *>(block_tables), static_cast<const Tindex *>(total_kv_lens_i64), static_cast<const Tindex *>(cu_seqlens_q_i64), alibi_ptr,                                                                                                                                                                   \
                 _info.num_heads, _info.num_seqs, _info.num_kv_heads, _info.total_q_tokens,                                                                                                                                                                                                                                             \
                 _info.head_size, _info.scale, _info.max_num_blocks_per_seq, _info.page_block_size,                                                                                                                                                                                                                                     \
                 _info.block_table_batch_stride,                                                                                                                                                                                                                                                                                        \
@@ -1518,7 +1521,7 @@ infiniStatus_t Descriptor::calculate(
             return launch_prefill_ref<Tindex, Tdata, Tcompute>(                                                                                                                                                                                                                                                                        \
                 static_cast<Tdata *>(out), static_cast<const Tdata *>(q),                                                                                                                                                                                                                                                              \
                 static_cast<const Tdata *>(k_cache), static_cast<const Tdata *>(v_cache),                                                                                                                                                                                                                                              \
-                static_cast<const Tindex *>(block_tables), total_kv_lens_i64, cu_seqlens_q_i64, alibi_ptr,                                                                                                                                                                                                                             \
+                static_cast<const Tindex *>(block_tables), static_cast<const Tindex *>(total_kv_lens_i64), static_cast<const Tindex *>(cu_seqlens_q_i64), alibi_ptr,                                                                                                                                                                   \
                 _info.num_heads, _info.num_seqs, _info.num_kv_heads, _info.total_q_tokens,                                                                                                                                                                                                                                             \
                 _info.head_size, _info.scale, _info.max_num_blocks_per_seq, _info.page_block_size,                                                                                                                                                                                                                                     \
                 _info.block_table_batch_stride,                                                                                                                                                                                                                                                                                        \
