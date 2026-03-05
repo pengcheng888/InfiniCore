@@ -13,8 +13,8 @@
 #endif
 
 __INFINI_C infiniStatus_t infiniopCreateTopksoftmaxDescriptor(infiniopHandle_t handle,
-                                                       infiniopTopksoftmaxDescriptor_t *desc_ptr,
-                                                       infiniopTensorDescriptor_t x_desc) {
+                                                              infiniopTopksoftmaxDescriptor_t *desc_ptr,
+                                                              infiniopTensorDescriptor_t x_desc) {
 
 #define CREATE(CASE, NAMESPACE)                                \
     case CASE:                                                 \
@@ -81,8 +81,8 @@ __INFINI_C infiniStatus_t infiniopGetTopksoftmaxWorkspaceSize(infiniopTopksoftma
 }
 
 __INFINI_C infiniStatus_t infiniopTopksoftmax(infiniopTopksoftmaxDescriptor_t desc, void *workspace, size_t workspace_size,
-                                       void *values, void *indices, const void *x, const size_t topk, const int norm,
-                                       void *stream) {
+                                              void *values, void *indices, const void *x, const size_t topk, const int norm,
+                                              void *stream) {
     if (topk > 32) {
         return INFINI_STATUS_BAD_PARAM;
     }

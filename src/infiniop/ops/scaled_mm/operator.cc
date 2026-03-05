@@ -11,13 +11,13 @@
 #endif
 
 __INFINI_C infiniStatus_t infiniopCreateI8GemmDescriptor(infiniopHandle_t handle,
-                                                  infiniopI8GemmDescriptor_t *desc_ptr,
-                                                  infiniopTensorDescriptor_t out_desc,
-                                                  infiniopTensorDescriptor_t bias_desc,
-                                                  infiniopTensorDescriptor_t a_desc,
-                                                  infiniopTensorDescriptor_t a_scale_desc,
-                                                  infiniopTensorDescriptor_t b_desc,
-                                                  infiniopTensorDescriptor_t b_scale_desc) {
+                                                         infiniopI8GemmDescriptor_t *desc_ptr,
+                                                         infiniopTensorDescriptor_t out_desc,
+                                                         infiniopTensorDescriptor_t bias_desc,
+                                                         infiniopTensorDescriptor_t a_desc,
+                                                         infiniopTensorDescriptor_t a_scale_desc,
+                                                         infiniopTensorDescriptor_t b_desc,
+                                                         infiniopTensorDescriptor_t b_scale_desc) {
 #define CREATE(CASE, NAMESPACE)                                               \
     case CASE:                                                                \
         return op::i8gemm::NAMESPACE::Descriptor::create(                     \
@@ -67,15 +67,15 @@ __INFINI_C infiniStatus_t infiniopGetI8GemmWorkspaceSize(infiniopI8GemmDescripto
 }
 
 __INFINI_C infiniStatus_t infiniopI8Gemm(infiniopI8GemmDescriptor_t desc,
-                                  void *workspace,
-                                  size_t workspace_size,
-                                  void *out,
-                                  const void *bias,
-                                  const void *a,
-                                  const void *a_scale,
-                                  const void *b,
-                                  const void *b_scale,
-                                  void *stream) {
+                                         void *workspace,
+                                         size_t workspace_size,
+                                         void *out,
+                                         const void *bias,
+                                         const void *a,
+                                         const void *a_scale,
+                                         const void *b,
+                                         const void *b_scale,
+                                         void *stream) {
 #define CACULATE(CASE, NAMESPACE)                                                      \
     case CASE:                                                                         \
         return reinterpret_cast<op::i8gemm::NAMESPACE::Descriptor *>(desc)->calculate( \

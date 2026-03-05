@@ -16,8 +16,8 @@
 #endif
 
 __INFINI_C infiniStatus_t infiniopCreateTopkrouterDescriptor(infiniopHandle_t handle, infiniopTopkrouterDescriptor_t *desc_ptr,
-                                                      infiniopTensorDescriptor_t x_desc,
-                                                      infiniopTensorDescriptor_t correction_bias_desc) {
+                                                             infiniopTensorDescriptor_t x_desc,
+                                                             infiniopTensorDescriptor_t correction_bias_desc) {
 #define CREATE(CASE, NAMESPACE)                               \
     case CASE:                                                \
         return op::topkrouter::NAMESPACE::Descriptor::create( \
@@ -82,8 +82,8 @@ __INFINI_C infiniStatus_t infiniopGetTopkrouterWorkspaceSize(infiniopTopkrouterD
 }
 
 __INFINI_C infiniStatus_t infiniopTopkrouter(infiniopTopkrouterDescriptor_t desc, void *workspace, size_t workspace_size,
-                                      void *values, void *indices, const void *x, const void *correction_bias,
-                                      const float routed_scaling_factor, const size_t topk, void *stream) {
+                                             void *values, void *indices, const void *x, const void *correction_bias,
+                                             const float routed_scaling_factor, const size_t topk, void *stream) {
 #define CALCULATE(CASE, NAMESPACE)                                                                                          \
     case CASE:                                                                                                              \
         return reinterpret_cast<op::topkrouter::NAMESPACE::Descriptor *>(desc)->calculate(                                  \

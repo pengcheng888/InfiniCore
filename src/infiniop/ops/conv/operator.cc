@@ -10,15 +10,15 @@
 #endif
 
 __INFINI_C __export infiniStatus_t infiniopCreateConvDescriptor(infiniopHandle_t handle,
-                                                         infiniopConvDescriptor_t *desc_ptr,
-                                                         infiniopTensorDescriptor_t y_desc,
-                                                         infiniopTensorDescriptor_t x_desc,
-                                                         infiniopTensorDescriptor_t w_desc,
-                                                         infiniopTensorDescriptor_t b_desc,
-                                                         void *pads,
-                                                         void *strides,
-                                                         void *dilations,
-                                                         size_t n) {
+                                                                infiniopConvDescriptor_t *desc_ptr,
+                                                                infiniopTensorDescriptor_t y_desc,
+                                                                infiniopTensorDescriptor_t x_desc,
+                                                                infiniopTensorDescriptor_t w_desc,
+                                                                infiniopTensorDescriptor_t b_desc,
+                                                                void *pads,
+                                                                void *strides,
+                                                                void *dilations,
+                                                                size_t n) {
 #define CREATE(CASE, NAMESPACE)                                             \
     case CASE:                                                              \
         return op::conv::NAMESPACE::Descriptor::create(                     \

@@ -88,7 +88,7 @@ __INFINI_C infiniStatus_t infiniopCreateRoPEDescriptor(
 }
 
 __INFINI_C infiniStatus_t infiniopGetRoPEWorkspaceSize(infiniopRoPEDescriptor_t desc,
-                                                size_t *size) {
+                                                       size_t *size) {
 #define GET(CASE, NAMESPACE)                                                                      \
     case CASE:                                                                                    \
         *size = reinterpret_cast<const op::rope::NAMESPACE::Descriptor *>(desc)->workspaceSize(); \

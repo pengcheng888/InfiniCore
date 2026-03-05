@@ -55,7 +55,7 @@ __INFINI_C infiniStatus_t infiniopCreateDequantizeAWQDescriptor(
 }
 
 __INFINI_C infiniStatus_t infiniopGetDequantizeAWQWorkspaceSize(infiniopDequantizeAWQDescriptor_t desc,
-                                                         size_t *size) {
+                                                                size_t *size) {
 #define GET(CASE, NAMESPACE)                                                                                \
     case CASE:                                                                                              \
         *size = reinterpret_cast<const op::dequantize_awq::NAMESPACE::Descriptor *>(desc)->workspaceSize(); \

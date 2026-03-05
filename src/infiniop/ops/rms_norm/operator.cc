@@ -132,7 +132,7 @@ __INFINI_C infiniStatus_t infiniopGetRMSNormWorkspaceSize(infiniopRMSNormDescrip
 }
 
 __INFINI_C infiniStatus_t infiniopRMSNorm(infiniopRMSNormDescriptor_t desc, void *workspace, size_t workspace_size,
-                                   void *y, const void *x, const void *w, void *stream) {
+                                          void *y, const void *x, const void *w, void *stream) {
 
 #define CALCULATE(CASE, NAMESPACE)                                                       \
     case CASE:                                                                           \

@@ -10,11 +10,11 @@
 #endif
 
 __INFINI_C infiniStatus_t infiniopCreatePerChannelQuantI8Descriptor(infiniopHandle_t handle,
-                                                             infiniopPerChannelQuantI8Descriptor_t *desc_ptr,
-                                                             infiniopTensorDescriptor_t x_packed_desc,
-                                                             infiniopTensorDescriptor_t x_scale_desc,
-                                                             infiniopTensorDescriptor_t x_zero_desc,
-                                                             infiniopTensorDescriptor_t x_desc) {
+                                                                    infiniopPerChannelQuantI8Descriptor_t *desc_ptr,
+                                                                    infiniopTensorDescriptor_t x_packed_desc,
+                                                                    infiniopTensorDescriptor_t x_scale_desc,
+                                                                    infiniopTensorDescriptor_t x_zero_desc,
+                                                                    infiniopTensorDescriptor_t x_desc) {
 #define CREATE(CASE, NAMESPACE)                                                               \
     case CASE:                                                                                \
         return op::per_channel_quant_int8::NAMESPACE::Descriptor::create(                     \
@@ -62,13 +62,13 @@ __INFINI_C infiniStatus_t infiniopGetPerChannelQuantI8WorkspaceSize(infiniopPerC
 }
 
 __INFINI_C infiniStatus_t infiniopPerChannelQuantI8(infiniopPerChannelQuantI8Descriptor_t desc,
-                                             void *workspace,
-                                             size_t workspace_size,
-                                             void *x_packed,
-                                             void *x_scale,
-                                             void *x_zero,
-                                             const void *x,
-                                             void *stream) {
+                                                    void *workspace,
+                                                    size_t workspace_size,
+                                                    void *x_packed,
+                                                    void *x_scale,
+                                                    void *x_zero,
+                                                    const void *x,
+                                                    void *stream) {
 #define QUANT(CASE, NAMESPACE)                                                                         \
     case CASE:                                                                                         \
         return reinterpret_cast<op::per_channel_quant_int8::NAMESPACE::Descriptor *>(desc)->calculate( \
