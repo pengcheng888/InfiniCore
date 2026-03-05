@@ -1,3 +1,4 @@
+#if defined(ENABLE_NVIDIA_API) || defined(ENABLE_ALI_API) || defined(ENABLE_ILUVATAR_API)
 #include <cuda_runtime.h>
 
 #include <cstdint>
@@ -1556,3 +1557,4 @@ infiniStatus_t Descriptor::calculate(
 }
 
 } // namespace op::paged_attention_prefill::nvidia
+#endif
