@@ -13,6 +13,7 @@ private:
 
 public:
     infiniDtype_t dtype;
+    infiniDtype_t past_len_dtype;
     size_t batch_size, num_kv_heads, max_seq_len, seq_len, hidden_dim;
     ptrdiff_t k_cache_strides_0, k_cache_strides_1, k_cache_strides_2, k_cache_strides_3;
     ptrdiff_t v_cache_strides_0, v_cache_strides_1, v_cache_strides_2, v_cache_strides_3;
@@ -32,7 +33,8 @@ public:
 
         const infiniDtype_t dtype = k_cache->dtype();
         CHECK_DTYPE(dtype, INFINI_DTYPE_F16, INFINI_DTYPE_BF16, INFINI_DTYPE_F32);
-        CHECK_DTYPE(past_kv_lengths->dtype(), INFINI_DTYPE_I64);
+        const infiniDtype_t past_len_dtype = past_kv_lengths->dtype();
+        CHECK_DTYPE(past_len_dtype, INFINI_DTYPE_I32, INFINI_DTYPE_I64);
 
         CHECK_OR_RETURN(k_cache->ndim() == 4
                             && v_cache->ndim() == 4
@@ -78,6 +80,7 @@ public:
 
         return utils::Result<KVCachingInfo>(KVCachingInfo{
             dtype,
+            past_len_dtype,
             batch_size,
             num_kv_heads,
             max_seq_len,
