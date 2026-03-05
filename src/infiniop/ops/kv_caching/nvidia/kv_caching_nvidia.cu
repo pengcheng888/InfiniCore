@@ -8,13 +8,13 @@
 
 #include "../cuda/kernel.cuh"
 
-template <typename Tdata>
+template <typename Tdata, typename Tidx>
 INFINIOP_CUDA_KERNEL kvCaching(
     Tdata *k_cache,
     Tdata *v_cache,
     const Tdata *k,
     const Tdata *v,
-    const int64_t *past_kv_lengths,
+    const Tidx *past_kv_lengths,
     int batch_size,
     int num_kv_heads,
     int max_seq_len,
@@ -36,12 +36,12 @@ INFINIOP_CUDA_KERNEL kvCaching(
     ptrdiff_t v_strides_1,
     ptrdiff_t v_strides_2,
     ptrdiff_t v_strides_3) {
-    kvCachingKernel<Tdata>(k_cache, v_cache, k, v, past_kv_lengths,
-                           batch_size, num_kv_heads, max_seq_len, seq_len, hidden_dim,
-                           k_cache_strides_0, k_cache_strides_1, k_cache_strides_2, k_cache_strides_3,
-                           v_cache_strides_0, v_cache_strides_1, v_cache_strides_2, v_cache_strides_3,
-                           k_strides_0, k_strides_1, k_strides_2, k_strides_3,
-                           v_strides_0, v_strides_1, v_strides_2, v_strides_3);
+    kvCachingKernel<Tdata, Tidx>(k_cache, v_cache, k, v, past_kv_lengths,
+                                 batch_size, num_kv_heads, max_seq_len, seq_len, hidden_dim,
+                                 k_cache_strides_0, k_cache_strides_1, k_cache_strides_2, k_cache_strides_3,
+                                 v_cache_strides_0, v_cache_strides_1, v_cache_strides_2, v_cache_strides_3,
+                                 k_strides_0, k_strides_1, k_strides_2, k_strides_3,
+                                 v_strides_0, v_strides_1, v_strides_2, v_strides_3);
 }
 
 namespace op::kv_caching::nvidia {
@@ -71,13 +71,13 @@ infiniStatus_t Descriptor::create(
     return INFINI_STATUS_SUCCESS;
 }
 
-template <unsigned int BLOCK_SIZE, typename Tdata>
+template <unsigned int BLOCK_SIZE, typename Tdata, typename Tidx>
 infiniStatus_t launchKernel(const KVCachingInfo &info,
                             Tdata *k_cache,
                             Tdata *v_cache,
                             const Tdata *k,
                             const Tdata *v,
-                            const int64_t *past_kv_lengths,
+                            const Tidx *past_kv_lengths,
                             cudaStream_t stream, void *workspace) {
 
     int batch_size = static_cast<int>(info.batch_size);
@@ -111,7 +111,7 @@ infiniStatus_t launchKernel(const KVCachingInfo &info,
 
     int num_blocks = (total + BLOCK_SIZE - 1) / BLOCK_SIZE;
 
-    kvCaching<Tdata>
+    kvCaching<Tdata, Tidx>
         <<<num_blocks, BLOCK_SIZE, 0, stream>>>(k_cache, v_cache, k, v, past_kv_lengths,
                                                 batch_size, num_kv_heads, max_seq_len, seq_len, hidden_dim,
                                                 k_cache_strides_0, k_cache_strides_1, k_cache_strides_2, k_cache_strides_3,
@@ -129,27 +129,40 @@ infiniStatus_t Descriptor::calculate(void *workspace, size_t workspace_size,
                                      const void *past_kv_lengths,
                                      void *stream_) const {
     cudaStream_t stream = (cudaStream_t)stream_;
-#define CALCULATE_KV_CACHING(BLOCK_SIZE, TDATA) \
-    launchKernel<BLOCK_SIZE, TDATA>(_info, (TDATA *)k_cache, (TDATA *)v_cache, (const TDATA *)k, (const TDATA *)v, (const int64_t *)past_kv_lengths, stream, workspace)
-#define CALCULATE_KV_CACHING_WITH_BLOCK_SIZE(BLOCK_SIZE)            \
-    {                                                               \
-        if (_info.dtype == INFINI_DTYPE_F16)                        \
-            return CALCULATE_KV_CACHING(BLOCK_SIZE, half);          \
-        else if (_info.dtype == INFINI_DTYPE_F32)                   \
-            return CALCULATE_KV_CACHING(BLOCK_SIZE, float);         \
-        else if (_info.dtype == INFINI_DTYPE_BF16)                  \
-            return CALCULATE_KV_CACHING(BLOCK_SIZE, __nv_bfloat16); \
-        else                                                        \
-            return INFINI_STATUS_BAD_TENSOR_DTYPE;                  \
+
+#define LAUNCH_KERNEL_WITH_BLOCK_SIZE_AND_DTYPE(BLOCK_SIZE, TDATA, TIDX)             \
+    launchKernel<BLOCK_SIZE, TDATA, TIDX>(_info, (TDATA *)k_cache, (TDATA *)v_cache, \
+                                          (const TDATA *)k, (const TDATA *)v,        \
+                                          (const TIDX *)past_kv_lengths, stream, workspace)
+
+#define LAUNCH_KERNEL_WITH_BLOCK_SIZE(BLOCK_SIZE, TDATA)                            \
+    if (_info.past_len_dtype == INFINI_DTYPE_I32) {                                 \
+        return LAUNCH_KERNEL_WITH_BLOCK_SIZE_AND_DTYPE(BLOCK_SIZE, TDATA, int32_t); \
+    } else {                                                                        \
+        return LAUNCH_KERNEL_WITH_BLOCK_SIZE_AND_DTYPE(BLOCK_SIZE, TDATA, int64_t); \
     }
+
+#define LAUNCH_KERNEL_WITH_BLOCK_SIZE_AND_DATA_TYPE(BLOCK_SIZE)      \
+    {                                                                \
+        if (_info.dtype == INFINI_DTYPE_F16) {                       \
+            LAUNCH_KERNEL_WITH_BLOCK_SIZE(BLOCK_SIZE, half)          \
+        } else if (_info.dtype == INFINI_DTYPE_F32) {                \
+            LAUNCH_KERNEL_WITH_BLOCK_SIZE(BLOCK_SIZE, float)         \
+        } else if (_info.dtype == INFINI_DTYPE_BF16) {               \
+            LAUNCH_KERNEL_WITH_BLOCK_SIZE(BLOCK_SIZE, __nv_bfloat16) \
+        } else {                                                     \
+            return INFINI_STATUS_BAD_TENSOR_DTYPE;                   \
+        }                                                            \
+    }
+
     if (_opaque->internal->maxThreadsPerBlock() == CUDA_BLOCK_SIZE_1024) {
-        CALCULATE_KV_CACHING_WITH_BLOCK_SIZE(CUDA_BLOCK_SIZE_1024)
+        LAUNCH_KERNEL_WITH_BLOCK_SIZE_AND_DATA_TYPE(CUDA_BLOCK_SIZE_1024)
     } else if (_opaque->internal->maxThreadsPerBlock() == CUDA_BLOCK_SIZE_512) {
-        CALCULATE_KV_CACHING_WITH_BLOCK_SIZE(CUDA_BLOCK_SIZE_512)
+        LAUNCH_KERNEL_WITH_BLOCK_SIZE_AND_DATA_TYPE(CUDA_BLOCK_SIZE_512)
     } else if (_opaque->internal->maxThreadsPerBlock() == CUDA_BLOCK_SIZE_2048) {
-        CALCULATE_KV_CACHING_WITH_BLOCK_SIZE(CUDA_BLOCK_SIZE_2048)
+        LAUNCH_KERNEL_WITH_BLOCK_SIZE_AND_DATA_TYPE(CUDA_BLOCK_SIZE_2048)
     } else if (_opaque->internal->maxThreadsPerBlock() == CUDA_BLOCK_SIZE_4096) {
-        CALCULATE_KV_CACHING_WITH_BLOCK_SIZE(CUDA_BLOCK_SIZE_4096)
+        LAUNCH_KERNEL_WITH_BLOCK_SIZE_AND_DATA_TYPE(CUDA_BLOCK_SIZE_4096)
     } else {
         return INFINI_STATUS_DEVICE_ARCHITECTURE_NOT_SUPPORTED;
     }

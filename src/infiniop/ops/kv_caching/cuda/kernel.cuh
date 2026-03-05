@@ -1,13 +1,13 @@
 #ifndef __KV_CACHING_KERNEL_CUH__
 #define __KV_CACHING_KERNEL_CUH__
 
-template <typename Tdata>
+template <typename Tdata, typename Tidx>
 __device__ void kvCachingKernel(
     Tdata *__restrict__ k_cache,
     Tdata *__restrict__ v_cache,
     const Tdata *__restrict__ k,
     const Tdata *__restrict__ v,
-    const int64_t *__restrict__ past_kv_lengths,
+    const Tidx *__restrict__ past_kv_lengths,
     int batch_size,
     int num_kv_heads,
     int max_seq_len,
@@ -47,7 +47,7 @@ __device__ void kvCachingKernel(
         int h = idx % num_kv_heads;
         int b = idx / num_kv_heads;
 
-        int past_len = static_cast<int32_t>(past_kv_lengths[b]);
+        int past_len = static_cast<int>(past_kv_lengths[b]); // Cast to int for both types
         // write position
         int cache_s = past_len + s;
         int k_cache_offset = d * (int)k_cache_strides_3 + cache_s * (int)k_cache_strides_2 + h * (int)k_cache_strides_1 + b * (int)k_cache_strides_0;

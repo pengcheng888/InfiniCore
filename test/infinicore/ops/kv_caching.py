@@ -37,6 +37,7 @@ _TOLERANCE_MAP = {
 
 # Data types to test
 _TENSOR_DTYPES = [infinicore.float16, infinicore.bfloat16, infinicore.float32]
+_PAST_LEN_DTYPES = [infinicore.int32, infinicore.int64]
 
 
 def parse_test_cases():
@@ -64,31 +65,32 @@ def parse_test_cases():
             cache_spec = TensorSpec.from_tensor(cache_shape, strides, dtype)
             kv_spec = TensorSpec.from_tensor(kv_shape, None, dtype)
 
-            past_kv_lengths_spec = TensorSpec.from_tensor(
-                past_shape,
-                None,
-                infinicore.int64,
-                init_mode=TensorInitializer.RANDINT,
-                low=past_length,
-                high=past_length + 1,
-            )
-
-            test_cases.append(
-                TestCase(
-                    inputs=[
-                        cache_spec,
-                        cache_spec,
-                        kv_spec,
-                        kv_spec,
-                        past_kv_lengths_spec,
-                    ],
-                    kwargs={},
-                    output_spec=None,
-                    comparison_target=[0, 1],
-                    tolerance=tolerance,
-                    description=f"KV Caching",
+            for past_len_dtype in _PAST_LEN_DTYPES:
+                past_kv_lengths_spec = TensorSpec.from_tensor(
+                    past_shape,
+                    None,
+                    past_len_dtype,
+                    init_mode=TensorInitializer.RANDINT,
+                    low=past_length,
+                    high=past_length + 1,
                 )
-            )
+
+                test_cases.append(
+                    TestCase(
+                        inputs=[
+                            cache_spec,
+                            cache_spec,
+                            kv_spec,
+                            kv_spec,
+                            past_kv_lengths_spec,
+                        ],
+                        kwargs={},
+                        output_spec=None,
+                        comparison_target=[0, 1],
+                        tolerance=tolerance,
+                        description=f"KV Caching",
+                    )
+                )
 
     return test_cases
 
