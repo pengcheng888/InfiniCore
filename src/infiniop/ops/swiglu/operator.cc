@@ -72,7 +72,7 @@ __C infiniStatus_t infiniopCreateSwiGLUDescriptor(
         CREATE_CUDA(INFINI_DEVICE_ALI, nvidia);
 #endif
 #ifdef ENABLE_QY_API
-        CREATE(INFINI_DEVICE_QY, nvidia);
+        CREATE_CUDA(INFINI_DEVICE_QY, nvidia);
 #endif
 #ifdef ENABLE_HYGON_API
         CREATE_CUDA(INFINI_DEVICE_HYGON, nvidia);
