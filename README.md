@@ -159,14 +159,19 @@ python scripts/install.py [XMAKE_CONFIG_FLAGS]
 
   ```shell
 
-  (1) 在third_party目录拉取cutlass和flash attn库的源码(不需要--recursive)
+  # 在third_party目录拉取cutlass和flash attn库的源码(不需要--recursive)
 
-  (2) 设置(1)中cutlass路径的环境变量CUTLASS_ROOT
+  # 设置cutlass路径的环境变量CUTLASS_ROOT(部分环境可选)
+      export CUTLASS_ROOT=<path-to>/InfiniCore/third_party/cutlass
 
-  (3) xmake配置环节额外打开 --aten 开关，并设置 --flash-attn 库位置，例：
+  # xmake配置环节额外打开 --aten 开关，并设置 --flash-attn 库位置，例(cuda路径部分环境可使用默认)：
       xmake f --nv-gpu=y --ccl=y --cuda=$CUDA_HOME --aten=y --flash-attn=<path-to>/InfiniCore/third_party/flash-attention -cv
 
-  (4) flash attenion库会伴随infinicore_cpp_api一同编译安装
+  # 设置额外的环境变量
+      export CPLUS_INCLUDE_PATH=$CUDA_HOME/include:$CPLUS_INCLUDE_PATH
+
+  # flash attenion库会伴随infinicore_cpp_api一同编译安装
+
   ```
 
 2. 编译安装
