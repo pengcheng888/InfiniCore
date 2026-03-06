@@ -235,14 +235,14 @@ option_end()
 
 -- Flash-Attn
 option("flash-attn")
-    set_default(nil)
+    set_default("")
     set_showmenu(true)
     set_description("Path to flash-attention repo. If not set, flash-attention will not used.")
 option_end()
 
 if has_config("aten") then
     add_defines("ENABLE_ATEN")
-    if get_config("flash-attn") ~= nil then
+    if get_config("flash-attn") ~= false then
         add_defines("ENABLE_FLASH_ATTN")
     end
 end
@@ -462,7 +462,7 @@ target("infinicore_cpp_api")
     add_linkdirs(INFINI_ROOT.."/lib")
     add_links("infiniop", "infinirt", "infiniccl")
 
-    if get_config("flash-attn") == true then
+    if get_config("flash-attn") ~= "" then
         add_installfiles("(builddir)/$(plat)/$(arch)/$(mode)/flash-attn*.so", {prefixdir = "lib"})
         if has_config("nv-gpu") then
             add_deps("flash-attn-nvidia")
