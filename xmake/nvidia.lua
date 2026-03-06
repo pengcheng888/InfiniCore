@@ -145,8 +145,8 @@ target("flash-attn-nvidia")
     add_links("cudart")
     add_cugencodes("native")
 
-    before_build(function (target)
-        if FLASH_ATTN_ROOT ~= nil then
+    if FLASH_ATTN_ROOT and FLASH_ATTN_ROOT ~= false and FLASH_ATTN_ROOT ~= "" then
+        before_build(function (target)
             local TORCH_DIR = os.iorunv("python", {"-c", "import torch, os; print(os.path.dirname(torch.__file__))"}):trim()
             local PYTHON_INCLUDE = os.iorunv("python", {"-c", "import sysconfig; print(sysconfig.get_paths()['include'])"}):trim()
             local PYTHON_LIB_DIR = os.iorunv("python", {"-c", "import sysconfig; print(sysconfig.get_config_var('LIBDIR'))"}):trim()
@@ -163,11 +163,8 @@ target("flash-attn-nvidia")
             -- Link libraries
             target:add("linkdirs", TORCH_DIR .. "/lib", PYTHON_LIB_DIR)
             target:add("links", "torch", "torch_cuda", "torch_cpu", "c10", "c10_cuda", "torch_python", LIB_PYTHON)
+        end)
 
-        end
-    end)
-
-    if FLASH_ATTN_ROOT ~= nil then
         add_files(FLASH_ATTN_ROOT .. "/csrc/flash_attn/flash_api.cpp")
         add_files(FLASH_ATTN_ROOT .. "/csrc/flash_attn/src/*.cu")
         
@@ -179,6 +176,11 @@ target("flash-attn-nvidia")
         add_cuflags("-Xcompiler=-fPIC")
         add_cuflags("--forward-unknown-to-host-compiler --expt-relaxed-constexpr --use_fast_math", {force = true})
         set_values("cuda.rdc", false)
+    else
+        -- If flash-attn is not available, just create an empty target
+        before_build(function (target)
+            print("Flash Attention not available, skipping flash-attn-nvidia build")
+        end)
     end
 
     on_install(function (target) end)
