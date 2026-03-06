@@ -10,14 +10,14 @@
 #include "moore/int8_gemm_moore.h"
 #endif
 
-__C infiniStatus_t infiniopCreateI8GemmDescriptor(infiniopHandle_t handle,
-                                                  infiniopI8GemmDescriptor_t *desc_ptr,
-                                                  infiniopTensorDescriptor_t out_desc,
-                                                  infiniopTensorDescriptor_t bias_desc,
-                                                  infiniopTensorDescriptor_t a_desc,
-                                                  infiniopTensorDescriptor_t a_scale_desc,
-                                                  infiniopTensorDescriptor_t b_desc,
-                                                  infiniopTensorDescriptor_t b_scale_desc) {
+__INFINI_C infiniStatus_t infiniopCreateI8GemmDescriptor(infiniopHandle_t handle,
+                                                         infiniopI8GemmDescriptor_t *desc_ptr,
+                                                         infiniopTensorDescriptor_t out_desc,
+                                                         infiniopTensorDescriptor_t bias_desc,
+                                                         infiniopTensorDescriptor_t a_desc,
+                                                         infiniopTensorDescriptor_t a_scale_desc,
+                                                         infiniopTensorDescriptor_t b_desc,
+                                                         infiniopTensorDescriptor_t b_scale_desc) {
 #define CREATE(CASE, NAMESPACE)                                               \
     case CASE:                                                                \
         return op::i8gemm::NAMESPACE::Descriptor::create(                     \
@@ -45,7 +45,7 @@ __C infiniStatus_t infiniopCreateI8GemmDescriptor(infiniopHandle_t handle,
 #undef CREATE
 }
 
-__C infiniStatus_t infiniopGetI8GemmWorkspaceSize(infiniopI8GemmDescriptor_t desc, size_t *size) {
+__INFINI_C infiniStatus_t infiniopGetI8GemmWorkspaceSize(infiniopI8GemmDescriptor_t desc, size_t *size) {
     switch (desc->device_type) {
 #define GET(CASE, NAMESPACE)                                                                     \
     case CASE:                                                                                   \
@@ -66,16 +66,16 @@ __C infiniStatus_t infiniopGetI8GemmWorkspaceSize(infiniopI8GemmDescriptor_t des
 #undef GET
 }
 
-__C infiniStatus_t infiniopI8Gemm(infiniopI8GemmDescriptor_t desc,
-                                  void *workspace,
-                                  size_t workspace_size,
-                                  void *out,
-                                  const void *bias,
-                                  const void *a,
-                                  const void *a_scale,
-                                  const void *b,
-                                  const void *b_scale,
-                                  void *stream) {
+__INFINI_C infiniStatus_t infiniopI8Gemm(infiniopI8GemmDescriptor_t desc,
+                                         void *workspace,
+                                         size_t workspace_size,
+                                         void *out,
+                                         const void *bias,
+                                         const void *a,
+                                         const void *a_scale,
+                                         const void *b,
+                                         const void *b_scale,
+                                         void *stream) {
 #define CACULATE(CASE, NAMESPACE)                                                      \
     case CASE:                                                                         \
         return reinterpret_cast<op::i8gemm::NAMESPACE::Descriptor *>(desc)->calculate( \
@@ -96,7 +96,7 @@ __C infiniStatus_t infiniopI8Gemm(infiniopI8GemmDescriptor_t desc,
 #undef CACULATE
 }
 
-__C infiniStatus_t infiniopDestroyI8GemmDescriptor(infiniopI8GemmDescriptor_t desc) {
+__INFINI_C infiniStatus_t infiniopDestroyI8GemmDescriptor(infiniopI8GemmDescriptor_t desc) {
 #define DESTROY(CASE, NAMESPACE)                                            \
     case CASE:                                                              \
         delete reinterpret_cast<op::i8gemm::NAMESPACE::Descriptor *>(desc); \

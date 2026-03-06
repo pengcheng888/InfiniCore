@@ -9,12 +9,12 @@
 #include "moore/per_channel_quant_int8_moore.h"
 #endif
 
-__C infiniStatus_t infiniopCreatePerChannelQuantI8Descriptor(infiniopHandle_t handle,
-                                                             infiniopPerChannelQuantI8Descriptor_t *desc_ptr,
-                                                             infiniopTensorDescriptor_t x_packed_desc,
-                                                             infiniopTensorDescriptor_t x_scale_desc,
-                                                             infiniopTensorDescriptor_t x_zero_desc,
-                                                             infiniopTensorDescriptor_t x_desc) {
+__INFINI_C infiniStatus_t infiniopCreatePerChannelQuantI8Descriptor(infiniopHandle_t handle,
+                                                                    infiniopPerChannelQuantI8Descriptor_t *desc_ptr,
+                                                                    infiniopTensorDescriptor_t x_packed_desc,
+                                                                    infiniopTensorDescriptor_t x_scale_desc,
+                                                                    infiniopTensorDescriptor_t x_zero_desc,
+                                                                    infiniopTensorDescriptor_t x_desc) {
 #define CREATE(CASE, NAMESPACE)                                                               \
     case CASE:                                                                                \
         return op::per_channel_quant_int8::NAMESPACE::Descriptor::create(                     \
@@ -40,7 +40,7 @@ __C infiniStatus_t infiniopCreatePerChannelQuantI8Descriptor(infiniopHandle_t ha
 #undef CREATE
 }
 
-__C infiniStatus_t infiniopGetPerChannelQuantI8WorkspaceSize(infiniopPerChannelQuantI8Descriptor_t desc, size_t *size) {
+__INFINI_C infiniStatus_t infiniopGetPerChannelQuantI8WorkspaceSize(infiniopPerChannelQuantI8Descriptor_t desc, size_t *size) {
     switch (desc->device_type) {
 #define GET(CASE, NAMESPACE)                                                                                     \
     case CASE:                                                                                                   \
@@ -61,14 +61,14 @@ __C infiniStatus_t infiniopGetPerChannelQuantI8WorkspaceSize(infiniopPerChannelQ
 #undef GET
 }
 
-__C infiniStatus_t infiniopPerChannelQuantI8(infiniopPerChannelQuantI8Descriptor_t desc,
-                                             void *workspace,
-                                             size_t workspace_size,
-                                             void *x_packed,
-                                             void *x_scale,
-                                             void *x_zero,
-                                             const void *x,
-                                             void *stream) {
+__INFINI_C infiniStatus_t infiniopPerChannelQuantI8(infiniopPerChannelQuantI8Descriptor_t desc,
+                                                    void *workspace,
+                                                    size_t workspace_size,
+                                                    void *x_packed,
+                                                    void *x_scale,
+                                                    void *x_zero,
+                                                    const void *x,
+                                                    void *stream) {
 #define QUANT(CASE, NAMESPACE)                                                                         \
     case CASE:                                                                                         \
         return reinterpret_cast<op::per_channel_quant_int8::NAMESPACE::Descriptor *>(desc)->calculate( \
@@ -90,7 +90,7 @@ __C infiniStatus_t infiniopPerChannelQuantI8(infiniopPerChannelQuantI8Descriptor
 #undef QUANT
 }
 
-__C infiniStatus_t infiniopDestroyPerChannelQuantI8Descriptor(infiniopPerChannelQuantI8Descriptor_t desc) {
+__INFINI_C infiniStatus_t infiniopDestroyPerChannelQuantI8Descriptor(infiniopPerChannelQuantI8Descriptor_t desc) {
 #define DESTROY(CASE, NAMESPACE)                                                            \
     case CASE:                                                                              \
         delete reinterpret_cast<op::per_channel_quant_int8::NAMESPACE::Descriptor *>(desc); \
