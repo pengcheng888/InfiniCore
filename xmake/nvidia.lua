@@ -145,7 +145,7 @@ target("flash-attn-nvidia")
     add_links("cudart")
     add_cugencodes("native")
 
-    if FLASH_ATTN_ROOT and FLASH_ATTN_ROOT ~= false and FLASH_ATTN_ROOT ~= "" then
+    if FLASH_ATTN_ROOT and FLASH_ATTN_ROOT ~= "" then
         before_build(function (target)
             local TORCH_DIR = os.iorunv("python", {"-c", "import torch, os; print(os.path.dirname(torch.__file__))"}):trim()
             local PYTHON_INCLUDE = os.iorunv("python", {"-c", "import sysconfig; print(sysconfig.get_paths()['include'])"}):trim()
