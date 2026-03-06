@@ -15,7 +15,7 @@
 #include "moore/fmod_moore.h"
 #endif
 
-__C infiniStatus_t infiniopCreateFmodDescriptor(
+__INFINI_C infiniStatus_t infiniopCreateFmodDescriptor(
     infiniopHandle_t handle,
     infiniopFmodDescriptor_t *desc_ptr,
     infiniopTensorDescriptor_t c_desc,
@@ -54,7 +54,7 @@ __C infiniStatus_t infiniopCreateFmodDescriptor(
 #undef CREATE
 }
 
-__C infiniStatus_t infiniopGetFmodWorkspaceSize(infiniopFmodDescriptor_t desc, size_t *size) {
+__INFINI_C infiniStatus_t infiniopGetFmodWorkspaceSize(infiniopFmodDescriptor_t desc, size_t *size) {
 
 #define GET(CASE, NAMESPACE)                                                                      \
     case CASE:                                                                                    \
@@ -84,7 +84,7 @@ __C infiniStatus_t infiniopGetFmodWorkspaceSize(infiniopFmodDescriptor_t desc, s
     return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
 
-__C infiniStatus_t infiniopFmod(
+__INFINI_C infiniStatus_t infiniopFmod(
     infiniopFmodDescriptor_t desc,
     void *workspace,
     size_t workspace_size,
@@ -119,7 +119,7 @@ __C infiniStatus_t infiniopFmod(
 #undef CALCULATE
 }
 
-__C infiniStatus_t infiniopDestroyFmodDescriptor(infiniopFmodDescriptor_t desc) {
+__INFINI_C infiniStatus_t infiniopDestroyFmodDescriptor(infiniopFmodDescriptor_t desc) {
 
 #define GET(CASE, NAMESPACE)                                              \
     case CASE:                                                            \

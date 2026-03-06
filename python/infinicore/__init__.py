@@ -49,9 +49,12 @@ from infinicore.dtype import (
 )
 from infinicore.ops.add import add
 from infinicore.ops.add_rms_norm import add_rms_norm
-from infinicore.ops.attention import attention
-from infinicore.ops.kv_caching import kv_caching
 from infinicore.ops.asinh import asinh
+from infinicore.ops.attention import attention
+from infinicore.ops.baddbmm import baddbmm
+from infinicore.ops.bilinear import bilinear
+from infinicore.ops.fmod import fmod
+from infinicore.ops.kv_caching import kv_caching
 from infinicore.ops.matmul import matmul
 from infinicore.ops.mha_varlen import mha_varlen
 from infinicore.ops.mul import mul
@@ -62,9 +65,6 @@ from infinicore.ops.paged_caching import paged_caching
 from infinicore.ops.rearrange import rearrange
 from infinicore.ops.squeeze import squeeze
 from infinicore.ops.unsqueeze import unsqueeze
-from infinicore.ops.baddbmm import baddbmm
-from infinicore.ops.bilinear import bilinear
-from infinicore.ops.fmod import fmod
 from infinicore.tensor import (
     Tensor,
     empty,

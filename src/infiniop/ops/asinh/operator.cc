@@ -15,7 +15,7 @@
 #include "moore/asinh_moore.h"
 #endif
 
-__C infiniStatus_t infiniopCreateAsinhDescriptor(
+__INFINI_C infiniStatus_t infiniopCreateAsinhDescriptor(
     infiniopHandle_t handle,
     infiniopAsinhDescriptor_t *desc_ptr,
     infiniopTensorDescriptor_t y_desc,
@@ -50,7 +50,7 @@ __C infiniStatus_t infiniopCreateAsinhDescriptor(
 #undef CREATE
 }
 
-__C infiniStatus_t infiniopGetAsinhWorkspaceSize(infiniopAsinhDescriptor_t desc, size_t *size) {
+__INFINI_C infiniStatus_t infiniopGetAsinhWorkspaceSize(infiniopAsinhDescriptor_t desc, size_t *size) {
 
 #define GET(CASE, NAMESPACE)                                                                       \
     case CASE:                                                                                     \
@@ -80,12 +80,12 @@ __C infiniStatus_t infiniopGetAsinhWorkspaceSize(infiniopAsinhDescriptor_t desc,
     return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
 
-__C infiniStatus_t infiniopAsinh(infiniopAsinhDescriptor_t desc,
-                                 void *workspace,
-                                 size_t workspace_size,
-                                 void *y,
-                                 const void *x,
-                                 void *stream) {
+__INFINI_C infiniStatus_t infiniopAsinh(infiniopAsinhDescriptor_t desc,
+                                        void *workspace,
+                                        size_t workspace_size,
+                                        void *y,
+                                        const void *x,
+                                        void *stream) {
 #define CALCULATE(CASE, NAMESPACE)                                              \
     case CASE:                                                                  \
         return reinterpret_cast<const op::asinh::NAMESPACE::Descriptor *>(desc) \
@@ -112,7 +112,7 @@ __C infiniStatus_t infiniopAsinh(infiniopAsinhDescriptor_t desc,
 #undef CALCULATE
 }
 
-__C infiniStatus_t infiniopDestroyAsinhDescriptor(infiniopAsinhDescriptor_t desc) {
+__INFINI_C infiniStatus_t infiniopDestroyAsinhDescriptor(infiniopAsinhDescriptor_t desc) {
 #define DESTROY(CASE, NAMESPACE)                                           \
     case CASE:                                                             \
         delete reinterpret_cast<op::asinh::NAMESPACE::Descriptor *>(desc); \
