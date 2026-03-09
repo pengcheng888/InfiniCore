@@ -61,6 +61,7 @@ from infinicore.ops.cross_entropy import cross_entropy
 from infinicore.ops.equal import equal
 from infinicore.ops.kv_caching import kv_caching
 from infinicore.ops.matmul import matmul
+from infinicore.ops.mha_kvcache import mha_kvcache
 from infinicore.ops.mha_varlen import mha_varlen
 from infinicore.ops.mul import mul
 from infinicore.ops.narrow import narrow
@@ -131,16 +132,15 @@ __all__ = [
     "long",
     "short",
     "uint8",
-    # Operations.
-    "addcmul",
-    "atanh",
-    "binary_cross_entropy_with_logits",
-    "cdist",
-    "reciprocal",
+    # Operators.
     "add",
+    "addcmul",
     "add_rms_norm",
     "add_rms_norm_",
+    "atanh",
     "attention",
+    "binary_cross_entropy_with_logits",
+    "cdist",
     "kv_caching",
     "matmul",
     "equal",
@@ -156,11 +156,13 @@ __all__ = [
     "from_list",
     "from_numpy",
     "from_torch",
+    "mha_kvcache",
     "mha_varlen",
     "paged_caching",
     "paged_attention",
     "paged_attention_prefill",
     "ones",
+    "reciprocal",
     "strided_empty",
     "strided_from_blob",
     "zeros",

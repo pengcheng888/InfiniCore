@@ -2,6 +2,8 @@
 
 #include "infinicore/adaptor/flash_attention_adaptor.hpp"
 
+#include <stdexcept>
+
 namespace infinicore::op::mha_kvcache_impl::flashattn {
 
 struct PlannedMeta {
@@ -30,26 +32,27 @@ void *plan(Tensor out,
 }
 
 void run(void *planned_meta) {
+#ifdef ENABLE_FLASH_ATTN
     c10::cuda::CUDAStreamGuard guard(infinicore::adaptor::get_cuda_stream());
     auto *p = reinterpret_cast<PlannedMeta *>(planned_meta);
 
-    auto out       = std::optional<at::Tensor>(infinicore::adaptor::to_aten_tensor(p->out));
-    auto q         = infinicore::adaptor::to_aten_tensor(p->q);
-    auto k_cache   = infinicore::adaptor::to_aten_tensor(p->k_cache);
-    auto v_cache   = infinicore::adaptor::to_aten_tensor(p->v_cache);
+    auto out = std::optional<at::Tensor>(infinicore::adaptor::to_aten_tensor(p->out));
+    auto q = infinicore::adaptor::to_aten_tensor(p->q);
+    auto k_cache = infinicore::adaptor::to_aten_tensor(p->k_cache);
+    auto v_cache = infinicore::adaptor::to_aten_tensor(p->v_cache);
     auto seqlens_k = std::optional<const at::Tensor>(infinicore::adaptor::to_aten_tensor(p->seqlens_k));
     auto block_table = std::optional<at::Tensor>(infinicore::adaptor::to_aten_tensor(p->block_table));
     auto alibi_slopes = p->alibi_slopes
-        ? std::optional<at::Tensor>(infinicore::adaptor::to_aten_tensor(*p->alibi_slopes))
-        : std::nullopt;
+                          ? std::optional<at::Tensor>(infinicore::adaptor::to_aten_tensor(*p->alibi_slopes))
+                          : std::nullopt;
 
     // No new KV tokens to append (pure decode, KV already written to cache).
-    std::optional<const at::Tensor> k_new        = std::nullopt;
-    std::optional<const at::Tensor> v_new        = std::nullopt;
-    std::optional<const at::Tensor> rotary_cos   = std::nullopt;
-    std::optional<const at::Tensor> rotary_sin   = std::nullopt;
+    std::optional<const at::Tensor> k_new = std::nullopt;
+    std::optional<const at::Tensor> v_new = std::nullopt;
+    std::optional<const at::Tensor> rotary_cos = std::nullopt;
+    std::optional<const at::Tensor> rotary_sin = std::nullopt;
     std::optional<const at::Tensor> cache_batch_idx = std::nullopt;
-    std::optional<const at::Tensor> leftpad_k    = std::nullopt;
+    std::optional<const at::Tensor> leftpad_k = std::nullopt;
 
     flash::mha_fwd_kvcache(
         q,
@@ -66,13 +69,16 @@ void run(void *planned_meta) {
         alibi_slopes,
         out,
         p->scale,
-        true,   // is_causal
-        -1,     // window_size_left  (-1 = no sliding window)
-        -1,     // window_size_right
-        0.0f,   // softcap
-        false,  // is_rotary_interleaved
-        0       // num_splits (0 = auto)
+        true,  // is_causal
+        -1,    // window_size_left  (-1 = no sliding window)
+        -1,    // window_size_right
+        0.0f,  // softcap
+        false, // is_rotary_interleaved
+        0      // num_splits (0 = auto)
     );
+#else
+    throw std::runtime_error("FlashAttention is not enabled in this build");
+#endif
 }
 
 void cleanup(void **planned_meta_ptr) {
