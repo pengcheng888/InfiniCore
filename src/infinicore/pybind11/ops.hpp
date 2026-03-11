@@ -22,6 +22,7 @@
 #include "ops/linear.hpp"
 #include "ops/linear_w8a8i8.hpp"
 #include "ops/matmul.hpp"
+#include "ops/mha_kvcache.hpp"
 #include "ops/mha_varlen.hpp"
 #include "ops/mul.hpp"
 #include "ops/paged_attention.hpp"
@@ -54,6 +55,7 @@ inline void bind(py::module &m) {
     bind_linear(m);
     bind_matmul(m);
     bind_mul(m);
+    bind_mha_kvcache(m);
     bind_mha_varlen(m);
     bind_hardswish(m);
     bind_hardtanh(m);
