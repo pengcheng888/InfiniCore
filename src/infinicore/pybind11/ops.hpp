@@ -2,21 +2,16 @@
 
 #include <pybind11/pybind11.h>
 
-#include "ops/adaptive_max_pool1d.hpp"
 #include "ops/add.hpp"
 #include "ops/add_rms_norm.hpp"
 #include "ops/all.hpp"
-#include "ops/asinh.hpp"
 #include "ops/attention.hpp"
 #include "ops/avg_pool1d.hpp"
-#include "ops/baddbmm.hpp"
-#include "ops/bilinear.hpp"
 #include "ops/causal_softmax.hpp"
 #include "ops/cross_entropy.hpp"
 #include "ops/embedding.hpp"
 #include "ops/equal.hpp"
 #include "ops/flash_attention.hpp"
-#include "ops/fmod.hpp"
 #include "ops/hardswish.hpp"
 #include "ops/hardtanh.hpp"
 #include "ops/kv_caching.hpp"
@@ -45,18 +40,12 @@ namespace py = pybind11;
 namespace infinicore::ops {
 
 inline void bind(py::module &m) {
-    bind_adaptive_max_pool1d(m);
     bind_add(m);
     bind_add_rms_norm(m);
     bind_attention(m);
-    bind_asinh(m);
-    bind_baddbmm(m);
-    bind_bilinear(m);
     bind_causal_softmax(m);
     bind_flash_attention(m);
     bind_kv_caching(m);
-    bind_fmod(m);
-    bind_random_sample(m);
     bind_linear(m);
     bind_matmul(m);
     bind_mul(m);
@@ -77,12 +66,12 @@ inline void bind(py::module &m) {
     bind_embedding(m);
     bind_linear_w8a8i8(m);
     bind_silu_and_mul(m);
-    bind_equal(m);
     bind_sum(m);
     bind_var_mean(m);
     bind_var(m);
     bind_topk(m);
     bind_all(m);
+    bind_equal(m);
 }
 
 } // namespace infinicore::ops
