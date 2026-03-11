@@ -16,6 +16,11 @@ hash_combine(size_t &seed, const T &value) {
 
 // Specialization for Tensor
 inline void hash_combine(size_t &seed, Tensor tensor) {
+    if (!tensor) {
+        hash_combine(seed, static_cast<size_t>(0));
+        return;
+    }
+
     hash_combine(seed, static_cast<size_t>(tensor->dtype()));
     for (Size shape : tensor->shape()) {
         hash_combine(seed, shape);
