@@ -35,6 +35,8 @@ public:
     Tensor weight_scale() const { return weight_scale_; }
     Tensor weight_zeros() const { return weight_zeros_; }
 
+    std::shared_ptr<infinicore::quantization::BaseQuantization> get_quantization() const { return quantization_; }
+
 protected:
     // Parameters
     INFINICORE_NN_PARAMETER(weight);
