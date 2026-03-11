@@ -8,12 +8,12 @@
 #include "paged_attention_prefill_kernel.h"
 #include "paged_attention_prefill_moore.h"
 
-template <typename Tdata, typename Tcompute>
+template <typename Tindex, typename Tdata, typename Tcompute>
 infiniStatus_t launchPagedAttentionPrefill(
     Tdata *out, const Tdata *q, const Tdata *k_cache, const Tdata *v_cache,
-    const int64_t *block_tables,
-    const int64_t *seq_lens,
-    const int64_t *cum_seq_lens_q,
+    const Tindex *block_tables,
+    const Tindex *seq_lens,
+    const Tindex *cum_seq_lens_q,
     const float *alibi_slopes,
     const size_t num_heads,
     const size_t num_seqs,
@@ -36,7 +36,7 @@ infiniStatus_t launchPagedAttentionPrefill(
     dim3 grid(total_q_tokens, num_heads);
     dim3 block(head_size);
 
-    op::paged_attention_prefill::cuda::pagedAttentionPrefillKernel<Tdata, Tcompute>
+    op::paged_attention_prefill::cuda::pagedAttentionPrefillKernel<Tindex, Tdata, Tcompute>
         <<<grid, block, 0, stream>>>(
             out, q, k_cache, v_cache,
             block_tables, seq_lens, cum_seq_lens_q, alibi_slopes,
@@ -99,10 +99,10 @@ infiniStatus_t Descriptor::calculate(
 
     musaStream_t stream = (musaStream_t)stream_;
 
-#define LAUNCH_KERNEL(Tdata, Tcompute)                                                             \
-    launchPagedAttentionPrefill<Tdata, Tcompute>(                                                  \
+#define DISPATCH_KERNEL(Tindex, Tdata, Tcompute)                                                             \
+    return launchPagedAttentionPrefill<Tindex, Tdata, Tcompute>(                                                  \
         (Tdata *)out, (const Tdata *)q, (const Tdata *)k_cache, (const Tdata *)v_cache,            \
-        (const int64_t *)block_tables, (const int64_t *)seq_lens, (const int64_t *)cum_seq_lens_q, \
+        static_cast<const Tindex *>(block_tables), static_cast<const Tindex *>(seq_lens), static_cast<const Tindex *>(cum_seq_lens_q), \
         (const float *)alibi_slopes,                                                               \
         _info.num_heads, _info.num_seqs, _info.num_kv_heads,                                       \
         _info.scale, _info.max_num_blocks_per_seq,                                                 \
@@ -112,12 +112,23 @@ infiniStatus_t Descriptor::calculate(
         _info.q_stride, _info.q_head_stride,                                                       \
         stream)
 
-    if (_info.dtype == INFINI_DTYPE_F16) {
-        return LAUNCH_KERNEL(half, float);
-    } else if (_info.dtype == INFINI_DTYPE_BF16) {
-        return LAUNCH_KERNEL(__mt_bfloat16, float);
-    } else if (_info.dtype == INFINI_DTYPE_F32) {
-        return LAUNCH_KERNEL(float, float);
+#define DISPATCH_INDEX(Tindex)                             \
+    do {                                                   \
+        if (_info.dtype == INFINI_DTYPE_F16) {             \
+            DISPATCH_KERNEL(Tindex, half, float);          \
+        }                                                  \
+        if (_info.dtype == INFINI_DTYPE_BF16) {            \
+            DISPATCH_KERNEL(Tindex, __nv_bfloat16, float); \
+        }                                                  \
+        return INFINI_STATUS_BAD_TENSOR_DTYPE;             \
+    } while (false)
+
+    if (_info.index_dtype == INFINI_DTYPE_I64){
+        DISPATCH_INDEX(int64_t);
+    } else if (_info.index_dtype == INFINI_DTYPE_I32){
+        DISPATCH_INDEX(int32_t);
+    } else if (_info.index_dtype == INFINI_DTYPE_U32){
+        DISPATCH_INDEX(uint32_t);
     }
 
     return INFINI_STATUS_BAD_TENSOR_DTYPE;

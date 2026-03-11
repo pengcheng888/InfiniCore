@@ -1,7 +1,9 @@
 #ifndef __PAGED_ATTENTION_PREFILL_KERNEL_CUH__
 #define __PAGED_ATTENTION_PREFILL_KERNEL_CUH__
 namespace op::paged_attention_prefill::cuda {
-__device__ __forceinline__ size_t find_seq_id(size_t token_idx, const int64_t *cum_seq_lens_q, size_t num_seqs) {
+
+template <typename Tindex>
+__device__ __forceinline__ size_t find_seq_id(size_t token_idx, const Tindex *cum_seq_lens_q, size_t num_seqs) {
     size_t low = 0, high = num_seqs - 1;
     while (low <= high) {
         size_t mid = (low + high) >> 1;
@@ -48,12 +50,12 @@ __device__ __forceinline__ float blockReduceSum(float val) {
     return shared[0];
 }
 
-template <typename Tdata, typename Tcompute>
+template <typename Tindex, typename Tdata, typename Tcompute>
 __global__ void pagedAttentionPrefillKernel(
     Tdata *out_, const Tdata *q_, const Tdata *k_cache_, const Tdata *v_cache_,
-    const int64_t *block_tables_,
-    const int64_t *total_kv_lens_,
-    const int64_t *cum_seq_lens_q_,
+    const Tindex *block_tables_,
+    const Tindex *total_kv_lens_,
+    const Tindex *cum_seq_lens_q_,
     const float *alibi_slopes_,
     const size_t num_heads, const size_t num_kv_heads, const float scale,
     const size_t max_num_blocks_per_seq, const size_t block_size,
@@ -75,7 +77,7 @@ __global__ void pagedAttentionPrefillKernel(
     __shared__ float sh_w;
     __shared__ float sh_inv_l;
     if (dim_idx == 0) {
-        sh_seq_idx = find_seq_id(global_token_idx, cum_seq_lens_q_, num_seqs);
+        sh_seq_idx = find_seq_id<Tindex>(global_token_idx, cum_seq_lens_q_, num_seqs);
         const size_t q_token_idx = global_token_idx - static_cast<size_t>(cum_seq_lens_q_[sh_seq_idx]);
         const size_t total_kv_len = static_cast<size_t>(total_kv_lens_[sh_seq_idx]);
         const size_t q_len = static_cast<size_t>(cum_seq_lens_q_[sh_seq_idx + 1] - cum_seq_lens_q_[sh_seq_idx]);
@@ -90,7 +92,7 @@ __global__ void pagedAttentionPrefillKernel(
     const size_t kv_head_idx = sh_kv_head_idx;
     const Tdata *q_vec = q_ + global_token_idx * q_stride + head_idx * q_head_stride;
     Tdata *out_ptr = out_ + global_token_idx * num_heads * head_size + head_idx * head_size;
-    const int64_t *block_table = block_tables_ + seq_idx * max_num_blocks_per_seq;
+    const Tindex *block_table = block_tables_ + seq_idx * max_num_blocks_per_seq;
     const float alibi_slope = (alibi_slopes_ == nullptr) ? 0.0f : alibi_slopes_[head_idx];
     const float qv = static_cast<float>(q_vec[dim_idx]);
     Tcompute acc = 0.0f;
