@@ -64,11 +64,7 @@ void calculate(
                 *c_ = utils::cast<Tdata>(beta * utils::cast<float>(*c_) + alpha * sum);
             }
         } else {
-            if (beta == 0) {
-                *c_ = alpha * sum;
-            } else {
-                *c_ = beta * (*c_) + alpha * sum;
-            }
+            *c_ = beta * (*c_) + alpha * sum;
         }
     }
 }

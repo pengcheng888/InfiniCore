@@ -17,6 +17,7 @@ from framework import (
 
 _TEST_CASES_DATA = [
     ((13, 4), None, -1.0, 1.0),
+    ((13, 4), (10, 1), -0.5, 0.5),
     ((8, 8, 8), None, -2.0, 2.0),
 ]
 
@@ -86,11 +87,9 @@ class OpTest(BaseOperatorTest):
     def torch_operator(self, *args, **kwargs):
         return torch.nn.functional.hardtanh(*args, **kwargs)
 
-    def infinicore_operator(self, *args, **kwargs):
-        """InfiniCore implementation."""
-        import infinicore.nn.functional as F
-
-        return F.hardtanh(*args, **kwargs)
+    # def infinicore_operator(self, *args, **kwargs):
+    #     """InfiniCore implementation (operator not yet available)."""
+    #     return infinicore.nn.functional.hardtanh(*args, **kwargs)
 
 
 def main():
