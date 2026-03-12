@@ -2,10 +2,12 @@
 #define __INFINIOP_API_H__
 
 #include "infiniop/handle.h"
+#include "infiniop/ops/adaptive_max_pool1d.h"
 #include "infiniop/ops/add.h"
 #include "infiniop/ops/add_rms_norm.h"
 #include "infiniop/ops/addcmul.h"
 #include "infiniop/ops/all.h"
+#include "infiniop/ops/asinh.h"
 #include "infiniop/ops/atanh.h"
 #include "infiniop/ops/attention.h"
 #include "infiniop/ops/avg_pool1d.h"
@@ -19,6 +21,7 @@
 #include "infiniop/ops/embedding.h"
 #include "infiniop/ops/equal.h"
 #include "infiniop/ops/flash_attention.h"
+#include "infiniop/ops/fmod.h"
 #include "infiniop/ops/gelu.h"
 #include "infiniop/ops/gemm.h"
 #include "infiniop/ops/hardswish.h"
