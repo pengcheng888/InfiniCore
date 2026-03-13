@@ -4,14 +4,10 @@
 
 #include "ops/add.hpp"
 #include "ops/add_rms_norm.hpp"
-#include "ops/addcmul.hpp"
 #include "ops/all.hpp"
-#include "ops/atanh.hpp"
 #include "ops/attention.hpp"
 #include "ops/avg_pool1d.hpp"
-#include "ops/binary_cross_entropy_with_logits.hpp"
 #include "ops/causal_softmax.hpp"
-#include "ops/cdist.hpp"
 #include "ops/cross_entropy.hpp"
 #include "ops/embedding.hpp"
 #include "ops/equal.hpp"
@@ -30,7 +26,6 @@
 #include "ops/paged_caching.hpp"
 #include "ops/random_sample.hpp"
 #include "ops/rearrange.hpp"
-#include "ops/reciprocal.hpp"
 #include "ops/rms_norm.hpp"
 #include "ops/rope.hpp"
 #include "ops/silu.hpp"
@@ -79,11 +74,6 @@ inline void bind(py::module &m) {
     bind_topk(m);
     bind_all(m);
     bind_equal(m);
-    bind_atanh(m);
-    bind_addcmul(m);
-    bind_cdist(m);
-    bind_binary_cross_entropy_with_logits(m);
-    bind_reciprocal(m);
 }
 
 } // namespace infinicore::ops
