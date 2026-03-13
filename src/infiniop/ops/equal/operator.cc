@@ -2,7 +2,6 @@
 #include "../../handle.h"
 #include "infiniop/ops/equal.h"
 
-
 #ifdef ENABLE_CPU_API
 #include "cpu/equal_cpu.h"
 #endif
@@ -22,24 +21,20 @@
 #include "moore/equal_moore.h"
 #endif
 
-
-
-
-__C infiniStatus_t infiniopCreateEqualDescriptor(
+__INFINI_C infiniStatus_t infiniopCreateEqualDescriptor(
     infiniopHandle_t handle,
     infiniopEqualDescriptor_t *desc_ptr,
-    infiniopTensorDescriptor_t c_desc, 
-    infiniopTensorDescriptor_t a_desc, 
-    infiniopTensorDescriptor_t b_desc) 
-{
+    infiniopTensorDescriptor_t c_desc,
+    infiniopTensorDescriptor_t a_desc,
+    infiniopTensorDescriptor_t b_desc) {
 
-#define CREATE(CASE, NAMESPACE)                                                       \
-    case CASE:                                                                        \
-        return op::equal::NAMESPACE::Descriptor::create(                              \
-            handle,                                                                   \
-            reinterpret_cast<op::equal::NAMESPACE::Descriptor **>(desc_ptr),          \
-            c_desc,                                                                   \
-            {a_desc, b_desc}) 
+#define CREATE(CASE, NAMESPACE)                                              \
+    case CASE:                                                               \
+        return op::equal::NAMESPACE::Descriptor::create(                     \
+            handle,                                                          \
+            reinterpret_cast<op::equal::NAMESPACE::Descriptor **>(desc_ptr), \
+            c_desc,                                                          \
+            {a_desc, b_desc})
 
     switch (handle->device) {
 
@@ -75,14 +70,11 @@ __C infiniStatus_t infiniopCreateEqualDescriptor(
 #undef CREATE
 }
 
+__INFINI_C infiniStatus_t infiniopGetEqualWorkspaceSize(infiniopEqualDescriptor_t desc, size_t *size) {
 
-
-
-__C infiniStatus_t infiniopGetEqualWorkspaceSize(infiniopEqualDescriptor_t desc, size_t *size) {
-
-#define GET(CASE, NAMESPACE)                                                                   \
-    case CASE:                                                                                 \
-        *size = reinterpret_cast<op::equal::NAMESPACE::Descriptor *>(desc)->workspaceSize();   \
+#define GET(CASE, NAMESPACE)                                                                 \
+    case CASE:                                                                               \
+        *size = reinterpret_cast<op::equal::NAMESPACE::Descriptor *>(desc)->workspaceSize(); \
         return INFINI_STATUS_SUCCESS
 
     switch (desc->device_type) {
@@ -118,21 +110,18 @@ __C infiniStatus_t infiniopGetEqualWorkspaceSize(infiniopEqualDescriptor_t desc,
     return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
 
-
-
-
-__C infiniStatus_t infiniopEqual(
+__INFINI_C infiniStatus_t infiniopEqual(
     infiniopEqualDescriptor_t desc,
     void *workspace,
     size_t workspace_size,
-    void *c,           
-    const void *a,     
-    const void *b,     
+    void *c,
+    const void *a,
+    const void *b,
     void *stream) {
 
-#define CALCULATE(CASE, NAMESPACE)                                                    \
-    case CASE:                                                                        \
-        return reinterpret_cast<const op::equal::NAMESPACE::Descriptor *>(desc)       \
+#define CALCULATE(CASE, NAMESPACE)                                              \
+    case CASE:                                                                  \
+        return reinterpret_cast<const op::equal::NAMESPACE::Descriptor *>(desc) \
             ->calculate(workspace, workspace_size, c, {a, b}, stream)
 
     switch (desc->device_type) {
@@ -169,15 +158,12 @@ __C infiniStatus_t infiniopEqual(
 #undef CALCULATE
 }
 
-
-
-
-__C infiniStatus_t
+__INFINI_C infiniStatus_t
 infiniopDestroyEqualDescriptor(infiniopEqualDescriptor_t desc) {
 
-#define DELETE(CASE, NAMESPACE)                                                         \
-    case CASE:                                                                          \
-        delete reinterpret_cast<const op::equal::NAMESPACE::Descriptor *>(desc);        \
+#define DELETE(CASE, NAMESPACE)                                                  \
+    case CASE:                                                                   \
+        delete reinterpret_cast<const op::equal::NAMESPACE::Descriptor *>(desc); \
         return INFINI_STATUS_SUCCESS
 
     switch (desc->device_type) {

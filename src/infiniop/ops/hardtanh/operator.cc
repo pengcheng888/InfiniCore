@@ -15,14 +15,13 @@
 #include "moore/hardtanh_moore.h"
 #endif
 
-__C infiniStatus_t infiniopCreateHardTanhDescriptor(
+__INFINI_C infiniStatus_t infiniopCreateHardTanhDescriptor(
     infiniopHandle_t handle,
     infiniopHardTanhDescriptor_t *desc_ptr,
     infiniopTensorDescriptor_t output_desc,
     infiniopTensorDescriptor_t input_desc,
     float min_val,
     float max_val) {
-
 
 #define CREATE(CASE, NAMESPACE)                                                 \
     case CASE:                                                                  \
@@ -59,11 +58,11 @@ __C infiniStatus_t infiniopCreateHardTanhDescriptor(
 #undef CREATE
 }
 
-__C infiniStatus_t infiniopGetHardTanhWorkspaceSize(infiniopHardTanhDescriptor_t desc, size_t *size) {
+__INFINI_C infiniStatus_t infiniopGetHardTanhWorkspaceSize(infiniopHardTanhDescriptor_t desc, size_t *size) {
 
-#define GET(CASE, NAMESPACE)                                                                        \
-    case CASE:                                                                                      \
-        *size = reinterpret_cast<op::hardtanh::NAMESPACE::Descriptor *>(desc)->workspaceSize();     \
+#define GET(CASE, NAMESPACE)                                                                    \
+    case CASE:                                                                                  \
+        *size = reinterpret_cast<op::hardtanh::NAMESPACE::Descriptor *>(desc)->workspaceSize(); \
         return INFINI_STATUS_SUCCESS
 
     switch (desc->device_type) {
@@ -90,7 +89,7 @@ __C infiniStatus_t infiniopGetHardTanhWorkspaceSize(infiniopHardTanhDescriptor_t
     return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
 
-__C infiniStatus_t infiniopHardTanh(
+__INFINI_C infiniStatus_t infiniopHardTanh(
     infiniopHardTanhDescriptor_t desc,
     void *workspace,
     size_t workspace_size,
@@ -98,8 +97,8 @@ __C infiniStatus_t infiniopHardTanh(
     const void *input,
     void *stream) {
 
-#define CALCULATE(CASE, NAMESPACE)                                             \
-    case CASE:                                                                 \
+#define CALCULATE(CASE, NAMESPACE)                                                 \
+    case CASE:                                                                     \
         return reinterpret_cast<const op::hardtanh::NAMESPACE::Descriptor *>(desc) \
             ->calculate(workspace, workspace_size, output, {input}, stream)
 
@@ -128,11 +127,11 @@ __C infiniStatus_t infiniopHardTanh(
 #undef CALCULATE
 }
 
-__C infiniStatus_t
+__INFINI_C infiniStatus_t
 infiniopDestroyHardTanhDescriptor(infiniopHardTanhDescriptor_t desc) {
 
-#define DELETE(CASE, NAMESPACE)                                                 \
-    case CASE:                                                                  \
+#define DELETE(CASE, NAMESPACE)                                                     \
+    case CASE:                                                                      \
         delete reinterpret_cast<const op::hardtanh::NAMESPACE::Descriptor *>(desc); \
         return INFINI_STATUS_SUCCESS
 

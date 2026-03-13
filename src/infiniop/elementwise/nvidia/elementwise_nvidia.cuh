@@ -5,7 +5,6 @@
 #include "../../devices/nvidia/nvidia_common.cuh"
 #include "../../devices/nvidia/nvidia_kernel_common.cuh"
 #include "elementwise_nvidia_api.cuh"
-#include <type_traits>
 
 namespace op::elementwise::nvidia {
 
@@ -217,9 +216,9 @@ struct DeviceImpl::Opaque {
         return launchElementwiseKernel<BLOCK_SIZE, N>(
             info, workspace,
             reinterpret_cast<Tdata *>(output), inputs,
-            elementwiseKernel<N, Op, Tdata, std::decay_t<Args>...>,
+            elementwiseKernel<N, Op, Tdata, Args...>,
             stream,
-            static_cast<std::decay_t<Args>>(std::forward<Args>(args))...);
+            std::forward<Args>(args)...);
     }
 
     /**

@@ -2,7 +2,6 @@
 #define __INFINIOP_ELEMENTWISE_MOORE_H__
 
 #include "../../../utils.h"
-#include <type_traits>
 #include "../../devices/moore/moore_common.h"
 #include "../../devices/moore/moore_kernel_common.h"
 #include "elementwise_moore_api.h"
@@ -116,7 +115,7 @@ struct DeviceImpl::Opaque {
         return launchElementwiseKernel<BLOCK_SIZE, N>(
             info, workspace,
             reinterpret_cast<Tdata *>(output), inputs,
-            elementwiseKernel<N, Op, Tdata, std::decay_t<Args>...>,
+            elementwiseKernel<N, Op, Tdata, Args...>,
             stream,
             std::forward<Args>(args)...);
     }

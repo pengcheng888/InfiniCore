@@ -40,7 +40,7 @@ infiniStatus_t launchFastEqualKernel(size_t numel,
     return err == cudaSuccess ? INFINI_STATUS_SUCCESS : INFINI_STATUS_INTERNAL_ERROR;
 }
 
-} 
+} // namespace
 
 namespace op::equal::nvidia {
 
@@ -53,9 +53,7 @@ infiniStatus_t Descriptor::create(
     std::vector<infiniopTensorDescriptor_t> input_desc_vec) {
 
     auto handle = reinterpret_cast<device::nvidia::Handle *>(handle_);
-    
-    
-    
+
     const auto &a_desc = input_desc_vec.at(0);
     auto compute_dtype = a_desc->dtype();
     auto out_dtype = out_desc->dtype();
@@ -65,17 +63,13 @@ infiniStatus_t Descriptor::create(
     const auto &a_shape = a_desc->shape();
     const auto &b_shape = b_desc->shape();
 
-    
-    CHECK_DTYPE(compute_dtype, INFINI_DTYPE_F16, INFINI_DTYPE_F32, INFINI_DTYPE_BF16, 
+    CHECK_DTYPE(compute_dtype, INFINI_DTYPE_F16, INFINI_DTYPE_F32, INFINI_DTYPE_BF16,
                 INFINI_DTYPE_I32, INFINI_DTYPE_I64, INFINI_DTYPE_F64);
-    
-    
+
     CHECK_DTYPE(out_dtype, INFINI_DTYPE_BOOL, INFINI_DTYPE_U8, INFINI_DTYPE_I8);
 
     CHECK_SAME_SHAPE(c_shape, a_shape, b_shape);
 
-    
-    
     CREATE_ELEMENTWISE_CUDA_DESCRIPTOR(handle, compute_dtype, out_desc, input_desc_vec)
 
     return INFINI_STATUS_SUCCESS;
@@ -88,40 +82,6 @@ infiniStatus_t Descriptor::calculate(
     std::vector<const void *> inputs,
     void *stream) const {
 
-    auto dispatch_fast_by_input = [&](auto out_tag) -> infiniStatus_t {
-        using Tout = std::decay_t<decltype(out_tag)>;
-        size_t numel = _info.getOutputSize();
-        switch (_dtype) {
-        case INFINI_DTYPE_F16:
-            return launchFastEqualKernel<Tout, half>(numel, output, inputs, stream);
-        case INFINI_DTYPE_BF16:
-            return launchFastEqualKernel<Tout, cuda_bfloat16>(numel, output, inputs, stream);
-        case INFINI_DTYPE_F32:
-            return launchFastEqualKernel<Tout, float>(numel, output, inputs, stream);
-        case INFINI_DTYPE_I32:
-            return launchFastEqualKernel<Tout, int32_t>(numel, output, inputs, stream);
-        case INFINI_DTYPE_I64:
-            return launchFastEqualKernel<Tout, int64_t>(numel, output, inputs, stream);
-        case INFINI_DTYPE_F64:
-            return launchFastEqualKernel<Tout, double>(numel, output, inputs, stream);
-        default:
-            return INFINI_STATUS_BAD_TENSOR_DTYPE;
-        }
-    };
-
-    auto dispatch_fast = [&]() -> infiniStatus_t {
-        switch (_info.getOutputDtype()) {
-        case INFINI_DTYPE_BOOL:
-            return dispatch_fast_by_input(bool{});
-        case INFINI_DTYPE_U8:
-            return dispatch_fast_by_input(uint8_t{});
-        case INFINI_DTYPE_I8:
-            return dispatch_fast_by_input(int8_t{});
-        default:
-            return INFINI_STATUS_BAD_TENSOR_DTYPE;
-        }
-    };
-
     bool fast_path = _info.isOutputContiguous();
     if (fast_path) {
         const bool *input_contiguous = _info.getInputContiguous();
@@ -132,9 +92,22 @@ infiniStatus_t Descriptor::calculate(
     }
 
     if (fast_path) {
-        auto status = dispatch_fast();
-        if (status != INFINI_STATUS_BAD_TENSOR_DTYPE) {
-            return status;
+        size_t numel = _info.getOutputSize();
+        switch (_dtype) {
+        case INFINI_DTYPE_F16:
+            return launchFastEqualKernel<bool, half>(numel, output, inputs, stream);
+        case INFINI_DTYPE_BF16:
+            return launchFastEqualKernel<bool, cuda_bfloat16>(numel, output, inputs, stream);
+        case INFINI_DTYPE_F32:
+            return launchFastEqualKernel<bool, float>(numel, output, inputs, stream);
+        case INFINI_DTYPE_I32:
+            return launchFastEqualKernel<bool, int32_t>(numel, output, inputs, stream);
+        case INFINI_DTYPE_I64:
+            return launchFastEqualKernel<bool, int64_t>(numel, output, inputs, stream);
+        case INFINI_DTYPE_F64:
+            return launchFastEqualKernel<bool, double>(numel, output, inputs, stream);
+        default:
+            return INFINI_STATUS_BAD_TENSOR_DTYPE;
         }
     }
 
@@ -142,37 +115,23 @@ infiniStatus_t Descriptor::calculate(
         return INFINI_STATUS_INSUFFICIENT_WORKSPACE;
     }
 
-    auto dispatch_by_input = [&](auto out_tag) -> infiniStatus_t {
-        using Tout = std::decay_t<decltype(out_tag)>;
-        switch (_dtype) {
-        case INFINI_DTYPE_F16:
-            return _device_info->calculate<256, cuda::EqualOp, Tout, half, half>(_info, workspace, output, inputs, stream);
-        case INFINI_DTYPE_BF16:
-            return _device_info->calculate<256, cuda::EqualOp, Tout, cuda_bfloat16, cuda_bfloat16>(_info, workspace, output, inputs, stream);
-        case INFINI_DTYPE_F32:
-            return _device_info->calculate<256, cuda::EqualOp, Tout, float, float>(_info, workspace, output, inputs, stream);
-        case INFINI_DTYPE_I32:
-            return _device_info->calculate<256, cuda::EqualOp, Tout, int32_t, int32_t>(_info, workspace, output, inputs, stream);
-        case INFINI_DTYPE_I64:
-            return _device_info->calculate<256, cuda::EqualOp, Tout, int64_t, int64_t>(_info, workspace, output, inputs, stream);
-        case INFINI_DTYPE_F64:
-            return _device_info->calculate<256, cuda::EqualOp, Tout, double, double>(_info, workspace, output, inputs, stream);
-        default:
-            return INFINI_STATUS_BAD_TENSOR_DTYPE;
-        }
-    };
-
-    switch (_info.getOutputDtype()) {
-    case INFINI_DTYPE_BOOL:
-        return dispatch_by_input(bool{});
-    case INFINI_DTYPE_U8:
-        return dispatch_by_input(uint8_t{});
-    case INFINI_DTYPE_I8:
-        return dispatch_by_input(int8_t{});
+    switch (_dtype) {
+    case INFINI_DTYPE_F16:
+        return _device_info->calculate<256, cuda::EqualOp, bool, half, half>(_info, workspace, output, inputs, stream);
+    case INFINI_DTYPE_BF16:
+        return _device_info->calculate<256, cuda::EqualOp, bool, cuda_bfloat16, cuda_bfloat16>(_info, workspace, output, inputs, stream);
+    case INFINI_DTYPE_F32:
+        return _device_info->calculate<256, cuda::EqualOp, bool, float, float>(_info, workspace, output, inputs, stream);
+    case INFINI_DTYPE_I32:
+        return _device_info->calculate<256, cuda::EqualOp, bool, int32_t, int32_t>(_info, workspace, output, inputs, stream);
+    case INFINI_DTYPE_I64:
+        return _device_info->calculate<256, cuda::EqualOp, bool, int64_t, int64_t>(_info, workspace, output, inputs, stream);
+    case INFINI_DTYPE_F64:
+        return _device_info->calculate<256, cuda::EqualOp, bool, double, double>(_info, workspace, output, inputs, stream);
     default:
         return INFINI_STATUS_BAD_TENSOR_DTYPE;
     }
 
     return INFINI_STATUS_SUCCESS;
 }
-} 
+} // namespace op::equal::nvidia

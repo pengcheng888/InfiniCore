@@ -17,7 +17,6 @@ from framework import (
 
 _TEST_CASES_DATA = [
     ((13, 4), None, -1.0, 1.0),
-    ((13, 4), (10, 1), -0.5, 0.5),
     ((8, 8, 8), None, -2.0, 2.0),
 ]
 

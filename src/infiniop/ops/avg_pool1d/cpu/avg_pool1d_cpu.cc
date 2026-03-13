@@ -1,11 +1,10 @@
 #include "avg_pool1d_cpu.h"
 #include "../../../devices/cpu/common_cpu.h"
-#include <algorithm> 
+#include <algorithm>
 
 namespace op::avg_pool1d::cpu {
 
 Descriptor::~Descriptor() = default;
-
 
 infiniStatus_t Descriptor::create(
     infiniopHandle_t handle_,
@@ -18,21 +17,18 @@ infiniStatus_t Descriptor::create(
 
     auto handle = reinterpret_cast<device::cpu::Handle *>(handle_);
 
-    
     auto info = AvgPool1dInfo::createAvgPool1dInfo(y_desc, x_desc, kernel_size, stride, padding);
     CHECK_RESULT(info);
 
-    
     *desc_ptr = new Descriptor(
         info.take(),
-        0, 
-        nullptr, 
+        0,
+        nullptr,
         handle->device,
         handle->device_id);
 
     return INFINI_STATUS_SUCCESS;
 }
-
 
 template <typename T>
 infiniStatus_t calculateAvgPool1d(const AvgPool1dInfo &info,
@@ -40,43 +36,39 @@ infiniStatus_t calculateAvgPool1d(const AvgPool1dInfo &info,
                                   const T *x) {
     const float inv_kernel = 1.0f / static_cast<float>(info.kernel_size);
 
-    
-    #pragma omp parallel for collapse(2)
-    for (ptrdiff_t b = 0; b < ptrdiff_t(info.batch); ++b) {
-        for (ptrdiff_t c = 0; c < ptrdiff_t(info.channels); ++c) {
+#pragma omp parallel for
+    for (ptrdiff_t bc = 0; bc < ptrdiff_t(info.batch * info.channels); ++bc) {
 
-            
-            size_t y_base = b * info.y_stride_batch + c * info.y_stride_channel;
-            size_t x_base = b * info.x_stride_batch + c * info.x_stride_channel;
+        ptrdiff_t b = bc / info.channels;
+        ptrdiff_t c = bc % info.channels;
 
-            
-            for (size_t ow = 0; ow < info.out_width; ++ow) {
-                size_t y_offset = y_base + ow * info.y_stride_width;
+        size_t y_base = b * info.y_stride_batch + c * info.y_stride_channel;
+        size_t x_base = b * info.x_stride_batch + c * info.x_stride_channel;
 
-                
-                long long start_w = static_cast<long long>(ow * info.stride) - info.padding;
-                long long end_w = start_w + info.kernel_size;
+        for (size_t ow = 0; ow < info.out_width; ++ow) {
+            size_t y_offset = y_base + ow * info.y_stride_width;
 
-                
-                long long valid_start = std::max(0LL, start_w);
-                long long valid_end = std::min(static_cast<long long>(info.in_width), end_w);
+            long long start_w = static_cast<long long>(ow * info.stride) - info.padding;
+            long long end_w = start_w + info.kernel_size;
 
-                float sum = 0.0f;
-                for (long long iw = valid_start; iw < valid_end; ++iw) {
-                    size_t x_offset = x_base + iw * info.x_stride_width;
-                    sum += utils::cast<float>(x[x_offset]);
-                }
+            long long valid_start = std::max(0LL, start_w);
+            long long valid_end = std::min(static_cast<long long>(info.in_width), end_w);
 
-                const float avg = sum * inv_kernel;
-                y[y_offset] = utils::cast<T>(avg);
+            float sum = 0.0f;
+            for (long long iw = valid_start; iw < valid_end; ++iw) {
+                size_t x_offset = x_base + iw * info.x_stride_width;
+                sum += utils::cast<float>(x[x_offset]);
             }
+
+            const float avg = sum * inv_kernel;
+            y[y_offset] = utils::cast<T>(avg);
         }
     }
+
     return INFINI_STATUS_SUCCESS;
 }
 
-
-#define CALCULATE(TDATA)     calculateAvgPool1d(_info, (TDATA *)y, (const TDATA *)x)
+#define CALCULATE(TDATA) calculateAvgPool1d(_info, (TDATA *)y, (const TDATA *)x)
 
 infiniStatus_t Descriptor::calculate(
     void *workspace,
@@ -101,4 +93,4 @@ infiniStatus_t Descriptor::calculate(
 
 #undef CALCULATE
 
-} 
+} // namespace op::avg_pool1d::cpu

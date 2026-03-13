@@ -51,8 +51,9 @@ from infinicore.ops.add import add
 from infinicore.ops.add_rms_norm import add_rms_norm
 from infinicore.ops.all import all
 from infinicore.ops.attention import attention
-from infinicore.ops.kv_caching import kv_caching
+from infinicore.ops.cross_entropy import cross_entropy
 from infinicore.ops.equal import equal
+from infinicore.ops.kv_caching import kv_caching
 from infinicore.ops.matmul import matmul
 from infinicore.ops.mha_kvcache import mha_kvcache
 from infinicore.ops.mha_varlen import mha_varlen
@@ -62,7 +63,6 @@ from infinicore.ops.paged_attention import paged_attention
 from infinicore.ops.paged_attention_prefill import paged_attention_prefill
 from infinicore.ops.paged_caching import paged_caching
 from infinicore.ops.rearrange import rearrange
-from infinicore.ops.cross_entropy import cross_entropy
 from infinicore.ops.squeeze import squeeze
 from infinicore.ops.sum import sum
 from infinicore.ops.topk import topk

@@ -2,11 +2,9 @@
 #include "../../handle.h"
 #include "infiniop/ops/cross_entropy.h"
 
-
 #ifdef ENABLE_CPU_API
 #include "cpu/cross_entropy_cpu.h"
 #endif
-
 
 #if defined(ENABLE_NVIDIA_API) || defined(ENABLE_ILUVATAR_API) || defined(ENABLE_QY_API) || defined(ENABLE_HYGON_API)
 #include "nvidia/cross_entropy_nvidia.cuh"
@@ -19,19 +17,17 @@
 #include "metax/cross_entropy_metax.h"
 #endif
 
-
-__C infiniStatus_t infiniopCreateCrossEntropyDescriptor(
+__INFINI_C infiniStatus_t infiniopCreateCrossEntropyDescriptor(
     infiniopHandle_t handle,
     infiniopCrossEntropyDescriptor_t *desc_ptr,
     infiniopTensorDescriptor_t y_desc,
     infiniopTensorDescriptor_t x_desc,
     infiniopTensorDescriptor_t target_desc) {
 
-    
-#define CREATE(CASE, NAMESPACE)                                                  \
-    case CASE:                                                                   \
-        return op::cross_entropy::NAMESPACE::Descriptor::create(                 \
-            handle,                                                              \
+#define CREATE(CASE, NAMESPACE)                                                      \
+    case CASE:                                                                       \
+        return op::cross_entropy::NAMESPACE::Descriptor::create(                     \
+            handle,                                                                  \
             reinterpret_cast<op::cross_entropy::NAMESPACE::Descriptor **>(desc_ptr), \
             y_desc, x_desc, target_desc);
 
@@ -57,20 +53,17 @@ __C infiniStatus_t infiniopCreateCrossEntropyDescriptor(
 #ifdef ENABLE_METAX_API
         CREATE(INFINI_DEVICE_METAX, metax)
 #endif
-        default:
-            return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
+    default:
+        return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
 #undef CREATE
 }
 
-
-
-
-__C infiniStatus_t infiniopGetCrossEntropyWorkspaceSize(
+__INFINI_C infiniStatus_t infiniopGetCrossEntropyWorkspaceSize(
     infiniopCrossEntropyDescriptor_t desc, size_t *size) {
 
-#define GET(CASE, NAMESPACE)                                                                   \
-    case CASE:                                                                                 \
+#define GET(CASE, NAMESPACE)                                                                         \
+    case CASE:                                                                                       \
         *size = reinterpret_cast<op::cross_entropy::NAMESPACE::Descriptor *>(desc)->workspaceSize(); \
         return INFINI_STATUS_SUCCESS;
 
@@ -96,16 +89,13 @@ __C infiniStatus_t infiniopGetCrossEntropyWorkspaceSize(
 #ifdef ENABLE_METAX_API
         GET(INFINI_DEVICE_METAX, metax)
 #endif
-        default:
-            return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
+    default:
+        return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
 #undef GET
 }
 
-
-
-
-__C infiniStatus_t infiniopCrossEntropy(
+__INFINI_C infiniStatus_t infiniopCrossEntropy(
     infiniopCrossEntropyDescriptor_t desc,
     void *workspace,
     size_t workspace_size,
@@ -114,9 +104,9 @@ __C infiniStatus_t infiniopCrossEntropy(
     const void *target,
     void *stream) {
 
-#define CALCULATE(CASE, NAMESPACE)                                                  \
-    case CASE:                                                                      \
-        return reinterpret_cast<op::cross_entropy::NAMESPACE::Descriptor *>(desc)   \
+#define CALCULATE(CASE, NAMESPACE)                                                \
+    case CASE:                                                                    \
+        return reinterpret_cast<op::cross_entropy::NAMESPACE::Descriptor *>(desc) \
             ->calculate(workspace, workspace_size, y, x, target, stream);
 
     switch (desc->device_type) {
@@ -141,16 +131,13 @@ __C infiniStatus_t infiniopCrossEntropy(
 #ifdef ENABLE_METAX_API
         CALCULATE(INFINI_DEVICE_METAX, metax)
 #endif
-        default:
-            return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
+    default:
+        return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
 #undef CALCULATE
 }
 
-
-
-
-__C infiniStatus_t infiniopDestroyCrossEntropyDescriptor(
+__INFINI_C infiniStatus_t infiniopDestroyCrossEntropyDescriptor(
     infiniopCrossEntropyDescriptor_t desc) {
 
 #define DESTROY(CASE, NAMESPACE)                                                   \
@@ -180,8 +167,8 @@ __C infiniStatus_t infiniopDestroyCrossEntropyDescriptor(
 #ifdef ENABLE_METAX_API
         DESTROY(INFINI_DEVICE_METAX, metax)
 #endif
-        default:
-            return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
+    default:
+        return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
 #undef DESTROY
 }

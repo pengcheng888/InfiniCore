@@ -2,7 +2,6 @@
 #include "../../handle.h"
 #include "infiniop/ops/hardswish.h"
 
-
 #ifdef ENABLE_CPU_API
 #include "cpu/hardswish_cpu.h"
 #endif
@@ -16,27 +15,19 @@
 #include "metax/hardswish_metax.h"
 #endif
 
-
-
-
-
-
-
-
-
-__C infiniStatus_t infiniopCreateHardSwishDescriptor(
+__INFINI_C infiniStatus_t infiniopCreateHardSwishDescriptor(
     infiniopHandle_t handle,
     infiniopHardSwishDescriptor_t *desc_ptr,
     infiniopTensorDescriptor_t output_desc,
     infiniopTensorDescriptor_t input_desc) {
 
-#define CREATE(CASE, NAMESPACE)                                                     \
-    case CASE:                                                                      \
-        return op::hardswish::NAMESPACE::Descriptor::create(                        \
-            handle,                                                                 \
-            reinterpret_cast<op::hardswish::NAMESPACE::Descriptor **>(desc_ptr),    \
-            output_desc,                                                            \
-            {input_desc}) 
+#define CREATE(CASE, NAMESPACE)                                                  \
+    case CASE:                                                                   \
+        return op::hardswish::NAMESPACE::Descriptor::create(                     \
+            handle,                                                              \
+            reinterpret_cast<op::hardswish::NAMESPACE::Descriptor **>(desc_ptr), \
+            output_desc,                                                         \
+            {input_desc})
 
     switch (handle->device) {
 
@@ -56,7 +47,6 @@ __C infiniStatus_t infiniopCreateHardSwishDescriptor(
         CREATE(INFINI_DEVICE_METAX, metax);
 #endif
 
-
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
@@ -64,14 +54,11 @@ __C infiniStatus_t infiniopCreateHardSwishDescriptor(
 #undef CREATE
 }
 
+__INFINI_C infiniStatus_t infiniopGetHardSwishWorkspaceSize(infiniopHardSwishDescriptor_t desc, size_t *size) {
 
-
-
-__C infiniStatus_t infiniopGetHardSwishWorkspaceSize(infiniopHardSwishDescriptor_t desc, size_t *size) {
-
-#define GET(CASE, NAMESPACE)                                                                        \
-    case CASE:                                                                                      \
-        *size = reinterpret_cast<op::hardswish::NAMESPACE::Descriptor *>(desc)->workspaceSize();    \
+#define GET(CASE, NAMESPACE)                                                                     \
+    case CASE:                                                                                   \
+        *size = reinterpret_cast<op::hardswish::NAMESPACE::Descriptor *>(desc)->workspaceSize(); \
         return INFINI_STATUS_SUCCESS
 
     switch (desc->device_type) {
@@ -99,10 +86,7 @@ __C infiniStatus_t infiniopGetHardSwishWorkspaceSize(infiniopHardSwishDescriptor
     return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
 
-
-
-
-__C infiniStatus_t infiniopHardSwish(
+__INFINI_C infiniStatus_t infiniopHardSwish(
     infiniopHardSwishDescriptor_t desc,
     void *workspace,
     size_t workspace_size,
@@ -110,11 +94,10 @@ __C infiniStatus_t infiniopHardSwish(
     const void *input,
     void *stream) {
 
-#define CALCULATE(CASE, NAMESPACE)                                                      \
-    case CASE:                                                                          \
-        return reinterpret_cast<const op::hardswish::NAMESPACE::Descriptor *>(desc)     \
-            ->calculate(workspace, workspace_size, output, {input}, stream)             \
-            
+#define CALCULATE(CASE, NAMESPACE)                                                  \
+    case CASE:                                                                      \
+        return reinterpret_cast<const op::hardswish::NAMESPACE::Descriptor *>(desc) \
+            ->calculate(workspace, workspace_size, output, {input}, stream)
 
     switch (desc->device_type) {
 
@@ -141,14 +124,11 @@ __C infiniStatus_t infiniopHardSwish(
 #undef CALCULATE
 }
 
+__INFINI_C infiniStatus_t infiniopDestroyHardSwishDescriptor(infiniopHardSwishDescriptor_t desc) {
 
-
-
-__C infiniStatus_t infiniopDestroyHardSwishDescriptor(infiniopHardSwishDescriptor_t desc) {
-
-#define DELETE(CASE, NAMESPACE)                                                         \
-    case CASE:                                                                          \
-        delete reinterpret_cast<const op::hardswish::NAMESPACE::Descriptor *>(desc);    \
+#define DELETE(CASE, NAMESPACE)                                                      \
+    case CASE:                                                                       \
+        delete reinterpret_cast<const op::hardswish::NAMESPACE::Descriptor *>(desc); \
         return INFINI_STATUS_SUCCESS
 
     switch (desc->device_type) {

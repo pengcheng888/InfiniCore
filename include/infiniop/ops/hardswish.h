@@ -3,23 +3,19 @@
 
 #include "../operator_descriptor.h"
 
-
 typedef struct InfiniopDescriptor *infiniopHardSwishDescriptor_t;
 
-
-__C __export infiniStatus_t infiniopCreateHardSwishDescriptor(
+__INFINI_C __export infiniStatus_t infiniopCreateHardSwishDescriptor(
     infiniopHandle_t handle,
     infiniopHardSwishDescriptor_t *desc_ptr,
     infiniopTensorDescriptor_t output,
     infiniopTensorDescriptor_t input);
 
-
-__C __export infiniStatus_t infiniopGetHardSwishWorkspaceSize(
-    infiniopHardSwishDescriptor_t desc, 
+__INFINI_C __export infiniStatus_t infiniopGetHardSwishWorkspaceSize(
+    infiniopHardSwishDescriptor_t desc,
     size_t *size);
 
-
-__C __export infiniStatus_t infiniopHardSwish(
+__INFINI_C __export infiniStatus_t infiniopHardSwish(
     infiniopHardSwishDescriptor_t desc,
     void *workspace,
     size_t workspace_size,
@@ -27,8 +23,7 @@ __C __export infiniStatus_t infiniopHardSwish(
     const void *input,
     void *stream);
 
-
-__C __export infiniStatus_t infiniopDestroyHardSwishDescriptor(
+__INFINI_C __export infiniStatus_t infiniopDestroyHardSwishDescriptor(
     infiniopHardSwishDescriptor_t desc);
 
-#endif 
+#endif

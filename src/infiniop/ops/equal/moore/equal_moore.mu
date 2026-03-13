@@ -79,7 +79,7 @@ infiniStatus_t Descriptor::create(
     CHECK_DTYPE(compute_dtype, INFINI_DTYPE_F16, INFINI_DTYPE_F32, INFINI_DTYPE_BF16,
                 INFINI_DTYPE_I32, INFINI_DTYPE_I64, INFINI_DTYPE_F64);
 
-    CHECK_DTYPE(out_dtype, INFINI_DTYPE_BOOL, INFINI_DTYPE_U8, INFINI_DTYPE_I8);
+    CHECK_DTYPE(out_dtype, INFINI_DTYPE_BOOL);
 
     CHECK_SAME_SHAPE(c_shape, a_shape, b_shape);
 
@@ -95,45 +95,23 @@ infiniStatus_t Descriptor::calculate(
     void *output,
     std::vector<const void *> inputs,
     void *stream) const {
-
-    auto dispatch_fast_by_input = [&](auto out_tag) -> infiniStatus_t {
-        using Tout = std::decay_t<decltype(out_tag)>;
+    if (can_use_contiguous_fast_path(_info)) {
         size_t numel = _info.getOutputSize();
         switch (_dtype) {
         case INFINI_DTYPE_F16:
-            return launch_fast_path<Tout, half>(numel, output, inputs, stream);
+            return launch_fast_path<bool, half>(numel, output, inputs, stream);
         case INFINI_DTYPE_BF16:
-            return launch_fast_path<Tout, cuda_bfloat16>(numel, output, inputs, stream);
+            return launch_fast_path<bool, cuda_bfloat16>(numel, output, inputs, stream);
         case INFINI_DTYPE_F32:
-            return launch_fast_path<Tout, float>(numel, output, inputs, stream);
+            return launch_fast_path<bool, float>(numel, output, inputs, stream);
         case INFINI_DTYPE_I32:
-            return launch_fast_path<Tout, int32_t>(numel, output, inputs, stream);
+            return launch_fast_path<bool, int32_t>(numel, output, inputs, stream);
         case INFINI_DTYPE_I64:
-            return launch_fast_path<Tout, int64_t>(numel, output, inputs, stream);
+            return launch_fast_path<bool, int64_t>(numel, output, inputs, stream);
         case INFINI_DTYPE_F64:
-            return launch_fast_path<Tout, double>(numel, output, inputs, stream);
+            return launch_fast_path<bool, double>(numel, output, inputs, stream);
         default:
             return INFINI_STATUS_BAD_TENSOR_DTYPE;
-        }
-    };
-
-    auto dispatch_fast = [&]() -> infiniStatus_t {
-        switch (_info.getOutputDtype()) {
-        case INFINI_DTYPE_BOOL:
-            return dispatch_fast_by_input(bool{});
-        case INFINI_DTYPE_U8:
-            return dispatch_fast_by_input(uint8_t{});
-        case INFINI_DTYPE_I8:
-            return dispatch_fast_by_input(int8_t{});
-        default:
-            return INFINI_STATUS_BAD_TENSOR_DTYPE;
-        }
-    };
-
-    if (can_use_contiguous_fast_path(_info)) {
-        auto status = dispatch_fast();
-        if (status != INFINI_STATUS_BAD_TENSOR_DTYPE) {
-            return status;
         }
     }
 
@@ -141,38 +119,22 @@ infiniStatus_t Descriptor::calculate(
         return INFINI_STATUS_INSUFFICIENT_WORKSPACE;
     }
 
-    auto dispatch_by_input = [&](auto out_tag) -> infiniStatus_t {
-        using Tout = std::decay_t<decltype(out_tag)>;
-        switch (_dtype) {
-        case INFINI_DTYPE_F16:
-            return _device_info->calculate<256, moore::EqualOp, Tout, half, half>(_info, workspace, output, inputs, stream);
-        case INFINI_DTYPE_BF16:
-            return _device_info->calculate<256, moore::EqualOp, Tout, cuda_bfloat16, cuda_bfloat16>(_info, workspace, output, inputs, stream);
-        case INFINI_DTYPE_F32:
-            return _device_info->calculate<256, moore::EqualOp, Tout, float, float>(_info, workspace, output, inputs, stream);
-        case INFINI_DTYPE_I32:
-            return _device_info->calculate<256, moore::EqualOp, Tout, int32_t, int32_t>(_info, workspace, output, inputs, stream);
-        case INFINI_DTYPE_I64:
-            return _device_info->calculate<256, moore::EqualOp, Tout, int64_t, int64_t>(_info, workspace, output, inputs, stream);
-        case INFINI_DTYPE_F64:
-            return _device_info->calculate<256, moore::EqualOp, Tout, double, double>(_info, workspace, output, inputs, stream);
-        default:
-            return INFINI_STATUS_BAD_TENSOR_DTYPE;
-        }
-    };
-
-    switch (_info.getOutputDtype()) {
-    case INFINI_DTYPE_BOOL:
-        return dispatch_by_input(bool{});
-    case INFINI_DTYPE_U8:
-        return dispatch_by_input(uint8_t{});
-    case INFINI_DTYPE_I8:
-        return dispatch_by_input(int8_t{});
+    switch (_dtype) {
+    case INFINI_DTYPE_F16:
+        return _device_info->calculate<256, moore::EqualOp, bool, half, half>(_info, workspace, output, inputs, stream);
+    case INFINI_DTYPE_BF16:
+        return _device_info->calculate<256, moore::EqualOp, bool, cuda_bfloat16, cuda_bfloat16>(_info, workspace, output, inputs, stream);
+    case INFINI_DTYPE_F32:
+        return _device_info->calculate<256, moore::EqualOp, bool, float, float>(_info, workspace, output, inputs, stream);
+    case INFINI_DTYPE_I32:
+        return _device_info->calculate<256, moore::EqualOp, bool, int32_t, int32_t>(_info, workspace, output, inputs, stream);
+    case INFINI_DTYPE_I64:
+        return _device_info->calculate<256, moore::EqualOp, bool, int64_t, int64_t>(_info, workspace, output, inputs, stream);
+    case INFINI_DTYPE_F64:
+        return _device_info->calculate<256, moore::EqualOp, bool, double, double>(_info, workspace, output, inputs, stream);
     default:
         return INFINI_STATUS_BAD_TENSOR_DTYPE;
     }
-
-    return INFINI_STATUS_SUCCESS;
 }
 
 } // namespace op::equal::moore
