@@ -10,6 +10,7 @@
 #include "ops/embedding.hpp"
 #include "ops/flash_attention.hpp"
 #include "ops/kv_caching.hpp"
+#include "ops/cross_entropy.hpp"
 #include "ops/linear.hpp"
 #include "ops/linear_w8a8i8.hpp"
 #include "ops/matmul.hpp"
@@ -23,6 +24,9 @@
 #include "ops/rearrange.hpp"
 #include "ops/rms_norm.hpp"
 #include "ops/rope.hpp"
+#include "ops/hardswish.hpp"
+#include "ops/hardtanh.hpp"
+#include "ops/avg_pool1d.hpp"
 #include "ops/silu.hpp"
 #include "ops/silu_and_mul.hpp"
 #include "ops/sum.hpp"
@@ -30,6 +34,7 @@
 #include "ops/topk.hpp"
 #include "ops/var.hpp"
 #include "ops/var_mean.hpp"
+#include "ops/equal.hpp"
 
 namespace py = pybind11;
 
@@ -47,12 +52,16 @@ inline void bind(py::module &m) {
     bind_mul(m);
     bind_mha_kvcache(m);
     bind_mha_varlen(m);
+    bind_hardswish(m);
+    bind_hardtanh(m);
     bind_paged_attention(m);
     bind_paged_attention_prefill(m);
     bind_paged_caching(m);
     bind_random_sample(m);
+    bind_cross_entropy(m);
     bind_rearrange(m);
     bind_rms_norm(m);
+    bind_avg_pool1d(m);
     bind_silu(m);
     bind_swiglu(m);
     bind_rope(m);
@@ -64,6 +73,7 @@ inline void bind(py::module &m) {
     bind_var(m);
     bind_topk(m);
     bind_all(m);
+    bind_equal(m);
 }
 
 } // namespace infinicore::ops

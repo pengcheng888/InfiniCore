@@ -9,6 +9,9 @@ from .rope import RopeAlgo, rope
 from .silu import silu
 from .silu_and_mul import silu_and_mul
 from .swiglu import swiglu
+from .hardswish import hardswish
+from .avg_pool1d import avg_pool1d
+from .hardtanh import hardtanh
 
 __all__ = [
     "causal_softmax",
@@ -20,6 +23,9 @@ __all__ = [
     "RopeAlgo",
     "rope",
     "silu",
+    "hardswish",
+    "hardtanh",
+    "avg_pool1d",
     "swiglu",
     "linear_w8a8i8",
     "silu_and_mul",
