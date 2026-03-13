@@ -50,8 +50,6 @@ from infinicore.dtype import (
 from infinicore.ops.add import add
 from infinicore.ops.add_rms_norm import add_rms_norm
 from infinicore.ops.attention import attention
-from infinicore.ops.cross_entropy import cross_entropy
-from infinicore.ops.equal import equal
 from infinicore.ops.kv_caching import kv_caching
 from infinicore.ops.matmul import matmul
 from infinicore.ops.mha_kvcache import mha_kvcache
@@ -127,13 +125,11 @@ __all__ = [
     "attention",
     "kv_caching",
     "matmul",
-    "equal",
     "mul",
     "narrow",
     "squeeze",
     "unsqueeze",
     "rearrange",
-    "cross_entropy",
     "empty",
     "empty_like",
     "from_blob",
