@@ -19,7 +19,7 @@
 #include "moore/var_mean_moore.h"
 #endif
 
-__C infiniStatus_t infiniopCreateVarMeanDescriptor(
+__INFINI_C infiniStatus_t infiniopCreateVarMeanDescriptor(
     infiniopHandle_t handle,
     infiniopVarMeanDescriptor_t *desc_ptr,
     infiniopTensorDescriptor_t var_output_desc,
@@ -74,7 +74,7 @@ __C infiniStatus_t infiniopCreateVarMeanDescriptor(
 #undef CREATE
 }
 
-__C infiniStatus_t infiniopGetVarMeanWorkspaceSize(infiniopVarMeanDescriptor_t desc, size_t *size) {
+__INFINI_C infiniStatus_t infiniopGetVarMeanWorkspaceSize(infiniopVarMeanDescriptor_t desc, size_t *size) {
 
 #define GET(CASE, NAMESPACE)                                                                    \
     case CASE:                                                                                  \
@@ -112,7 +112,7 @@ __C infiniStatus_t infiniopGetVarMeanWorkspaceSize(infiniopVarMeanDescriptor_t d
     return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
 
-__C infiniStatus_t infiniopVarMean(
+__INFINI_C infiniStatus_t infiniopVarMean(
     infiniopVarMeanDescriptor_t desc,
     void *workspace,
     size_t workspace_size,
@@ -161,7 +161,7 @@ __C infiniStatus_t infiniopVarMean(
 #undef CALCULATE
 }
 
-__C infiniStatus_t
+__INFINI_C infiniStatus_t
 infiniopDestroyVarMeanDescriptor(infiniopVarMeanDescriptor_t desc) {
 
 #define DELETE(CASE, NAMESPACE)                                                     \

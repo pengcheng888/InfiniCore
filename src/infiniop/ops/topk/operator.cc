@@ -19,7 +19,7 @@
 #include "moore/topk_moore.h"
 #endif
 
-__C infiniStatus_t infiniopCreateTopKDescriptor(
+__INFINI_C infiniStatus_t infiniopCreateTopKDescriptor(
     infiniopHandle_t handle,
     infiniopTopKDescriptor_t *desc_ptr,
     infiniopTensorDescriptor_t values_output_desc,
@@ -74,7 +74,7 @@ __C infiniStatus_t infiniopCreateTopKDescriptor(
 #undef CREATE
 }
 
-__C infiniStatus_t infiniopGetTopKWorkspaceSize(infiniopTopKDescriptor_t desc, size_t *size) {
+__INFINI_C infiniStatus_t infiniopGetTopKWorkspaceSize(infiniopTopKDescriptor_t desc, size_t *size) {
 
 #define GET(CASE, NAMESPACE)                                                                \
     case CASE:                                                                              \
@@ -112,7 +112,7 @@ __C infiniStatus_t infiniopGetTopKWorkspaceSize(infiniopTopKDescriptor_t desc, s
     return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
 
-__C infiniStatus_t infiniopTopK(
+__INFINI_C infiniStatus_t infiniopTopK(
     infiniopTopKDescriptor_t desc,
     void *workspace,
     size_t workspace_size,
@@ -161,7 +161,7 @@ __C infiniStatus_t infiniopTopK(
 #undef CALCULATE
 }
 
-__C infiniStatus_t
+__INFINI_C infiniStatus_t
 infiniopDestroyTopKDescriptor(infiniopTopKDescriptor_t desc) {
 
 #define DELETE(CASE, NAMESPACE)                                                 \

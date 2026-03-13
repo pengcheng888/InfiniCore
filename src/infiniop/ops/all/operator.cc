@@ -19,7 +19,7 @@
 #include "moore/all_moore.h"
 #endif
 
-__C infiniStatus_t infiniopCreateAllDescriptor(
+__INFINI_C infiniStatus_t infiniopCreateAllDescriptor(
     infiniopHandle_t handle,
     infiniopAllDescriptor_t *desc_ptr,
     infiniopTensorDescriptor_t output_desc,
@@ -70,7 +70,7 @@ __C infiniStatus_t infiniopCreateAllDescriptor(
 #undef CREATE
 }
 
-__C infiniStatus_t infiniopGetAllWorkspaceSize(infiniopAllDescriptor_t desc, size_t *size) {
+__INFINI_C infiniStatus_t infiniopGetAllWorkspaceSize(infiniopAllDescriptor_t desc, size_t *size) {
 
 #define GET(CASE, NAMESPACE)                                                               \
     case CASE:                                                                             \
@@ -108,7 +108,7 @@ __C infiniStatus_t infiniopGetAllWorkspaceSize(infiniopAllDescriptor_t desc, siz
     return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
 
-__C infiniStatus_t infiniopAll(
+__INFINI_C infiniStatus_t infiniopAll(
     infiniopAllDescriptor_t desc,
     void *workspace,
     size_t workspace_size,
@@ -155,7 +155,7 @@ __C infiniStatus_t infiniopAll(
 #undef CALCULATE
 }
 
-__C infiniStatus_t
+__INFINI_C infiniStatus_t
 infiniopDestroyAllDescriptor(infiniopAllDescriptor_t desc) {
 
 #define DELETE(CASE, NAMESPACE)                                                \

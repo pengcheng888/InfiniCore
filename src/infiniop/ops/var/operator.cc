@@ -19,7 +19,7 @@
 #include "moore/var_moore.h"
 #endif
 
-__C infiniStatus_t infiniopCreateVarDescriptor(
+__INFINI_C infiniStatus_t infiniopCreateVarDescriptor(
     infiniopHandle_t handle,
     infiniopVarDescriptor_t *desc_ptr,
     infiniopTensorDescriptor_t var_output_desc,
@@ -72,7 +72,7 @@ __C infiniStatus_t infiniopCreateVarDescriptor(
 #undef CREATE
 }
 
-__C infiniStatus_t infiniopGetVarWorkspaceSize(infiniopVarDescriptor_t desc, size_t *size) {
+__INFINI_C infiniStatus_t infiniopGetVarWorkspaceSize(infiniopVarDescriptor_t desc, size_t *size) {
 
 #define GET(CASE, NAMESPACE)                                                               \
     case CASE:                                                                             \
@@ -110,7 +110,7 @@ __C infiniStatus_t infiniopGetVarWorkspaceSize(infiniopVarDescriptor_t desc, siz
     return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
 
-__C infiniStatus_t infiniopVar(
+__INFINI_C infiniStatus_t infiniopVar(
     infiniopVarDescriptor_t desc,
     void *workspace,
     size_t workspace_size,
@@ -158,7 +158,7 @@ __C infiniStatus_t infiniopVar(
 #undef CALCULATE
 }
 
-__C infiniStatus_t
+__INFINI_C infiniStatus_t
 infiniopDestroyVarDescriptor(infiniopVarDescriptor_t desc) {
 
 #define DELETE(CASE, NAMESPACE)                                                \

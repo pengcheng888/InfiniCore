@@ -19,7 +19,7 @@
 #include "moore/sum_moore.h"
 #endif
 
-__C infiniStatus_t infiniopCreateSumDescriptor(
+__INFINI_C infiniStatus_t infiniopCreateSumDescriptor(
     infiniopHandle_t handle,
     infiniopSumDescriptor_t *desc_ptr,
     infiniopTensorDescriptor_t output_desc,
@@ -70,7 +70,7 @@ __C infiniStatus_t infiniopCreateSumDescriptor(
 #undef CREATE
 }
 
-__C infiniStatus_t infiniopGetSumWorkspaceSize(infiniopSumDescriptor_t desc, size_t *size) {
+__INFINI_C infiniStatus_t infiniopGetSumWorkspaceSize(infiniopSumDescriptor_t desc, size_t *size) {
 
 #define GET(CASE, NAMESPACE)                                                               \
     case CASE:                                                                             \
@@ -108,7 +108,7 @@ __C infiniStatus_t infiniopGetSumWorkspaceSize(infiniopSumDescriptor_t desc, siz
     return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
 
-__C infiniStatus_t infiniopSum(
+__INFINI_C infiniStatus_t infiniopSum(
     infiniopSumDescriptor_t desc,
     void *workspace,
     size_t workspace_size,
@@ -155,7 +155,7 @@ __C infiniStatus_t infiniopSum(
 #undef CALCULATE
 }
 
-__C infiniStatus_t
+__INFINI_C infiniStatus_t
 infiniopDestroySumDescriptor(infiniopSumDescriptor_t desc) {
 
 #define DELETE(CASE, NAMESPACE)                                                \
