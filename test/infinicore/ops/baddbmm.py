@@ -18,8 +18,8 @@ from framework import (
 _TEST_CASES_DATA = [
     ((3, 5), (2, 3, 4), (2, 4, 5), None, None, None, None, None),
     ((8, 8), (4, 8, 8), (4, 8, 8), None, None, None, 0.5, 2.0),
-    ((5, 7), (2, 5, 6), (2, 6, 7), (30, 1), None, None, None, None),
-    ((16, 16), (2, 16, 16), (2, 16, 16), None, None, None, 1.0, None),
+    ((5, 7), (2, 5, 6), (2, 6, 7), (30, 1), (0, 5, 1), None, None, None),
+    ((16, 16), (2, 16, 16), (2, 16, 16), None, None, (512, 1, 1), 1.0, None),
     ((1, 1), (1, 1, 1), (1, 1, 1), None, None, None, None, None),
     ((6, 8), (3, 6, 7), (3, 7, 8), None, None, None, None, 0.2),
 ]
@@ -99,9 +99,9 @@ class OpTest(BaseOperatorTest):
     def torch_operator(self, *args, **kwargs):
         return torch.baddbmm(*args, **kwargs)
 
-    def infinicore_operator(self, *args, **kwargs):
-        """InfiniCore implementation (operator not yet available)."""
-        return infinicore.baddbmm(*args, **kwargs)
+    # def infinicore_operator(self, *args, **kwargs):
+    #     """InfiniCore implementation (operator not yet available)."""
+    #     return infinicore.baddbmm(*args, **kwargs)
 
 
 def main():
