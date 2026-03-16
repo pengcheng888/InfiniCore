@@ -166,7 +166,7 @@ infiniStatus_t Descriptor::calculate(
     case INFINI_DTYPE_F16:
         return launch_addcmul_kernel<half>(this, output, inputs, stream);
     case INFINI_DTYPE_BF16:
-        return launch_addcmul_kernel<nv_bfloat16>(this, output, inputs, stream);
+        return launch_addcmul_kernel<cuda_bfloat16>(this, output, inputs, stream);
     case INFINI_DTYPE_F32:
         return launch_addcmul_kernel<float>(this, output, inputs, stream);
     case INFINI_DTYPE_F64:

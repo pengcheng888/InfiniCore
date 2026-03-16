@@ -22,7 +22,7 @@ public:
             float f_t2 = __half2float(t2);
             return __float2half(f_input + v * f_t1 * f_t2);
 
-        } else if constexpr (std::is_same_v<T, nv_bfloat16>) {
+        } else if constexpr (std::is_same_v<T, cuda_bfloat16>) {
             float f_input = __bfloat162float(input);
             float f_t1 = __bfloat162float(t1);
             float f_t2 = __bfloat162float(t2);
