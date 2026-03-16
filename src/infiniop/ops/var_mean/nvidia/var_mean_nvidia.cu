@@ -44,7 +44,6 @@ infiniStatus_t launchKernel(
     bool unbiased, bool keepdim,
     cudaStream_t stream, void *workspace, size_t workspace_size) {
     size_t input_ndim = info.permuted_input_shape.size();
-    size_t output_ndim = info.output_shape.size();
     size_t input_size = info.input_size;
     size_t output_size = info.output_size;
     size_t reduce_num = info.reduce_num;

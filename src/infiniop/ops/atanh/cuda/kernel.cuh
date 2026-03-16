@@ -21,7 +21,7 @@ public:
         } else if constexpr (std::is_same_v<T, half>) {
             // half 类型先转为 float 计算再转回
             return __float2half(atanhf(__half2float(a)));
-        } else if constexpr (std::is_same_v<T, nv_bfloat16>) {
+        } else if constexpr (std::is_same_v<T, cuda_bfloat16>) {
             // bfloat16 类型处理同上
             return __float2bfloat16(atanhf(__bfloat162float(a)));
         } else if constexpr (std::is_same_v<T, float>) {
