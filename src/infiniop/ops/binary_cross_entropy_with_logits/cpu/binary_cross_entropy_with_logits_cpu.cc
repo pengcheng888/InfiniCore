@@ -1,7 +1,7 @@
 #include "binary_cross_entropy_with_logits_cpu.h"
 #include "../../../devices/cpu/common_cpu.h"
-#include <cmath>
 #include <algorithm>
+#include <cmath>
 
 namespace op::bce_with_logits::cpu {
 
@@ -16,7 +16,7 @@ infiniStatus_t Descriptor::create(
     infiniopTensorDescriptor_t weight_desc,
     infiniopTensorDescriptor_t pos_weight_desc,
     infiniopReduction_t reduction) {
-    
+
     auto handle = reinterpret_cast<device::cpu::Handle *>(handle_);
     auto dtype = logits_desc->dtype();
 
@@ -24,7 +24,7 @@ infiniStatus_t Descriptor::create(
     CHECK_DTYPE(dtype, INFINI_DTYPE_F16, INFINI_DTYPE_F32, INFINI_DTYPE_BF16);
 
     // 2. 解析维度信息 (利用之前定义的 BCEWithLogitsInfo)
-    auto result = BCEWithLogitsInfo::create(out_desc, logits_desc, target_desc, 
+    auto result = BCEWithLogitsInfo::create(out_desc, logits_desc, target_desc,
                                             weight_desc, pos_weight_desc, reduction);
     CHECK_RESULT(result);
 
@@ -33,7 +33,7 @@ infiniStatus_t Descriptor::create(
         dtype, result.take(), reduction, 0,
         nullptr,
         handle->device, handle->device_id);
-    
+
     return INFINI_STATUS_SUCCESS;
 }
 
@@ -55,18 +55,18 @@ void calculate_bce(
     float total_loss = 0.0f;
 
     // 获取各张量指针
-    const Tdata* l_ptr = reinterpret_cast<const Tdata*>(logits);
-    const Tdata* t_ptr = reinterpret_cast<const Tdata*>(target);
-    const Tdata* w_ptr = reinterpret_cast<const Tdata*>(weight);
-    const Tdata* pw_ptr = reinterpret_cast<const Tdata*>(pos_weight);
-    Tdata* o_ptr = reinterpret_cast<Tdata*>(out);
+    const Tdata *l_ptr = reinterpret_cast<const Tdata *>(logits);
+    const Tdata *t_ptr = reinterpret_cast<const Tdata *>(target);
+    const Tdata *w_ptr = reinterpret_cast<const Tdata *>(weight);
+    const Tdata *pw_ptr = reinterpret_cast<const Tdata *>(pos_weight);
+    Tdata *o_ptr = reinterpret_cast<Tdata *>(out);
 
     auto &logits_info = info.logits;
     auto &target_info = info.target;
     auto &weight_info = info.weight;
     auto &out_info = info.out;
 
-#pragma omp parallel for reduction(+:total_loss)
+#pragma omp parallel for reduction(+ : total_loss)
     for (ptrdiff_t i = 0; i < (ptrdiff_t)n; ++i) {
         size_t idx = static_cast<size_t>(i);
 
@@ -111,8 +111,7 @@ void calculate_bce(
         // loss = (1 - y) * x + log_weight * (log(1 + exp(-|x|)) + max_val)
         float max_val = std::max(-x, 0.0f);
         float log_weight = 1.0f + (pw - 1.0f) * y;
-        float loss = (1.0f - y) * x +
-                 log_weight * (std::log1p(std::exp(-std::abs(x))) + max_val);
+        float loss = (1.0f - y) * x + log_weight * (std::log1p(std::exp(-std::abs(x))) + max_val);
 
         loss *= w;
 

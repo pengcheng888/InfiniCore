@@ -53,8 +53,7 @@ infiniStatus_t Descriptor::create(
     auto info = result.take();
 
     size_t workspace_size = 0;
-    if (reduction != INFINIOP_REDUCTION_NONE &&
-        (dtype == INFINI_DTYPE_F16 || dtype == INFINI_DTYPE_BF16)) {
+    if (reduction != INFINIOP_REDUCTION_NONE && (dtype == INFINI_DTYPE_F16 || dtype == INFINI_DTYPE_BF16)) {
         workspace_size = sizeof(float);
     }
 
@@ -110,7 +109,9 @@ __global__ void bce_logits_kernel(
     infiniopReduction_t reduction) {
 
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx >= n) return;
+    if (idx >= n) {
+        return;
+    }
 
     size_t logits_offset = indexToOffset(idx, logits_info.ndim,
                                          logits_info.shape, logits_info.strides);
@@ -129,7 +130,7 @@ __global__ void bce_logits_kernel(
     float w = 1.0f;
     if (weight && weight_info.ndim > 0) {
         size_t weight_offset = indexToOffset(idx, weight_info.ndim,
-                                               weight_info.shape, weight_info.strides);
+                                             weight_info.shape, weight_info.strides);
         w = to_float(weight[weight_offset]);
     }
 
@@ -139,8 +140,7 @@ __global__ void bce_logits_kernel(
     // loss = (1 - y) * x + log_weight * (log(1 + exp(-|x|)) + max_val)
     float max_val = fmaxf(-x, 0.0f);
     float log_weight = 1.0f + (pw - 1.0f) * y;
-    float loss = (1.0f - y) * x +
-                 log_weight * (logf(1.0f + expf(-fabsf(x))) + max_val);
+    float loss = (1.0f - y) * x + log_weight * (logf(1.0f + expf(-fabsf(x))) + max_val);
 
     loss *= w;
 
@@ -189,8 +189,7 @@ infiniStatus_t Descriptor::calculate(
     musaStream_t mustream = (musaStream_t)stream;
     size_t n = _info.num_elements;
 
-    if (_reduction != INFINIOP_REDUCTION_NONE &&
-        (_dtype == INFINI_DTYPE_F16 || _dtype == INFINI_DTYPE_BF16)) {
+    if (_reduction != INFINIOP_REDUCTION_NONE && (_dtype == INFINI_DTYPE_F16 || _dtype == INFINI_DTYPE_BF16)) {
         if (workspace_size < sizeof(float)) {
             return INFINI_STATUS_INSUFFICIENT_WORKSPACE;
         }

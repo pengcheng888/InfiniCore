@@ -17,9 +17,9 @@ namespace op::cdist {
 struct CdistMatrix {
     size_t ndim;
     size_t batch;
-    ptrdiff_t stride;     // Batch 之间的步长
-    size_t rows;          // M 或 N
-    size_t cols;          // D (特征维度) 或结果中的 N
+    ptrdiff_t stride; // Batch 之间的步长
+    size_t rows;      // M 或 N
+    size_t cols;      // D (特征维度) 或结果中的 N
     ptrdiff_t row_stride;
     ptrdiff_t col_stride;
 
@@ -104,8 +104,7 @@ public:
 
         return utils::Result<CdistInfo>(CdistInfo{
             x1, x2, y,
-            m, n, d, batch_size
-        });
+            m, n, d, batch_size});
     }
 };
 

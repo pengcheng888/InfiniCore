@@ -12,9 +12,9 @@ public:
      * schema: out (M, N), x1 (M, D), x2 (N, D), p (norm degree)
      */
     using schema = void (*)(Tensor, Tensor, Tensor, double);
-    
+
     static void execute(Tensor out, Tensor x1, Tensor x2, double p);
-    
+
     static common::OpDispatcher<schema> &dispatcher();
 };
 

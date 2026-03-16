@@ -1,7 +1,7 @@
 #include "../../../elementwise/moore/elementwise_moore.h"
 
-#include "reciprocal_moore_kernel.h"
 #include "reciprocal_moore.h"
+#include "reciprocal_moore_kernel.h"
 
 namespace op::reciprocal::moore {
 

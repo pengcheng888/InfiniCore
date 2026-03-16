@@ -20,7 +20,7 @@ infiniStatus_t Descriptor::create(
     CHECK_DTYPE(dtype, INFINI_DTYPE_F16, INFINI_DTYPE_F32, INFINI_DTYPE_F64, INFINI_DTYPE_BF16);
 
     CHECK_SAME_SHAPE(y_shape, a_shape);
-    
+
     CREATE_ELEMENTWISE_CPU_DESCRIPTOR(handle, dtype, out_desc, input_desc_vec);
 
     return INFINI_STATUS_SUCCESS;

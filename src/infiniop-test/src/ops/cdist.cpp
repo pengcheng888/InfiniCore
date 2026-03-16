@@ -18,15 +18,12 @@ std::shared_ptr<Test> Test::build(
     std::unordered_map<std::string, std::vector<uint8_t>> attributes,
     std::unordered_map<std::string, std::shared_ptr<Tensor>> tensors,
     double rtol, double atol) {
-    
+
     auto test = std::shared_ptr<Test>(new Test(rtol, atol));
     test->_attributes = new Attributes();
 
     // 1. 校验张量是否存在 (x1, x2, out, ans)
-    if (tensors.find("x1") == tensors.end() ||
-        tensors.find("x2") == tensors.end() ||
-        tensors.find("out") == tensors.end() ||
-        tensors.find("ans") == tensors.end()) {
+    if (tensors.find("x1") == tensors.end() || tensors.find("x2") == tensors.end() || tensors.find("out") == tensors.end() || tensors.find("ans") == tensors.end()) {
         throw std::runtime_error("Invalid Cdist Test: Missing tensors");
     }
 
@@ -46,9 +43,9 @@ std::shared_ptr<Test> Test::build(
 
 std::shared_ptr<infiniop_test::Result> Test::run(
     infiniopHandle_t handle, infiniDevice_t device, int device_id, size_t warm_ups, size_t iterations) {
-    
+
     infiniopCdistDescriptor_t op_desc;
-    
+
     // 3. 数据迁移至指定设备 (M x D, N x D)
     auto x1 = _attributes->x1->to(device, device_id);
     auto x2 = _attributes->x2->to(device, device_id);
@@ -56,27 +53,27 @@ std::shared_ptr<infiniop_test::Result> Test::run(
 
     // 4. 创建算子描述符
     CHECK_OR(infiniopCreateCdistDescriptor(handle, &op_desc,
-                                             out->desc(),
-                                             x1->desc(),
-                                             x2->desc(),
-                                             _attributes->p),
+                                           out->desc(),
+                                           x1->desc(),
+                                           x2->desc(),
+                                           _attributes->p),
              return TEST_FAILED(OP_CREATION_FAILED, "Failed to create cdist descriptor."));
 
     // 5. Workspace 动态内存分配
     size_t workspace_size;
     CHECK_OR(infiniopGetCdistWorkspaceSize(op_desc, &workspace_size),
              return TEST_FAILED(OP_CREATION_FAILED, "Failed to get workspace size."));
-    
+
     void *workspace;
     CHECK_OR(infinirtMalloc(&workspace, workspace_size),
              return TEST_FAILED(OP_CREATION_FAILED, "Failed to allocate workspace."));
 
     // 6. 执行计算 (计算 M x N 距离矩阵)
     CHECK_OR(infiniopCdist(op_desc, workspace, workspace_size,
-                             out->data(),
-                             x1->data(),
-                             x2->data(),
-                             nullptr), // stream
+                           out->data(),
+                           x1->data(),
+                           x2->data(),
+                           nullptr), // stream
              return TEST_FAILED(OP_EXECUTION_FAILED, "Failed during execution."));
 
     // 7. 结果数值验证
@@ -90,10 +87,10 @@ std::shared_ptr<infiniop_test::Result> Test::run(
     double elapsed_time = benchmark(
         [=]() {
             infiniopCdist(op_desc, workspace, workspace_size,
-                            out->data(),
-                            x1->data(),
-                            x2->data(),
-                            nullptr);
+                          out->data(),
+                          x1->data(),
+                          x2->data(),
+                          nullptr);
         },
         warm_ups, iterations);
 

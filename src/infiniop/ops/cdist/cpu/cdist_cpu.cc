@@ -13,7 +13,7 @@ infiniStatus_t Descriptor::create(
     infiniopTensorDescriptor_t x1_desc,
     infiniopTensorDescriptor_t x2_desc,
     double p) {
-    
+
     auto handle = reinterpret_cast<device::cpu::Handle *>(handle_);
     auto dtype = y_desc->dtype();
 
@@ -29,7 +29,7 @@ infiniStatus_t Descriptor::create(
         dtype, result.take(), p, 0,
         nullptr,
         handle->device, handle->device_id);
-    
+
     return INFINI_STATUS_SUCCESS;
 }
 
@@ -44,56 +44,56 @@ void calculate_dist(
     const void *x2,
     double p) {
 
-    // [Image of the coordinate-wise subtraction and p-norm distance formula for cdist]
-    
-#pragma omp parallel for collapse(2)
-    for (ptrdiff_t b = 0; b < ptrdiff_t(info.batch); ++b) {
-        for (ptrdiff_t i = 0; i < ptrdiff_t(info.m); ++i) {
-            for (ptrdiff_t j = 0; j < ptrdiff_t(info.n); ++j) {
-                
-                // 定位输出位置 y[b, i, j]
-                auto y_ptr = reinterpret_cast<Tdata *>(y) + 
-                             b * info.y_matrix.stride + 
-                             i * info.y_matrix.row_stride + 
-                             j * info.y_matrix.col_stride;
+    // Flatten loops: batch * m * n for OpenMP parallelization
+    const ptrdiff_t total = ptrdiff_t(info.batch) * ptrdiff_t(info.m) * ptrdiff_t(info.n);
 
-                // 定位向量位置 x1[b, i, :] 和 x2[b, j, :]
-                auto x1_vec = reinterpret_cast<const Tdata *>(x1) + 
-                              b * info.x1_matrix.stride + 
-                              i * info.x1_matrix.row_stride;
-                auto x2_vec = reinterpret_cast<const Tdata *>(x2) + 
-                              b * info.x2_matrix.stride + 
-                              j * info.x2_matrix.row_stride;
+#pragma omp parallel for
+    for (ptrdiff_t idx = 0; idx < total; ++idx) {
+        ptrdiff_t b = idx / (info.m * info.n);
+        ptrdiff_t rem = idx % (info.m * info.n);
+        ptrdiff_t i = rem / info.n;
+        ptrdiff_t j = rem % info.n;
 
-                double dist = 0.0;
-                
-                // 遍历特征维度 D
-                for (size_t k = 0; k < info.d; ++k) {
-                    float v1 = utils::cast<float>(*(x1_vec + k * info.x1_matrix.col_stride));
-                    float v2 = utils::cast<float>(*(x2_vec + k * info.x2_matrix.col_stride));
-                    float diff = std::abs(v1 - v2);
+        // output pointer: y[b, i, j]
+        auto y_ptr = reinterpret_cast<Tdata *>(y)
+                   + b * info.y_matrix.stride
+                   + i * info.y_matrix.row_stride
+                   + j * info.y_matrix.col_stride;
 
-                    if (p == 1.0) {
-                        dist += diff;
-                    } else if (p == 2.0) {
-                        dist += diff * diff;
-                    } else if (std::isinf(p)) {
-                        dist = std::max((double)dist, (double)diff);
-                    } else {
-                        dist += std::pow((double)diff, p);
-                    }
-                }
+        // input vectors: x1[b, i, :] and x2[b, j, :]
+        auto x1_vec = reinterpret_cast<const Tdata *>(x1)
+                    + b * info.x1_matrix.stride
+                    + i * info.x1_matrix.row_stride;
+        auto x2_vec = reinterpret_cast<const Tdata *>(x2)
+                    + b * info.x2_matrix.stride
+                    + j * info.x2_matrix.row_stride;
 
-                // 最终距离处理
-                if (p == 2.0) {
-                    dist = std::sqrt(dist);
-                } else if (!std::isinf(p) && p != 1.0) {
-                    dist = std::pow(dist, 1.0 / p);
-                }
+        double dist = 0.0;
 
-                *y_ptr = utils::cast<Tdata>(static_cast<float>(dist));
+        for (size_t k = 0; k < info.d; ++k) {
+            float v1 = utils::cast<float>(*(x1_vec + k * info.x1_matrix.col_stride));
+            float v2 = utils::cast<float>(*(x2_vec + k * info.x2_matrix.col_stride));
+            float diff = std::abs(v1 - v2);
+
+            if (p == 1.0) {
+                dist += diff;
+            } else if (p == 2.0) {
+                dist += diff * diff;
+            } else if (std::isinf(p)) {
+                dist = std::max(dist, static_cast<double>(diff));
+            } else {
+                dist += std::pow(static_cast<double>(diff), p);
             }
         }
+
+        // final distance
+        if (p == 2.0) {
+            dist = std::sqrt(dist);
+        } else if (!std::isinf(p) && p != 1.0) {
+            dist = std::pow(dist, 1.0 / p);
+        }
+
+        *y_ptr = utils::cast<Tdata>(static_cast<float>(dist));
     }
 }
 

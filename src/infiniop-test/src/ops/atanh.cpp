@@ -15,10 +15,10 @@ std::shared_ptr<Test> Test::build(
     std::unordered_map<std::string, std::vector<uint8_t>> attributes,
     std::unordered_map<std::string, std::shared_ptr<Tensor>> tensors,
     double rtol, double atol) {
-    
+
     auto test = std::shared_ptr<Test>(new Test(rtol, atol));
     test->_attributes = new Attributes();
-    
+
     // atanh 只需要 a (input), y (output) 和 ans (reference)
     if (tensors.find("a") == tensors.end()
         || tensors.find("y") == tensors.end()
@@ -35,7 +35,7 @@ std::shared_ptr<Test> Test::build(
 
 std::shared_ptr<infiniop_test::Result> Test::run(
     infiniopHandle_t handle, infiniDevice_t device, int device_id, size_t warm_ups, size_t iterations) {
-    
+
     infiniopAtanhDescriptor_t op_desc;
     auto a = _attributes->a->to(device, device_id);
     auto y = _attributes->y->to(device, device_id);
@@ -45,11 +45,11 @@ std::shared_ptr<infiniop_test::Result> Test::run(
                                            y->desc(),
                                            a->desc()),
              return TEST_FAILED(OP_CREATION_FAILED, "Failed to create atanh descriptor."));
-    
+
     size_t workspace_size;
     CHECK_OR(infiniopGetAtanhWorkspaceSize(op_desc, &workspace_size),
              return TEST_FAILED(OP_CREATION_FAILED, "Failed to get workspace size."));
-    
+
     void *workspace;
     CHECK_OR(infinirtMalloc(&workspace, workspace_size),
              return TEST_FAILED(OP_CREATION_FAILED, "Failed to allocate workspace."));

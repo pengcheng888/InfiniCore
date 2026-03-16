@@ -56,8 +56,7 @@ infiniStatus_t Descriptor::create(
 
     // F16/BF16 在做归约时需要一个 float 标量 workspace 来累加
     size_t workspace_size = 0;
-    if (reduction != INFINIOP_REDUCTION_NONE &&
-        (dtype == INFINI_DTYPE_F16 || dtype == INFINI_DTYPE_BF16)) {
+    if (reduction != INFINIOP_REDUCTION_NONE && (dtype == INFINI_DTYPE_F16 || dtype == INFINI_DTYPE_BF16)) {
         workspace_size = sizeof(float);
     }
 
@@ -114,7 +113,9 @@ __global__ void bce_logits_kernel(
     infiniopReduction_t reduction) {
 
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx >= n) return;
+    if (idx >= n) {
+        return;
+    }
 
     // 计算逻辑索引在各张量中的偏移（支持任意 stride）
     size_t logits_offset = indexToOffset(idx, logits_info.ndim,
@@ -145,8 +146,7 @@ __global__ void bce_logits_kernel(
     // loss = (1 - y) * x + log_weight * (log1p(exp(-|x|)) + max_val)
     float max_val = fmaxf(-x, 0.0f);
     float log_weight = 1.0f + (pw - 1.0f) * y;
-    float loss = (1.0f - y) * x +
-                 log_weight * (log1pf(expf(-fabsf(x))) + max_val);
+    float loss = (1.0f - y) * x + log_weight * (log1pf(expf(-fabsf(x))) + max_val);
     loss *= w;
     if (reduction == INFINIOP_REDUCTION_NONE) {
         // 写回逐元素 loss（支持 stride 的 out）
@@ -198,8 +198,7 @@ infiniStatus_t Descriptor::calculate(
     size_t n = _info.num_elements;
 
     // F16/BF16 + 归约需要 float workspace
-    if (_reduction != INFINIOP_REDUCTION_NONE &&
-        (_dtype == INFINI_DTYPE_F16 || _dtype == INFINI_DTYPE_BF16)) {
+    if (_reduction != INFINIOP_REDUCTION_NONE && (_dtype == INFINI_DTYPE_F16 || _dtype == INFINI_DTYPE_BF16)) {
         if (workspace_size < sizeof(float)) {
             return INFINI_STATUS_INSUFFICIENT_WORKSPACE;
         }

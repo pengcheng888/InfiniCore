@@ -1,6 +1,6 @@
-#include <iostream>
 #include "../../../devices/metax/metax_handle.h"
 #include "cdist_metax.h"
+#include <iostream>
 namespace op::cdist::metax {
 
 struct Descriptor::Opaque {};
@@ -78,18 +78,11 @@ __global__ void cdist_generic_kernel_f32(
     }
 
     // 定位输出位置 y[b, i, j]
-    float *y_ptr = y +
-                   b * y_stride +
-                   i * y_row_stride +
-                   j * y_col_stride;
+    float *y_ptr = y + b * y_stride + i * y_row_stride + j * y_col_stride;
 
     // 定位向量位置 x1[b, i, :] 和 x2[b, j, :]
-    const float *x1_vec = x1 +
-                          b * x1_stride +
-                          i * x1_row_stride;
-    const float *x2_vec = x2 +
-                          b * x2_stride +
-                          j * x2_row_stride;
+    const float *x1_vec = x1 + b * x1_stride + i * x1_row_stride;
+    const float *x2_vec = x2 + b * x2_stride + j * x2_row_stride;
 
     double dist = 0.0;
 

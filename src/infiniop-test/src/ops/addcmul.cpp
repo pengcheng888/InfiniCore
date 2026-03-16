@@ -19,16 +19,12 @@ std::shared_ptr<Test> Test::build(
     std::unordered_map<std::string, std::vector<uint8_t>> attributes,
     std::unordered_map<std::string, std::shared_ptr<Tensor>> tensors,
     double rtol, double atol) {
-    
+
     auto test = std::shared_ptr<Test>(new Test(rtol, atol));
     test->_attributes = new Attributes();
 
     // 校验张量是否存在
-    if (tensors.find("input") == tensors.end() ||
-        tensors.find("t1") == tensors.end() ||
-        tensors.find("t2") == tensors.end() ||
-        tensors.find("out") == tensors.end() ||
-        tensors.find("ans") == tensors.end()) {
+    if (tensors.find("input") == tensors.end() || tensors.find("t1") == tensors.end() || tensors.find("t2") == tensors.end() || tensors.find("out") == tensors.end() || tensors.find("ans") == tensors.end()) {
         throw std::runtime_error("Invalid Addcmul Test: Missing tensors");
     }
 
@@ -49,9 +45,9 @@ std::shared_ptr<Test> Test::build(
 
 std::shared_ptr<infiniop_test::Result> Test::run(
     infiniopHandle_t handle, infiniDevice_t device, int device_id, size_t warm_ups, size_t iterations) {
-    
+
     infiniopAddcmulDescriptor_t op_desc;
-    
+
     // 数据迁移至指定设备
     auto input = _attributes->input->to(device, device_id);
     auto t1 = _attributes->t1->to(device, device_id);
@@ -71,7 +67,7 @@ std::shared_ptr<infiniop_test::Result> Test::run(
     size_t workspace_size;
     CHECK_OR(infiniopGetAddcmulWorkspaceSize(op_desc, &workspace_size),
              return TEST_FAILED(OP_CREATION_FAILED, "Failed to get workspace size."));
-    
+
     void *workspace;
     CHECK_OR(infinirtMalloc(&workspace, workspace_size),
              return TEST_FAILED(OP_CREATION_FAILED, "Failed to allocate workspace."));

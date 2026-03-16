@@ -15,19 +15,19 @@ typedef struct InfiniopDescriptor *infiniopCdistDescriptor_t;
  * @param x2 输入张量2描述符 (Shape: N x D)
  * @param p 范数阶数 (L-p norm)
  */
-__C __export infiniStatus_t infiniopCreateCdistDescriptor(
-                            infiniopHandle_t handle,
-                            infiniopCdistDescriptor_t *desc_ptr, // 注意这里应该是具体类型的指针
-                            infiniopTensorDescriptor_t y_desc,
-                            infiniopTensorDescriptor_t x1_desc,
-                            infiniopTensorDescriptor_t x2_desc,
-                            double p);
+__INFINI_C __export infiniStatus_t infiniopCreateCdistDescriptor(
+    infiniopHandle_t handle,
+    infiniopCdistDescriptor_t *desc_ptr, // 注意这里应该是具体类型的指针
+    infiniopTensorDescriptor_t y_desc,
+    infiniopTensorDescriptor_t x1_desc,
+    infiniopTensorDescriptor_t x2_desc,
+    double p);
 
 /**
  * @brief 获取 Cdist 计算所需的临时空间大小
  */
-__C __export infiniStatus_t infiniopGetCdistWorkspaceSize(infiniopCdistDescriptor_t desc, 
-                                                            size_t *size);
+__INFINI_C __export infiniStatus_t infiniopGetCdistWorkspaceSize(infiniopCdistDescriptor_t desc,
+                                                                 size_t *size);
 
 /**
  * @brief 执行 Cdist 计算
@@ -39,18 +39,18 @@ __C __export infiniStatus_t infiniopGetCdistWorkspaceSize(infiniopCdistDescripto
  * @param x2 输入2数据指针
  * @param stream 计算流 (CUDA stream 等)
  */
-__C __export infiniStatus_t infiniopCdist(
-                                        infiniopCdistDescriptor_t desc,
-                                        void *workspace,
-                                        size_t workspace_size,
-                                        void *y,
-                                        const void *x1,
-                                        const void *x2,
-                                        void *stream);
+__INFINI_C __export infiniStatus_t infiniopCdist(
+    infiniopCdistDescriptor_t desc,
+    void *workspace,
+    size_t workspace_size,
+    void *y,
+    const void *x1,
+    const void *x2,
+    void *stream);
 
 /**
  * @brief 销毁 Cdist 算子描述符
  */
-__C __export infiniStatus_t infiniopDestroyCdistDescriptor(infiniopCdistDescriptor_t desc);
+__INFINI_C __export infiniStatus_t infiniopDestroyCdistDescriptor(infiniopCdistDescriptor_t desc);
 
 #endif

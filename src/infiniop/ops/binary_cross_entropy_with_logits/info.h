@@ -17,18 +17,20 @@ namespace op::bce_with_logits {
 struct BCETensorInfo {
     size_t total_elements = 0;
     size_t ndim = 0;
-    std::vector<size_t> dims;     // 动态存储维度
+    std::vector<size_t> dims;      // 动态存储维度
     std::vector<ptrdiff_t> stride; // 动态存储步长
 
     BCETensorInfo() = default;
 
     static utils::Result<BCETensorInfo> create(infiniopTensorDescriptor_t desc) {
-        if (desc == nullptr) return INFINI_STATUS_SUCCESS; 
+        if (desc == nullptr) {
+            return INFINI_STATUS_SUCCESS;
+        }
 
         BCETensorInfo info;
         info.ndim = desc->ndim();
         info.total_elements = 1;
-        
+
         // 动态调整 vector 大小
         info.dims.reserve(info.ndim);
         info.stride.reserve(info.ndim);
@@ -52,8 +54,8 @@ class BCEWithLogitsInfo {
 public:
     BCETensorInfo logits;
     BCETensorInfo target;
-    BCETensorInfo weight;     
-    BCETensorInfo pos_weight; 
+    BCETensorInfo weight;
+    BCETensorInfo pos_weight;
     BCETensorInfo out;
 
     size_t num_elements;
@@ -85,9 +87,13 @@ public:
         info.num_elements = info.logits.total_elements;
 
         // 1. 基本形状一致性校验
-        if (info.logits.ndim != info.target.ndim) return INFINI_STATUS_BAD_TENSOR_SHAPE;
+        if (info.logits.ndim != info.target.ndim) {
+            return INFINI_STATUS_BAD_TENSOR_SHAPE;
+        }
         for (size_t i = 0; i < info.logits.ndim; ++i) {
-            if (info.logits.dims[i] != info.target.dims[i]) return INFINI_STATUS_BAD_TENSOR_SHAPE;
+            if (info.logits.dims[i] != info.target.dims[i]) {
+                return INFINI_STATUS_BAD_TENSOR_SHAPE;
+            }
         }
 
         // 2. 校验 weight (需完全一致)
@@ -95,7 +101,7 @@ public:
             auto w_res = BCETensorInfo::create(weight_desc);
             CHECK_RESULT(w_res);
             info.weight = w_res.take();
-            
+
             // 允许两种情况：
             // 1. 完全一致
             // 2. weight 是一个向量，且长度等于 logits 的最后一维 (常见广播场景)

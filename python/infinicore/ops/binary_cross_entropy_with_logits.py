@@ -1,14 +1,9 @@
 from infinicore.lib import _infinicore
 from infinicore.tensor import Tensor
 
+
 def binary_cross_entropy_with_logits(
-    input, 
-    target, 
-    weight=None, 
-    pos_weight=None, 
-    reduction="mean", 
-    *, 
-    out=None
+    input, target, weight=None, pos_weight=None, reduction="mean", *, out=None
 ):
     """
     input: Tensor (logits)
@@ -17,7 +12,7 @@ def binary_cross_entropy_with_logits(
     pos_weight: Tensor (optional, class-wise weight)
     reduction: str ('none', 'mean', 'sum')
     """
-    
+
     # 提取底层 C++ 对象，处理可选 Tensor
     weight_raw = weight._underlying if weight is not None else None
     pos_weight_raw = pos_weight._underlying if pos_weight is not None else None

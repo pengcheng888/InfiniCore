@@ -21,18 +21,18 @@
 #include "moore/atanh_moore.h"
 #endif
 
-__C infiniStatus_t infiniopCreateAtanhDescriptor(
+__INFINI_C infiniStatus_t infiniopCreateAtanhDescriptor(
     infiniopHandle_t handle,
     infiniopAtanhDescriptor_t *desc_ptr,
     infiniopTensorDescriptor_t y_desc,
     infiniopTensorDescriptor_t a_desc) {
 
-#define CREATE(CASE, NAMESPACE)                                             \
-    case CASE:                                                              \
-        return op::atanh::NAMESPACE::Descriptor::create(                    \
-            handle,                                                         \
+#define CREATE(CASE, NAMESPACE)                                              \
+    case CASE:                                                               \
+        return op::atanh::NAMESPACE::Descriptor::create(                     \
+            handle,                                                          \
             reinterpret_cast<op::atanh::NAMESPACE::Descriptor **>(desc_ptr), \
-            y_desc,                                                         \
+            y_desc,                                                          \
             {a_desc}) // 一元算子只传入 a_desc
 
     switch (handle->device) {
@@ -69,10 +69,10 @@ __C infiniStatus_t infiniopCreateAtanhDescriptor(
 #undef CREATE
 }
 
-__C infiniStatus_t infiniopGetAtanhWorkspaceSize(infiniopAtanhDescriptor_t desc, size_t *size) {
+__INFINI_C infiniStatus_t infiniopGetAtanhWorkspaceSize(infiniopAtanhDescriptor_t desc, size_t *size) {
 
-#define GET(CASE, NAMESPACE)                                                               \
-    case CASE:                                                                             \
+#define GET(CASE, NAMESPACE)                                                                 \
+    case CASE:                                                                               \
         *size = reinterpret_cast<op::atanh::NAMESPACE::Descriptor *>(desc)->workspaceSize(); \
         return INFINI_STATUS_SUCCESS
 
@@ -107,7 +107,7 @@ __C infiniStatus_t infiniopGetAtanhWorkspaceSize(infiniopAtanhDescriptor_t desc,
 #undef GET
 }
 
-__C infiniStatus_t infiniopAtanh(
+__INFINI_C infiniStatus_t infiniopAtanh(
     infiniopAtanhDescriptor_t desc,
     void *workspace,
     size_t workspace_size,
@@ -115,8 +115,8 @@ __C infiniStatus_t infiniopAtanh(
     const void *a,
     void *stream) {
 
-#define CALCULATE(CASE, NAMESPACE)                                            \
-    case CASE:                                                                \
+#define CALCULATE(CASE, NAMESPACE)                                              \
+    case CASE:                                                                  \
         return reinterpret_cast<const op::atanh::NAMESPACE::Descriptor *>(desc) \
             ->calculate(workspace, workspace_size, y, {a}, stream) // 一元算子只传入 a
 
@@ -154,11 +154,11 @@ __C infiniStatus_t infiniopAtanh(
 #undef CALCULATE
 }
 
-__C infiniStatus_t
+__INFINI_C infiniStatus_t
 infiniopDestroyAtanhDescriptor(infiniopAtanhDescriptor_t desc) {
 
-#define DELETE(CASE, NAMESPACE)                                                 \
-    case CASE:                                                                  \
+#define DELETE(CASE, NAMESPACE)                                                  \
+    case CASE:                                                                   \
         delete reinterpret_cast<const op::atanh::NAMESPACE::Descriptor *>(desc); \
         return INFINI_STATUS_SUCCESS
 

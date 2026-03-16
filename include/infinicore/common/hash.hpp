@@ -16,9 +16,6 @@ hash_combine(size_t &seed, const T &value) {
 
 // Specialization for Tensor
 inline void hash_combine(size_t &seed, Tensor tensor) {
-    // For an undefined tensor (default-constructed), just mix in a sentinel
-    // value so that optional arguments like weight/pos_weight do not cause
-    // null dereferences when computing cache keys.
     if (!tensor) {
         hash_combine(seed, static_cast<size_t>(0));
         return;
@@ -30,6 +27,15 @@ inline void hash_combine(size_t &seed, Tensor tensor) {
     }
     for (Stride stride : tensor->strides()) {
         hash_combine(seed, static_cast<size_t>(stride));
+    }
+}
+
+// Specialization for optional
+template <typename T>
+inline void hash_combine(size_t &seed, const std::optional<T> &opt) {
+    hash_combine(seed, opt.has_value());
+    if (opt) {
+        hash_combine(seed, *opt);
     }
 }
 

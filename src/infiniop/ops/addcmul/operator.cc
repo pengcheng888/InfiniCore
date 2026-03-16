@@ -21,7 +21,7 @@
 #include "moore/addcmul_moore.h"
 #endif
 
-__C infiniStatus_t infiniopCreateAddcmulDescriptor(
+__INFINI_C infiniStatus_t infiniopCreateAddcmulDescriptor(
     infiniopHandle_t handle,
     infiniopAddcmulDescriptor_t *desc_ptr,
     infiniopTensorDescriptor_t out_desc,
@@ -30,13 +30,13 @@ __C infiniStatus_t infiniopCreateAddcmulDescriptor(
     infiniopTensorDescriptor_t t2_desc,
     float value) {
 
-#define CREATE(CASE, NAMESPACE)                                             \
-    case CASE:                                                              \
-        return op::addcmul::NAMESPACE::Descriptor::create(                  \
-            handle,                                                         \
+#define CREATE(CASE, NAMESPACE)                                                \
+    case CASE:                                                                 \
+        return op::addcmul::NAMESPACE::Descriptor::create(                     \
+            handle,                                                            \
             reinterpret_cast<op::addcmul::NAMESPACE::Descriptor **>(desc_ptr), \
-            out_desc,                                                       \
-            {input_desc, t1_desc, t2_desc},                                 \
+            out_desc,                                                          \
+            {input_desc, t1_desc, t2_desc},                                    \
             value)
 
     switch (handle->device) {
@@ -70,7 +70,7 @@ __C infiniStatus_t infiniopCreateAddcmulDescriptor(
 #undef CREATE
 }
 
-__C infiniStatus_t infiniopGetAddcmulWorkspaceSize(infiniopAddcmulDescriptor_t desc, size_t *size) {
+__INFINI_C infiniStatus_t infiniopGetAddcmulWorkspaceSize(infiniopAddcmulDescriptor_t desc, size_t *size) {
 
 #define GET(CASE, NAMESPACE)                                                                   \
     case CASE:                                                                                 \
@@ -108,7 +108,7 @@ __C infiniStatus_t infiniopGetAddcmulWorkspaceSize(infiniopAddcmulDescriptor_t d
 #undef GET
 }
 
-__C infiniStatus_t infiniopAddcmul(
+__INFINI_C infiniStatus_t infiniopAddcmul(
     infiniopAddcmulDescriptor_t desc,
     void *workspace,
     size_t workspace_size,
@@ -118,8 +118,8 @@ __C infiniStatus_t infiniopAddcmul(
     const void *t2,
     void *stream) {
 
-#define CALCULATE(CASE, NAMESPACE)                                             \
-    case CASE:                                                                 \
+#define CALCULATE(CASE, NAMESPACE)                                                \
+    case CASE:                                                                    \
         return reinterpret_cast<const op::addcmul::NAMESPACE::Descriptor *>(desc) \
             ->calculate(workspace, workspace_size, out, {input, t1, t2}, stream)
 
@@ -154,10 +154,10 @@ __C infiniStatus_t infiniopAddcmul(
 #undef CALCULATE
 }
 
-__C infiniStatus_t infiniopDestroyAddcmulDescriptor(infiniopAddcmulDescriptor_t desc) {
+__INFINI_C infiniStatus_t infiniopDestroyAddcmulDescriptor(infiniopAddcmulDescriptor_t desc) {
 
-#define DELETE(CASE, NAMESPACE)                                                 \
-    case CASE:                                                                  \
+#define DELETE(CASE, NAMESPACE)                                                    \
+    case CASE:                                                                     \
         delete reinterpret_cast<const op::addcmul::NAMESPACE::Descriptor *>(desc); \
         return INFINI_STATUS_SUCCESS
 

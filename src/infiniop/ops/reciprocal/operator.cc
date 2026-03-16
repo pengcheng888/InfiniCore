@@ -21,7 +21,7 @@
 #include "moore/reciprocal_moore.h"
 #endif
 
-__C infiniStatus_t infiniopCreateReciprocalDescriptor(
+__INFINI_C infiniStatus_t infiniopCreateReciprocalDescriptor(
     infiniopHandle_t handle,
     infiniopReciprocalDescriptor_t *desc_ptr,
     infiniopTensorDescriptor_t y_desc,
@@ -69,11 +69,11 @@ __C infiniStatus_t infiniopCreateReciprocalDescriptor(
 #undef CREATE
 }
 
-__C infiniStatus_t infiniopGetReciprocalWorkspaceSize(infiniopReciprocalDescriptor_t desc, size_t *size) {
+__INFINI_C infiniStatus_t infiniopGetReciprocalWorkspaceSize(infiniopReciprocalDescriptor_t desc, size_t *size) {
 
 #define GET(CASE, NAMESPACE)                                                                      \
     case CASE:                                                                                    \
-        *size = reinterpret_cast<op::reciprocal::NAMESPACE::Descriptor *>(desc)->workspaceSize();  \
+        *size = reinterpret_cast<op::reciprocal::NAMESPACE::Descriptor *>(desc)->workspaceSize(); \
         return INFINI_STATUS_SUCCESS
 
     switch (desc->device_type) {
@@ -109,7 +109,7 @@ __C infiniStatus_t infiniopGetReciprocalWorkspaceSize(infiniopReciprocalDescript
     return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
 
-__C infiniStatus_t infiniopReciprocal(
+__INFINI_C infiniStatus_t infiniopReciprocal(
     infiniopReciprocalDescriptor_t desc,
     void *workspace,
     size_t workspace_size,
@@ -156,12 +156,12 @@ __C infiniStatus_t infiniopReciprocal(
 #undef CALCULATE
 }
 
-__C infiniStatus_t
+__INFINI_C infiniStatus_t
 infiniopDestroyReciprocalDescriptor(infiniopReciprocalDescriptor_t desc) {
 
-#define DELETE(CASE, NAMESPACE)                                                        \
-    case CASE:                                                                         \
-        delete reinterpret_cast<const op::reciprocal::NAMESPACE::Descriptor *>(desc);  \
+#define DELETE(CASE, NAMESPACE)                                                       \
+    case CASE:                                                                        \
+        delete reinterpret_cast<const op::reciprocal::NAMESPACE::Descriptor *>(desc); \
         return INFINI_STATUS_SUCCESS
 
     switch (desc->device_type) {

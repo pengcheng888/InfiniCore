@@ -30,11 +30,11 @@ void calculate(Tensor out, Tensor x1, Tensor x2, double p) {
     // 2. 如果缓存未命中，创建新的描述符并存入缓存
     if (!desc_opt) {
         INFINICORE_CHECK_ERROR(infiniopCreateCdistDescriptor(
-            context::getInfiniopHandle(device), 
+            context::getInfiniopHandle(device),
             &desc,
-            out->desc(), 
-            x1->desc(), 
-            x2->desc(), 
+            out->desc(),
+            x1->desc(),
+            x2->desc(),
             p));
         cache.put(seed, desc);
     } else {
@@ -48,12 +48,12 @@ void calculate(Tensor out, Tensor x1, Tensor x2, double p) {
 
     // 4. 执行底层算子
     INFINICORE_CHECK_ERROR(infiniopCdist(
-        desc, 
-        workspace->data(), 
+        desc,
+        workspace->data(),
         workspace_size,
-        out->data(), 
-        x1->data(), 
-        x2->data(), 
+        out->data(),
+        x1->data(),
+        x2->data(),
         context::getStream()));
 }
 

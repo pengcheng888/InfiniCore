@@ -12,7 +12,7 @@ public:
         } else if constexpr (std::is_same_v<T, half>) {
             return hrcp(x);
         } else if constexpr (std::is_same_v<T, cuda_bfloat16>) {
-            // bfloat16 does not have a direct hrcp intrinsic in some versions, 
+            // bfloat16 does not have a direct hrcp intrinsic in some versions,
             // often handled by converting to float or using specific bf16 intrinsics
             return __float2bfloat16(1.0f / __bfloat162float(x));
         } else if constexpr (std::is_same_v<T, float>) {

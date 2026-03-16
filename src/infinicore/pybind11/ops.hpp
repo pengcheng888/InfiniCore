@@ -4,10 +4,14 @@
 
 #include "ops/add.hpp"
 #include "ops/add_rms_norm.hpp"
+#include "ops/addcmul.hpp"
 #include "ops/all.hpp"
+#include "ops/atanh.hpp"
 #include "ops/attention.hpp"
 #include "ops/avg_pool1d.hpp"
+#include "ops/binary_cross_entropy_with_logits.hpp"
 #include "ops/causal_softmax.hpp"
+#include "ops/cdist.hpp"
 #include "ops/cross_entropy.hpp"
 #include "ops/embedding.hpp"
 #include "ops/equal.hpp"
@@ -21,8 +25,12 @@
 #include "ops/mha_kvcache.hpp"
 #include "ops/mha_varlen.hpp"
 #include "ops/mul.hpp"
+#include "ops/paged_attention.hpp"
+#include "ops/paged_attention_prefill.hpp"
+#include "ops/paged_caching.hpp"
 #include "ops/random_sample.hpp"
 #include "ops/rearrange.hpp"
+#include "ops/reciprocal.hpp"
 #include "ops/rms_norm.hpp"
 #include "ops/rope.hpp"
 #include "ops/silu.hpp"
@@ -33,17 +41,13 @@
 #include "ops/var.hpp"
 #include "ops/var_mean.hpp"
 
-#include "ops/atanh.hpp"
-#include "ops/addcmul.hpp"
-#include "ops/cdist.hpp"
-#include "ops/binary_cross_entropy_with_logits.hpp"
-#include "ops/reciprocal.hpp"
 namespace py = pybind11;
 
 namespace infinicore::ops {
 
 inline void bind(py::module &m) {
     bind_add(m);
+    bind_add_rms_norm(m);
     bind_attention(m);
     bind_causal_softmax(m);
     bind_flash_attention(m);

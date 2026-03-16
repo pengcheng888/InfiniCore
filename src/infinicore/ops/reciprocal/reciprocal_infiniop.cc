@@ -1,7 +1,7 @@
 #include "../../utils.hpp"
 #include "infinicore/common/hash.hpp"
-#include "infinicore/ops/reciprocal.hpp"
 #include "infinicore/ops/common/cache.hpp"
+#include "infinicore/ops/reciprocal.hpp"
 #include <infiniop.h>
 
 namespace infinicore::op::reciprocal_impl::infiniop {

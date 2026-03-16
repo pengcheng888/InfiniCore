@@ -1,6 +1,6 @@
-#include <iostream>
 #include "../../../devices/moore/moore_handle.h"
 #include "cdist_moore.h"
+#include <iostream>
 #include <musa_runtime.h>
 
 namespace op::cdist::moore {
@@ -114,7 +114,7 @@ infiniStatus_t Descriptor::calculate(
 
     // 3. 切换至 musaStream_t
     musaStream_t mustream = reinterpret_cast<musaStream_t>(stream);
-    
+
     // 保持 16x16 的 Block 大小，这在 MUSA 架构上也是通用的
     dim3 block(16, 16);
     dim3 grid(

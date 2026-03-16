@@ -1,9 +1,9 @@
 #include "../../../devices/metax/metax_common.h"
-#include "../../../devices/metax/metax_kernel_common.h"
 #include "../../../devices/metax/metax_handle.h"
+#include "../../../devices/metax/metax_kernel_common.h"
 #include "binary_cross_entropy_with_logits_metax.h"
-#include <type_traits>
 #include <mc_runtime.h>
+#include <type_traits>
 
 namespace op::bce_with_logits::metax {
 
@@ -56,8 +56,7 @@ infiniStatus_t Descriptor::create(
 
     // F16/BF16 在做归约时需要一个 float 标量 workspace 来累加
     size_t workspace_size = 0;
-    if (reduction != INFINIOP_REDUCTION_NONE &&
-        (dtype == INFINI_DTYPE_F16 || dtype == INFINI_DTYPE_BF16)) {
+    if (reduction != INFINIOP_REDUCTION_NONE && (dtype == INFINI_DTYPE_F16 || dtype == INFINI_DTYPE_BF16)) {
         workspace_size = sizeof(float);
     }
 
@@ -114,7 +113,9 @@ __global__ void bce_logits_kernel(
     infiniopReduction_t reduction) {
 
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx >= n) return;
+    if (idx >= n) {
+        return;
+    }
 
     // 计算逻辑索引在各张量中的偏移（支持任意 stride）
     size_t logits_offset = indexToOffset(idx, logits_info.ndim,
@@ -140,8 +141,7 @@ __global__ void bce_logits_kernel(
     }
 
     // 数值稳定公式：max(x, 0) - x * y * pw + (1 + (pw - 1) * y) * log(1 + exp(-abs(x)))
-    float loss = (fmaxf(x, 0.0f) - x * y * pw +
-                 (1.0f + (pw - 1.0f) * y) * logf(1.0f + expf(-fabsf(x))));
+    float loss = (fmaxf(x, 0.0f) - x * y * pw + (1.0f + (pw - 1.0f) * y) * logf(1.0f + expf(-fabsf(x))));
 
     loss *= w;
 
@@ -195,8 +195,7 @@ infiniStatus_t Descriptor::calculate(
     size_t n = _info.num_elements;
 
     // F16/BF16 + 归约需要 float workspace
-    if (_reduction != INFINIOP_REDUCTION_NONE &&
-        (_dtype == INFINI_DTYPE_F16 || _dtype == INFINI_DTYPE_BF16)) {
+    if (_reduction != INFINIOP_REDUCTION_NONE && (_dtype == INFINI_DTYPE_F16 || _dtype == INFINI_DTYPE_BF16)) {
         if (workspace_size < sizeof(float)) {
             return INFINI_STATUS_INSUFFICIENT_WORKSPACE;
         }

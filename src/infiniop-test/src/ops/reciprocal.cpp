@@ -36,22 +36,22 @@ std::shared_ptr<infiniop_test::Result> Test::run(
     auto x = _attributes->x->to(device, device_id);
     auto y = _attributes->y->to(device, device_id);
     CHECK_OR(infiniopCreateReciprocalDescriptor(handle, &op_desc,
-                                               y->desc(),
-                                               x->desc()),
+                                                y->desc(),
+                                                x->desc()),
              return TEST_FAILED(OP_CREATION_FAILED, "Failed to create op descriptor."));
-    
+
     size_t workspace_size;
     CHECK_OR(infiniopGetReciprocalWorkspaceSize(op_desc, &workspace_size),
              return TEST_FAILED(OP_CREATION_FAILED, "Failed to get workspace size."));
-    
+
     void *workspace;
     CHECK_OR(infinirtMalloc(&workspace, workspace_size),
              return TEST_FAILED(OP_CREATION_FAILED, "Failed to allocate workspace."));
-    
+
     CHECK_OR(infiniopReciprocal(op_desc, workspace, workspace_size,
-                                 y->data(),
-                                 x->data(),
-                                 nullptr),
+                                y->data(),
+                                x->data(),
+                                nullptr),
              return TEST_FAILED(OP_EXECUTION_FAILED, "Failed during execution."));
 
     try {

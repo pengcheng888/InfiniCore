@@ -16,12 +16,16 @@ void BinaryCrossEntropyWithLogits::execute(Tensor out, Tensor logits, Tensor tar
     // 1. 校验所有已定义的 Tensor 是否在同一设备上
     // 使用宏或循环校验 logits, target, out 以及可选的 weight/pos_weight
     INFINICORE_ASSERT_TENSORS_SAME_DEVICE(out, logits, target);
-    if (weight.is_defined()) INFINICORE_ASSERT_TENSORS_SAME_DEVICE(out, weight);
-    if (pos_weight.is_defined()) INFINICORE_ASSERT_TENSORS_SAME_DEVICE(out, pos_weight);
-    
+    if (weight) {
+        INFINICORE_ASSERT_TENSORS_SAME_DEVICE(out, weight);
+    }
+    if (pos_weight) {
+        INFINICORE_ASSERT_TENSORS_SAME_DEVICE(out, pos_weight);
+    }
+
     // 2. 设置当前设备上下文
     infinicore::context::setDevice(out->device());
-    
+
     // 3. 根据设备类型查找并执行具体的后端实现（如 CUDA 或 CPU 实现）
     dispatcher().lookup(out->device().getType())(out, logits, target, weight, pos_weight, reduction);
 }
@@ -41,15 +45,15 @@ Tensor binary_cross_entropy_with_logits(Tensor logits, Tensor target, Tensor wei
         }
     } else {
         // mean 或 sum 归约，输出为标量 (空 shape 向量表示 0-dim tensor)
-        out_shape = {}; 
+        out_shape = {};
     }
 
     // 2. 创建输出 Tensor
     auto out = Tensor::empty(out_shape, logits->dtype(), logits->device());
-    
+
     // 3. 调用显式接口执行计算
     binary_cross_entropy_with_logits_(out, logits, target, weight, pos_weight, reduction);
-    
+
     return out;
 }
 

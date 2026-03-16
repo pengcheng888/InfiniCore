@@ -7,7 +7,7 @@
 typedef enum {
     INFINIOP_REDUCTION_NONE = 0,
     INFINIOP_REDUCTION_MEAN = 1,
-    INFINIOP_REDUCTION_SUM  = 2
+    INFINIOP_REDUCTION_SUM = 2
 } infiniopReduction_t;
 
 // 定义 BCEWithLogits 算子描述符类型
@@ -24,22 +24,22 @@ typedef struct InfiniopDescriptor *infiniopBCEWithLogitsDescriptor_t;
  * @param pos_weight 正样本权重描述符 (可选，不需要则传 NULL)
  * @param reduction 归约方式 (none, mean, sum)
  */
-__C __export infiniStatus_t infiniopCreateBCEWithLogitsDescriptor(
-                                    infiniopHandle_t handle,
-                                    infiniopBCEWithLogitsDescriptor_t *desc_ptr,
-                                    infiniopTensorDescriptor_t out,
-                                    infiniopTensorDescriptor_t logits,
-                                    infiniopTensorDescriptor_t target,
-                                    infiniopTensorDescriptor_t weight,
-                                    infiniopTensorDescriptor_t pos_weight,
-                                    infiniopReduction_t reduction);
+__INFINI_C __export infiniStatus_t infiniopCreateBCEWithLogitsDescriptor(
+    infiniopHandle_t handle,
+    infiniopBCEWithLogitsDescriptor_t *desc_ptr,
+    infiniopTensorDescriptor_t out,
+    infiniopTensorDescriptor_t logits,
+    infiniopTensorDescriptor_t target,
+    infiniopTensorDescriptor_t weight,
+    infiniopTensorDescriptor_t pos_weight,
+    infiniopReduction_t reduction);
 
 /**
  * @brief 获取 BCEWithLogits 计算所需的临时空间大小
  */
-__C __export infiniStatus_t infiniopGetBCEWithLogitsWorkspaceSize(
-                                    infiniopBCEWithLogitsDescriptor_t desc, 
-                                    size_t *size);
+__INFINI_C __export infiniStatus_t infiniopGetBCEWithLogitsWorkspaceSize(
+    infiniopBCEWithLogitsDescriptor_t desc,
+    size_t *size);
 
 /**
  * @brief 执行 BCEWithLogits 计算
@@ -53,21 +53,21 @@ __C __export infiniStatus_t infiniopGetBCEWithLogitsWorkspaceSize(
  * @param pos_weight 正样本权重数据指针 (可选，传 NULL 表示权重全为 1)
  * @param stream 计算流
  */
-__C __export infiniStatus_t infiniopBCEWithLogits(
-                                    infiniopBCEWithLogitsDescriptor_t desc,
-                                    void *workspace,
-                                    size_t workspace_size,
-                                    void *out,
-                                    const void *logits,
-                                    const void *target,
-                                    const void *weight,
-                                    const void *pos_weight,
-                                    void *stream);
+__INFINI_C __export infiniStatus_t infiniopBCEWithLogits(
+    infiniopBCEWithLogitsDescriptor_t desc,
+    void *workspace,
+    size_t workspace_size,
+    void *out,
+    const void *logits,
+    const void *target,
+    const void *weight,
+    const void *pos_weight,
+    void *stream);
 
 /**
  * @brief 销毁 BCEWithLogits 算子描述符
  */
-__C __export infiniStatus_t infiniopDestroyBCEWithLogitsDescriptor(
-                                    infiniopBCEWithLogitsDescriptor_t desc);
+__INFINI_C __export infiniStatus_t infiniopDestroyBCEWithLogitsDescriptor(
+    infiniopBCEWithLogitsDescriptor_t desc);
 
 #endif

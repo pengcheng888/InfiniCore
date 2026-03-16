@@ -13,10 +13,10 @@ common::OpDispatcher<Atanh::schema> &Atanh::dispatcher() {
 void Atanh::execute(Tensor y, Tensor a) {
     // 确保输入和输出在同一个设备上
     INFINICORE_ASSERT_TENSORS_SAME_DEVICE(y, a);
-    
+
     // 切换当前上下文到目标设备
     infinicore::context::setDevice(y->device());
-    
+
     // 根据设备类型（CPU/CUDA等）查找对应的实现并执行
     dispatcher().lookup(y->device().getType())(y, a);
 }

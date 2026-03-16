@@ -1,8 +1,8 @@
 #ifndef __ATANH_CUDA_H__
 #define __ATANH_CUDA_H__
 
-#include <cuda_fp16.h>
 #include <cuda_bf16.h>
+#include <cuda_fp16.h>
 
 namespace op::atanh::cuda {
 typedef struct AtanhOp {

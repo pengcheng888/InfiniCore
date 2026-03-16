@@ -22,7 +22,7 @@ infiniStatus_t Descriptor::create(
     for (const auto &in_desc : input_desc_vec) {
         CHECK_SAME_SHAPE(y_shape, in_desc->shape());
     }
-    
+
     // 3. 使用通用的 Elementwise 宏创建描述符
     // 该宏会实例化 Descriptor 并将其赋值给 *desc_ptr
     CREATE_ELEMENTWISE_CPU_DESCRIPTOR(handle, dtype, out_desc, input_desc_vec);

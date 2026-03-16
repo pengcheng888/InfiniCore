@@ -1,6 +1,6 @@
 #include "../../../elementwise/moore/elementwise_moore.h"
-#include "addcmul_moore_kernel.h"
 #include "addcmul_moore.h"
+#include "addcmul_moore_kernel.h"
 #include <musa_runtime.h>
 
 namespace op::addcmul::moore {
@@ -82,7 +82,9 @@ __global__ void addcmul_kernel(
     float value) {
 
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx >= output_size) return;
+    if (idx >= output_size) {
+        return;
+    }
 
     ptrdiff_t out_offset = 0, in_offset = 0, t1_offset = 0, t2_offset = 0;
     size_t linear = idx;
@@ -112,7 +114,9 @@ static inline infiniStatus_t launch_addcmul_kernel(
     void *stream) {
 
     size_t output_size = desc->_output_size;
-    if (output_size == 0) return INFINI_STATUS_SUCCESS;
+    if (output_size == 0) {
+        return INFINI_STATUS_SUCCESS;
+    }
 
     auto *out_ptr = reinterpret_cast<T *>(output);
     auto *in_ptr = reinterpret_cast<const T *>(inputs.at(0));

@@ -16,18 +16,18 @@ typedef struct InfiniopDescriptor *infiniopAddcmulDescriptor_t;
  * @param tensor2 乘项张量2描述符
  * @param value 乘积的标量系数
  */
-__C __export infiniStatus_t infiniopCreateAddcmulDescriptor(infiniopHandle_t handle,
-                                                            infiniopAddcmulDescriptor_t *desc_ptr,
-                                                            infiniopTensorDescriptor_t out,
-                                                            infiniopTensorDescriptor_t input,
-                                                            infiniopTensorDescriptor_t tensor1,
-                                                            infiniopTensorDescriptor_t tensor2,
-                                                            float value);
+__INFINI_C __export infiniStatus_t infiniopCreateAddcmulDescriptor(infiniopHandle_t handle,
+                                                                   infiniopAddcmulDescriptor_t *desc_ptr,
+                                                                   infiniopTensorDescriptor_t out,
+                                                                   infiniopTensorDescriptor_t input,
+                                                                   infiniopTensorDescriptor_t tensor1,
+                                                                   infiniopTensorDescriptor_t tensor2,
+                                                                   float value);
 
 /**
  * @brief 获取 Addcmul 计算所需的临时空间大小
  */
-__C __export infiniStatus_t infiniopGetAddcmulWorkspaceSize(infiniopAddcmulDescriptor_t desc, size_t *size);
+__INFINI_C __export infiniStatus_t infiniopGetAddcmulWorkspaceSize(infiniopAddcmulDescriptor_t desc, size_t *size);
 
 /**
  * @brief 执行 Addcmul 计算
@@ -40,18 +40,18 @@ __C __export infiniStatus_t infiniopGetAddcmulWorkspaceSize(infiniopAddcmulDescr
  * @param tensor2 乘项2数据指针
  * @param stream 计算流 (CUDA stream 等)
  */
-__C __export infiniStatus_t infiniopAddcmul(infiniopAddcmulDescriptor_t desc,
-                                            void *workspace,
-                                            size_t workspace_size,
-                                            void *out,
-                                            const void *input,
-                                            const void *tensor1,
-                                            const void *tensor2,
-                                            void *stream);
+__INFINI_C __export infiniStatus_t infiniopAddcmul(infiniopAddcmulDescriptor_t desc,
+                                                   void *workspace,
+                                                   size_t workspace_size,
+                                                   void *out,
+                                                   const void *input,
+                                                   const void *tensor1,
+                                                   const void *tensor2,
+                                                   void *stream);
 
 /**
  * @brief 销毁 Addcmul 算子描述符
  */
-__C __export infiniStatus_t infiniopDestroyAddcmulDescriptor(infiniopAddcmulDescriptor_t desc);
+__INFINI_C __export infiniStatus_t infiniopDestroyAddcmulDescriptor(infiniopAddcmulDescriptor_t desc);
 
 #endif

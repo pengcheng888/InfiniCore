@@ -28,7 +28,7 @@
 // -----------------------------------------------------------------------------
 // 1. 创建描述符
 // -----------------------------------------------------------------------------
-__C infiniStatus_t infiniopCreateCdistDescriptor(
+__INFINI_C infiniStatus_t infiniopCreateCdistDescriptor(
     infiniopHandle_t handle,
     infiniopCdistDescriptor_t *desc_ptr,
     infiniopTensorDescriptor_t y_desc,
@@ -36,11 +36,11 @@ __C infiniStatus_t infiniopCreateCdistDescriptor(
     infiniopTensorDescriptor_t x2_desc,
     double p) {
 
-#define CREATE(CASE, NAMESPACE) \
-    case CASE: \
-        return op::cdist::NAMESPACE::Descriptor::create(handle, \
-            reinterpret_cast<op::cdist::NAMESPACE::Descriptor **>(desc_ptr), \
-            y_desc, x1_desc, x2_desc, p)
+#define CREATE(CASE, NAMESPACE)                                                                                          \
+    case CASE:                                                                                                           \
+        return op::cdist::NAMESPACE::Descriptor::create(handle,                                                          \
+                                                        reinterpret_cast<op::cdist::NAMESPACE::Descriptor **>(desc_ptr), \
+                                                        y_desc, x1_desc, x2_desc, p)
 
     switch (handle->device) {
 #ifdef ENABLE_CPU_API
@@ -82,12 +82,12 @@ __C infiniStatus_t infiniopCreateCdistDescriptor(
 // -----------------------------------------------------------------------------
 // 2. 获取 Workspace 大小
 // -----------------------------------------------------------------------------
-__C infiniStatus_t infiniopGetCdistWorkspaceSize(
+__INFINI_C infiniStatus_t infiniopGetCdistWorkspaceSize(
     infiniopCdistDescriptor_t desc,
     size_t *size) {
 
-#define GET(CASE, NAMESPACE)                                                                   \
-    case CASE:                                                                                 \
+#define GET(CASE, NAMESPACE)                                                                       \
+    case CASE:                                                                                     \
         *size = reinterpret_cast<const op::cdist::NAMESPACE::Descriptor *>(desc)->workspaceSize(); \
         return INFINI_STATUS_SUCCESS
 
@@ -131,7 +131,7 @@ __C infiniStatus_t infiniopGetCdistWorkspaceSize(
 // -----------------------------------------------------------------------------
 // 3. 执行计算 (计算成对距离)
 // -----------------------------------------------------------------------------
-__C infiniStatus_t infiniopCdist(
+__INFINI_C infiniStatus_t infiniopCdist(
     infiniopCdistDescriptor_t desc,
     void *workspace, size_t workspace_size,
     void *y,
@@ -139,8 +139,8 @@ __C infiniStatus_t infiniopCdist(
     const void *x2,
     void *stream) {
 
-#define CALCULATE(CASE, NAMESPACE) \
-    case CASE: \
+#define CALCULATE(CASE, NAMESPACE)                                              \
+    case CASE:                                                                  \
         return reinterpret_cast<const op::cdist::NAMESPACE::Descriptor *>(desc) \
             ->calculate(workspace, workspace_size, y, x1, x2, stream)
 
@@ -184,11 +184,11 @@ __C infiniStatus_t infiniopCdist(
 // -----------------------------------------------------------------------------
 // 4. 销毁描述符
 // -----------------------------------------------------------------------------
-__C infiniStatus_t infiniopDestroyCdistDescriptor(infiniopCdistDescriptor_t desc) {
+__INFINI_C infiniStatus_t infiniopDestroyCdistDescriptor(infiniopCdistDescriptor_t desc) {
 
-#define DELETE(CASE, NAMESPACE)                                                 \
-    case CASE:                                                                  \
-        delete reinterpret_cast<const op::cdist::NAMESPACE::Descriptor *>(desc);\
+#define DELETE(CASE, NAMESPACE)                                                  \
+    case CASE:                                                                   \
+        delete reinterpret_cast<const op::cdist::NAMESPACE::Descriptor *>(desc); \
         return INFINI_STATUS_SUCCESS;
 
     switch (desc->device_type) {

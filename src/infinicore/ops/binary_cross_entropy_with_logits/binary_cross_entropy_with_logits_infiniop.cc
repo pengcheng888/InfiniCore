@@ -51,15 +51,15 @@ void calculate(Tensor out, Tensor logits, Tensor target, Tensor weight, Tensor p
     // 3. 如果缓存未命中，创建新的描述符并存入缓存
     if (!desc_opt) {
         // 获取可选 Tensor 的描述符，若未定义则传 nullptr
-        auto weight_desc = weight.is_defined() ? weight->desc() : nullptr;
-        auto pos_weight_desc = pos_weight.is_defined() ? pos_weight->desc() : nullptr;
+        auto weight_desc = weight ? weight->desc() : nullptr;
+        auto pos_weight_desc = pos_weight ? pos_weight->desc() : nullptr;
 
         INFINICORE_CHECK_ERROR(infiniopCreateBCEWithLogitsDescriptor(
-            context::getInfiniopHandle(device), 
+            context::getInfiniopHandle(device),
             &desc,
-            out->desc(), 
-            logits->desc(), 
-            target->desc(), 
+            out->desc(),
+            logits->desc(),
+            target->desc(),
             weight_desc,
             pos_weight_desc,
             reduction));
@@ -74,17 +74,17 @@ void calculate(Tensor out, Tensor logits, Tensor target, Tensor weight, Tensor p
     std::shared_ptr<Memory> workspace = context::allocateMemory(workspace_size);
 
     // 5. 获取数据指针，处理可选 Tensor 的空指针逻辑
-    const void* weight_ptr = weight.is_defined() ? weight->data() : nullptr;
-    const void* pos_weight_ptr = pos_weight.is_defined() ? pos_weight->data() : nullptr;
+    const void *weight_ptr = weight ? weight->data() : nullptr;
+    const void *pos_weight_ptr = pos_weight ? pos_weight->data() : nullptr;
 
     // 6. 执行底层算子
     INFINICORE_CHECK_ERROR(infiniopBCEWithLogits(
-        desc, 
-        workspace->data(), 
+        desc,
+        workspace->data(),
         workspace_size,
-        out->data(), 
-        logits->data(), 
-        target->data(), 
+        out->data(),
+        logits->data(),
+        target->data(),
         weight_ptr,
         pos_weight_ptr,
         context::getStream()));

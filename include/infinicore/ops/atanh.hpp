@@ -9,10 +9,10 @@ class Atanh {
 public:
     // schema 定义为：void(输出 Tensor, 输入 Tensor)
     using schema = void (*)(Tensor, Tensor);
-    
+
     // 执行函数
     static void execute(Tensor y, Tensor a);
-    
+
     // 获取算子分发器，用于多后端（CPU/CUDA 等）匹配
     static common::OpDispatcher<schema> &dispatcher();
 };

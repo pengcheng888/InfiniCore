@@ -28,7 +28,7 @@
 // -----------------------------------------------------------------------------
 // 1. 创建描述符
 // -----------------------------------------------------------------------------
-__C infiniStatus_t infiniopCreateBCEWithLogitsDescriptor(
+__INFINI_C infiniStatus_t infiniopCreateBCEWithLogitsDescriptor(
     infiniopHandle_t handle,
     infiniopBCEWithLogitsDescriptor_t *desc_ptr,
     infiniopTensorDescriptor_t out_desc,
@@ -38,11 +38,11 @@ __C infiniStatus_t infiniopCreateBCEWithLogitsDescriptor(
     infiniopTensorDescriptor_t pos_weight_desc,
     infiniopReduction_t reduction) {
 
-#define CREATE(CASE, NAMESPACE) \
-    case CASE: \
-        return op::bce_with_logits::NAMESPACE::Descriptor::create(handle, \
-            reinterpret_cast<op::bce_with_logits::NAMESPACE::Descriptor **>(desc_ptr), \
-            out_desc, logits_desc, target_desc, weight_desc, pos_weight_desc, reduction)
+#define CREATE(CASE, NAMESPACE)                                                                                                              \
+    case CASE:                                                                                                                               \
+        return op::bce_with_logits::NAMESPACE::Descriptor::create(handle,                                                                    \
+                                                                  reinterpret_cast<op::bce_with_logits::NAMESPACE::Descriptor **>(desc_ptr), \
+                                                                  out_desc, logits_desc, target_desc, weight_desc, pos_weight_desc, reduction)
 
     switch (handle->device) {
 #ifdef ENABLE_CPU_API
@@ -84,12 +84,12 @@ __C infiniStatus_t infiniopCreateBCEWithLogitsDescriptor(
 // -----------------------------------------------------------------------------
 // 2. 获取 Workspace 大小
 // -----------------------------------------------------------------------------
-__C infiniStatus_t infiniopGetBCEWithLogitsWorkspaceSize(
+__INFINI_C infiniStatus_t infiniopGetBCEWithLogitsWorkspaceSize(
     infiniopBCEWithLogitsDescriptor_t desc,
     size_t *size) {
 
-#define GET(CASE, NAMESPACE) \
-    case CASE: \
+#define GET(CASE, NAMESPACE)                                                                                 \
+    case CASE:                                                                                               \
         *size = reinterpret_cast<const op::bce_with_logits::NAMESPACE::Descriptor *>(desc)->workspaceSize(); \
         return INFINI_STATUS_SUCCESS
 
@@ -133,7 +133,7 @@ __C infiniStatus_t infiniopGetBCEWithLogitsWorkspaceSize(
 // -----------------------------------------------------------------------------
 // 3. 执行计算
 // -----------------------------------------------------------------------------
-__C infiniStatus_t infiniopBCEWithLogits(
+__INFINI_C infiniStatus_t infiniopBCEWithLogits(
     infiniopBCEWithLogitsDescriptor_t desc,
     void *workspace, size_t workspace_size,
     void *out,
@@ -143,8 +143,8 @@ __C infiniStatus_t infiniopBCEWithLogits(
     const void *pos_weight,
     void *stream) {
 
-#define CALCULATE(CASE, NAMESPACE) \
-    case CASE: \
+#define CALCULATE(CASE, NAMESPACE)                                                        \
+    case CASE:                                                                            \
         return reinterpret_cast<const op::bce_with_logits::NAMESPACE::Descriptor *>(desc) \
             ->calculate(workspace, workspace_size, out, logits, target, weight, pos_weight, stream)
 
@@ -188,10 +188,10 @@ __C infiniStatus_t infiniopBCEWithLogits(
 // -----------------------------------------------------------------------------
 // 4. 销毁描述符
 // -----------------------------------------------------------------------------
-__C infiniStatus_t infiniopDestroyBCEWithLogitsDescriptor(infiniopBCEWithLogitsDescriptor_t desc) {
+__INFINI_C infiniStatus_t infiniopDestroyBCEWithLogitsDescriptor(infiniopBCEWithLogitsDescriptor_t desc) {
 
-#define DELETE(CASE, NAMESPACE) \
-    case CASE: \
+#define DELETE(CASE, NAMESPACE)                                                            \
+    case CASE:                                                                             \
         delete reinterpret_cast<const op::bce_with_logits::NAMESPACE::Descriptor *>(desc); \
         return INFINI_STATUS_SUCCESS;
 
