@@ -21,9 +21,6 @@
 #include "ops/mha_kvcache.hpp"
 #include "ops/mha_varlen.hpp"
 #include "ops/mul.hpp"
-#include "ops/paged_attention.hpp"
-#include "ops/paged_attention_prefill.hpp"
-#include "ops/paged_caching.hpp"
 #include "ops/random_sample.hpp"
 #include "ops/rearrange.hpp"
 #include "ops/rms_norm.hpp"
@@ -36,13 +33,17 @@
 #include "ops/var.hpp"
 #include "ops/var_mean.hpp"
 
+#include "ops/atanh.hpp"
+#include "ops/addcmul.hpp"
+#include "ops/cdist.hpp"
+#include "ops/binary_cross_entropy_with_logits.hpp"
+#include "ops/reciprocal.hpp"
 namespace py = pybind11;
 
 namespace infinicore::ops {
 
 inline void bind(py::module &m) {
     bind_add(m);
-    bind_add_rms_norm(m);
     bind_attention(m);
     bind_causal_softmax(m);
     bind_flash_attention(m);
@@ -74,6 +75,11 @@ inline void bind(py::module &m) {
     bind_topk(m);
     bind_all(m);
     bind_equal(m);
+    bind_atanh(m);
+    bind_addcmul(m);
+    bind_cdist(m);
+    bind_binary_cross_entropy_with_logits(m);
+    bind_reciprocal(m);
 }
 
 } // namespace infinicore::ops

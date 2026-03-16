@@ -86,6 +86,9 @@ public:
 
     operator bool() const;
 
+    // 判断 Tensor 是否已定义（是否持有有效实现）
+    bool is_defined() const { return static_cast<bool>(*this); }
+
 protected:
     Tensor(std::shared_ptr<TensorImpl> impl) : impl_(std::move(impl)) {}
     std::shared_ptr<TensorImpl> impl_;
@@ -307,7 +310,7 @@ protected:
 
     friend class Tensor;
 
-protected:
+private:
     TensorMetaData meta_;
     TensorData data_;
 

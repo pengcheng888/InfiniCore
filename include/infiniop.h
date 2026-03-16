@@ -45,6 +45,11 @@
 #include "infiniop/ops/var.h"
 #include "infiniop/ops/var_mean.h"
 #include "infiniop/ops/zeros.h"
+#include "infiniop/ops/atanh.h"
+#include "infiniop/ops/addcmul.h"
+#include "infiniop/ops/cdist.h"
+#include "infiniop/ops/binary_cross_entropy_with_logits.h"
+#include "infiniop/ops/reciprocal.h"
 #include "infiniop/tensor_descriptor.h"
 
 #include "infiniop/ops/cross_entropy.h"
