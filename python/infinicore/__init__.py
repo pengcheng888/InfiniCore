@@ -49,8 +49,14 @@ from infinicore.dtype import (
 )
 from infinicore.ops.add import add
 from infinicore.ops.add_rms_norm import add_rms_norm
+from infinicore.ops.addcmul import addcmul
 from infinicore.ops.all import all
+from infinicore.ops.atanh import atanh
 from infinicore.ops.attention import attention
+from infinicore.ops.binary_cross_entropy_with_logits import (
+    binary_cross_entropy_with_logits,
+)
+from infinicore.ops.cdist import cdist
 from infinicore.ops.cross_entropy import cross_entropy
 from infinicore.ops.equal import equal
 from infinicore.ops.kv_caching import kv_caching
@@ -63,6 +69,7 @@ from infinicore.ops.paged_attention import paged_attention
 from infinicore.ops.paged_attention_prefill import paged_attention_prefill
 from infinicore.ops.paged_caching import paged_caching
 from infinicore.ops.rearrange import rearrange
+from infinicore.ops.reciprocal import reciprocal
 from infinicore.ops.squeeze import squeeze
 from infinicore.ops.sum import sum
 from infinicore.ops.topk import topk
@@ -125,7 +132,12 @@ __all__ = [
     "long",
     "short",
     "uint8",
-    # Operators.
+    # Operations.
+    "addcmul",
+    "atanh",
+    "binary_cross_entropy_with_logits",
+    "cdist",
+    "reciprocal",
     "add",
     "add_rms_norm",
     "add_rms_norm_",
