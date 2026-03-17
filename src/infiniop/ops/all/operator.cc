@@ -12,9 +12,6 @@
 #ifdef ENABLE_METAX_API
 #include "metax/all_metax.h"
 #endif
-#ifdef ENABLE_KUNLUN_API
-#include "kunlun/all_kunlun.h"
-#endif
 #ifdef ENABLE_MOORE_API
 #include "moore/all_moore.h"
 #endif
@@ -59,9 +56,6 @@ __INFINI_C infiniStatus_t infiniopCreateAllDescriptor(
 #ifdef ENABLE_METAX_API
         CREATE(INFINI_DEVICE_METAX, metax);
 #endif
-#ifdef ENABLE_KUNLUN_API
-        CREATE(INFINI_DEVICE_KUNLUN, kunlun);
-#endif
 #ifdef ENABLE_MOORE_API
         CREATE(INFINI_DEVICE_MOORE, moore);
 #endif
@@ -98,9 +92,6 @@ __INFINI_C infiniStatus_t infiniopGetAllWorkspaceSize(infiniopAllDescriptor_t de
 #endif
 #ifdef ENABLE_METAX_API
         GET(INFINI_DEVICE_METAX, metax);
-#endif
-#ifdef ENABLE_KUNLUN_API
-        GET(INFINI_DEVICE_KUNLUN, kunlun);
 #endif
 #ifdef ENABLE_MOORE_API
         GET(INFINI_DEVICE_MOORE, moore);
@@ -150,9 +141,6 @@ __INFINI_C infiniStatus_t infiniopAll(
 #ifdef ENABLE_METAX_API
         CALCULATE(INFINI_DEVICE_METAX, metax);
 #endif
-#ifdef ENABLE_KUNLUN_API
-        CALCULATE(INFINI_DEVICE_KUNLUN, kunlun);
-#endif
 #ifdef ENABLE_MOORE_API
         CALCULATE(INFINI_DEVICE_MOORE, moore);
 #endif
@@ -191,9 +179,6 @@ infiniopDestroyAllDescriptor(infiniopAllDescriptor_t desc) {
 #endif
 #ifdef ENABLE_METAX_API
         DELETE(INFINI_DEVICE_METAX, metax);
-#endif
-#ifdef ENABLE_KUNLUN_API
-        DELETE(INFINI_DEVICE_KUNLUN, kunlun);
 #endif
 #ifdef ENABLE_MOORE_API
         DELETE(INFINI_DEVICE_MOORE, moore);

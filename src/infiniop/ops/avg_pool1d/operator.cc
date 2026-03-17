@@ -8,17 +8,8 @@
 #if defined(ENABLE_NVIDIA_API) || defined(ENABLE_ILUVATAR_API) || defined(ENABLE_QY_API) || defined(ENABLE_HYGON_API)
 #include "nvidia/avg_pool1d_nvidia.cuh"
 #endif
-#ifdef ENABLE_ASCEND_API
-#include "ascend/avg_pool1d_ascend.h"
-#endif
-#ifdef ENABLE_CAMBRICON_API
-#include "bang/avg_pool1d_bang.h"
-#endif
 #ifdef ENABLE_METAX_API
 #include "metax/avg_pool1d_metax.h"
-#endif
-#ifdef ENABLE_KUNLUN_API
-#include "kunlun/avg_pool1d_kunlun.h"
 #endif
 #ifdef ENABLE_MOORE_API
 #include "moore/avg_pool1d_moore.h"
@@ -66,15 +57,6 @@ __INFINI_C infiniStatus_t infiniopCreateAvgPool1dDescriptor(
 #ifdef ENABLE_METAX_API
         CREATE(INFINI_DEVICE_METAX, metax);
 #endif
-#ifdef ENABLE_ASCEND_API
-        CREATE(INFINI_DEVICE_ASCEND, ascend);
-#endif
-#ifdef ENABLE_KUNLUN_API
-        CREATE(INFINI_DEVICE_KUNLUN, kunlun);
-#endif
-#ifdef ENABLE_CAMBRICON_API
-        CREATE(INFINI_DEVICE_CAMBRICON, bang);
-#endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
@@ -110,15 +92,6 @@ __INFINI_C infiniStatus_t infiniopGetAvgPool1dWorkspaceSize(infiniopAvgPool1dDes
 #endif
 #ifdef ENABLE_METAX_API
         GET(INFINI_DEVICE_METAX, metax);
-#endif
-#ifdef ENABLE_KUNLUN_API
-        GET(INFINI_DEVICE_KUNLUN, kunlun);
-#endif
-#ifdef ENABLE_CAMBRICON_API
-        GET(INFINI_DEVICE_CAMBRICON, bang);
-#endif
-#ifdef ENABLE_ASCEND_API
-        GET(INFINI_DEVICE_ASCEND, ascend);
 #endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
@@ -162,15 +135,6 @@ __INFINI_C infiniStatus_t infiniopAvgPool1d(
 #ifdef ENABLE_METAX_API
         CALCULATE(INFINI_DEVICE_METAX, metax);
 #endif
-#ifdef ENABLE_KUNLUN_API
-        CALCULATE(INFINI_DEVICE_KUNLUN, kunlun);
-#endif
-#ifdef ENABLE_CAMBRICON_API
-        CALCULATE(INFINI_DEVICE_CAMBRICON, bang);
-#endif
-#ifdef ENABLE_ASCEND_API
-        CALCULATE(INFINI_DEVICE_ASCEND, ascend);
-#endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
@@ -207,15 +171,6 @@ infiniopDestroyAvgPool1dDescriptor(infiniopAvgPool1dDescriptor_t desc) {
 #endif
 #ifdef ENABLE_METAX_API
         DELETE(INFINI_DEVICE_METAX, metax);
-#endif
-#ifdef ENABLE_KUNLUN_API
-        DELETE(INFINI_DEVICE_KUNLUN, kunlun);
-#endif
-#ifdef ENABLE_CAMBRICON_API
-        DELETE(INFINI_DEVICE_CAMBRICON, bang);
-#endif
-#ifdef ENABLE_ASCEND_API
-        DELETE(INFINI_DEVICE_ASCEND, ascend);
 #endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
