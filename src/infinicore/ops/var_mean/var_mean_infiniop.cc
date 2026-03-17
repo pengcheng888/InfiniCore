@@ -47,12 +47,7 @@ void calculate(Tensor var_output, Tensor mean_output, Tensor input, std::vector<
 }
 
 static bool registered = []() {
-    Var_Mean::dispatcher().registerDevice({Device::Type::CPU,
-                                           Device::Type::NVIDIA,
-                                           Device::Type::METAX,
-                                           Device::Type::MOORE,
-                                           Device::Type::ILUVATAR},
-                                          &calculate, false);
+    Var_Mean::dispatcher().registerAll(&calculate, false);
     return true;
 }();
 

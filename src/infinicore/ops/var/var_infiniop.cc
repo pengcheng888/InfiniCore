@@ -45,12 +45,7 @@ void calculate(Tensor var_output, Tensor input, std::vector<size_t> dim, bool un
 }
 
 static bool registered = []() {
-    Var::dispatcher().registerDevice({Device::Type::CPU,
-                                      Device::Type::NVIDIA,
-                                      Device::Type::METAX,
-                                      Device::Type::MOORE,
-                                      Device::Type::ILUVATAR},
-                                     &calculate, false);
+    Var::dispatcher().registerAll(&calculate, false);
     return true;
 }();
 
