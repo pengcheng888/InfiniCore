@@ -45,12 +45,7 @@ void calculate(Tensor output, Tensor input, std::vector<size_t> dim, bool keepdi
 }
 
 static bool registered = []() {
-    Sum::dispatcher().registerDevice({Device::Type::CPU,
-                                      Device::Type::NVIDIA,
-                                      Device::Type::METAX,
-                                      Device::Type::MOORE,
-                                      Device::Type::ILUVATAR},
-                                     &calculate, false);
+    Sum::dispatcher().registerAll(&calculate, false);
     return true;
 }();
 

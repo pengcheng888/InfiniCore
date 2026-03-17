@@ -45,12 +45,7 @@ void calculate(Tensor values_output, Tensor indices_output, Tensor input, size_t
 }
 
 static bool registered = []() {
-    TopK::dispatcher().registerDevice({Device::Type::CPU,
-                                       Device::Type::NVIDIA,
-                                       Device::Type::METAX,
-                                       Device::Type::MOORE,
-                                       Device::Type::ILUVATAR},
-                                      &calculate, false);
+    TopK::dispatcher().registerAll(&calculate, false);
     return true;
 }();
 
