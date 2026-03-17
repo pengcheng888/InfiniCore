@@ -1,5 +1,5 @@
-#include "asinh_metax.h"
 #include "../../../elementwise/metax/elementwise_metax.h"
+#include "asinh_metax.h"
 
 #include "../cuda/kernel.cuh"
 

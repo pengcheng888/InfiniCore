@@ -15,19 +15,19 @@
 #include "moore/fmod_moore.h"
 #endif
 
-__C infiniStatus_t infiniopCreateFmodDescriptor(
+__INFINI_C infiniStatus_t infiniopCreateFmodDescriptor(
     infiniopHandle_t handle,
     infiniopFmodDescriptor_t *desc_ptr,
     infiniopTensorDescriptor_t c_desc,
     infiniopTensorDescriptor_t a_desc,
     infiniopTensorDescriptor_t b_desc) {
-#define CREATE(CASE, NAMESPACE)                                             \
-    case CASE:                                                              \
-        return op::fmod::NAMESPACE::Descriptor::create(                     \
-            handle,                                                         \
-            reinterpret_cast<op::fmod::NAMESPACE::Descriptor **>(desc_ptr), \
-            c_desc,                                                         \
-            {a_desc,                                                        \
+#define CREATE(CASE, NAMESPACE)                                               \
+    case CASE:                                                                \
+        return op::fmod__::NAMESPACE::Descriptor::create(                     \
+            handle,                                                           \
+            reinterpret_cast<op::fmod__::NAMESPACE::Descriptor **>(desc_ptr), \
+            c_desc,                                                           \
+            {a_desc,                                                          \
              b_desc})
 
     switch (handle->device) {
@@ -54,11 +54,11 @@ __C infiniStatus_t infiniopCreateFmodDescriptor(
 #undef CREATE
 }
 
-__C infiniStatus_t infiniopGetFmodWorkspaceSize(infiniopFmodDescriptor_t desc, size_t *size) {
+__INFINI_C infiniStatus_t infiniopGetFmodWorkspaceSize(infiniopFmodDescriptor_t desc, size_t *size) {
 
-#define GET(CASE, NAMESPACE)                                                                      \
-    case CASE:                                                                                    \
-        *size = reinterpret_cast<const op::fmod::NAMESPACE::Descriptor *>(desc)->workspaceSize(); \
+#define GET(CASE, NAMESPACE)                                                                        \
+    case CASE:                                                                                      \
+        *size = reinterpret_cast<const op::fmod__::NAMESPACE::Descriptor *>(desc)->workspaceSize(); \
         return INFINI_STATUS_SUCCESS;
 
     switch (desc->device_type) {
@@ -84,7 +84,7 @@ __C infiniStatus_t infiniopGetFmodWorkspaceSize(infiniopFmodDescriptor_t desc, s
     return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
 
-__C infiniStatus_t infiniopFmod(
+__INFINI_C infiniStatus_t infiniopFmod(
     infiniopFmodDescriptor_t desc,
     void *workspace,
     size_t workspace_size,
@@ -92,9 +92,9 @@ __C infiniStatus_t infiniopFmod(
     const void *a,
     const void *b,
     void *stream) {
-#define CALCULATE(CASE, NAMESPACE)                                             \
-    case CASE:                                                                 \
-        return reinterpret_cast<const op::fmod::NAMESPACE::Descriptor *>(desc) \
+#define CALCULATE(CASE, NAMESPACE)                                               \
+    case CASE:                                                                   \
+        return reinterpret_cast<const op::fmod__::NAMESPACE::Descriptor *>(desc) \
             ->calculate(workspace, workspace_size, c, {a, b}, stream)
 
     switch (desc->device_type) {
@@ -119,11 +119,11 @@ __C infiniStatus_t infiniopFmod(
 #undef CALCULATE
 }
 
-__C infiniStatus_t infiniopDestroyFmodDescriptor(infiniopFmodDescriptor_t desc) {
+__INFINI_C infiniStatus_t infiniopDestroyFmodDescriptor(infiniopFmodDescriptor_t desc) {
 
-#define GET(CASE, NAMESPACE)                                              \
-    case CASE:                                                            \
-        delete reinterpret_cast<op::fmod::NAMESPACE::Descriptor *>(desc); \
+#define GET(CASE, NAMESPACE)                                                \
+    case CASE:                                                              \
+        delete reinterpret_cast<op::fmod__::NAMESPACE::Descriptor *>(desc); \
         return INFINI_STATUS_SUCCESS;
 
     switch (desc->device_type) {

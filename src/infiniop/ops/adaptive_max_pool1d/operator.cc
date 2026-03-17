@@ -15,7 +15,7 @@
 #include "moore/adaptive_max_pool1d_moore.h"
 #endif
 
-__C infiniStatus_t infiniopCreateAdaptiveMaxPool1dDescriptor(
+__INFINI_C infiniStatus_t infiniopCreateAdaptiveMaxPool1dDescriptor(
     infiniopHandle_t handle,
     infiniopAdaptiveMaxPool1dDescriptor_t *desc_ptr,
     infiniopTensorDescriptor_t y_desc,
@@ -53,7 +53,7 @@ __C infiniStatus_t infiniopCreateAdaptiveMaxPool1dDescriptor(
     return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
 
-__C infiniStatus_t infiniopGetAdaptiveMaxPool1dWorkspaceSize(
+__INFINI_C infiniStatus_t infiniopGetAdaptiveMaxPool1dWorkspaceSize(
     infiniopAdaptiveMaxPool1dDescriptor_t desc,
     size_t *size) {
 #define GET(CASE, NAMESPACE)                                                                               \
@@ -83,7 +83,7 @@ __C infiniStatus_t infiniopGetAdaptiveMaxPool1dWorkspaceSize(
     return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
 
-__C infiniStatus_t infiniopAdaptiveMaxPool1d(
+__INFINI_C infiniStatus_t infiniopAdaptiveMaxPool1d(
     infiniopAdaptiveMaxPool1dDescriptor_t desc,
     void *workspace,
     size_t workspace_size,
@@ -117,7 +117,7 @@ __C infiniStatus_t infiniopAdaptiveMaxPool1d(
     return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
 
-__C infiniStatus_t infiniopDestroyAdaptiveMaxPool1dDescriptor(
+__INFINI_C infiniStatus_t infiniopDestroyAdaptiveMaxPool1dDescriptor(
     infiniopAdaptiveMaxPool1dDescriptor_t desc) {
 #define DESTROY(CASE, NAMESPACE)                                                         \
     case CASE:                                                                           \

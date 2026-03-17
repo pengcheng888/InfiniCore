@@ -1,6 +1,6 @@
 #include "fmod_cpu.h"
 
-namespace op::fmod::cpu {
+namespace op::fmod__::cpu {
 
 Descriptor::~Descriptor() = default;
 
@@ -50,4 +50,4 @@ infiniStatus_t Descriptor::calculate(
     }
     return INFINI_STATUS_SUCCESS;
 }
-} // namespace op::fmod::cpu
+} // namespace op::fmod__::cpu

@@ -4,7 +4,7 @@
 
 #include "fmod_metax.h"
 
-namespace op::fmod::metax {
+namespace op::fmod__::metax {
 
 Descriptor::~Descriptor() = default;
 
@@ -58,4 +58,4 @@ infiniStatus_t Descriptor::calculate(
 
     return INFINI_STATUS_SUCCESS;
 }
-} // namespace op::fmod::metax
+} // namespace op::fmod__::metax

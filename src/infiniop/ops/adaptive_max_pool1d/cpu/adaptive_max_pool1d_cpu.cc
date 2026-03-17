@@ -52,16 +52,12 @@ infiniStatus_t adaptiveMaxPool1d(const AdaptiveMaxPool1dInfo *info, T *y, const 
         }
 
         for (size_t out_idx = 0; out_idx < output_length; ++out_idx) {
-            // 计算池化窗口范围 [start_index, end_index)
-            // 公式参考 PyTorch:
-            // start = floor(out_idx * L_in / L_out)
-            // end   = ceil((out_idx + 1) * L_in / L_out)
-            int start_index = std::floor((float)out_idx * input_length / output_length);
-            int end_index = std::ceil((float)(out_idx + 1) * input_length / output_length);
+            size_t start_index = (out_idx * input_length) / output_length;
+            size_t end_index = ((out_idx + 1) * input_length + output_length - 1) / output_length;
 
-            start_index = std::max(start_index, 0);
-            end_index = std::min(end_index, (int)input_length);
-            int window_len = end_index - start_index;
+            start_index = std::max(start_index, size_t(0));
+            end_index = std::min(end_index, input_length);
+            size_t window_len = end_index - start_index;
 
             if (window_len <= 0) {
                 continue;

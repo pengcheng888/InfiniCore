@@ -4,7 +4,7 @@
 
 #include "../cuda/kernel.cuh"
 
-namespace op::fmod::moore {
+namespace op::fmod__::moore {
 
 Descriptor::~Descriptor() = default;
 
@@ -60,4 +60,4 @@ infiniStatus_t Descriptor::calculate(
     return INFINI_STATUS_SUCCESS;
 }
 
-} // namespace op::fmod::moore
+} // namespace op::fmod__::moore

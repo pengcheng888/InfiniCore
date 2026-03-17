@@ -15,7 +15,7 @@
 #include "moore/asinh_moore.h"
 #endif
 
-__C infiniStatus_t infiniopCreateAsinhDescriptor(
+__INFINI_C infiniStatus_t infiniopCreateAsinhDescriptor(
     infiniopHandle_t handle,
     infiniopAsinhDescriptor_t *desc_ptr,
     infiniopTensorDescriptor_t y_desc,
@@ -50,7 +50,7 @@ __C infiniStatus_t infiniopCreateAsinhDescriptor(
 #undef CREATE
 }
 
-__C infiniStatus_t infiniopGetAsinhWorkspaceSize(infiniopAsinhDescriptor_t desc, size_t *size) {
+__INFINI_C infiniStatus_t infiniopGetAsinhWorkspaceSize(infiniopAsinhDescriptor_t desc, size_t *size) {
 
 #define GET(CASE, NAMESPACE)                                                                       \
     case CASE:                                                                                     \
@@ -80,12 +80,12 @@ __C infiniStatus_t infiniopGetAsinhWorkspaceSize(infiniopAsinhDescriptor_t desc,
     return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
 
-__C infiniStatus_t infiniopAsinh(infiniopAsinhDescriptor_t desc,
-                                 void *workspace,
-                                 size_t workspace_size,
-                                 void *y,
-                                 const void *x,
-                                 void *stream) {
+__INFINI_C infiniStatus_t infiniopAsinh(infiniopAsinhDescriptor_t desc,
+                                        void *workspace,
+                                        size_t workspace_size,
+                                        void *y,
+                                        const void *x,
+                                        void *stream) {
 #define CALCULATE(CASE, NAMESPACE)                                              \
     case CASE:                                                                  \
         return reinterpret_cast<const op::asinh::NAMESPACE::Descriptor *>(desc) \
@@ -112,30 +112,30 @@ __C infiniStatus_t infiniopAsinh(infiniopAsinhDescriptor_t desc,
 #undef CALCULATE
 }
 
-__C infiniStatus_t infiniopDestroyAsinhDescriptor(infiniopAsinhDescriptor_t desc) {
-#define GET(CASE, NAMESPACE)                                        \
-    case CASE:                                                      \
-        reinterpret_cast<op::asinh::NAMESPACE::Descriptor *>(desc); \
+__INFINI_C infiniStatus_t infiniopDestroyAsinhDescriptor(infiniopAsinhDescriptor_t desc) {
+#define DESTROY(CASE, NAMESPACE)                                           \
+    case CASE:                                                             \
+        delete reinterpret_cast<op::asinh::NAMESPACE::Descriptor *>(desc); \
         return INFINI_STATUS_SUCCESS;
 
     switch (desc->device_type) {
 #ifdef ENABLE_CPU_API
-        GET(INFINI_DEVICE_CPU, cpu);
+        DESTROY(INFINI_DEVICE_CPU, cpu);
 #endif
 #ifdef ENABLE_NVIDIA_API
-        GET(INFINI_DEVICE_NVIDIA, nvidia);
+        DESTROY(INFINI_DEVICE_NVIDIA, nvidia);
 #endif
 #ifdef ENABLE_ILUVATAR_API
-        GET(INFINI_DEVICE_ILUVATAR, nvidia);
+        DESTROY(INFINI_DEVICE_ILUVATAR, nvidia);
 #endif
 #ifdef ENABLE_METAX_API
-        GET(INFINI_DEVICE_METAX, metax);
+        DESTROY(INFINI_DEVICE_METAX, metax);
 #endif
 #ifdef ENABLE_MOORE_API
-        GET(INFINI_DEVICE_MOORE, moore);
+        DESTROY(INFINI_DEVICE_MOORE, moore);
 #endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
-#undef DELETE
+#undef DESTROY
 }

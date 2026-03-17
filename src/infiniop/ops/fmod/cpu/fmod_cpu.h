@@ -3,9 +3,9 @@
 
 #include "../../../elementwise/cpu/elementwise_cpu.h"
 
-ELEMENTWISE_DESCRIPTOR(fmod, cpu)
+ELEMENTWISE_DESCRIPTOR(fmod__, cpu)
 
-namespace op::fmod::cpu {
+namespace op::fmod__::cpu {
 typedef struct FmodOp {
 public:
     static constexpr size_t num_inputs = 2;
@@ -14,6 +14,6 @@ public:
         return std::fmod(a, b);
     }
 } FmodOp;
-} // namespace op::fmod::cpu
+} // namespace op::fmod__::cpu
 
 #endif // _FMOD_CPU_H__

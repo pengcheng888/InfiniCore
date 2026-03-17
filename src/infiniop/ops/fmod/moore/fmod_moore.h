@@ -3,6 +3,6 @@
 
 #include "../../../elementwise/moore/elementwise_moore_api.h"
 
-ELEMENTWISE_DESCRIPTOR(fmod, moore)
+ELEMENTWISE_DESCRIPTOR(fmod__, moore)
 
 #endif // __FMOD_MOORE_API_H__

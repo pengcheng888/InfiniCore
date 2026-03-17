@@ -1,5 +1,3 @@
-from typing import List
-
 from infinicore.lib import _infinicore
 from infinicore.tensor import Tensor
 

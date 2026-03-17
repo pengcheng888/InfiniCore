@@ -2,7 +2,7 @@
 #include "../cuda/kernel.cuh"
 #include "fmod_nvidia.cuh"
 
-namespace op::fmod::nvidia {
+namespace op::fmod__::nvidia {
 
 Descriptor::~Descriptor() = default;
 
@@ -56,4 +56,4 @@ infiniStatus_t Descriptor::calculate(
 
     return INFINI_STATUS_SUCCESS;
 }
-} // namespace op::fmod::nvidia
+} // namespace op::fmod__::nvidia

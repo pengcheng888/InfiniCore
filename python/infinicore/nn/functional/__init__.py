@@ -1,6 +1,6 @@
+from .adaptive_max_pool1d import adaptive_max_pool1d
 from .avg_pool1d import avg_pool1d
 from .binary_cross_entropy_with_logits import binary_cross_entropy_with_logits
-from .adaptive_max_pool1d import adaptive_max_pool1d
 from .causal_softmax import causal_softmax
 from .embedding import embedding
 from .flash_attention import flash_attention
