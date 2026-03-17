@@ -60,6 +60,7 @@ from infinicore.ops.cdist import cdist
 from infinicore.ops.cross_entropy import cross_entropy
 from infinicore.ops.equal import equal
 from infinicore.ops.kv_caching import kv_caching
+from infinicore.ops.asinh import asinh
 from infinicore.ops.matmul import matmul
 from infinicore.ops.mha_kvcache import mha_kvcache
 from infinicore.ops.mha_varlen import mha_varlen
@@ -76,6 +77,9 @@ from infinicore.ops.topk import topk
 from infinicore.ops.unsqueeze import unsqueeze
 from infinicore.ops.var import var
 from infinicore.ops.var_mean import var_mean
+from infinicore.ops.baddbmm import baddbmm
+from infinicore.ops.bilinear import bilinear
+from infinicore.ops.fmod import fmod
 from infinicore.tensor import (
     Tensor,
     empty,
@@ -143,6 +147,10 @@ __all__ = [
     "add_rms_norm_",
     "attention",
     "kv_caching",
+    "asinh",
+    "baddbmm",
+    "bilinear",
+    "fmod",
     "matmul",
     "equal",
     "mul",

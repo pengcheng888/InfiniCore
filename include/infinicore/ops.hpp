@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ops/adaptive_max_pool1d.hpp"
 #include "ops/add.hpp"
 #include "ops/add_rms_norm.hpp"
 #include "ops/addcmul.hpp"
@@ -15,6 +16,12 @@
 #include "ops/hardswish.hpp"
 #include "ops/hardtanh.hpp"
 #include "ops/kv_caching.hpp"
+#include "ops/asinh.hpp"
+#include "ops/attention.hpp"
+#include "ops/baddbmm.hpp"
+#include "ops/bilinear.hpp"
+#include "ops/causal_softmax.hpp"
+#include "ops/fmod.hpp"
 #include "ops/matmul.hpp"
 #include "ops/ones.hpp"
 #include "ops/paged_attention.hpp"
