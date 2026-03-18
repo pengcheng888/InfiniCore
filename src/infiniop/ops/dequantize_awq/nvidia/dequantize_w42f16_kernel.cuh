@@ -1,6 +1,6 @@
 #pragma once
 
-__device__ uint4 dequantize_s4_to_fp16x2(uint32_t const &source) {
+__device__ uint4 dequantize_s4_to_fp16x2_awq(uint32_t const &source) {
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ < 750
     // 步骤 1: 从一个 32-bit 源数据中解包出 8 个 4-bit 无符号整数。
     // 源数据的内存布局被假定为 [v7, v6, v5, v4, v3, v2, v1, v0]，

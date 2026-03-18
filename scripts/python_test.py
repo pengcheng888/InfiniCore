@@ -18,6 +18,7 @@ def run_tests(args):
         "clip.py",
         "conv.py",
         # "dequantize_awq.py",
+        # "dequantize_gptq.py",
         "gelu.py",
         "gemm.py",
         # "layer_norm.py",

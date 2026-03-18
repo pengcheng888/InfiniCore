@@ -56,8 +56,7 @@ target("infiniop-iluvatar")
     -- skip scaled_mm, adapt it later
     -- remove_files("../src/infiniop/ops/scaled_mm/nvidia/*.cu")
 
-    -- 天数平台不支持部分 NVIDIA PTX 指令，AWQ 反量化改用 CUDA C++ 实现
-    add_files("../src/infiniop/ops/dequantize_awq/iluvatar/*.cu")
+    add_files("../src/infiniop/ops/*/iluvatar/*.cu")
 
     if has_config("ninetoothed") then
         add_files("../build/ninetoothed/*.c", "../build/ninetoothed/*.cpp", {cxxflags = {"-Wno-return-type"}})
