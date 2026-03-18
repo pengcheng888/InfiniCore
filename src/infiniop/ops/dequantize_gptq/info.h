@@ -28,11 +28,11 @@ public:
         infiniopTensorDescriptor_t zeros_desc,
         infiniopTensorDescriptor_t g_idx_desc) {
 
-        const int _in_features   = g_idx_desc->dim(0);          // real input channels
-        const int _in_packed     = qweight_desc->dim(0);        // ceil(in_features / 8)
-        const int _out_features  = qweight_desc->dim(1);        // real output channels
-        const int _num_groups    = scales_desc->dim(0);         // should be in_features / group_size
-        const int _out_packed    = zeros_desc->dim(1);          // ceil(out_features / 8)
+        const int _in_features = g_idx_desc->dim(0);    // real input channels
+        const int _in_packed = qweight_desc->dim(0);    // ceil(in_features / 8)
+        const int _out_features = qweight_desc->dim(1); // real output channels
+        const int _num_groups = scales_desc->dim(0);    // should be in_features / group_size
+        const int _out_packed = zeros_desc->dim(1);     // ceil(out_features / 8)
 
         assert(out_desc->dim(0) == _in_features);
         assert(out_desc->dim(1) == _out_features);

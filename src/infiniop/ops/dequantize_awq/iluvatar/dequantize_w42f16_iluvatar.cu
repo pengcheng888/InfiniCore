@@ -8,7 +8,7 @@
 
 __global__ void __launch_bounds__(64)
     dequantize_weights_awq(int *__restrict__ B, half *__restrict__ scaling_factors,
-                       int *__restrict__ zeros, half *__restrict__ C, int G) {
+                           int *__restrict__ zeros, half *__restrict__ C, int G) {
     // static constexpr uint32_t ZERO = 0x0;
     half B_shared[32 * (128 + 8)];
 

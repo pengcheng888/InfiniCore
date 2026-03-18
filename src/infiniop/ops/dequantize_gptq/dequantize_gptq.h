@@ -8,17 +8,17 @@
 
 #define DESCRIPTOR(NAMESPACE)                                    \
                                                                  \
-    namespace op::dequantize_gptq::NAMESPACE {                    \
+    namespace op::dequantize_gptq::NAMESPACE {                   \
     class Descriptor final : public InfiniopDescriptor {         \
         struct Opaque;                                           \
         Opaque *_opaque;                                         \
-        DequantizeGPTQInfo _info;                                 \
+        DequantizeGPTQInfo _info;                                \
         size_t _workspace_size;                                  \
                                                                  \
         Descriptor(                                              \
             size_t workspace_size_,                              \
             Opaque *opaque,                                      \
-            DequantizeGPTQInfo info,                              \
+            DequantizeGPTQInfo info,                             \
             infiniDevice_t device_type,                          \
             int device_id)                                       \
             : InfiniopDescriptor{device_type, device_id},        \
@@ -47,7 +47,7 @@
             const void *qweight,                                 \
             const void *scales,                                  \
             const void *zeros,                                   \
-            const void *g_idx,                                  \
+            const void *g_idx,                                   \
             void *stream) const;                                 \
     };                                                           \
     }

@@ -12,22 +12,22 @@
 #include "iluvatar/dequantize_w42f16_iluvatar.cuh"
 #endif
 
-__C infiniStatus_t infiniopCreateDequantizeGPTQDescriptor(
+__INFINI_C infiniStatus_t infiniopCreateDequantizeGPTQDescriptor(
     infiniopHandle_t handle,
     infiniopDequantizeGPTQDescriptor_t *desc_ptr,
     infiniopTensorDescriptor_t out_desc,
     infiniopTensorDescriptor_t qweight_desc,
     infiniopTensorDescriptor_t scales_desc,
     infiniopTensorDescriptor_t zeros_desc,
-    infiniopTensorDescriptor_t g_idx_desc) {  // add g_idx
-#define CREATE(CASE, NAMESPACE)                                                       \
-    case CASE:                                                                        \
+    infiniopTensorDescriptor_t g_idx_desc) { // add g_idx
+#define CREATE(CASE, NAMESPACE)                                                        \
+    case CASE:                                                                         \
         return op::dequantize_gptq::NAMESPACE::Descriptor::create(                     \
-            handle,                                                                   \
+            handle,                                                                    \
             reinterpret_cast<op::dequantize_gptq::NAMESPACE::Descriptor **>(desc_ptr), \
-            out_desc,                                                                 \
-            qweight_desc,                                                             \
-            scales_desc,                                                              \
+            out_desc,                                                                  \
+            qweight_desc,                                                              \
+            scales_desc,                                                               \
             zeros_desc, g_idx_desc)
 
     switch (handle->device) {
@@ -50,10 +50,10 @@ __C infiniStatus_t infiniopCreateDequantizeGPTQDescriptor(
 #undef CREATE
 }
 
-__C infiniStatus_t infiniopGetDequantizeGPTQWorkspaceSize(infiniopDequantizeGPTQDescriptor_t desc,
-                                                         size_t *size) {
-#define GET(CASE, NAMESPACE)                                                                                \
-    case CASE:                                                                                              \
+__INFINI_C infiniStatus_t infiniopGetDequantizeGPTQWorkspaceSize(infiniopDequantizeGPTQDescriptor_t desc,
+                                                                 size_t *size) {
+#define GET(CASE, NAMESPACE)                                                                                 \
+    case CASE:                                                                                               \
         *size = reinterpret_cast<const op::dequantize_gptq::NAMESPACE::Descriptor *>(desc)->workspaceSize(); \
         return INFINI_STATUS_SUCCESS
 
@@ -76,7 +76,7 @@ __C infiniStatus_t infiniopGetDequantizeGPTQWorkspaceSize(infiniopDequantizeGPTQ
 #undef GET
 }
 
-__C infiniStatus_t infiniopDequantizeGPTQ(
+__INFINI_C infiniStatus_t infiniopDequantizeGPTQ(
     infiniopDequantizeGPTQDescriptor_t desc,
     void *workspace,
     size_t workspace_size,
@@ -84,11 +84,11 @@ __C infiniStatus_t infiniopDequantizeGPTQ(
     const void *qweight,
     const void *scales,
     const void *zeros,
-    const void *g_idx,    // add g_idx
+    const void *g_idx, // add g_idx
     void *stream) {
 
-#define CALCULATE(CASE, NAMESPACE)                                                       \
-    case CASE:                                                                           \
+#define CALCULATE(CASE, NAMESPACE)                                                        \
+    case CASE:                                                                            \
         return reinterpret_cast<const op::dequantize_gptq::NAMESPACE::Descriptor *>(desc) \
             ->calculate(workspace, workspace_size, out, qweight, scales, zeros, g_idx, stream)
 
@@ -112,11 +112,11 @@ __C infiniStatus_t infiniopDequantizeGPTQ(
 #undef CALCULATE
 }
 
-__C infiniStatus_t
+__INFINI_C infiniStatus_t
 infiniopDestroyDequantizeGPTQDescriptor(infiniopDequantizeGPTQDescriptor_t desc) {
 
-#define DELETE(CASE, NAMESPACE)                                                           \
-    case CASE:                                                                            \
+#define DELETE(CASE, NAMESPACE)                                                            \
+    case CASE:                                                                             \
         delete reinterpret_cast<const op::dequantize_gptq::NAMESPACE::Descriptor *>(desc); \
         return INFINI_STATUS_SUCCESS;
 

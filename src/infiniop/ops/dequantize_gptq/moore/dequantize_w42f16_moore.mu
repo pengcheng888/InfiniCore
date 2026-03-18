@@ -1,7 +1,6 @@
 #include "../../../devices/moore/moore_handle.h"
 #include "../../../devices/moore/moore_kernel_common.h"
 #include "dequantize_w42f16_moore.h"
-// #include "dequantize_w42f16_kernel.h"  // 不再需要（保留也无妨）
 
 #include "../dequantize_gptq.h"
 #include <musa_fp16.h>

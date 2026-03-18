@@ -11,15 +11,17 @@
 #if defined(__CUDA_ARCH__) && (__CUDA_ARCH__ < 750)
 __global__ void __launch_bounds__(64)
     dequantize_weights_awq(int *__restrict__ B, half *__restrict__ scaling_factors,
-                       int *__restrict__ zeros, half *__restrict__ C, int G,
-                       int out_features, int in_features) {
+                           int *__restrict__ zeros, half *__restrict__ C, int G,
+                           int out_features, int in_features) {
     // static constexpr uint32_t ZERO = 0x0;
 
     int col = (blockIdx.x * blockDim.x + threadIdx.x);
     int row = (blockIdx.y * blockDim.y + threadIdx.y);
 
     // 边界检查，防止越界访问
-    if (col >= out_features || row >= in_features) return;
+    if (col >= out_features || row >= in_features) {
+        return;
+    }
 
     // 每个元素在输出中的起始地址：行主序，连续 8 个 half
     int index1 = 8 * col + 8 * row * out_features;
@@ -60,7 +62,7 @@ __global__ void __launch_bounds__(64)
 
     // 直接写回全局内存输出
     half *out_vec = reinterpret_cast<half *>(&B_loaded_fp16);
-    #pragma unroll
+#pragma unroll
     for (int i = 0; i < 8; ++i) {
         C_ptr2[i] = out_vec[i];
     }
@@ -68,15 +70,17 @@ __global__ void __launch_bounds__(64)
 #else
 __global__ void __launch_bounds__(64)
     dequantize_weights_awq(int *__restrict__ B, half *__restrict__ scaling_factors,
-                       int *__restrict__ zeros, half *__restrict__ C, int group_size,
-                       int out_features, int in_features) {
+                           int *__restrict__ zeros, half *__restrict__ C, int group_size,
+                           int out_features, int in_features) {
     static constexpr uint32_t ZERO = 0x0;
 
     int col = (blockIdx.x * blockDim.x + threadIdx.x);
     int row = blockIdx.y * blockDim.y + threadIdx.y;
 
     // 边界检查，防止越界访问
-    if (col >= out_features || row >= in_features) return;
+    if (col >= out_features || row >= in_features) {
+        return;
+    }
 
     int index1 = 8 * col + 8 * row * out_features;
     half *C_ptr2 = C + index1;
@@ -122,7 +126,7 @@ __global__ void __launch_bounds__(64)
 
     // 直接写回全局内存输出
     half *out_vec = reinterpret_cast<half *>(&B_loaded_fp16);
-    #pragma unroll
+#pragma unroll
     for (int i = 0; i < 8; ++i) {
         C_ptr2[i] = out_vec[i];
     }
