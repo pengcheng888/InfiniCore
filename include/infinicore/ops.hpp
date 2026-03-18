@@ -2,6 +2,7 @@
 
 #include "ops/adaptive_max_pool1d.hpp"
 #include "ops/add.hpp"
+#include "ops/asin.hpp"
 #include "ops/add_rms_norm.hpp"
 #include "ops/addcmul.hpp"
 #include "ops/asinh.hpp"
@@ -20,6 +21,7 @@
 #include "ops/hardswish.hpp"
 #include "ops/hardtanh.hpp"
 #include "ops/kv_caching.hpp"
+#include "ops/fmin.hpp"
 #include "ops/matmul.hpp"
 #include "ops/ones.hpp"
 #include "ops/paged_attention.hpp"

@@ -14,6 +14,8 @@ from .rope import RopeAlgo, rope
 from .silu import silu
 from .silu_and_mul import silu_and_mul
 from .swiglu import swiglu
+from .adaptive_avg_pool3d import adaptive_avg_pool3d
+
 
 __all__ = [
     "adaptive_max_pool1d",
@@ -33,4 +35,5 @@ __all__ = [
     "swiglu",
     "linear_w8a8i8",
     "silu_and_mul",
+    "adaptive_avg_pool3d",
 ]
