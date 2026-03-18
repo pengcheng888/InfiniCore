@@ -1,5 +1,5 @@
-#ifndef __QUANT_H__
-#define __QUANT_H__
+#ifndef __PER_CHANNEL_QUANT_INT8_H__
+#define __PER_CHANNEL_QUANT_INT8_H__
 
 #include "../../../operator.h"
 #include "info.h"
@@ -37,4 +37,4 @@
     };                                                                                       \
     }
 
-#endif // __QUANT_H__
+#endif // __PER_CHANNEL_QUANT_INT8_H__
