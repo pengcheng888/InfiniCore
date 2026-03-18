@@ -9,7 +9,7 @@ enum class QuantScheme {
     AWQ_W4A16,
 };
 
-enum class KVQuantScheme {
+enum class KVQuantAlgo {
     NONE,
     INT8,
 };
