@@ -6,18 +6,18 @@
 
 typedef struct InfiniopDescriptor *infiniopAdaptiveAvgPool3DDescriptor_t;
 
-__C __export infiniStatus_t infiniopCreateAdaptiveAvgPool3DDescriptor(
+__INFINI_C __export infiniStatus_t infiniopCreateAdaptiveAvgPool3DDescriptor(
     infiniopHandle_t handle,
     infiniopAdaptiveAvgPool3DDescriptor_t *desc_ptr,
     infiniopTensorDescriptor_t y,
     infiniopTensorDescriptor_t x,
     size_t *output_size);
 
-__C __export infiniStatus_t infiniopGetAdaptiveAvgPool3DWorkspaceSize(
+__INFINI_C __export infiniStatus_t infiniopGetAdaptiveAvgPool3DWorkspaceSize(
     infiniopAdaptiveAvgPool3DDescriptor_t desc,
     size_t *size);
 
-__C __export infiniStatus_t infiniopAdaptiveAvgPool3D(
+__INFINI_C __export infiniStatus_t infiniopAdaptiveAvgPool3D(
     infiniopAdaptiveAvgPool3DDescriptor_t desc,
     void *workspace,
     size_t workspace_size,
@@ -25,6 +25,6 @@ __C __export infiniStatus_t infiniopAdaptiveAvgPool3D(
     const void *x,
     void *stream);
 
-__C __export infiniStatus_t infiniopDestroyAdaptiveAvgPool3DDescriptor(infiniopAdaptiveAvgPool3DDescriptor_t desc);
+__INFINI_C __export infiniStatus_t infiniopDestroyAdaptiveAvgPool3DDescriptor(infiniopAdaptiveAvgPool3DDescriptor_t desc);
 
 #endif

@@ -11,17 +11,11 @@
 #ifdef ENABLE_METAX_API
 #include "metax/fmin_metax.h"
 #endif
-#ifdef ENABLE_KUNLUN_API
-#include "kunlun/fmin_kunlun.h"
-#endif
-#ifdef ENABLE_CAMBRICON_API
-#include "bang/fmin_bang.h"
-#endif
 #ifdef ENABLE_MOORE_API
 #include "moore/fmin_moore.h"
 #endif
 
-__C infiniStatus_t infiniopCreateFminDescriptor(
+__INFINI_C infiniStatus_t infiniopCreateFminDescriptor(
     infiniopHandle_t handle,
     infiniopFminDescriptor_t *desc_ptr,
     infiniopTensorDescriptor_t c_desc,
@@ -54,12 +48,6 @@ __C infiniStatus_t infiniopCreateFminDescriptor(
 #ifdef ENABLE_METAX_API
         CREATE(INFINI_DEVICE_METAX, metax);
 #endif
-#ifdef ENABLE_KUNLUN_API
-        CREATE(INFINI_DEVICE_KUNLUN, kunlun);
-#endif
-#ifdef ENABLE_CAMBRICON_API
-        CREATE(INFINI_DEVICE_CAMBRICON, bang);
-#endif
 #ifdef ENABLE_MOORE_API
         CREATE(INFINI_DEVICE_MOORE, moore);
 #endif
@@ -71,7 +59,7 @@ __C infiniStatus_t infiniopCreateFminDescriptor(
 #undef CREATE
 }
 
-__C infiniStatus_t infiniopGetFminWorkspaceSize(infiniopFminDescriptor_t desc, size_t *size) {
+__INFINI_C infiniStatus_t infiniopGetFminWorkspaceSize(infiniopFminDescriptor_t desc, size_t *size) {
 
 #define GET(CASE, NAMESPACE)                                                                \
     case CASE:                                                                              \
@@ -94,12 +82,6 @@ __C infiniStatus_t infiniopGetFminWorkspaceSize(infiniopFminDescriptor_t desc, s
 #ifdef ENABLE_METAX_API
         GET(INFINI_DEVICE_METAX, metax);
 #endif
-#ifdef ENABLE_KUNLUN_API
-        GET(INFINI_DEVICE_KUNLUN, kunlun);
-#endif
-#ifdef ENABLE_CAMBRICON_API
-        GET(INFINI_DEVICE_CAMBRICON, bang);
-#endif
 #ifdef ENABLE_MOORE_API
         GET(INFINI_DEVICE_MOORE, moore);
 #endif
@@ -111,7 +93,7 @@ __C infiniStatus_t infiniopGetFminWorkspaceSize(infiniopFminDescriptor_t desc, s
     return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
 
-__C infiniStatus_t infiniopFmin(
+__INFINI_C infiniStatus_t infiniopFmin(
     infiniopFminDescriptor_t desc,
     void *workspace,
     size_t workspace_size,
@@ -142,12 +124,6 @@ __C infiniStatus_t infiniopFmin(
 #ifdef ENABLE_METAX_API
         CALCULATE(INFINI_DEVICE_METAX, metax);
 #endif
-#ifdef ENABLE_KUNLUN_API
-        CALCULATE(INFINI_DEVICE_KUNLUN, kunlun);
-#endif
-#ifdef ENABLE_CAMBRICON_API
-        CALCULATE(INFINI_DEVICE_CAMBRICON, bang);
-#endif
 #ifdef ENABLE_MOORE_API
         CALCULATE(INFINI_DEVICE_MOORE, moore);
 #endif
@@ -159,7 +135,7 @@ __C infiniStatus_t infiniopFmin(
 #undef CALCULATE
 }
 
-__C infiniStatus_t
+__INFINI_C infiniStatus_t
 infiniopDestroyFminDescriptor(infiniopFminDescriptor_t desc) {
 
 #define DELETE(CASE, NAMESPACE)                                                 \
@@ -183,12 +159,6 @@ infiniopDestroyFminDescriptor(infiniopFminDescriptor_t desc) {
 #endif
 #ifdef ENABLE_METAX_API
         DELETE(INFINI_DEVICE_METAX, metax);
-#endif
-#ifdef ENABLE_KUNLUN_API
-        DELETE(INFINI_DEVICE_KUNLUN, kunlun);
-#endif
-#ifdef ENABLE_CAMBRICON_API
-        DELETE(INFINI_DEVICE_CAMBRICON, bang);
 #endif
 #ifdef ENABLE_MOORE_API
         DELETE(INFINI_DEVICE_MOORE, moore);

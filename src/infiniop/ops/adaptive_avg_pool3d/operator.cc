@@ -9,23 +9,14 @@
 #if defined(ENABLE_NVIDIA_API) || defined(ENABLE_ILUVATAR_API) || defined(ENABLE_QY_API) || defined(ENABLE_HYGON_API)
 #include "nvidia/adaptive_avg_pool3d_nvidia.cuh"
 #endif
-#ifdef ENABLE_ASCEND_API
-#include "ascend/adaptive_avg_pool3d_ascend.h"
-#endif
-#ifdef ENABLE_CAMBRICON_API
-#include "bang/adaptive_avg_pool3d_bang.h"
-#endif
 #ifdef ENABLE_METAX_API
 #include "metax/adaptive_avg_pool3d_metax.h"
-#endif
-#ifdef ENABLE_KUNLUN_API
-#include "kunlun/adaptive_avg_pool3d_kunlun.h"
 #endif
 #ifdef ENABLE_MOORE_API
 #include "moore/adaptive_avg_pool3d_moore.h"
 #endif
 
-__C infiniStatus_t infiniopCreateAdaptiveAvgPool3DDescriptor(
+__INFINI_C infiniStatus_t infiniopCreateAdaptiveAvgPool3DDescriptor(
     infiniopHandle_t handle,
     infiniopAdaptiveAvgPool3DDescriptor_t *desc_ptr,
     infiniopTensorDescriptor_t y,
@@ -63,15 +54,8 @@ __C infiniStatus_t infiniopCreateAdaptiveAvgPool3DDescriptor(
 #ifdef ENABLE_METAX_API
         CREATE(INFINI_DEVICE_METAX, metax);
 #endif
-#ifdef ENABLE_ASCEND_API
-        CREATE(INFINI_DEVICE_ASCEND, ascend);
-#endif
-#ifdef ENABLE_KUNLUN_API
-        CREATE(INFINI_DEVICE_KUNLUN, kunlun);
-#endif
-#ifdef ENABLE_CAMBRICON_API
-        CREATE(INFINI_DEVICE_CAMBRICON, bang);
-#endif
+    default:
+        return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
 
 #undef CREATE
@@ -79,7 +63,7 @@ __C infiniStatus_t infiniopCreateAdaptiveAvgPool3DDescriptor(
     return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
 
-__C infiniStatus_t infiniopGetAdaptiveAvgPool3DWorkspaceSize(
+__INFINI_C infiniStatus_t infiniopGetAdaptiveAvgPool3DWorkspaceSize(
     infiniopAdaptiveAvgPool3DDescriptor_t desc,
     size_t *size) {
 
@@ -110,15 +94,8 @@ __C infiniStatus_t infiniopGetAdaptiveAvgPool3DWorkspaceSize(
 #ifdef ENABLE_METAX_API
         GET(INFINI_DEVICE_METAX, metax);
 #endif
-#ifdef ENABLE_KUNLUN_API
-        GET(INFINI_DEVICE_KUNLUN, kunlun);
-#endif
-#ifdef ENABLE_CAMBRICON_API
-        GET(INFINI_DEVICE_CAMBRICON, bang);
-#endif
-#ifdef ENABLE_ASCEND_API
-        GET(INFINI_DEVICE_ASCEND, ascend);
-#endif
+    default:
+        return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
 
 #undef GET
@@ -126,7 +103,7 @@ __C infiniStatus_t infiniopGetAdaptiveAvgPool3DWorkspaceSize(
     return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
 
-__C infiniStatus_t infiniopAdaptiveAvgPool3D(
+__INFINI_C infiniStatus_t infiniopAdaptiveAvgPool3D(
     infiniopAdaptiveAvgPool3DDescriptor_t desc,
     void *workspace,
     size_t workspace_size,
@@ -159,21 +136,14 @@ __C infiniStatus_t infiniopAdaptiveAvgPool3D(
 #ifdef ENABLE_METAX_API
         CALCULATE(INFINI_DEVICE_METAX, metax);
 #endif
-#ifdef ENABLE_ASCEND_API
-        CALCULATE(INFINI_DEVICE_ASCEND, ascend);
-#endif
-#ifdef ENABLE_KUNLUN_API
-        CALCULATE(INFINI_DEVICE_KUNLUN, kunlun);
-#endif
-#ifdef ENABLE_CAMBRICON_API
-        CALCULATE(INFINI_DEVICE_CAMBRICON, bang);
-#endif
+    default:
+        return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
 #undef CALCULATE
     return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
 
-__C infiniStatus_t infiniopDestroyAdaptiveAvgPool3DDescriptor(infiniopAdaptiveAvgPool3DDescriptor_t desc) {
+__INFINI_C infiniStatus_t infiniopDestroyAdaptiveAvgPool3DDescriptor(infiniopAdaptiveAvgPool3DDescriptor_t desc) {
 #define DELETE(CASE, NAMESPACE)                                                                \
     case CASE:                                                                                 \
         delete reinterpret_cast<const op::adaptive_avg_pool3d::NAMESPACE::Descriptor *>(desc); \
@@ -201,15 +171,8 @@ __C infiniStatus_t infiniopDestroyAdaptiveAvgPool3DDescriptor(infiniopAdaptiveAv
 #ifdef ENABLE_METAX_API
         DELETE(INFINI_DEVICE_METAX, metax);
 #endif
-#ifdef ENABLE_KUNLUN_API
-        DELETE(INFINI_DEVICE_KUNLUN, kunlun);
-#endif
-#ifdef ENABLE_CAMBRICON_API
-        DELETE(INFINI_DEVICE_CAMBRICON, bang);
-#endif
-#ifdef ENABLE_ASCEND_API
-        DELETE(INFINI_DEVICE_ASCEND, ascend);
-#endif
+    default:
+        return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
 #undef DELETE
     return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;

@@ -81,6 +81,10 @@ infiniStatus_t Descriptor::calculate(void *workspace, size_t workspace_size,
         CHECK_STATUS(launchKernel<CUDA_BLOCK_SIZE_512>(
             y, x, _info.dtype, _info.N, _info.C, _info.x_d, _info.x_h, _info.x_w,
             _info.y_d, _info.y_h, _info.y_w, x_strides, y_strides, stream));
+    } else if (_opaque->internal->maxThreadsPerBlock() == CUDA_BLOCK_SIZE_2048) {
+        CHECK_STATUS(launchKernel<CUDA_BLOCK_SIZE_2048>(
+            y, x, _info.dtype, _info.N, _info.C, _info.x_d, _info.x_h, _info.x_w,
+            _info.y_d, _info.y_h, _info.y_w, x_strides, y_strides, stream));
     } else if (_opaque->internal->maxThreadsPerBlock() == CUDA_BLOCK_SIZE_4096) {
         CHECK_STATUS(launchKernel<CUDA_BLOCK_SIZE_4096>(
             y, x, _info.dtype, _info.N, _info.C, _info.x_d, _info.x_h, _info.x_w,

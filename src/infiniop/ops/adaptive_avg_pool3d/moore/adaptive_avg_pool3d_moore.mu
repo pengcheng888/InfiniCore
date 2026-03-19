@@ -1,7 +1,7 @@
 #include "../../../devices/moore/moore_common.h"
 #include "../../../devices/moore/moore_kernel_common.h"
-#include "adaptive_avg_pool3d_moore.h"
 #include "adaptive_avg_pool3d_kernel.h"
+#include "adaptive_avg_pool3d_moore.h"
 
 template <typename T, unsigned int BLOCK_SIZE>
 INFINIOP_MOORE_KERNEL
@@ -77,13 +77,13 @@ infiniStatus_t Descriptor::calculate(void *workspace, size_t workspace_size,
         CHECK_STATUS(launchKernel<MOORE_BLOCK_SIZE_512>(
             y, x, _info.dtype, _info.N, _info.C, _info.x_d, _info.x_h, _info.x_w,
             _info.y_d, _info.y_h, _info.y_w, x_strides, y_strides, stream));
-    } else if(_opaque->internal->maxThreadsPerBlock() == MOORE_BLOCK_SIZE_2048){
+    } else if (_opaque->internal->maxThreadsPerBlock() == MOORE_BLOCK_SIZE_2048) {
         CHECK_STATUS(launchKernel<MOORE_BLOCK_SIZE_2048>(
             y, x, _info.dtype, _info.N, _info.C, _info.x_d, _info.x_h, _info.x_w,
             _info.y_d, _info.y_h, _info.y_w, x_strides, y_strides, stream));
-    }else{
+    } else {
         return INFINI_STATUS_DEVICE_ARCHITECTURE_NOT_SUPPORTED;
     }
     return INFINI_STATUS_SUCCESS;
 }
-}
+} // namespace op::adaptive_avg_pool3d::moore

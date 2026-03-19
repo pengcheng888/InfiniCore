@@ -16,7 +16,7 @@
 #include "moore/addr_moore.h"
 #endif
 
-__C infiniStatus_t infiniopCreateAddrDescriptor(
+__INFINI_C infiniStatus_t infiniopCreateAddrDescriptor(
     infiniopHandle_t handle,
     infiniopAddrDescriptor_t *desc_ptr,
     infiniopTensorDescriptor_t out,
@@ -60,15 +60,8 @@ __C infiniStatus_t infiniopCreateAddrDescriptor(
 #ifdef ENABLE_METAX_API
         CREATE(INFINI_DEVICE_METAX, metax);
 #endif
-#ifdef ENABLE_ASCEND_API
-        CREATE(INFINI_DEVICE_ASCEND, ascend);
-#endif
-#ifdef ENABLE_KUNLUN_API
-        CREATE(INFINI_DEVICE_KUNLUN, kunlun);
-#endif
-#ifdef ENABLE_CAMBRICON_API
-        CREATE(INFINI_DEVICE_CAMBRICON, bang);
-#endif
+    default:
+        return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
 
 #undef CREATE
@@ -76,7 +69,7 @@ __C infiniStatus_t infiniopCreateAddrDescriptor(
     return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
 
-__C infiniStatus_t infiniopGetAddrWorkspaceSize(
+__INFINI_C infiniStatus_t infiniopGetAddrWorkspaceSize(
     infiniopAddrDescriptor_t desc,
     size_t *size) {
 
@@ -107,15 +100,8 @@ __C infiniStatus_t infiniopGetAddrWorkspaceSize(
 #ifdef ENABLE_METAX_API
         GET(INFINI_DEVICE_METAX, metax);
 #endif
-#ifdef ENABLE_KUNLUN_API
-        GET(INFINI_DEVICE_KUNLUN, kunlun);
-#endif
-#ifdef ENABLE_CAMBRICON_API
-        GET(INFINI_DEVICE_CAMBRICON, bang);
-#endif
-#ifdef ENABLE_ASCEND_API
-        GET(INFINI_DEVICE_ASCEND, ascend);
-#endif
+    default:
+        return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
 
 #undef GET
@@ -123,7 +109,7 @@ __C infiniStatus_t infiniopGetAddrWorkspaceSize(
     return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
 
-__C infiniStatus_t infiniopAddr(
+__INFINI_C infiniStatus_t infiniopAddr(
     infiniopAddrDescriptor_t desc,
     void *workspace,
     size_t workspace_size,
@@ -160,15 +146,8 @@ __C infiniStatus_t infiniopAddr(
 #ifdef ENABLE_METAX_API
         CALCULATE(INFINI_DEVICE_METAX, metax);
 #endif
-#ifdef ENABLE_ASCEND_API
-        CALCULATE(INFINI_DEVICE_ASCEND, ascend);
-#endif
-#ifdef ENABLE_KUNLUN_API
-        CALCULATE(INFINI_DEVICE_KUNLUN, kunlun);
-#endif
-#ifdef ENABLE_CAMBRICON_API
-        CALCULATE(INFINI_DEVICE_CAMBRICON, bang);
-#endif
+    default:
+        return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
 
 #undef CALCULATE
@@ -176,7 +155,7 @@ __C infiniStatus_t infiniopAddr(
     return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
 
-__C infiniStatus_t infiniopDestroyAddrDescriptor(infiniopAddrDescriptor_t desc) {
+__INFINI_C infiniStatus_t infiniopDestroyAddrDescriptor(infiniopAddrDescriptor_t desc) {
 
 #define DELETE(CASE, NAMESPACE)                                                 \
     case CASE:                                                                  \
@@ -205,15 +184,8 @@ __C infiniStatus_t infiniopDestroyAddrDescriptor(infiniopAddrDescriptor_t desc) 
 #ifdef ENABLE_METAX_API
         DELETE(INFINI_DEVICE_METAX, metax);
 #endif
-#ifdef ENABLE_KUNLUN_API
-        DELETE(INFINI_DEVICE_KUNLUN, kunlun);
-#endif
-#ifdef ENABLE_CAMBRICON_API
-        DELETE(INFINI_DEVICE_CAMBRICON, bang);
-#endif
-#ifdef ENABLE_ASCEND_API
-        DELETE(INFINI_DEVICE_ASCEND, ascend);
-#endif
+    default:
+        return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
 
 #undef DELETE

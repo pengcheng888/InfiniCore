@@ -1,3 +1,4 @@
+from .adaptive_avg_pool3d import adaptive_avg_pool3d
 from .adaptive_max_pool1d import adaptive_max_pool1d
 from .avg_pool1d import avg_pool1d
 from .binary_cross_entropy_with_logits import binary_cross_entropy_with_logits
@@ -14,8 +15,6 @@ from .rope import RopeAlgo, rope
 from .silu import silu
 from .silu_and_mul import silu_and_mul
 from .swiglu import swiglu
-from .adaptive_avg_pool3d import adaptive_avg_pool3d
-
 
 __all__ = [
     "adaptive_max_pool1d",

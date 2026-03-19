@@ -5,7 +5,7 @@
 #ifdef ENABLE_CPU_API
 #include "cpu/asin_cpu.h"
 #endif
-#if defined(ENABLE_NVIDIA_API) || defined(ENABLE_ILUVATAR_API) || defined(ENABLE_QY_API)
+#if defined(ENABLE_NVIDIA_API) || defined(ENABLE_ILUVATAR_API)
 #include "nvidia/asin_nvidia.cuh"
 #endif
 #ifdef ENABLE_METAX_API
@@ -15,7 +15,7 @@
 #include "moore/asin_moore.h"
 #endif
 
-__C infiniStatus_t infiniopCreateAsinDescriptor(
+__INFINI_C infiniStatus_t infiniopCreateAsinDescriptor(
     infiniopHandle_t handle,
     infiniopAsinDescriptor_t *desc_ptr,
     infiniopTensorDescriptor_t output_desc,
@@ -54,7 +54,7 @@ __C infiniStatus_t infiniopCreateAsinDescriptor(
 #undef CREATE
 }
 
-__C infiniStatus_t infiniopGetAsinWorkspaceSize(infiniopAsinDescriptor_t desc, size_t *size) {
+__INFINI_C infiniStatus_t infiniopGetAsinWorkspaceSize(infiniopAsinDescriptor_t desc, size_t *size) {
 
 #define GET(CASE, NAMESPACE)                                                                \
     case CASE:                                                                              \
@@ -85,7 +85,7 @@ __C infiniStatus_t infiniopGetAsinWorkspaceSize(infiniopAsinDescriptor_t desc, s
     return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
 
-__C infiniStatus_t infiniopAsin(
+__INFINI_C infiniStatus_t infiniopAsin(
     infiniopAsinDescriptor_t desc,
     void *workspace,
     size_t workspace_size,
@@ -123,7 +123,7 @@ __C infiniStatus_t infiniopAsin(
 #undef CALCULATE
 }
 
-__C infiniStatus_t
+__INFINI_C infiniStatus_t
 infiniopDestroyAsinDescriptor(infiniopAsinDescriptor_t desc) {
 
 #define DELETE(CASE, NAMESPACE)                                                 \

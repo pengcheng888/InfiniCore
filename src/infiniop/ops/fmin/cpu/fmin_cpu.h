@@ -12,12 +12,13 @@ public:
     template <typename T>
     T operator()(const T &a, const T &b) const {
         if constexpr (std::is_same_v<T, fp16_t> || std::is_same_v<T, bf16_t>) {
-            float a_f = utils::cast<float>(a);
-            float b_f = utils::cast<float>(b);
-            float result = std::fminf(a_f, b_f);
-            return utils::cast<T>(result);
-        } else {
+            return utils::cast<T>(std::fminf(
+                utils::cast<float>(a),
+                utils::cast<float>(b)));
+        } else if constexpr (std::is_floating_point_v<T>) {
             return std::fmin(a, b);
+        } else {
+            return std::min(a, b);
         }
     }
 } FminOp;

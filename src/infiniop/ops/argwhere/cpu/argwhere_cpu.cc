@@ -43,7 +43,7 @@ infiniStatus_t calculateArgWhere(
     for (size_t i = 0; i < info.num_elements; i++) {
         size_t pos = 0, tem = i;
         std::vector<size_t> position(info.strides.size());
-        for (int j = info.strides.size() - 1; j >= 0; j--) {
+        for (size_t j = info.strides.size() - 1; j >= 0; j--) {
             position[j] = tem % info.shapes[j];
             tem /= info.shapes[j];
             pos += position[j] * info.strides[j];

@@ -50,12 +50,12 @@ from infinicore.dtype import (
 from infinicore.ops.add import add
 from infinicore.ops.add_rms_norm import add_rms_norm
 from infinicore.ops.addcmul import addcmul
+from infinicore.ops.addr import addr
 from infinicore.ops.all import all
+from infinicore.ops.argwhere import argwhere
+from infinicore.ops.asin import asin
 from infinicore.ops.asinh import asinh
 from infinicore.ops.atanh import atanh
-from infinicore.ops.addr import addr
-from infinicore.ops.asin import asin
-from infinicore.ops.add_rms_norm import add_rms_norm, add_rms_norm_
 from infinicore.ops.attention import attention
 from infinicore.ops.baddbmm import baddbmm
 from infinicore.ops.bilinear import bilinear
@@ -65,6 +65,7 @@ from infinicore.ops.binary_cross_entropy_with_logits import (
 from infinicore.ops.cdist import cdist
 from infinicore.ops.cross_entropy import cross_entropy
 from infinicore.ops.equal import equal
+from infinicore.ops.fmin import fmin
 from infinicore.ops.fmod import fmod
 from infinicore.ops.kv_caching import kv_caching
 from infinicore.ops.matmul import matmul
@@ -77,8 +78,6 @@ from infinicore.ops.paged_attention_prefill import paged_attention_prefill
 from infinicore.ops.paged_caching import paged_caching
 from infinicore.ops.rearrange import rearrange
 from infinicore.ops.reciprocal import reciprocal
-from infinicore.ops.argwhere import argwhere
-from infinicore.ops.fmin import fmin
 from infinicore.ops.squeeze import squeeze
 from infinicore.ops.sum import sum
 from infinicore.ops.topk import topk

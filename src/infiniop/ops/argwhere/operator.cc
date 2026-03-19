@@ -11,17 +11,11 @@
 #ifdef ENABLE_METAX_API
 #include "metax/argwhere_metax.h"
 #endif
-#ifdef ENABLE_KUNLUN_API
-#include "kunlun/argwhere_kunlun.cuh"
-#endif
-#ifdef ENABLE_CAMBRICON_API
-#include "cambricon/argwhere_cambricon.cuh"
-#endif
 #ifdef ENABLE_MOORE_API
 #include "moore/argwhere_moore.h"
 #endif
 
-__C infiniStatus_t infiniopCreateArgwhereDescriptor(
+__INFINI_C infiniStatus_t infiniopCreateArgwhereDescriptor(
     infiniopHandle_t handle,
     infiniopArgwhereDescriptor_t *desc_ptr,
     infiniopTensorDescriptor_t input_desc) {
@@ -50,12 +44,6 @@ __C infiniStatus_t infiniopCreateArgwhereDescriptor(
 #ifdef ENABLE_METAX_API
         CREATE(INFINI_DEVICE_METAX, metax);
 #endif
-#ifdef ENABLE_KUNLUN_API
-        CREATE(INFINI_DEVICE_KUNLUN, kunlun);
-#endif
-#ifdef ENABLE_CAMBRICON_API
-        CREATE(INFINI_DEVICE_CAMBRICON, bang);
-#endif
 #ifdef ENABLE_MOORE_API
         CREATE(INFINI_DEVICE_MOORE, moore);
 #endif
@@ -67,7 +55,7 @@ __C infiniStatus_t infiniopCreateArgwhereDescriptor(
 #undef CREATE
 }
 
-__C infiniStatus_t infiniopGetArgwhereWorkspaceSize(
+__INFINI_C infiniStatus_t infiniopGetArgwhereWorkspaceSize(
     infiniopArgwhereDescriptor_t desc,
     size_t *size) {
 
@@ -92,12 +80,6 @@ __C infiniStatus_t infiniopGetArgwhereWorkspaceSize(
 #ifdef ENABLE_METAX_API
         GET(INFINI_DEVICE_METAX, metax);
 #endif
-#ifdef ENABLE_KUNLUN_API
-        GET(INFINI_DEVICE_KUNLUN, kunlun);
-#endif
-#ifdef ENABLE_CAMBRICON_API
-        GET(INFINI_DEVICE_CAMBRICON, bang);
-#endif
 #ifdef ENABLE_MOORE_API
         GET(INFINI_DEVICE_MOORE, moore);
 #endif
@@ -109,7 +91,7 @@ __C infiniStatus_t infiniopGetArgwhereWorkspaceSize(
     return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
 
-__C infiniStatus_t infiniopArgwhere(
+__INFINI_C infiniStatus_t infiniopArgwhere(
     infiniopArgwhereDescriptor_t desc,
     void *workspace,
     size_t workspace_size,
@@ -140,12 +122,6 @@ __C infiniStatus_t infiniopArgwhere(
 #ifdef ENABLE_METAX_API
         CALCULATE(INFINI_DEVICE_METAX, metax);
 #endif
-#ifdef ENABLE_KUNLUN_API
-        CALCULATE(INFINI_DEVICE_KUNLUN, kunlun);
-#endif
-#ifdef ENABLE_CAMBRICON_API
-        CALCULATE(INFINI_DEVICE_CAMBRICON, bang);
-#endif
 #ifdef ENABLE_MOORE_API
         CALCULATE(INFINI_DEVICE_MOORE, moore);
 #endif
@@ -157,7 +133,7 @@ __C infiniStatus_t infiniopArgwhere(
 #undef CALCULATE
 }
 
-__C infiniStatus_t
+__INFINI_C infiniStatus_t
 infiniopDestroyArgwhereDescriptor(infiniopArgwhereDescriptor_t desc) {
 
 #define DELETE(CASE, NAMESPACE)                                                     \
@@ -181,12 +157,6 @@ infiniopDestroyArgwhereDescriptor(infiniopArgwhereDescriptor_t desc) {
 #endif
 #ifdef ENABLE_METAX_API
         DELETE(INFINI_DEVICE_METAX, metax);
-#endif
-#ifdef ENABLE_KUNLUN_API
-        DELETE(INFINI_DEVICE_KUNLUN, kunlun);
-#endif
-#ifdef ENABLE_CAMBRICON_API
-        DELETE(INFINI_DEVICE_CAMBRICON, bang);
 #endif
 #ifdef ENABLE_MOORE_API
         DELETE(INFINI_DEVICE_MOORE, moore);

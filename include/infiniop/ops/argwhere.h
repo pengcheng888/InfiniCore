@@ -5,16 +5,16 @@
 
 typedef struct InfiniopDescriptor *infiniopArgwhereDescriptor_t;
 
-__C __export infiniStatus_t infiniopCreateArgwhereDescriptor(
+__INFINI_C __export infiniStatus_t infiniopCreateArgwhereDescriptor(
     infiniopHandle_t handle,
     infiniopArgwhereDescriptor_t *desc_ptr,
     infiniopTensorDescriptor_t input_desc);
 
-__C __export infiniStatus_t infiniopGetArgwhereWorkspaceSize(
+__INFINI_C __export infiniStatus_t infiniopGetArgwhereWorkspaceSize(
     infiniopArgwhereDescriptor_t desc,
     size_t *size);
 
-__C __export infiniStatus_t infiniopArgwhere(
+__INFINI_C __export infiniStatus_t infiniopArgwhere(
     infiniopArgwhereDescriptor_t desc,
     void *workspace,
     size_t workspace_size,
@@ -23,7 +23,7 @@ __C __export infiniStatus_t infiniopArgwhere(
     const void *input,
     void *stream);
 
-__C __export infiniStatus_t infiniopDestroyArgwhereDescriptor(
+__INFINI_C __export infiniStatus_t infiniopDestroyArgwhereDescriptor(
     infiniopArgwhereDescriptor_t desc);
 
 #endif // __INFINIOP_ARGWHERE_API_H__

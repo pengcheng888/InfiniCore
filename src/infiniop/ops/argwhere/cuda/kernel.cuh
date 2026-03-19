@@ -21,7 +21,9 @@ __device__ size_t pos2dest(size_t *pos, size_t ndim, const ptrdiff_t *strides) {
 template <typename T>
 __global__ void parallel_block_argwhere_kernel(T *data, int64_t *results,
                                                size_t N, const size_t *shapes, const ptrdiff_t *strides, size_t ndim, size_t *count) {
-    extern __shared__ size_t tmp[];
+    extern __shared__ char smem[];
+    size_t *tmp = reinterpret_cast<size_t *>(smem);
+
     size_t pos1[5], pos2[5]; // 两个数的在tensor中的索引
     bool is_zero1 = false, is_zero2 = false;
     int tid = threadIdx.x;
@@ -90,7 +92,9 @@ __global__ void parallel_block_argwhere_kernel(T *data, int64_t *results,
 template <typename T>
 __global__ void parallel_block_scan_kernel(size_t N, int64_t *pre_sum) {
     // single block scan
-    extern __shared__ int64_t tmp[];
+    extern __shared__ char smem[];
+    int64_t *tmp = reinterpret_cast<int64_t *>(smem);
+
     int tid = threadIdx.x;
     int leaf_num = blockDim.x * 2; // equals to length of tmp
 

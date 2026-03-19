@@ -18,20 +18,38 @@ infiniStatus_t addr_impl(Tdata *out,
     float beta = info.beta;
     float alpha = info.alpha;
 
-#pragma omp parallel for collapse(2)
-    for (size_t i = 0; i < n; ++i) {
-        for (size_t j = 0; j < m; ++j) {
-            if constexpr (std::is_same<Tdata, fp16_t>::value || std::is_same<Tdata, bf16_t>::value) {
-                float a = utils::cast<float>(vec1[i * info.vec1_stride]);
-                float b = utils::cast<float>(vec2[j * info.vec2_stride]);
-                float c = utils::cast<float>(input[i * info.input_stride0 + j * info.input_stride1]);
-                out[i * info.output_stride0 + j * info.output_stride1] = utils::cast<Tdata>(alpha * a * b + beta * c);
-            } else {
-                float a = vec1[i * info.vec1_stride], b = vec2[j * info.vec2_stride], c = input[i * info.input_stride0 + j * info.input_stride1];
-                out[i * info.output_stride0 + j * info.output_stride1] = utils::cast<Tdata>(alpha * a * b + beta * c);
-            }
+    size_t total = n * m;
+
+#pragma omp parallel for
+    for (ptrdiff_t idx = 0; idx < (ptrdiff_t)total; ++idx) {
+
+        // 🔹 Decode (i, j)
+        size_t i = idx / m;
+        size_t j = idx % m;
+
+        size_t v1_idx = i * info.vec1_stride;
+        size_t v2_idx = j * info.vec2_stride;
+        size_t in_idx = i * info.input_stride0 + j * info.input_stride1;
+        size_t out_idx = i * info.output_stride0 + j * info.output_stride1;
+
+        if constexpr (std::is_same<Tdata, fp16_t>::value || std::is_same<Tdata, bf16_t>::value) {
+
+            float a = utils::cast<float>(vec1[v1_idx]);
+            float b = utils::cast<float>(vec2[v2_idx]);
+            float c = utils::cast<float>(input[in_idx]);
+
+            out[out_idx] = utils::cast<Tdata>(alpha * a * b + beta * c);
+
+        } else {
+
+            float a = (float)vec1[v1_idx];
+            float b = (float)vec2[v2_idx];
+            float c = (float)input[in_idx];
+
+            out[out_idx] = utils::cast<Tdata>(alpha * a * b + beta * c);
         }
     }
+
     return INFINI_STATUS_SUCCESS;
 }
 

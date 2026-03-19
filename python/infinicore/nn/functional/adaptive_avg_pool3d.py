@@ -1,6 +1,7 @@
+from typing import List
+
 from infinicore.lib import _infinicore
 from infinicore.tensor import Tensor
-from typing import List
 
 
 def adaptive_avg_pool3d(x: Tensor, output_size: List[int] = {1, 1, 1}) -> Tensor:
