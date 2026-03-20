@@ -1,3 +1,4 @@
+from .adaptive_avg_pool3d import adaptive_avg_pool3d
 from .adaptive_max_pool1d import adaptive_max_pool1d
 from .avg_pool1d import avg_pool1d
 from .binary_cross_entropy_with_logits import binary_cross_entropy_with_logits
@@ -33,4 +34,5 @@ __all__ = [
     "swiglu",
     "linear_w8a8i8",
     "silu_and_mul",
+    "adaptive_avg_pool3d",
 ]

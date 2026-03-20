@@ -50,7 +50,10 @@ from infinicore.dtype import (
 from infinicore.ops.add import add
 from infinicore.ops.add_rms_norm import add_rms_norm
 from infinicore.ops.addcmul import addcmul
+from infinicore.ops.addr import addr
 from infinicore.ops.all import all
+from infinicore.ops.argwhere import argwhere
+from infinicore.ops.asin import asin
 from infinicore.ops.asinh import asinh
 from infinicore.ops.atanh import atanh
 from infinicore.ops.attention import attention
@@ -62,6 +65,7 @@ from infinicore.ops.binary_cross_entropy_with_logits import (
 from infinicore.ops.cdist import cdist
 from infinicore.ops.cross_entropy import cross_entropy
 from infinicore.ops.equal import equal
+from infinicore.ops.fmin import fmin
 from infinicore.ops.fmod import fmod
 from infinicore.ops.kv_caching import kv_caching
 from infinicore.ops.matmul import matmul
@@ -143,8 +147,11 @@ __all__ = [
     "cdist",
     "reciprocal",
     "add",
+    "addr",
     "add_rms_norm",
     "add_rms_norm_",
+    "argwhere",
+    "asin",
     "attention",
     "kv_caching",
     "asinh",
@@ -167,6 +174,7 @@ __all__ = [
     "from_torch",
     "mha_kvcache",
     "mha_varlen",
+    "fmin",
     "paged_caching",
     "paged_attention",
     "paged_attention_prefill",
