@@ -136,9 +136,6 @@ __INFINI_C infiniStatus_t infiniopDestroyFmodDescriptor(infiniopFmodDescriptor_t
 #ifdef ENABLE_ILUVATAR_API
         GET(INFINI_DEVICE_ILUVATAR, nvidia);
 #endif
-#ifdef ENABLE_QY_API
-        GET(INFINI_DEVICE_QY, nvidia);
-#endif
 #ifdef ENABLE_METAX_API
         GET(INFINI_DEVICE_METAX, metax);
 #endif
