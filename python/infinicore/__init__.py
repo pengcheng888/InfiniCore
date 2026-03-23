@@ -62,12 +62,15 @@ from infinicore.ops.bilinear import bilinear
 from infinicore.ops.binary_cross_entropy_with_logits import (
     binary_cross_entropy_with_logits,
 )
+from infinicore.ops.cat import cat
 from infinicore.ops.cdist import cdist
 from infinicore.ops.cross_entropy import cross_entropy
 from infinicore.ops.equal import equal
 from infinicore.ops.fmin import fmin
 from infinicore.ops.fmod import fmod
+from infinicore.ops.inner import inner
 from infinicore.ops.kv_caching import kv_caching
+from infinicore.ops.masked_select import masked_select
 from infinicore.ops.matmul import matmul
 from infinicore.ops.mha_kvcache import mha_kvcache
 from infinicore.ops.mha_varlen import mha_varlen
@@ -80,6 +83,7 @@ from infinicore.ops.rearrange import rearrange
 from infinicore.ops.reciprocal import reciprocal
 from infinicore.ops.squeeze import squeeze
 from infinicore.ops.sum import sum
+from infinicore.ops.tan import tan
 from infinicore.ops.topk import topk
 from infinicore.ops.unsqueeze import unsqueeze
 from infinicore.ops.var import var
@@ -158,6 +162,9 @@ __all__ = [
     "baddbmm",
     "bilinear",
     "fmod",
+    "cat",
+    "inner",
+    "masked_select",
     "matmul",
     "equal",
     "mul",
@@ -166,6 +173,7 @@ __all__ = [
     "unsqueeze",
     "rearrange",
     "cross_entropy",
+    "tan",
     "empty",
     "empty_like",
     "from_blob",

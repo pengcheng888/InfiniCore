@@ -15,6 +15,7 @@ from .rope import RopeAlgo, rope
 from .silu import silu
 from .silu_and_mul import silu_and_mul
 from .swiglu import swiglu
+from .tanhshrink import tanhshrink
 
 __all__ = [
     "adaptive_max_pool1d",
@@ -35,4 +36,5 @@ __all__ = [
     "linear_w8a8i8",
     "silu_and_mul",
     "adaptive_avg_pool3d",
+    "tanhshrink",
 ]
