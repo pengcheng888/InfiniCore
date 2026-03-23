@@ -18,6 +18,7 @@
 #include "ops/baddbmm.hpp"
 #include "ops/bilinear.hpp"
 #include "ops/binary_cross_entropy_with_logits.hpp"
+#include "ops/cat.hpp"
 #include "ops/causal_softmax.hpp"
 #include "ops/cdist.hpp"
 #include "ops/cross_entropy.hpp"
@@ -31,6 +32,9 @@
 #include "ops/kv_caching.hpp"
 #include "ops/linear.hpp"
 #include "ops/linear_w8a8i8.hpp"
+#include "ops/inner.hpp"
+#include "ops/linear.hpp"
+#include "ops/masked_select.hpp"
 #include "ops/matmul.hpp"
 #include "ops/mha_kvcache.hpp"
 #include "ops/mha_varlen.hpp"
@@ -50,6 +54,8 @@
 #include "ops/topk.hpp"
 #include "ops/var.hpp"
 #include "ops/var_mean.hpp"
+#include "ops/tan.hpp"
+#include "ops/tanhshrink.hpp"
 
 namespace py = pybind11;
 
@@ -72,8 +78,12 @@ inline void bind(py::module &m) {
     bind_kv_caching(m);
     bind_fmod(m);
     bind_fmin(m);
+    bind_cat(m);
+    bind_causal_softmax(m);
+    bind_inner(m);
     bind_random_sample(m);
     bind_linear(m);
+    bind_masked_select(m);
     bind_matmul(m);
     bind_mul(m);
     bind_mha_kvcache(m);
@@ -90,6 +100,8 @@ inline void bind(py::module &m) {
     bind_avg_pool1d(m);
     bind_silu(m);
     bind_swiglu(m);
+    bind_tan(m);
+    bind_tanhshrink(m);
     bind_rope(m);
     bind_embedding(m);
     bind_linear_w8a8i8(m);
