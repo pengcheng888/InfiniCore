@@ -45,12 +45,7 @@ void calculate(Tensor output, Tensor input) {
 }
 
 static bool registered = []() {
-    Tanhshrink::dispatcher().registerDevice({Device::Type::CPU,
-                                             Device::Type::NVIDIA,
-                                             Device::Type::METAX,
-                                             Device::Type::MOORE,
-                                             Device::Type::ILUVATAR},
-                                            &calculate, false);
+    Tanhshrink::dispatcher().registerAll(&calculate, false);
     return true;
 }();
 
