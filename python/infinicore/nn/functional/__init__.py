@@ -36,5 +36,5 @@ __all__ = [
     "linear_w8a8i8",
     "silu_and_mul",
     "adaptive_avg_pool3d",
-    "tanhshrink"
+    "tanhshrink",
 ]

@@ -3,7 +3,6 @@
 
 namespace infinicore::op {
 
-
 common::OpDispatcher<Inner::schema> &Inner::dispatcher() {
     static common::OpDispatcher<Inner::schema> dispatcher_;
     return dispatcher_;
@@ -27,10 +26,12 @@ Tensor inner(Tensor input, Tensor other) {
     assert(input->shape()[input_ndim - 1] == other->shape()[other_ndim - 1]);
 
     Shape out_shape;
-    for (int i = 0; i < input_ndim - 1; i ++)
+    for (int i = 0; i < input_ndim - 1; i++) {
         out_shape.push_back(input->shape()[i]);
-    for (int i = 0; i < other_ndim - 1; i ++)
+    }
+    for (int i = 0; i < other_ndim - 1; i++) {
         out_shape.push_back(other->shape()[i]);
+    }
     auto out = Tensor::zeros(out_shape, input->dtype(), input->device());
 
     inner_(out, input, other);
@@ -38,9 +39,8 @@ Tensor inner(Tensor input, Tensor other) {
 }
 
 void inner_(Tensor out, Tensor input, Tensor other) {
-    
+
     Inner::execute(out, input, other);
-
 }
 
-}
+} // namespace infinicore::op

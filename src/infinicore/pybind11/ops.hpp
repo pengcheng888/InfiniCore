@@ -29,11 +29,10 @@
 #include "ops/fmod.hpp"
 #include "ops/hardswish.hpp"
 #include "ops/hardtanh.hpp"
+#include "ops/inner.hpp"
 #include "ops/kv_caching.hpp"
 #include "ops/linear.hpp"
 #include "ops/linear_w8a8i8.hpp"
-#include "ops/inner.hpp"
-#include "ops/linear.hpp"
 #include "ops/masked_select.hpp"
 #include "ops/matmul.hpp"
 #include "ops/mha_kvcache.hpp"
@@ -51,11 +50,11 @@
 #include "ops/silu_and_mul.hpp"
 #include "ops/sum.hpp"
 #include "ops/swiglu.hpp"
+#include "ops/tan.hpp"
+#include "ops/tanhshrink.hpp"
 #include "ops/topk.hpp"
 #include "ops/var.hpp"
 #include "ops/var_mean.hpp"
-#include "ops/tan.hpp"
-#include "ops/tanhshrink.hpp"
 
 namespace py = pybind11;
 

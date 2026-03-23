@@ -15,20 +15,20 @@
 #include "moore/inner_moore.h"
 #endif
 
-__C infiniStatus_t infiniopCreateInnerDescriptor(
+__INFINI_C infiniStatus_t infiniopCreateInnerDescriptor(
     infiniopHandle_t handle,
     infiniopInnerDescriptor_t *desc_ptr,
     infiniopTensorDescriptor_t out_desc,
     infiniopTensorDescriptor_t input_desc,
     infiniopTensorDescriptor_t other_desc) {
 
-#define CREATE(CASE, NAMESPACE)                                                     \
-    case CASE:                                                                      \
-        return op::inner::NAMESPACE::Descriptor::create(                            \
-            handle,                                                                 \
-            reinterpret_cast<op::inner::NAMESPACE::Descriptor **>(desc_ptr),        \
-            out_desc,                                                               \
-            input_desc,                                                             \
+#define CREATE(CASE, NAMESPACE)                                              \
+    case CASE:                                                               \
+        return op::inner::NAMESPACE::Descriptor::create(                     \
+            handle,                                                          \
+            reinterpret_cast<op::inner::NAMESPACE::Descriptor **>(desc_ptr), \
+            out_desc,                                                        \
+            input_desc,                                                      \
             other_desc);
 
     switch (handle->device) {
@@ -51,11 +51,11 @@ __C infiniStatus_t infiniopCreateInnerDescriptor(
     return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
 
-__C infiniStatus_t infiniopGetInnerWorkspaceSize(infiniopInnerDescriptor_t desc, size_t *size) {
+__INFINI_C infiniStatus_t infiniopGetInnerWorkspaceSize(infiniopInnerDescriptor_t desc, size_t *size) {
 
-#define GET(CASE, NAMESPACE)                                                                    \
-    case CASE:                                                                                  \
-        *size = reinterpret_cast<op::inner::NAMESPACE::Descriptor *>(desc)->workspaceSize();    \
+#define GET(CASE, NAMESPACE)                                                                 \
+    case CASE:                                                                               \
+        *size = reinterpret_cast<op::inner::NAMESPACE::Descriptor *>(desc)->workspaceSize(); \
         return INFINI_STATUS_SUCCESS;
 
     switch (desc->device_type) {
@@ -78,7 +78,7 @@ __C infiniStatus_t infiniopGetInnerWorkspaceSize(infiniopInnerDescriptor_t desc,
     return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
 
-__C infiniStatus_t infiniopInner(
+__INFINI_C infiniStatus_t infiniopInner(
     infiniopInnerDescriptor_t desc,
     void *workspace, size_t workspace_size,
     void *out,
@@ -86,8 +86,8 @@ __C infiniStatus_t infiniopInner(
     const void *other,
     void *stream) {
 
-#define CALCULATE(CASE, NAMESPACE)                                                             \
-    case CASE:                                                                                 \
+#define CALCULATE(CASE, NAMESPACE)                                                    \
+    case CASE:                                                                        \
         return reinterpret_cast<op::inner::NAMESPACE::Descriptor *>(desc)->calculate( \
             workspace, workspace_size, out, input, other, stream);
 
@@ -111,10 +111,10 @@ __C infiniStatus_t infiniopInner(
     return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
 
-__C infiniStatus_t infiniopDestroyInnerDescriptor(infiniopInnerDescriptor_t desc) {
+__INFINI_C infiniStatus_t infiniopDestroyInnerDescriptor(infiniopInnerDescriptor_t desc) {
 
-#define DESTROY(CASE, NAMESPACE)                                                    \
-    case CASE:                                                                      \
+#define DESTROY(CASE, NAMESPACE)                                           \
+    case CASE:                                                             \
         delete reinterpret_cast<op::inner::NAMESPACE::Descriptor *>(desc); \
         return INFINI_STATUS_SUCCESS;
 

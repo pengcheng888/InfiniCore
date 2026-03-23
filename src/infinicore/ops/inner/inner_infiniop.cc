@@ -1,7 +1,7 @@
 #include "../../utils.hpp"
 #include "infinicore/common/hash.hpp"
-#include "infinicore/ops/inner.hpp"
 #include "infinicore/ops/common/cache.hpp"
+#include "infinicore/ops/inner.hpp"
 #include <infiniop.h>
 
 namespace infinicore::op::inner_impl::infiniop {
@@ -39,21 +39,19 @@ void calculate(Tensor out, Tensor input, Tensor other) {
     INFINICORE_CHECK_ERROR(infiniopGetInnerWorkspaceSize(desc, &workspace_size));
     std::shared_ptr<Memory> workspace = context::allocateMemory(workspace_size);
 
-
     INFINICORE_CHECK_ERROR(infiniopInner(
         desc, workspace->data(), workspace_size,
         out->data(), input->data(), other->data(), context::getStream()));
 }
 
 static bool registered = []() {
-    Inner::dispatcher().registerDevice({
-            Device::Type::CPU,
-            Device::Type::NVIDIA,
-            Device::Type::METAX,
-            Device::Type::MOORE,
-            Device::Type::ILUVATAR
-        }, &calculate, false);
+    Inner::dispatcher().registerDevice({Device::Type::CPU,
+                                        Device::Type::NVIDIA,
+                                        Device::Type::METAX,
+                                        Device::Type::MOORE,
+                                        Device::Type::ILUVATAR},
+                                       &calculate, false);
     return true;
 }();
 
-}
+} // namespace infinicore::op::inner_impl::infiniop

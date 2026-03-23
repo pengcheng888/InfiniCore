@@ -14,4 +14,4 @@ public:
 Tensor tan(Tensor input);
 void tan_(Tensor output, Tensor input);
 
-}
+} // namespace infinicore::op

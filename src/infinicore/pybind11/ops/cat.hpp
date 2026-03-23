@@ -14,7 +14,7 @@ inline void bind_cat(py::module &m) {
           py::arg("tensors"),
           py::arg("dim") = 0,
           R"doc(opertor: torch.cat, out-of-place mode)doc");
-          
+
     m.def("cat_",
           &op::cat_,
           py::arg("out"),

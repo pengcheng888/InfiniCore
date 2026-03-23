@@ -5,15 +5,15 @@
 
 typedef struct InfiniopDescriptor *infiniopTanDescriptor_t;
 
-__C __export infiniStatus_t infiniopCreateTanDescriptor(
+__INFINI_C __export infiniStatus_t infiniopCreateTanDescriptor(
     infiniopHandle_t handle,
     infiniopTanDescriptor_t *desc_ptr,
     infiniopTensorDescriptor_t input_desc,
     infiniopTensorDescriptor_t out_desc);
 
-__C __export infiniStatus_t infiniopGetTanWorkspaceSize(infiniopTanDescriptor_t desc, size_t *size);
+__INFINI_C __export infiniStatus_t infiniopGetTanWorkspaceSize(infiniopTanDescriptor_t desc, size_t *size);
 
-__C __export infiniStatus_t infiniopTan(
+__INFINI_C __export infiniStatus_t infiniopTan(
     infiniopTanDescriptor_t desc,
     void *workspace,
     size_t workspace_size,
@@ -21,6 +21,6 @@ __C __export infiniStatus_t infiniopTan(
     const void *input,
     void *stream);
 
-__C __export infiniStatus_t infiniopDestroyTanDescriptor(infiniopTanDescriptor_t desc);
+__INFINI_C __export infiniStatus_t infiniopDestroyTanDescriptor(infiniopTanDescriptor_t desc);
 
 #endif

@@ -1,7 +1,7 @@
 #include "../../utils.hpp"
 #include "infinicore/common/hash.hpp"
-#include "infinicore/ops/masked_select.hpp"
 #include "infinicore/ops/common/cache.hpp"
+#include "infinicore/ops/masked_select.hpp"
 #include <infiniop.h>
 
 namespace infinicore::op::masked_select_impl::infiniop {
@@ -39,21 +39,19 @@ void calculate(Tensor input, Tensor mask, void **data_ptr, size_t *dlen_ptr) {
     INFINICORE_CHECK_ERROR(infiniopGetMaskedSelectWorkspaceSize(desc, &workspace_size));
     std::shared_ptr<Memory> workspace = context::allocateMemory(workspace_size);
 
-
     INFINICORE_CHECK_ERROR(infiniopMaskedSelect(
         desc, workspace->data(), workspace_size,
         input->data(), (const bool *)mask->data(), data_ptr, dlen_ptr, context::getStream()));
 }
 
 static bool registered = []() {
-    MaskedSelect::dispatcher().registerDevice({
-            Device::Type::CPU,
-            Device::Type::NVIDIA,
-            Device::Type::METAX,
-            Device::Type::MOORE,
-            Device::Type::ILUVATAR
-        }, &calculate, false);
+    MaskedSelect::dispatcher().registerDevice({Device::Type::CPU,
+                                               Device::Type::NVIDIA,
+                                               Device::Type::METAX,
+                                               Device::Type::MOORE,
+                                               Device::Type::ILUVATAR},
+                                              &calculate, false);
     return true;
 }();
 
-}
+} // namespace infinicore::op::masked_select_impl::infiniop

@@ -7,7 +7,7 @@
 #define DESCRIPTOR(NAMESPACE)                                    \
                                                                  \
     namespace op::masked_select::NAMESPACE {                     \
-    class Descriptor final: public InfiniopDescriptor {          \
+    class Descriptor final : public InfiniopDescriptor {         \
         struct Opaque;                                           \
         Opaque *_opaque;                                         \
         MaskedSelectInfo _info;                                  \
@@ -23,7 +23,6 @@
               _opaque(opaque),                                   \
               _info(info),                                       \
               _workspace_size(workspace_size) {}                 \
-                                                                 \
                                                                  \
     public:                                                      \
         ~Descriptor();                                           \

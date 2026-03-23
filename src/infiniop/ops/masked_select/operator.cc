@@ -15,18 +15,18 @@
 #include "moore/masked_select_moore.h"
 #endif
 
-__C infiniStatus_t infiniopCreateMaskedSelectDescriptor(
+__INFINI_C infiniStatus_t infiniopCreateMaskedSelectDescriptor(
     infiniopHandle_t handle,
     infiniopMaskedSelectDescriptor_t *desc_ptr,
     infiniopTensorDescriptor_t input_desc,
     infiniopTensorDescriptor_t mask_desc) {
 
-#define CREATE(CASE, NAMESPACE)                                                     \
-    case CASE:                                                                      \
-        return op::masked_select::NAMESPACE::Descriptor::create(                    \
-            handle,                                                                 \
-            reinterpret_cast<op::masked_select::NAMESPACE::Descriptor **>(desc_ptr),\
-            input_desc,                                                             \
+#define CREATE(CASE, NAMESPACE)                                                      \
+    case CASE:                                                                       \
+        return op::masked_select::NAMESPACE::Descriptor::create(                     \
+            handle,                                                                  \
+            reinterpret_cast<op::masked_select::NAMESPACE::Descriptor **>(desc_ptr), \
+            input_desc,                                                              \
             mask_desc);
 
     switch (handle->device) {
@@ -49,10 +49,10 @@ __C infiniStatus_t infiniopCreateMaskedSelectDescriptor(
     return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
 
-__C infiniStatus_t infiniopGetMaskedSelectWorkspaceSize(infiniopMaskedSelectDescriptor_t desc, size_t *size) {
+__INFINI_C infiniStatus_t infiniopGetMaskedSelectWorkspaceSize(infiniopMaskedSelectDescriptor_t desc, size_t *size) {
 
-#define GET(CASE, NAMESPACE)                                                                          \
-    case CASE:                                                                                        \
+#define GET(CASE, NAMESPACE)                                                                         \
+    case CASE:                                                                                       \
         *size = reinterpret_cast<op::masked_select::NAMESPACE::Descriptor *>(desc)->workspaceSize(); \
         return INFINI_STATUS_SUCCESS;
 
@@ -76,7 +76,7 @@ __C infiniStatus_t infiniopGetMaskedSelectWorkspaceSize(infiniopMaskedSelectDesc
     return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
 
-__C infiniStatus_t infiniopMaskedSelect(
+__INFINI_C infiniStatus_t infiniopMaskedSelect(
     infiniopMaskedSelectDescriptor_t desc,
     void *workspace, size_t workspace_size,
     const void *input,
@@ -85,8 +85,8 @@ __C infiniStatus_t infiniopMaskedSelect(
     size_t *dlen,
     void *stream) {
 
-#define CALCULATE(CASE, NAMESPACE)                                                             \
-    case CASE:                                                                                 \
+#define CALCULATE(CASE, NAMESPACE)                                                            \
+    case CASE:                                                                                \
         return reinterpret_cast<op::masked_select::NAMESPACE::Descriptor *>(desc)->calculate( \
             workspace, workspace_size, input, mask, data_size, dlen, stream);
 
@@ -110,10 +110,10 @@ __C infiniStatus_t infiniopMaskedSelect(
     return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
 
-__C infiniStatus_t infiniopDestroyMaskedSelectDescriptor(infiniopMaskedSelectDescriptor_t desc) {
+__INFINI_C infiniStatus_t infiniopDestroyMaskedSelectDescriptor(infiniopMaskedSelectDescriptor_t desc) {
 
-#define DESTROY(CASE, NAMESPACE)                                                    \
-    case CASE:                                                                      \
+#define DESTROY(CASE, NAMESPACE)                                                   \
+    case CASE:                                                                     \
         delete reinterpret_cast<op::masked_select::NAMESPACE::Descriptor *>(desc); \
         return INFINI_STATUS_SUCCESS;
 

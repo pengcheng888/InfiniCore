@@ -20,7 +20,7 @@ public:
     std::vector<ptrdiff_t> input_strides;
     std::vector<ptrdiff_t> mask_strides;
 
-    static utils::Result<MaskedSelectInfo> create(infiniopTensorDescriptor_t input_desc, infiniopTensorDescriptor_t mask_desc) {        
+    static utils::Result<MaskedSelectInfo> create(infiniopTensorDescriptor_t input_desc, infiniopTensorDescriptor_t mask_desc) {
         auto dtype = input_desc->dtype();
         CHECK_DTYPE(dtype, INFINI_DTYPE_F32);
         CHECK_DTYPE(mask_desc->dtype(), INFINI_DTYPE_BOOL);
@@ -31,7 +31,7 @@ public:
         auto ndim = input_desc->ndim();
 
         size_t total_elements = 1;
-        for (auto& dim : shape) {
+        for (auto &dim : shape) {
             total_elements *= dim;
         }
 

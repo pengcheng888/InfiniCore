@@ -5,16 +5,16 @@
 
 typedef struct InfiniopDescriptor *infiniopInnerDescriptor_t;
 
-__C __export infiniStatus_t infiniopCreateInnerDescriptor(
+__INFINI_C __export infiniStatus_t infiniopCreateInnerDescriptor(
     infiniopHandle_t handle,
     infiniopInnerDescriptor_t *desc_ptr,
     infiniopTensorDescriptor_t out_desc,
     infiniopTensorDescriptor_t input_desc,
     infiniopTensorDescriptor_t other_desc);
 
-__C __export infiniStatus_t infiniopGetInnerWorkspaceSize(infiniopInnerDescriptor_t desc, size_t *size);
+__INFINI_C __export infiniStatus_t infiniopGetInnerWorkspaceSize(infiniopInnerDescriptor_t desc, size_t *size);
 
-__C __export infiniStatus_t infiniopInner(
+__INFINI_C __export infiniStatus_t infiniopInner(
     infiniopInnerDescriptor_t desc,
     void *workspace,
     size_t workspace_size,
@@ -23,6 +23,6 @@ __C __export infiniStatus_t infiniopInner(
     const void *other,
     void *stream);
 
-__C __export infiniStatus_t infiniopDestroyInnerDescriptor(infiniopInnerDescriptor_t desc);
+__INFINI_C __export infiniStatus_t infiniopDestroyInnerDescriptor(infiniopInnerDescriptor_t desc);
 
 #endif

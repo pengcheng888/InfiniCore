@@ -38,7 +38,7 @@ infiniStatus_t Descriptor::create(
 
 namespace {
 
-template<size_t BLOCK_SIZE, typename T>
+template <size_t BLOCK_SIZE, typename T>
 infiniStatus_t launchKernel(
     const InnerInfo &info,
     const T *input, const T *other, T *out,
@@ -80,7 +80,7 @@ infiniStatus_t launchKernel(
     return INFINI_STATUS_SUCCESS;
 }
 
-}
+} // namespace
 
 infiniStatus_t Descriptor::calculate(
     void *workspace, size_t workspace_size,
@@ -90,22 +90,21 @@ infiniStatus_t Descriptor::calculate(
     void *stream_) const {
 
     musaStream_t stream = (musaStream_t)stream_;
-#define CALCULATE_INNER(BLOCK_SIZE, T)                          \
-    launchKernel<BLOCK_SIZE, T>(                                \
-        _info,                                                  \
-        (const T *)input, (const T *)other, (T *)out,           \
-        stream, workspace, workspace_size                       \
-    )
-#define CALCULATE_INNER_WITH_BLOCK_SIZE(BLOCK_SIZE)             \
-    {                                                           \
-        if (_info.dtype == INFINI_DTYPE_BF16)                   \
-            return CALCULATE_INNER(BLOCK_SIZE, __mt_bfloat16);  \
-        else if(_info.dtype == INFINI_DTYPE_F16)                \
-            return CALCULATE_INNER(BLOCK_SIZE, half);           \
-        else if(_info.dtype == INFINI_DTYPE_F32)                \
-            return CALCULATE_INNER(BLOCK_SIZE, float);          \
-        else                                                    \
-            return INFINI_STATUS_BAD_TENSOR_DTYPE;              \
+#define CALCULATE_INNER(BLOCK_SIZE, T)                \
+    launchKernel<BLOCK_SIZE, T>(                      \
+        _info,                                        \
+        (const T *)input, (const T *)other, (T *)out, \
+        stream, workspace, workspace_size)
+#define CALCULATE_INNER_WITH_BLOCK_SIZE(BLOCK_SIZE)            \
+    {                                                          \
+        if (_info.dtype == INFINI_DTYPE_BF16)                  \
+            return CALCULATE_INNER(BLOCK_SIZE, __mt_bfloat16); \
+        else if (_info.dtype == INFINI_DTYPE_F16)              \
+            return CALCULATE_INNER(BLOCK_SIZE, half);          \
+        else if (_info.dtype == INFINI_DTYPE_F32)              \
+            return CALCULATE_INNER(BLOCK_SIZE, float);         \
+        else                                                   \
+            return INFINI_STATUS_BAD_TENSOR_DTYPE;             \
     }
 
     if (_opaque->internal->maxThreadsPerBlock() == MOORE_BLOCK_SIZE_1024) {
@@ -120,4 +119,4 @@ infiniStatus_t Descriptor::calculate(
     return INFINI_STATUS_SUCCESS;
 }
 
-}
+} // namespace op::inner::moore

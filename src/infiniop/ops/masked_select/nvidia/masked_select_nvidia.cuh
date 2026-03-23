@@ -5,4 +5,4 @@
 
 DESCRIPTOR(nvidia)
 
-#endif 
+#endif

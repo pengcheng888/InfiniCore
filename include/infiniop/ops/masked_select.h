@@ -5,15 +5,15 @@
 
 typedef struct InfiniopDescriptor *infiniopMaskedSelectDescriptor_t;
 
-__C __export infiniStatus_t infiniopCreateMaskedSelectDescriptor(
+__INFINI_C __export infiniStatus_t infiniopCreateMaskedSelectDescriptor(
     infiniopHandle_t handle,
     infiniopMaskedSelectDescriptor_t *desc_ptr,
     infiniopTensorDescriptor_t input_desc,
     infiniopTensorDescriptor_t mask_desc);
 
-__C __export infiniStatus_t infiniopGetMaskedSelectWorkspaceSize(infiniopMaskedSelectDescriptor_t desc, size_t *size);
+__INFINI_C __export infiniStatus_t infiniopGetMaskedSelectWorkspaceSize(infiniopMaskedSelectDescriptor_t desc, size_t *size);
 
-__C __export infiniStatus_t infiniopMaskedSelect(
+__INFINI_C __export infiniStatus_t infiniopMaskedSelect(
     infiniopMaskedSelectDescriptor_t desc,
     void *workspace,
     size_t workspace_size,
@@ -23,6 +23,6 @@ __C __export infiniStatus_t infiniopMaskedSelect(
     size_t *dlen,
     void *stream);
 
-__C __export infiniStatus_t infiniopDestroyMaskedSelectDescriptor(infiniopMaskedSelectDescriptor_t desc);
+__INFINI_C __export infiniStatus_t infiniopDestroyMaskedSelectDescriptor(infiniopMaskedSelectDescriptor_t desc);
 
 #endif

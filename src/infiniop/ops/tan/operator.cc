@@ -15,18 +15,18 @@
 #include "moore/tan_moore.h"
 #endif
 
-__C infiniStatus_t infiniopCreateTanDescriptor(
+__INFINI_C infiniStatus_t infiniopCreateTanDescriptor(
     infiniopHandle_t handle,
     infiniopTanDescriptor_t *desc_ptr,
     infiniopTensorDescriptor_t output_desc,
     infiniopTensorDescriptor_t input_desc) {
 
-#define CREATE(CASE, NAMESPACE)                                             \
-    case CASE:                                                              \
+#define CREATE(CASE, NAMESPACE)                                            \
+    case CASE:                                                             \
         return op::tan::NAMESPACE::Descriptor::create(                     \
-            handle,                                                         \
+            handle,                                                        \
             reinterpret_cast<op::tan::NAMESPACE::Descriptor **>(desc_ptr), \
-            output_desc,                                                    \
+            output_desc,                                                   \
             {input_desc})
 
     switch (handle->device) {
@@ -54,10 +54,10 @@ __C infiniStatus_t infiniopCreateTanDescriptor(
 #undef CREATE
 }
 
-__C infiniStatus_t infiniopGetTanWorkspaceSize(infiniopTanDescriptor_t desc, size_t *size) {
+__INFINI_C infiniStatus_t infiniopGetTanWorkspaceSize(infiniopTanDescriptor_t desc, size_t *size) {
 
-#define GET(CASE, NAMESPACE)                                                                \
-    case CASE:                                                                              \
+#define GET(CASE, NAMESPACE)                                                               \
+    case CASE:                                                                             \
         *size = reinterpret_cast<op::tan::NAMESPACE::Descriptor *>(desc)->workspaceSize(); \
         return INFINI_STATUS_SUCCESS
 
@@ -85,7 +85,7 @@ __C infiniStatus_t infiniopGetTanWorkspaceSize(infiniopTanDescriptor_t desc, siz
     return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
 
-__C infiniStatus_t infiniopTan(
+__INFINI_C infiniStatus_t infiniopTan(
     infiniopTanDescriptor_t desc,
     void *workspace,
     size_t workspace_size,
@@ -93,8 +93,8 @@ __C infiniStatus_t infiniopTan(
     const void *input,
     void *stream) {
 
-#define CALCULATE(CASE, NAMESPACE)                                             \
-    case CASE:                                                                 \
+#define CALCULATE(CASE, NAMESPACE)                                            \
+    case CASE:                                                                \
         return reinterpret_cast<const op::tan::NAMESPACE::Descriptor *>(desc) \
             ->calculate(workspace, workspace_size, output, {input}, stream)
 
@@ -123,11 +123,11 @@ __C infiniStatus_t infiniopTan(
 #undef CALCULATE
 }
 
-__C infiniStatus_t
+__INFINI_C infiniStatus_t
 infiniopDestroyTanDescriptor(infiniopTanDescriptor_t desc) {
 
-#define DELETE(CASE, NAMESPACE)                                                 \
-    case CASE:                                                                  \
+#define DELETE(CASE, NAMESPACE)                                                \
+    case CASE:                                                                 \
         delete reinterpret_cast<const op::tan::NAMESPACE::Descriptor *>(desc); \
         return INFINI_STATUS_SUCCESS
 

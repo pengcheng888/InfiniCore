@@ -5,20 +5,20 @@
 
 typedef struct InfiniopDescriptor *infiniopTanhshrinkDescriptor_t;
 
-__C __export infiniStatus_t infiniopCreateTanhshrinkDescriptor(infiniopHandle_t handle,
-                                                         infiniopTanhshrinkDescriptor_t *desc_ptr,
-                                                         infiniopTensorDescriptor_t output,
-                                                         infiniopTensorDescriptor_t intput);
+__INFINI_C __export infiniStatus_t infiniopCreateTanhshrinkDescriptor(infiniopHandle_t handle,
+                                                                      infiniopTanhshrinkDescriptor_t *desc_ptr,
+                                                                      infiniopTensorDescriptor_t output,
+                                                                      infiniopTensorDescriptor_t intput);
 
-__C __export infiniStatus_t infiniopGetTanhshrinkWorkspaceSize(infiniopTanhshrinkDescriptor_t desc, size_t *size);
+__INFINI_C __export infiniStatus_t infiniopGetTanhshrinkWorkspaceSize(infiniopTanhshrinkDescriptor_t desc, size_t *size);
 
-__C __export infiniStatus_t infiniopTanhshrink(infiniopTanhshrinkDescriptor_t desc,
-                                         void *workspace,
-                                         size_t workspace_size,
-                                         void *output,
-                                         const void *intput,
-                                         void *stream);
+__INFINI_C __export infiniStatus_t infiniopTanhshrink(infiniopTanhshrinkDescriptor_t desc,
+                                                      void *workspace,
+                                                      size_t workspace_size,
+                                                      void *output,
+                                                      const void *intput,
+                                                      void *stream);
 
-__C __export infiniStatus_t infiniopDestroyTanhshrinkDescriptor(infiniopTanhshrinkDescriptor_t desc);
+__INFINI_C __export infiniStatus_t infiniopDestroyTanhshrinkDescriptor(infiniopTanhshrinkDescriptor_t desc);
 
 #endif

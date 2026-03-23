@@ -15,18 +15,18 @@
 #include "moore/tanhshrink_moore.h"
 #endif
 
-__C infiniStatus_t infiniopCreateTanhshrinkDescriptor(
+__INFINI_C infiniStatus_t infiniopCreateTanhshrinkDescriptor(
     infiniopHandle_t handle,
     infiniopTanhshrinkDescriptor_t *desc_ptr,
     infiniopTensorDescriptor_t output_desc,
     infiniopTensorDescriptor_t input_desc) {
 
-#define CREATE(CASE, NAMESPACE)                                             \
-    case CASE:                                                              \
+#define CREATE(CASE, NAMESPACE)                                                   \
+    case CASE:                                                                    \
         return op::tanhshrink::NAMESPACE::Descriptor::create(                     \
-            handle,                                                         \
+            handle,                                                               \
             reinterpret_cast<op::tanhshrink::NAMESPACE::Descriptor **>(desc_ptr), \
-            output_desc,                                                    \
+            output_desc,                                                          \
             {input_desc})
 
     switch (handle->device) {
@@ -54,10 +54,10 @@ __C infiniStatus_t infiniopCreateTanhshrinkDescriptor(
 #undef CREATE
 }
 
-__C infiniStatus_t infiniopGetTanhshrinkWorkspaceSize(infiniopTanhshrinkDescriptor_t desc, size_t *size) {
+__INFINI_C infiniStatus_t infiniopGetTanhshrinkWorkspaceSize(infiniopTanhshrinkDescriptor_t desc, size_t *size) {
 
-#define GET(CASE, NAMESPACE)                                                                \
-    case CASE:                                                                              \
+#define GET(CASE, NAMESPACE)                                                                      \
+    case CASE:                                                                                    \
         *size = reinterpret_cast<op::tanhshrink::NAMESPACE::Descriptor *>(desc)->workspaceSize(); \
         return INFINI_STATUS_SUCCESS
 
@@ -85,7 +85,7 @@ __C infiniStatus_t infiniopGetTanhshrinkWorkspaceSize(infiniopTanhshrinkDescript
     return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
 
-__C infiniStatus_t infiniopTanhshrink(
+__INFINI_C infiniStatus_t infiniopTanhshrink(
     infiniopTanhshrinkDescriptor_t desc,
     void *workspace,
     size_t workspace_size,
@@ -93,8 +93,8 @@ __C infiniStatus_t infiniopTanhshrink(
     const void *input,
     void *stream) {
 
-#define CALCULATE(CASE, NAMESPACE)                                             \
-    case CASE:                                                                 \
+#define CALCULATE(CASE, NAMESPACE)                                                   \
+    case CASE:                                                                       \
         return reinterpret_cast<const op::tanhshrink::NAMESPACE::Descriptor *>(desc) \
             ->calculate(workspace, workspace_size, output, {input}, stream)
 
@@ -123,11 +123,11 @@ __C infiniStatus_t infiniopTanhshrink(
 #undef CALCULATE
 }
 
-__C infiniStatus_t
+__INFINI_C infiniStatus_t
 infiniopDestroyTanhshrinkDescriptor(infiniopTanhshrinkDescriptor_t desc) {
 
-#define DELETE(CASE, NAMESPACE)                                                 \
-    case CASE:                                                                  \
+#define DELETE(CASE, NAMESPACE)                                                       \
+    case CASE:                                                                        \
         delete reinterpret_cast<const op::tanhshrink::NAMESPACE::Descriptor *>(desc); \
         return INFINI_STATUS_SUCCESS
 

@@ -14,7 +14,6 @@ inline void bind_masked_select(py::module &m) {
           py::arg("input"),
           py::arg("mask"),
           R"doc(opertor: torch.masked_select, out-of-place mode)doc");
-          
 }
 
 } // namespace infinicore::ops

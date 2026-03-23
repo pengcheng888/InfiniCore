@@ -14,4 +14,4 @@ public:
 Tensor inner(Tensor input, Tensor other);
 void inner_(Tensor out, Tensor input, Tensor other);
 
-}
+} // namespace infinicore::op
