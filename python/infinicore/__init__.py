@@ -88,6 +88,10 @@ from infinicore.ops.topk import topk
 from infinicore.ops.unsqueeze import unsqueeze
 from infinicore.ops.var import var
 from infinicore.ops.var_mean import var_mean
+from infinicore.ops.hypot import hypot
+from infinicore.ops.index_add import index_add
+from infinicore.ops.index_copy import index_copy
+from infinicore.ops.take import take
 from infinicore.tensor import (
     Tensor,
     empty,
@@ -186,6 +190,10 @@ __all__ = [
     "paged_caching",
     "paged_attention",
     "paged_attention_prefill",
+    "hypot",
+    "index_copy",
+    "index_add",
+    "take",
     "ones",
     "strided_empty",
     "strided_from_blob",

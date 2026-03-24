@@ -16,6 +16,7 @@ from .silu import silu
 from .silu_and_mul import silu_and_mul
 from .swiglu import swiglu
 from .tanhshrink import tanhshrink
+from .smooth_l1_loss import smooth_l1_loss
 
 __all__ = [
     "adaptive_max_pool1d",
@@ -26,6 +27,12 @@ __all__ = [
     "binary_cross_entropy_with_logits",
     "random_sample",
     "rms_norm",
+    "silu",
+    "smooth_l1_loss",
+    "swiglu",
+    "linear",
+    "embedding",
+    "rope",
     "RopeAlgo",
     "rope",
     "silu",
