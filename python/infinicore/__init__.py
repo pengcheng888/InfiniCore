@@ -68,6 +68,9 @@ from infinicore.ops.cross_entropy import cross_entropy
 from infinicore.ops.equal import equal
 from infinicore.ops.fmin import fmin
 from infinicore.ops.fmod import fmod
+from infinicore.ops.hypot import hypot
+from infinicore.ops.index_add import index_add
+from infinicore.ops.index_copy import index_copy
 from infinicore.ops.inner import inner
 from infinicore.ops.kv_caching import kv_caching
 from infinicore.ops.masked_select import masked_select
@@ -83,6 +86,7 @@ from infinicore.ops.rearrange import rearrange
 from infinicore.ops.reciprocal import reciprocal
 from infinicore.ops.squeeze import squeeze
 from infinicore.ops.sum import sum
+from infinicore.ops.take import take
 from infinicore.ops.tan import tan
 from infinicore.ops.topk import topk
 from infinicore.ops.unsqueeze import unsqueeze
@@ -186,6 +190,10 @@ __all__ = [
     "paged_caching",
     "paged_attention",
     "paged_attention_prefill",
+    "hypot",
+    "index_copy",
+    "index_add",
+    "take",
     "ones",
     "strided_empty",
     "strided_from_blob",
