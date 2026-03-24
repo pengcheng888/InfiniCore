@@ -2,8 +2,10 @@
 #define __SIDMOID_CUDA_H__
 
 #include "../../../elementwise/nvidia/elementwise_nvidia.cuh"
+#if defined(ENABLE_NVIDIA_API) || defined(ENABLE_ALI_API) || defined(ENABLE_ILUVATAR_API)
 #include <cuda_bf16.h>
 #include <cuda_fp16.h>
+#endif
 
 namespace op::sigmoid::cuda {
 typedef struct SigmoidOp {

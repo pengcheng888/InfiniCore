@@ -3,16 +3,6 @@
 #include "argwhere_kernel.h"
 #include "argwhere_moore.h"
 #include "infinicore.h"
-#include <spdlog/spdlog.h>
-
-// template <typename T>
-// INFINIOP_MOORE_KERNEL parallel_block_argwhere(T *data, int64_t *results, size_t N,
-//                             size_t M, const size_t *shapes,
-//                             const ptrdiff_t *strides, size_t ndim,
-//                             size_t *count) {
-//        parallel_block_argwhere_kernel<float><<<1, M / 2, M>>>(
-//         data, results, N, shapes, strides, ndim, count);
-// }
 
 infiniStatus_t launchKernel(const void *data, int64_t *results, size_t N,
                             size_t M, const size_t *shapes,
@@ -90,12 +80,6 @@ infiniStatus_t Descriptor::calculate(void *workspace, size_t workspace_size,
     musaMemcpyAsync(*y, result, sizeof(int64_t) * (*count) * ndim,
                     musaMemcpyDeviceToHost, moore_stream);
 
-    // cudaStreamSynchronize(cuda_stream);
-    // for (size_t i = 0; i < (*count) * ndim; i++) {
-    //   spdlog::debug("(*y)[{}]:{}", i, static_cast<size_t *>(*y)[i]);
-    // }
-    // cudaFreeAsync(result, cuda_stream);
-    // cudaFreeAsync(count_cuda, cuda_stream);
     return INFINI_STATUS_SUCCESS;
 }
 

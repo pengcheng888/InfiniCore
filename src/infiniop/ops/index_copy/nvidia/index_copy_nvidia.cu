@@ -3,9 +3,11 @@
 #include "index_copy_nvidia.cuh"
 #include <cstdint>
 
-// 【关键】引入 CUDA 浮点类型定义
+#if defined(ENABLE_NVIDIA_API) || defined(ENABLE_ALI_API) || defined(ENABLE_ILUVATAR_API) || defined(ENABLE_HYGON_API)
+#include "../../../devices/nvidia/nvidia_kernel_common.cuh"
 #include <cuda_bf16.h>
 #include <cuda_fp16.h>
+#endif
 
 namespace op::index_copy::nvidia {
 
@@ -131,7 +133,7 @@ infiniStatus_t Descriptor::calculate(
     auto idx_dtype = _info.idx_dtype();
 
 // 宏：根据 T_STORAGE 类型实例化 launch_kernel
-// T_STORAGE 将会是: float, double, int32_t, __half, __nv_bfloat16
+// T_STORAGE 将会是: float, double, int32_t, __half, cuda_bfloat16
 #define LAUNCH_BY_SIZE(T_STORAGE)                                                \
     switch (idx_dtype) {                                                         \
     case INFINI_DTYPE_I32:                                                       \
@@ -157,9 +159,9 @@ infiniStatus_t Descriptor::calculate(
     case INFINI_DTYPE_F16:
         LAUNCH_BY_SIZE(__half);
         break;
-    // 16-bit BFloat16 (bf16) -> 使用 __nv_bfloat16
+    // 16-bit BFloat16 (bf16) -> 使用 cuda_bfloat16
     case INFINI_DTYPE_BF16:
-        LAUNCH_BY_SIZE(__nv_bfloat16);
+        LAUNCH_BY_SIZE(cuda_bfloat16);
         break;
     // Integers
     case INFINI_DTYPE_I32:

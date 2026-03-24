@@ -1,11 +1,17 @@
 #include "../../../devices/metax/metax_common.h"
 #include "../../../devices/metax/metax_handle.h"
+#include "../../../devices/metax/metax_kernel_common.h"
 #include "smooth_l1_loss_metax.h"
 #include <cmath>
-#include <common/mc_library_types.h>
 #include <cstdio>
-#include <mcr/mc_runtime.h>
 #include <vector>
+#if defined(ENABLE_METAX_MC_API)
+#include <common/mc_library_types.h>
+#include <mcr/mc_runtime.h>
+#else
+#include <common/hc_library_types.h>
+#include <hcr/hc_runtime.h>
+#endif
 
 #include "../../../tensor.h"
 #include "../cuda/kernel.cuh"
@@ -105,7 +111,7 @@ void launch_kernel_impl(
     size_t n, float beta, int reduction,
     const TensorShape &in_s, const TensorShape &tg_s, const TensorShape &out_s,
     void *stream) {
-    auto mc_stream = reinterpret_cast<mcStream_t>(stream);
+    auto mc_stream = reinterpret_cast<hcStream_t>(stream);
     size_t grid = (n + 255) / 256;
     float scale = (reduction == 1) ? (1.0f / static_cast<float>(n)) : 1.0f;
 
@@ -192,12 +198,12 @@ infiniStatus_t Descriptor::create(
 infiniStatus_t Descriptor::calculate(
     void *workspace, size_t workspace_size, void *output,
     const void *input, const void *target, void *stream) const {
-    auto mc_stream = reinterpret_cast<mcStream_t>(stream);
+    auto mc_stream = reinterpret_cast<hcStream_t>(stream);
 
     if (_opaque->reduction != 0) {
         // Reduction 模式：清空 Workspace (float) 而不是 Output
         // 这样可以确保累加从 0.0f 开始
-        mcMemsetAsync(workspace, 0, sizeof(float), mc_stream);
+        hcMemsetAsync(workspace, 0, sizeof(float), mc_stream);
     }
 
     size_t n = _opaque->total_elements;
@@ -211,8 +217,8 @@ infiniStatus_t Descriptor::calculate(
         LAUNCH(__half);
         break;
     case INFINI_DTYPE_BF16:
-#if defined(__MACA__) || defined(__MACACC__)
-        LAUNCH(__maca_bfloat16);
+#if defined(__MACA__) || defined(ENABLE_METAX_MC_API)
+        LAUNCH(cuda_bfloat16);
 #endif
         break;
     case INFINI_DTYPE_F32:

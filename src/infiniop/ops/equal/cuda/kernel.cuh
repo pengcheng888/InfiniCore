@@ -1,10 +1,15 @@
 #ifndef __EQUAL_CUDA_H__
 #define __EQUAL_CUDA_H__
 
-#if defined(__MACACC__)
+#if ENABLE_METAX_API
+#if defined(ENABLE_METAX_MC_API)
 #include <maca_bfloat16.h>
 #include <maca_fp16.h>
 #else
+#include <hpcc_bfloat16.h>
+#include <hpcc_fp16.h>
+#endif
+#elif defined(ENABLE_NVIDIA_API) || defined(ENABLE_ALI_API) || defined(ENABLE_ILUVATAR_API)
 #include <cuda_bf16.h>
 #include <cuda_fp16.h>
 #endif

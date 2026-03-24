@@ -7,9 +7,10 @@
 
 #include "index_add_nvidia.cuh"
 #include <cstdint>
-
+#if defined(ENABLE_NVIDIA_API) || defined(ENABLE_ALI_API) || defined(ENABLE_ILUVATAR_API)
 #include <cuda_bf16.h>
 #include <cuda_fp16.h>
+#endif
 
 namespace op::index_add::nvidia {
 

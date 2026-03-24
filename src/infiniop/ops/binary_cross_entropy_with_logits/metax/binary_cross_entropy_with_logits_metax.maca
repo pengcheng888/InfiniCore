@@ -2,7 +2,11 @@
 #include "../../../devices/metax/metax_handle.h"
 #include "../../../devices/metax/metax_kernel_common.h"
 #include "binary_cross_entropy_with_logits_metax.h"
+#if defined(ENABLE_METAX_MC_API)
 #include <mc_runtime.h>
+#else
+#include <hc_runtime.h>
+#endif
 #include <type_traits>
 
 namespace op::bce_with_logits::metax {
@@ -191,7 +195,7 @@ infiniStatus_t Descriptor::calculate(
     const void *pos_weight,
     void *stream) const {
 
-    mcStream_t custream = (mcStream_t)stream;
+    hcStream_t custream = (hcStream_t)stream;
     size_t n = _info.num_elements;
 
     // F16/BF16 + 归约需要 float workspace
@@ -219,7 +223,7 @@ infiniStatus_t Descriptor::calculate(
     case INFINI_DTYPE_F32: {
         // 如果是规约操作，计算前需将输出位置清零
         if (_reduction != INFINIOP_REDUCTION_NONE) {
-            mcMemsetAsync(out, 0, sizeof(float), custream);
+            hcMemsetAsync(out, 0, sizeof(float), custream);
         }
 
         bce_logits_kernel<float, float><<<grid, block, 0, custream>>>(
@@ -255,7 +259,7 @@ infiniStatus_t Descriptor::calculate(
             out_raw = out;
         } else {
             workspace_f = static_cast<float *>(workspace);
-            mcMemsetAsync(workspace_f, 0, sizeof(float), custream);
+            hcMemsetAsync(workspace_f, 0, sizeof(float), custream);
             out_raw = workspace_f;
         }
 
@@ -294,7 +298,7 @@ infiniStatus_t Descriptor::calculate(
             out_raw = out;
         } else {
             workspace_f = static_cast<float *>(workspace);
-            mcMemsetAsync(workspace_f, 0, sizeof(float), custream);
+            hcMemsetAsync(workspace_f, 0, sizeof(float), custream);
             out_raw = workspace_f;
         }
 
@@ -324,8 +328,8 @@ infiniStatus_t Descriptor::calculate(
         return INFINI_STATUS_BAD_TENSOR_DTYPE;
     }
 
-    mcError_t err = mcGetLastError();
-    if (err != mcSuccess) {
+    hcError_t err = hcGetLastError();
+    if (err != hcSuccess) {
         return INFINI_STATUS_INTERNAL_ERROR;
     }
     return INFINI_STATUS_SUCCESS;

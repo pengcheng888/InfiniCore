@@ -2,11 +2,16 @@
 #define __INDEX_COPY_CUDA_H__
 
 // #include <cuda_runtime.h>
-#if defined(__MACA__) || defined(__MACACC__)
+#if defined(ENABLE_METAX_API)
+#if defined(ENABLE_METAX_MC_API)
 #include <maca_bfloat16.h>
 #include <maca_fp16.h>
-using nv_bfloat162 = __maca_bfloat162;
 #else
+#include <hpcc_bfloat16.h>
+#include <hpcc_fp16.h>
+#endif
+#endif
+#if defined(ENABLE_NVIDIA_API) || defined(ENABLE_ALI_API) || defined(ENABLE_ILUVATAR_API)
 #include <cuda_bf16.h>
 #include <cuda_fp16.h>
 #endif

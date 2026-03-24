@@ -128,7 +128,7 @@ infiniStatus_t Descriptor::calculate(
         launch_kernel<half>(output, input, target, workspace, numel, beta, reduction, stream);
         break;
     case INFINI_DTYPE_BF16:
-        launch_kernel<nv_bfloat16>(output, input, target, workspace, numel, beta, reduction, stream);
+        launch_kernel<cuda_bfloat16>(output, input, target, workspace, numel, beta, reduction, stream);
         break;
     case INFINI_DTYPE_F32:
         launch_kernel<float>(output, input, target, workspace, numel, beta, reduction, stream);

@@ -101,4 +101,6 @@
 #define hcGraphDestroy mcGraphDestroy
 #define hcGraphExecDestroy mcGraphExecDestroy
 #define hcGraphLaunch mcGraphLaunch
+#define hcMemsetAsync mcMemsetAsync
+#define hcGetLastError mcGetLastError
 #endif
