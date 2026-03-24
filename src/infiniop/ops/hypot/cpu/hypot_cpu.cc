@@ -21,9 +21,8 @@ infiniStatus_t Descriptor::create(
     const auto &input_b_desc = input_desc_vec.at(1);
     const auto &output_shape = out_desc->shape();
 
-    CHECK_DTYPE(dtype, 
-        INFINI_DTYPE_BF16, INFINI_DTYPE_F16, INFINI_DTYPE_F32, INFINI_DTYPE_F64
-    );
+    CHECK_DTYPE(dtype,
+                INFINI_DTYPE_BF16, INFINI_DTYPE_F16, INFINI_DTYPE_F32, INFINI_DTYPE_F64);
 
     // 检查两个输入的形状是否与输出一致
     CHECK_SAME_SHAPE(output_shape, input_a_desc->shape());
@@ -51,7 +50,7 @@ infiniStatus_t Descriptor::calculate(
         return _device_info->calculate<HypotOp, float>(_info, output, inputs, stream);
     case INFINI_DTYPE_F64:
         return _device_info->calculate<HypotOp, double>(_info, output, inputs, stream);
-    
+
     default:
         // 如果传入了整数类型或其他不支持的类型，将返回错误
         return INFINI_STATUS_BAD_TENSOR_DTYPE;

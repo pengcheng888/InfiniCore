@@ -1,6 +1,5 @@
 #include "../../../elementwise/nvidia/elementwise_nvidia.cuh"
 
-
 #include "../cuda/kernel.cuh"
 #include "hypot_nvidia.cuh"
 
@@ -17,7 +16,6 @@ infiniStatus_t Descriptor::create(
     auto handle = reinterpret_cast<device::nvidia::Handle *>(handle_);
     auto dtype = out_desc->dtype();
 
-   
     if (input_desc_vec.size() != 2) {
         return INFINI_STATUS_BAD_PARAM;
     }
@@ -26,10 +24,8 @@ infiniStatus_t Descriptor::create(
     const auto &input_b_desc = input_desc_vec.at(1);
     const auto &output_shape = out_desc->shape();
 
-    
-    CHECK_DTYPE(dtype, 
-        INFINI_DTYPE_BF16, INFINI_DTYPE_F16, INFINI_DTYPE_F32, INFINI_DTYPE_F64
-    );
+    CHECK_DTYPE(dtype,
+                INFINI_DTYPE_BF16, INFINI_DTYPE_F16, INFINI_DTYPE_F32, INFINI_DTYPE_F64);
 
     CHECK_SAME_SHAPE(output_shape, input_a_desc->shape());
     CHECK_SAME_SHAPE(output_shape, input_b_desc->shape());
@@ -65,9 +61,9 @@ infiniStatus_t Descriptor::calculate(
         return _device_info->calculate<256, cuda::HypotOp, float>(_info, workspace, output, inputs, stream);
     case INFINI_DTYPE_F64:
         return _device_info->calculate<256, cuda::HypotOp, double>(_info, workspace, output, inputs, stream);
-    
-    // 【修改点 4】移除了整数类型的 Case
-    
+
+        // 【修改点 4】移除了整数类型的 Case
+
     default:
         return INFINI_STATUS_BAD_TENSOR_DTYPE;
     }

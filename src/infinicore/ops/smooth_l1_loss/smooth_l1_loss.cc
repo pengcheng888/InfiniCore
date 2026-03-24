@@ -14,15 +14,15 @@ void SmoothL1Loss::execute(Tensor output, Tensor input, Tensor target, float bet
 
 Tensor smooth_l1_loss(Tensor input, Tensor target, float beta, int64_t reduction) {
     Shape output_shape;
-    if (reduction == 0) { 
+    if (reduction == 0) {
         // Reduction::None -> 输出形状与输入一致
         output_shape = input->shape();
-    } else { 
-        output_shape = {}; 
+    } else {
+        output_shape = {};
     }
 
     auto output = Tensor::empty(output_shape, input->dtype(), input->device());
-    
+
     smooth_l1_loss_(output, input, target, beta, reduction);
     return output;
 }

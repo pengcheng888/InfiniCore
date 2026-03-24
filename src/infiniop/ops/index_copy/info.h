@@ -94,7 +94,7 @@ public:
         }
 
         if (out_desc->ndim() != in_desc->ndim()) {
-             return INFINI_STATUS_BAD_TENSOR_SHAPE;
+            return INFINI_STATUS_BAD_TENSOR_SHAPE;
         }
         const auto &out_shape = out_desc->shape();
         for (int64_t i = 0; i < ndim; ++i) {
@@ -107,11 +107,10 @@ public:
             dtype,
             idx_dtype,
             dim,
-            outer_size, 
-            inner_size, 
-            dim_size,   
-            index_len   
-        });
+            outer_size,
+            inner_size,
+            dim_size,
+            index_len});
     }
 };
 

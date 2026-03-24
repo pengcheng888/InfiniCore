@@ -1,7 +1,7 @@
 #include "../../utils.hpp"
 #include "infinicore/common/hash.hpp"
-#include "infinicore/ops/index_copy.hpp"
 #include "infinicore/ops/common/cache.hpp"
+#include "infinicore/ops/index_copy.hpp"
 #include <infiniop.h>
 
 namespace infinicore::op::index_copy_impl::infiniop {
@@ -28,13 +28,13 @@ void calculate(Tensor output, Tensor input, int64_t dim, Tensor index, Tensor so
 
     if (!desc_opt) {
         INFINICORE_CHECK_ERROR(infiniopCreateIndexCopyDescriptor(
-            context::getInfiniopHandle(output->device()), 
+            context::getInfiniopHandle(output->device()),
             &desc,
-            output->desc(), 
+            output->desc(),
             input->desc(),
             dim,
-            index->desc(), 
-            source->desc()));        
+            index->desc(),
+            source->desc()));
         cache.put(seed, desc);
     } else {
         desc = *desc_opt;
@@ -43,15 +43,15 @@ void calculate(Tensor output, Tensor input, int64_t dim, Tensor index, Tensor so
     size_t workspace_size = 0;
     INFINICORE_CHECK_ERROR(infiniopGetIndexCopyWorkspaceSize(desc, &workspace_size));
     std::shared_ptr<Memory> workspace = context::allocateMemory(workspace_size);
-    
+
     INFINICORE_CHECK_ERROR(infiniopIndexCopy(
-        desc, 
-        workspace->data(), 
+        desc,
+        workspace->data(),
         workspace_size,
-        output->data(), 
-        input->data(), 
-        index->data(), 
-        source->data(), 
+        output->data(),
+        input->data(),
+        index->data(),
+        source->data(),
         context::getStream()));
 }
 

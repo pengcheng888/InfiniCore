@@ -11,10 +11,10 @@ class SmoothL1LossInfo {
     SmoothL1LossInfo() = default;
 
 public:
-    int _dtype;          // 数据类型 (float, half, etc.)
-    size_t _numel;       // 参与计算的元素总数 (input.numel())
-    float _beta;         // 平滑阈值参数
-    int _reduction;      // 规约模式 (0:None, 1:Mean, 2:Sum)
+    int _dtype;     // 数据类型 (float, half, etc.)
+    size_t _numel;  // 参与计算的元素总数 (input.numel())
+    float _beta;    // 平滑阈值参数
+    int _reduction; // 规约模式 (0:None, 1:Mean, 2:Sum)
 
     int dtype() const { return _dtype; }
     size_t numel() const { return _numel; }
@@ -32,7 +32,7 @@ public:
         if (input_desc->dtype() != target_desc->dtype()) {
             return INFINI_STATUS_BAD_TENSOR_DTYPE;
         }
-        
+
         // 2. 检查输出数据类型一致性 (Output vs Input)
         if (out_desc->dtype() != input_desc->dtype()) {
             return INFINI_STATUS_BAD_TENSOR_DTYPE;
@@ -43,7 +43,7 @@ public:
         if (input_desc->ndim() != target_desc->ndim()) {
             return INFINI_STATUS_BAD_TENSOR_SHAPE;
         }
-        
+
         const auto &in_shape = input_desc->shape();
         const auto &tar_shape = target_desc->shape();
         size_t numel = input_desc->numel();
@@ -77,7 +77,7 @@ public:
 
         // 5. 校验 beta 参数 (必须非负)
         if (beta < 0) {
-            return INFINI_STATUS_BAD_PARAM; 
+            return INFINI_STATUS_BAD_PARAM;
         }
         return utils::Result<SmoothL1LossInfo>(SmoothL1LossInfo{
             input_desc->dtype(), // _dtype

@@ -16,7 +16,7 @@ void Take::execute(Tensor output, Tensor input, Tensor indices) {
 Tensor take(Tensor input, Tensor indices) {
     // 【关键区别】Take 的输出形状取决于 indices 的形状，但数据类型取决于 input
     auto output = Tensor::empty(indices->shape(), input->dtype(), input->device());
-    
+
     take_(output, input, indices);
     return output;
 }

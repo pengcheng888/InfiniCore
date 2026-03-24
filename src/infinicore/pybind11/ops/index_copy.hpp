@@ -1,7 +1,7 @@
 #pragma once
 
+#include "infinicore/ops/index_copy.hpp"
 #include <pybind11/pybind11.h>
-#include "infinicore/ops/index_copy.hpp" 
 
 namespace py = pybind11;
 

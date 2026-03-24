@@ -28,15 +28,14 @@ void calculate(Tensor output, Tensor input, Tensor target, float beta, int64_t r
 
     if (!desc_opt) {
         INFINICORE_CHECK_ERROR(infiniopCreateSmoothL1LossDescriptor(
-            context::getInfiniopHandle(output->device()), 
+            context::getInfiniopHandle(output->device()),
             &desc,
-            output->desc(), 
-            input->desc(), 
-            target->desc(), 
-            beta, 
-            static_cast<int>(reduction)
-        ));
-        
+            output->desc(),
+            input->desc(),
+            target->desc(),
+            beta,
+            static_cast<int>(reduction)));
+
         cache.put(seed, desc);
     } else {
         desc = *desc_opt;
@@ -47,14 +46,13 @@ void calculate(Tensor output, Tensor input, Tensor target, float beta, int64_t r
     std::shared_ptr<Memory> workspace = context::allocateMemory(workspace_size);
 
     INFINICORE_CHECK_ERROR(infiniopSmoothL1Loss(
-        desc, 
-        workspace->data(), 
+        desc,
+        workspace->data(),
         workspace_size,
-        output->data(), 
-        input->data(), 
-        target->data(), 
-        context::getStream()
-    ));
+        output->data(),
+        input->data(),
+        target->data(),
+        context::getStream()));
 }
 
 static bool registered = []() {

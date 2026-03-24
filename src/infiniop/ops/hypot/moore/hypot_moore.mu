@@ -23,7 +23,7 @@ infiniStatus_t Descriptor::create(
     }
     const auto &in_desc_0 = input_desc_vec.at(0);
     const auto &in_desc_1 = input_desc_vec.at(1);
-    
+
     const auto &out_shape = out_desc->shape();
     const auto &in_shape_0 = in_desc_0->shape();
     const auto &in_shape_1 = in_desc_1->shape();
@@ -51,7 +51,7 @@ infiniStatus_t Descriptor::calculate(
     if (workspace_size < _workspace_size) {
         return INFINI_STATUS_INSUFFICIENT_WORKSPACE;
     }
-    
+
     // Safety check for input count in calculate phase
     if (inputs.size() != 2) {
         return INFINI_STATUS_BAD_PARAM;
@@ -67,7 +67,7 @@ infiniStatus_t Descriptor::calculate(
         return _device_info->calculate<256, moore::HypotOp, float>(_info, workspace, output, inputs, stream);
     case INFINI_DTYPE_F64:
         return _device_info->calculate<256, moore::HypotOp, double>(_info, workspace, output, inputs, stream);
-    
+
     default:
         return INFINI_STATUS_BAD_TENSOR_DTYPE;
     }

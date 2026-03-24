@@ -1,14 +1,14 @@
 #ifndef __INDEX_COPY_CUDA_H__
 #define __INDEX_COPY_CUDA_H__
 
-//#include <cuda_runtime.h>
+// #include <cuda_runtime.h>
 #if defined(__MACA__) || defined(__MACACC__)
-    #include <maca_fp16.h>
-    #include <maca_bfloat16.h>
-    using nv_bfloat162 = __maca_bfloat162;
+#include <maca_bfloat16.h>
+#include <maca_fp16.h>
+using nv_bfloat162 = __maca_bfloat162;
 #else
-    #include <cuda_fp16.h>
-    #include <cuda_bf16.h>
+#include <cuda_bf16.h>
+#include <cuda_fp16.h>
 #endif
 
 #include <cstdint>
@@ -29,14 +29,14 @@ struct alignas(sizeof(T) * N) Pack {
 // ==================================================================
 template <typename T, typename TIdx>
 __global__ void index_copy_kernel(
-    T * __restrict__ output,
-    const T * __restrict__ source,
-    const TIdx * __restrict__ indices,
-    size_t outer_size,      // dim 左边的维度积
-    size_t inner_size,      // dim 右边的维度积
-    size_t dim_size,        // output 在 dim 维度的长度
-    size_t index_len,       // index 的长度 (source 在 dim 维度的长度)
-    size_t num_source       // source 的总元素数
+    T *__restrict__ output,
+    const T *__restrict__ source,
+    const TIdx *__restrict__ indices,
+    size_t outer_size, // dim 左边的维度积
+    size_t inner_size, // dim 右边的维度积
+    size_t dim_size,   // output 在 dim 维度的长度
+    size_t index_len,  // index 的长度 (source 在 dim 维度的长度)
+    size_t num_source  // source 的总元素数
     // 注意：移除了 float alpha
 ) {
     size_t tid = blockIdx.x * blockDim.x + threadIdx.x;
@@ -55,15 +55,15 @@ __global__ void index_copy_kernel(
         TIdx target_dim_idx = indices[idx_idx];
 
         // 3. 处理负索引 (防御性)
-        if (target_dim_idx < 0) target_dim_idx += static_cast<TIdx>(dim_size);
+        if (target_dim_idx < 0) {
+            target_dim_idx += static_cast<TIdx>(dim_size);
+        }
 
         // 4. 边界检查与赋值
         if (target_dim_idx >= 0 && target_dim_idx < static_cast<TIdx>(dim_size)) {
             // 计算 Output 的线性偏移
             // Output Shape: [Outer, DimSize, Inner]
-            size_t out_offset = outer_idx * (dim_size * inner_size) + 
-                                static_cast<size_t>(target_dim_idx) * inner_size + 
-                                inner_idx;
+            size_t out_offset = outer_idx * (dim_size * inner_size) + static_cast<size_t>(target_dim_idx) * inner_size + inner_idx;
 
             // 【核心修改】
             // IndexCopy 不需要原子操作，直接赋值。
@@ -78,32 +78,32 @@ __global__ void index_copy_kernel(
 // ==================================================================
 template <typename T, typename TIdx, int PackSize>
 __global__ void index_copy_kernel_vectorized(
-    T * __restrict__ output,
-    const T * __restrict__ source,
-    const TIdx * __restrict__ indices,
+    T *__restrict__ output,
+    const T *__restrict__ source,
+    const TIdx *__restrict__ indices,
     size_t outer_size,
     size_t inner_size,
     size_t dim_size,
     size_t index_len,
-    size_t num_packs        // Source 的 Pack 数量
+    size_t num_packs // Source 的 Pack 数量
     // 注意：移除了 float alpha
 ) {
     // 将 source 强转为 Pack 指针，实现向量化读取
     using PackType = Pack<T, PackSize>;
     const PackType *src_vec = reinterpret_cast<const PackType *>(source);
-    
+
     size_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     size_t stride = blockDim.x * gridDim.x;
 
     for (size_t i = tid; i < num_packs; i += stride) {
         // 向量化读取 (LDG.128)
         PackType reg_pack = src_vec[i];
-        
+
         // 当前 Pack 在 Source 中的起始线性索引
         size_t base_idx = i * PackSize;
 
-        // 循环展开：处理 Pack 中的每一个元素
-        #pragma unroll
+// 循环展开：处理 Pack 中的每一个元素
+#pragma unroll
         for (int k = 0; k < PackSize; ++k) {
             size_t curr_src_idx = base_idx + k;
 
@@ -116,14 +116,14 @@ __global__ void index_copy_kernel_vectorized(
             // 2. 读取 Index
             TIdx target_dim_idx = indices[idx_idx];
 
-            if (target_dim_idx < 0) target_dim_idx += static_cast<TIdx>(dim_size);
+            if (target_dim_idx < 0) {
+                target_dim_idx += static_cast<TIdx>(dim_size);
+            }
 
             // 3. 赋值
             if (target_dim_idx >= 0 && target_dim_idx < static_cast<TIdx>(dim_size)) {
-                size_t out_offset = outer_idx * (dim_size * inner_size) + 
-                                    static_cast<size_t>(target_dim_idx) * inner_size + 
-                                    inner_idx;
-                
+                size_t out_offset = outer_idx * (dim_size * inner_size) + static_cast<size_t>(target_dim_idx) * inner_size + inner_idx;
+
                 // 【核心修改】直接赋值
                 output[out_offset] = reg_pack.val[k];
             }

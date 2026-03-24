@@ -2,12 +2,12 @@
 #define __SMOOTH_L1_LOSS_CUDA_CUH__
 
 #if defined(__MACA__) || defined(__MACACC__)
-    #include <maca_fp16.h>
-    #include <maca_bfloat16.h>
+#include <maca_bfloat16.h>
+#include <maca_fp16.h>
 #else
-    #include <cuda_runtime.h>
-    #include <cuda_fp16.h>
-    #include <cuda_bf16.h>
+#include <cuda_bf16.h>
+#include <cuda_fp16.h>
+#include <cuda_runtime.h>
 #endif
 
 #include <cmath>
@@ -27,8 +27,9 @@ struct alignas(sizeof(T) * N) Pack {
 // ==================================================================
 __device__ __forceinline__ float warpReduceSum(float val) {
     unsigned int mask = 0xffffffff;
-    for (int offset = warpSize / 2; offset > 0; offset /= 2)
+    for (int offset = warpSize / 2; offset > 0; offset /= 2) {
         val += __shfl_down_sync(mask, val, offset);
+    }
     return val;
 }
 
@@ -38,11 +39,15 @@ __device__ __forceinline__ float blockReduceSum(float val) {
     int wid = threadIdx.x / warpSize;
 
     val = warpReduceSum(val);
-    if (lane == 0) shared[wid] = val;
+    if (lane == 0) {
+        shared[wid] = val;
+    }
     __syncthreads();
 
     val = (threadIdx.x < blockDim.x / warpSize) ? shared[lane] : 0.0f;
-    if (wid == 0) val = warpReduceSum(val);
+    if (wid == 0) {
+        val = warpReduceSum(val);
+    }
     return val;
 }
 
@@ -54,7 +59,7 @@ struct SmoothL1LossFunctor {
     float inv_beta;
     float half_beta;
 
-    __host__ __device__ SmoothL1LossFunctor(float beta_val) 
+    __host__ __device__ SmoothL1LossFunctor(float beta_val)
         : beta(beta_val), inv_beta(1.0f / beta_val), half_beta(0.5f * beta_val) {}
 
     template <typename T>
@@ -77,7 +82,7 @@ struct SmoothL1LossFunctor {
 // ==================================================================
 template <typename T>
 __global__ void smooth_l1_loss_kernel(
-    T * __restrict__ output, const T * __restrict__ input, const T * __restrict__ target,
+    T *__restrict__ output, const T *__restrict__ input, const T *__restrict__ target,
     size_t numel, SmoothL1LossFunctor functor) {
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < numel) {
@@ -87,18 +92,18 @@ __global__ void smooth_l1_loss_kernel(
 
 template <typename T, int PackSize>
 __global__ void smooth_l1_loss_kernel_vectorized(
-    T * __restrict__ output, const T * __restrict__ input, const T * __restrict__ target,
+    T *__restrict__ output, const T *__restrict__ input, const T *__restrict__ target,
     size_t num_packs, SmoothL1LossFunctor functor) {
     using PackType = Pack<T, PackSize>;
-    auto out_vec = reinterpret_cast<PackType*>(output);
-    auto in_vec = reinterpret_cast<const PackType*>(input);
-    auto tar_vec = reinterpret_cast<const PackType*>(target);
+    auto out_vec = reinterpret_cast<PackType *>(output);
+    auto in_vec = reinterpret_cast<const PackType *>(input);
+    auto tar_vec = reinterpret_cast<const PackType *>(target);
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx < num_packs) {
         PackType in_pack = in_vec[idx];
         PackType tar_pack = tar_vec[idx];
         PackType out_pack;
-        #pragma unroll
+#pragma unroll
         for (int i = 0; i < PackSize; ++i) {
             out_pack.val[i] = static_cast<T>(functor.compute(in_pack.val[i], tar_pack.val[i]));
         }
@@ -112,9 +117,9 @@ __global__ void smooth_l1_loss_kernel_vectorized(
 // 简单的 AtomicAdd 全局归约
 template <typename T>
 __global__ void smooth_l1_loss_reduce_kernel(
-    float * output, // 使用 float 累加防止溢出
-    const T * __restrict__ input,
-    const T * __restrict__ target,
+    float *output, // 使用 float 累加防止溢出
+    const T *__restrict__ input,
+    const T *__restrict__ target,
     size_t numel,
     SmoothL1LossFunctor functor,
     float scale // Mean模式传 1/N, Sum模式传 1.0
@@ -139,7 +144,7 @@ __global__ void smooth_l1_loss_reduce_kernel(
 
 // 辅助 Kernel: 将 float 结果转回目标类型 T 并写入 output
 template <typename T>
-__global__ void cast_float_to_t(T* output, const float* src) {
+__global__ void cast_float_to_t(T *output, const float *src) {
     *output = static_cast<T>(*src);
 }
 

@@ -11,10 +11,10 @@ class TakeInfo {
     TakeInfo() = default;
 
 public:
-    int _dtype;          // 数据类型 (float, half, etc.)
-    int _idx_dtype;      // 索引类型 (int32, int64)
-    size_t _num_out;     // 输出元素总数 (== indices.numel())
-    size_t _num_in;      // 输入元素总数 (用于边界检查)
+    int _dtype;      // 数据类型 (float, half, etc.)
+    int _idx_dtype;  // 索引类型 (int32, int64)
+    size_t _num_out; // 输出元素总数 (== indices.numel())
+    size_t _num_in;  // 输入元素总数 (用于边界检查)
 
     int dtype() const { return _dtype; }
     int idx_dtype() const { return _idx_dtype; }
@@ -59,8 +59,7 @@ public:
             dtype,
             idx_type,
             num_out,
-            num_in
-        });
+            num_in});
     }
 };
 

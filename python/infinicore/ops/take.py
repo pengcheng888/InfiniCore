@@ -1,6 +1,8 @@
 from typing import Optional
+
 from infinicore.lib import _infinicore
 from infinicore.tensor import Tensor
+
 
 def take(input: Tensor, indices: Tensor, *, out: Optional[Tensor] = None) -> Tensor:
     r"""Returns a new tensor with the elements of input at the given indices.

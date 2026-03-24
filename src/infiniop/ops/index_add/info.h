@@ -11,16 +11,16 @@ class IndexAddInfo {
     IndexAddInfo() = default;
 
 public:
-    int _dtype;          // 数据类型 (Input/Output/Source)
-    int _idx_dtype;      // 索引类型 (int32, int64)
-    int64_t _dim;        // 操作维度
-    float _alpha;        // 缩放因子
+    int _dtype;     // 数据类型 (Input/Output/Source)
+    int _idx_dtype; // 索引类型 (int32, int64)
+    int64_t _dim;   // 操作维度
+    float _alpha;   // 缩放因子
 
     // 【新增】几何信息，用于计算内存偏移
-    size_t _outer_size;  // dim 左侧维度的乘积
-    size_t _inner_size;  // dim 右侧维度的乘积
-    size_t _dim_size;    // Input/Output 在 dim 维度的长度
-    size_t _index_len;   // Index 的长度
+    size_t _outer_size; // dim 左侧维度的乘积
+    size_t _inner_size; // dim 右侧维度的乘积
+    size_t _dim_size;   // Input/Output 在 dim 维度的长度
+    size_t _index_len;  // Index 的长度
 
     // 【修改】构造函数，初始化新增成员
     IndexAddInfo(int dtype, int idx_dtype, int64_t dim, float alpha,
@@ -72,7 +72,7 @@ public:
 
         // 【新增】计算几何信息
         const auto &in_shape = in_desc->shape();
-        
+
         // outer_size: dim 之前所有维度的乘积
         size_t outer_size = 1;
         for (int64_t i = 0; i < dim; ++i) {
@@ -87,7 +87,7 @@ public:
 
         // dim_size
         size_t dim_size = in_shape[dim];
-        
+
         // index_len
         size_t index_len = index_desc->shape()[0];
 
@@ -113,7 +113,7 @@ public:
 
         // 6. 检查 Output 与 Input 形状一致性
         if (out_desc->ndim() != in_desc->ndim()) {
-             return INFINI_STATUS_BAD_TENSOR_SHAPE;
+            return INFINI_STATUS_BAD_TENSOR_SHAPE;
         }
         const auto &out_shape = out_desc->shape();
         for (int64_t i = 0; i < ndim; ++i) {

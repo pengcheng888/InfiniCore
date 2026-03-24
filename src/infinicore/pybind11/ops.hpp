@@ -29,13 +29,11 @@
 #include "ops/fmod.hpp"
 #include "ops/hardswish.hpp"
 #include "ops/hardtanh.hpp"
+#include "ops/hypot.hpp"
+#include "ops/index_add.hpp"
+#include "ops/index_copy.hpp"
 #include "ops/inner.hpp"
 #include "ops/kv_caching.hpp"
-#include "ops/hypot.hpp"
-#include "ops/take.hpp"
-#include "ops/index_copy.hpp"
-#include "ops/index_add.hpp"
-#include "ops/smooth_l1_loss.hpp"
 #include "ops/linear.hpp"
 #include "ops/linear_w8a8i8.hpp"
 #include "ops/masked_select.hpp"
@@ -53,8 +51,10 @@
 #include "ops/rope.hpp"
 #include "ops/silu.hpp"
 #include "ops/silu_and_mul.hpp"
+#include "ops/smooth_l1_loss.hpp"
 #include "ops/sum.hpp"
 #include "ops/swiglu.hpp"
+#include "ops/take.hpp"
 #include "ops/tan.hpp"
 #include "ops/tanhshrink.hpp"
 #include "ops/topk.hpp"
@@ -99,7 +99,7 @@ inline void bind(py::module &m) {
     bind_paged_caching(m);
     bind_random_sample(m);
     bind_cross_entropy(m);
-     bind_hypot(m);
+    bind_hypot(m);
     bind_take(m);
     bind_index_copy(m);
     bind_index_add(m);

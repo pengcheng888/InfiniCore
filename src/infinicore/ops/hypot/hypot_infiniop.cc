@@ -40,9 +40,9 @@ void calculate(Tensor output, Tensor input_a, Tensor input_b) {
     std::shared_ptr<Memory> workspace = context::allocateMemory(workspace_size);
 
     INFINICORE_CHECK_ERROR(infiniopHypot(
-        desc, 
+        desc,
         workspace->data(), workspace_size,
-        output->data(), input_a->data(), input_b->data(), 
+        output->data(), input_a->data(), input_b->data(),
         context::getStream()));
 }
 

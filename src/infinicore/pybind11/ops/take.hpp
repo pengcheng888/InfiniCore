@@ -1,7 +1,7 @@
 #pragma once
 
+#include "infinicore/ops/take.hpp"
 #include <pybind11/pybind11.h>
-#include "infinicore/ops/take.hpp" 
 
 namespace py = pybind11;
 

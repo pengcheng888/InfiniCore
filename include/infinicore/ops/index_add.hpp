@@ -13,7 +13,6 @@ public:
     static common::OpDispatcher<schema> &dispatcher();
 };
 
-
 Tensor index_add(Tensor input, int64_t dim, Tensor index, Tensor source, float alpha = 1.0f);
 void index_add_(Tensor output, Tensor input, int64_t dim, Tensor index, Tensor source, float alpha);
 

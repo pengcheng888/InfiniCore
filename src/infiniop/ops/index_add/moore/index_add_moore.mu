@@ -1,9 +1,9 @@
 #include "index_add_moore.h"
 #include "index_add_moore_kernel.h" // 包含 IndexAddOp Functor 定义
 
-#include <musa_runtime.h>
-#include <musa_fp16.h>
 #include <musa_bf16.h>
+#include <musa_fp16.h>
+#include <musa_runtime.h>
 #include <type_traits>
 
 #include "../../../devices/moore/moore_handle.h"
@@ -17,11 +17,11 @@ namespace op::index_add::moore {
 // 这是一个 Global Kernel 包装器，它调用 index_add_moore_kernel.h 中的 IndexAddOp Functor
 template <typename T, typename TIdx>
 __global__ void index_add_kernel(
-    const size_t num_elements,  // Source 的总元素数量 (线程任务总量)
-    const size_t index_len,     // Index 向量长度
-    const size_t inner_size,    // stride
-    const size_t dim_size,      // Output 在 dim 维度的长度
-    const float alpha,          // 缩放因子
+    const size_t num_elements, // Source 的总元素数量 (线程任务总量)
+    const size_t index_len,    // Index 向量长度
+    const size_t inner_size,   // stride
+    const size_t dim_size,     // Output 在 dim 维度的长度
+    const float alpha,         // 缩放因子
     const T *source,
     const TIdx *indices,
     T *output) {
@@ -72,7 +72,7 @@ void index_add_moore_launch(
     size_t num_src_elements = info.outer_size() * info.index_len() * info.inner_size();
 
     if (num_src_elements == 0) {
-        return; //以此避免空 Kernel Launch
+        return; // 以此避免空 Kernel Launch
     }
 
     int threads = 256;
@@ -86,8 +86,7 @@ void index_add_moore_launch(
         info.alpha(),
         source,
         indices_ptr,
-        output
-    );
+        output);
 }
 
 // ==================================================================
@@ -120,8 +119,7 @@ infiniStatus_t Descriptor::create(
         *info_result,
         0, // No workspace needed
         handle->device,
-        handle->device_id
-    );
+        handle->device_id);
 
     return INFINI_STATUS_SUCCESS;
 }
@@ -139,31 +137,31 @@ infiniStatus_t Descriptor::calculate(
         return INFINI_STATUS_INSUFFICIENT_WORKSPACE;
     }
 
-    // --------------------------------------------------------------
-    // 定义分发宏：解决 Data Type x Index Type 的组合爆炸
-    // --------------------------------------------------------------
-    #define LAUNCH_KERNEL(T)                                                            \
-        do {                                                                            \
-            if (_info.idx_dtype() == INFINI_DTYPE_I32) {                                \
-                index_add_moore_launch<T, int32_t>(                                     \
-                    _info,                                                              \
-                    static_cast<T *>(output),                                           \
-                    static_cast<const T *>(input),                                      \
-                    static_cast<const T *>(source),                                     \
-                    index,                                                              \
-                    stream);                                                            \
-            } else if (_info.idx_dtype() == INFINI_DTYPE_I64) {                         \
-                index_add_moore_launch<T, int64_t>(                                     \
-                    _info,                                                              \
-                    static_cast<T *>(output),                                           \
-                    static_cast<const T *>(input),                                      \
-                    static_cast<const T *>(source),                                     \
-                    index,                                                              \
-                    stream);                                                            \
-            } else {                                                                    \
-                return INFINI_STATUS_BAD_TENSOR_DTYPE;                                  \
-            }                                                                           \
-        } while (0)
+// --------------------------------------------------------------
+// 定义分发宏：解决 Data Type x Index Type 的组合爆炸
+// --------------------------------------------------------------
+#define LAUNCH_KERNEL(T)                                    \
+    do {                                                    \
+        if (_info.idx_dtype() == INFINI_DTYPE_I32) {        \
+            index_add_moore_launch<T, int32_t>(             \
+                _info,                                      \
+                static_cast<T *>(output),                   \
+                static_cast<const T *>(input),              \
+                static_cast<const T *>(source),             \
+                index,                                      \
+                stream);                                    \
+        } else if (_info.idx_dtype() == INFINI_DTYPE_I64) { \
+            index_add_moore_launch<T, int64_t>(             \
+                _info,                                      \
+                static_cast<T *>(output),                   \
+                static_cast<const T *>(input),              \
+                static_cast<const T *>(source),             \
+                index,                                      \
+                stream);                                    \
+        } else {                                            \
+            return INFINI_STATUS_BAD_TENSOR_DTYPE;          \
+        }                                                   \
+    } while (0)
 
     // --------------------------------------------------------------
     // 根据数据类型分发
@@ -172,7 +170,7 @@ infiniStatus_t Descriptor::calculate(
     case INFINI_DTYPE_F16:
         LAUNCH_KERNEL(half);
         break;
-        
+
     case INFINI_DTYPE_BF16:
         LAUNCH_KERNEL(__mt_bfloat16);
         break;
@@ -184,18 +182,18 @@ infiniStatus_t Descriptor::calculate(
     case INFINI_DTYPE_F64:
         LAUNCH_KERNEL(double);
         break;
-    
+
     // 如果需要支持整数类型的 AtomicAdd，需要确保 Kernel 中有对应特化
     // 这里仅示例浮点类型
     case INFINI_DTYPE_I32:
-        LAUNCH_KERNEL(int32_t); 
+        LAUNCH_KERNEL(int32_t);
         break;
 
     default:
         return INFINI_STATUS_BAD_TENSOR_DTYPE;
     }
 
-    #undef LAUNCH_KERNEL
+#undef LAUNCH_KERNEL
 
     return INFINI_STATUS_SUCCESS;
 }

@@ -1,10 +1,15 @@
-#include "index_add_nvidia.cuh"
-#include "../cuda/kernel.cuh"
 #include "../../../handle.h"
+
+// Iluvatar does not support atomic add yet
+#ifndef ENABLE_ILUVATAR_API
+#include "../cuda/kernel.cuh"
+#endif
+
+#include "index_add_nvidia.cuh"
 #include <cstdint>
 
-#include <cuda_fp16.h>
 #include <cuda_bf16.h>
+#include <cuda_fp16.h>
 
 namespace op::index_add::nvidia {
 
@@ -23,7 +28,8 @@ void launch_kernel(
     const void *indices,
     const IndexAddInfo &info,
     void *stream) {
-
+// Iluvatar does not support atomic add yet
+#ifndef ENABLE_ILUVATAR_API
     auto out_ptr = reinterpret_cast<T *>(output);
     auto src_ptr = reinterpret_cast<const T *>(source);
     auto idx_ptr = reinterpret_cast<const TIdx *>(indices);
@@ -32,9 +38,9 @@ void launch_kernel(
     // 获取几何信息
     size_t outer_size = info.outer_size();
     size_t inner_size = info.inner_size();
-    size_t dim_size   = info.dim_size();
-    size_t index_len  = info.index_len();
-    float alpha       = info.alpha();
+    size_t dim_size = info.dim_size();
+    size_t index_len = info.index_len();
+    float alpha = info.alpha();
 
     // Source 总元素数
     size_t num_source = outer_size * index_len * inner_size;
@@ -43,23 +49,20 @@ void launch_kernel(
     // 目标：每个线程读取 128-bit (16 Bytes) Source 数据
     constexpr int TotalBytes = 16;
     constexpr int PackSize = TotalBytes / sizeof(T);
-    bool can_vectorize = (PackSize > 1) && 
-                         (num_source % PackSize == 0) &&
-                         is_aligned<T>(source, TotalBytes);
+    bool can_vectorize = (PackSize > 1) && (num_source % PackSize == 0) && is_aligned<T>(source, TotalBytes);
 
     if (can_vectorize) {
         // === 路径 A: 向量化读取 Kernel ===
         size_t num_packs = num_source / PackSize;
-        
+
         size_t block_size = 256;
         size_t grid_size = (num_packs + block_size - 1) / block_size;
 
         op::index_add::cuda::index_add_kernel_vectorized<T, TIdx, PackSize>
             <<<grid_size, block_size, 0, cuda_stream>>>(
-            out_ptr, src_ptr, idx_ptr, 
-            outer_size, inner_size, dim_size, index_len, 
-            num_packs, alpha
-        );
+                out_ptr, src_ptr, idx_ptr,
+                outer_size, inner_size, dim_size, index_len,
+                num_packs, alpha);
     } else {
         // === 路径 B: 标量 Kernel ===
         size_t block_size = 256;
@@ -67,11 +70,11 @@ void launch_kernel(
 
         op::index_add::cuda::index_add_kernel<T, TIdx>
             <<<grid_size, block_size, 0, cuda_stream>>>(
-            out_ptr, src_ptr, idx_ptr, 
-            outer_size, inner_size, dim_size, index_len, 
-            num_source, alpha
-        );
+                out_ptr, src_ptr, idx_ptr,
+                outer_size, inner_size, dim_size, index_len,
+                num_source, alpha);
     }
+#endif
 }
 
 // ==================================================================
@@ -81,7 +84,9 @@ void launch_kernel(
 struct Descriptor::Opaque {};
 
 Descriptor::~Descriptor() {
-    if (_opaque) delete _opaque;
+    if (_opaque) {
+        delete _opaque;
+    }
 }
 
 infiniStatus_t Descriptor::create(
@@ -96,11 +101,12 @@ infiniStatus_t Descriptor::create(
 
     // Info 创建
     auto info_result = IndexAddInfo::create(out_desc, in_desc, dim, index_desc, source_desc, alpha);
-    if (!info_result) return info_result.status();
+    if (!info_result) {
+        return info_result.status();
+    }
 
     *desc_ptr = new Descriptor(
-        new Opaque(), info_result.take(), 0, handle->device, handle->device_id
-    );
+        new Opaque(), info_result.take(), 0, handle->device, handle->device_id);
     return INFINI_STATUS_SUCCESS;
 }
 
@@ -118,16 +124,17 @@ infiniStatus_t Descriptor::calculate(
 
     auto dtype = _info.dtype();
     auto idx_dtype = _info.idx_dtype();
-    #define LAUNCH_BY_SIZE(T_STORAGE) \
-        switch (idx_dtype) { \
-        case INFINI_DTYPE_I32: \
-            launch_kernel<T_STORAGE, int32_t>(output, source, index, _info, stream); \
-            break; \
-        case INFINI_DTYPE_I64: \
-            launch_kernel<T_STORAGE, int64_t>(output, source, index, _info, stream); \
-            break; \
-        default: return INFINI_STATUS_BAD_TENSOR_DTYPE; \
-        }
+#define LAUNCH_BY_SIZE(T_STORAGE)                                                \
+    switch (idx_dtype) {                                                         \
+    case INFINI_DTYPE_I32:                                                       \
+        launch_kernel<T_STORAGE, int32_t>(output, source, index, _info, stream); \
+        break;                                                                   \
+    case INFINI_DTYPE_I64:                                                       \
+        launch_kernel<T_STORAGE, int64_t>(output, source, index, _info, stream); \
+        break;                                                                   \
+    default:                                                                     \
+        return INFINI_STATUS_BAD_TENSOR_DTYPE;                                   \
+    }
 
     switch (dtype) {
     // 32-bit Float
@@ -153,11 +160,11 @@ infiniStatus_t Descriptor::calculate(
     case INFINI_DTYPE_I64:
         LAUNCH_BY_SIZE(int64_t);
         break;
-    default: 
+    default:
         return INFINI_STATUS_BAD_TENSOR_DTYPE;
     }
 
-    #undef LAUNCH_BY_SIZE
+#undef LAUNCH_BY_SIZE
     return INFINI_STATUS_SUCCESS;
 }
 

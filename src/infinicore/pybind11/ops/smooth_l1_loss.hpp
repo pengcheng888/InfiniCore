@@ -1,7 +1,7 @@
 #pragma once
 
+#include "infinicore/ops/smooth_l1_loss.hpp"
 #include <pybind11/pybind11.h>
-#include "infinicore/ops/smooth_l1_loss.hpp" 
 
 namespace py = pybind11;
 
@@ -14,7 +14,7 @@ inline void bind_smooth_l1_loss(py::module &m) {
           py::arg("input"),
           py::arg("target"),
           py::arg("beta") = 1.0f,
-          py::arg("reduction") = 1, 
+          py::arg("reduction") = 1,
           R"doc(Computes the Smooth L1 Loss between input and target.
     
     Args:

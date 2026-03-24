@@ -19,20 +19,19 @@ infiniStatus_t Descriptor::create(
     int64_t dim,
     infiniopTensorDescriptor_t index_desc,
     infiniopTensorDescriptor_t source_desc) { // 注意：移除了 float alpha
-    
+
     auto handle = reinterpret_cast<device::cpu::Handle *>(handle_);
 
     // 创建 Info 对象
     auto result = IndexCopyInfo::create(out_desc, in_desc, dim, index_desc, source_desc);
     CHECK_RESULT(result);
-    
+
     *desc_ptr = new Descriptor(
-        nullptr,             // Opaque*
-        result.take(),       // Info
-        0,                   // Workspace Size
-        handle->device, 
-        handle->device_id
-    );
+        nullptr,       // Opaque*
+        result.take(), // Info
+        0,             // Workspace Size
+        handle->device,
+        handle->device_id);
 
     return INFINI_STATUS_SUCCESS;
 }
@@ -51,10 +50,10 @@ void calculate_cpu_impl(
     // IndexCopy 不需要 Alpha 也不需要提升精度进行计算，直接拷贝即可
 
     // 1. 获取几何信息
-    size_t outer_size = info.outer_size(); 
+    size_t outer_size = info.outer_size();
     size_t inner_size = info.inner_size();
-    size_t dim_size   = info.dim_size(); 
-    size_t index_len  = info.index_len();
+    size_t dim_size = info.dim_size();
+    size_t index_len = info.index_len();
 
     auto out_ptr = reinterpret_cast<TData *>(output);
     auto src_ptr = reinterpret_cast<const TData *>(source);
@@ -65,15 +64,17 @@ void calculate_cpu_impl(
     // -----------------------------------------------------------
     for (size_t o = 0; o < outer_size; ++o) {
         for (size_t i = 0; i < index_len; ++i) {
-            
+
             TIdx idx = idx_ptr[i];
 
             // 处理负索引
-            if (idx < 0) idx += static_cast<TIdx>(dim_size);
+            if (idx < 0) {
+                idx += static_cast<TIdx>(dim_size);
+            }
 
             // 边界检查
             if (idx < 0 || static_cast<size_t>(idx) >= dim_size) {
-                continue; 
+                continue;
             }
 
             // 计算偏移
@@ -106,49 +107,49 @@ infiniStatus_t Descriptor::calculate(
     auto dtype = _info.dtype();
     auto idx_dtype = _info.idx_dtype();
 
-    #define DISPATCH(TDATA, TIDX) \
-        calculate_cpu_impl<TDATA, TIDX>(_info, output, input, index, source); \
-        return INFINI_STATUS_SUCCESS
+#define DISPATCH(TDATA, TIDX)                                             \
+    calculate_cpu_impl<TDATA, TIDX>(_info, output, input, index, source); \
+    return INFINI_STATUS_SUCCESS
 
     if (idx_dtype == INFINI_DTYPE_I32) {
         switch (dtype) {
-            case INFINI_DTYPE_F32: 
-                DISPATCH(float, int32_t);
-            case INFINI_DTYPE_F64: 
-                DISPATCH(double, int32_t);
-            case INFINI_DTYPE_F16: 
-                DISPATCH(fp16_t, int32_t); 
-            case INFINI_DTYPE_BF16: 
-                DISPATCH(bf16_t, int32_t);
-            case INFINI_DTYPE_I32: 
-                DISPATCH(int32_t, int32_t);
-            case INFINI_DTYPE_I64: 
-                DISPATCH(int64_t, int32_t);
-            default: 
-                return INFINI_STATUS_BAD_TENSOR_DTYPE;
+        case INFINI_DTYPE_F32:
+            DISPATCH(float, int32_t);
+        case INFINI_DTYPE_F64:
+            DISPATCH(double, int32_t);
+        case INFINI_DTYPE_F16:
+            DISPATCH(fp16_t, int32_t);
+        case INFINI_DTYPE_BF16:
+            DISPATCH(bf16_t, int32_t);
+        case INFINI_DTYPE_I32:
+            DISPATCH(int32_t, int32_t);
+        case INFINI_DTYPE_I64:
+            DISPATCH(int64_t, int32_t);
+        default:
+            return INFINI_STATUS_BAD_TENSOR_DTYPE;
         }
     } else if (idx_dtype == INFINI_DTYPE_I64) {
         switch (dtype) {
-            case INFINI_DTYPE_F32: 
-                DISPATCH(float, int64_t);
-            case INFINI_DTYPE_F64: 
-                DISPATCH(double, int64_t);
-            case INFINI_DTYPE_F16: 
-                DISPATCH(fp16_t, int64_t);
-            case INFINI_DTYPE_BF16: 
-                DISPATCH(bf16_t, int64_t);
-            case INFINI_DTYPE_I32: 
-                DISPATCH(int32_t, int64_t);
-            case INFINI_DTYPE_I64: 
-                DISPATCH(int64_t, int64_t);
-            default: 
-                return INFINI_STATUS_BAD_TENSOR_DTYPE;
+        case INFINI_DTYPE_F32:
+            DISPATCH(float, int64_t);
+        case INFINI_DTYPE_F64:
+            DISPATCH(double, int64_t);
+        case INFINI_DTYPE_F16:
+            DISPATCH(fp16_t, int64_t);
+        case INFINI_DTYPE_BF16:
+            DISPATCH(bf16_t, int64_t);
+        case INFINI_DTYPE_I32:
+            DISPATCH(int32_t, int64_t);
+        case INFINI_DTYPE_I64:
+            DISPATCH(int64_t, int64_t);
+        default:
+            return INFINI_STATUS_BAD_TENSOR_DTYPE;
         }
     }
 
     return INFINI_STATUS_BAD_TENSOR_DTYPE;
 
-    #undef DISPATCH
+#undef DISPATCH
 }
 
 } // namespace op::index_copy::cpu

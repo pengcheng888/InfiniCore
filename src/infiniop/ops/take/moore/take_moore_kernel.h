@@ -1,9 +1,9 @@
 #ifndef __TAKE_MOORE_KERNEL_H__
 #define __TAKE_MOORE_KERNEL_H__
 
-#include <musa_runtime.h>
-#include <musa_fp16.h>
 #include <musa_bf16.h> // 必须包含，用于 __mt_bfloat16 定义
+#include <musa_fp16.h>
+#include <musa_runtime.h>
 
 #include <type_traits> // 用于 std::is_same_v
 
@@ -14,13 +14,13 @@ public:
     // Take 算子涉及两种数据类型：数据本身 (T) 和 索引类型 (TIdx)
     template <typename T, typename TIdx>
     __device__ __forceinline__ void operator()(
-        const size_t curr_idx,      // 当前线程处理的线性索引 (对应 output 和 indices 的位置)
-        const size_t num_in,        // 输入张量的元素总数 (用于边界检查)
-        const T* input_data,        // 输入数据指针
-        const TIdx* indices_data,   // 索引数据指针
-        T* output_data              // 输出数据指针
+        const size_t curr_idx,    // 当前线程处理的线性索引 (对应 output 和 indices 的位置)
+        const size_t num_in,      // 输入张量的元素总数 (用于边界检查)
+        const T *input_data,      // 输入数据指针
+        const TIdx *indices_data, // 索引数据指针
+        T *output_data            // 输出数据指针
     ) const {
-        
+
         // 1. 获取当前位置的索引值
         // indices 和 output 形状一致，curr_idx 对应两者的扁平化索引
         TIdx idx = indices_data[curr_idx];

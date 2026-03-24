@@ -1,7 +1,7 @@
 #pragma once
 
+#include "infinicore/ops/index_add.hpp"
 #include <pybind11/pybind11.h>
-#include "infinicore/ops/index_add.hpp" 
 
 namespace py = pybind11;
 
@@ -14,7 +14,7 @@ inline void bind_index_add(py::module &m) {
           py::arg("dim"),
           py::arg("index"),
           py::arg("source"),
-          py::arg("alpha") = 1.0f,  
+          py::arg("alpha") = 1.0f,
           R"doc(Accumulate elements of source into input by adding to the indices in the order given in index.
                 Formula: output[index[i]] = input[index[i]] + alpha * source[i])doc");
     m.def("index_add_",
@@ -24,7 +24,7 @@ inline void bind_index_add(py::module &m) {
           py::arg("dim"),
           py::arg("index"),
           py::arg("source"),
-          py::arg("alpha") = 1.0f, 
+          py::arg("alpha") = 1.0f,
           R"doc(In-place version of index_add. Writes result into output tensor.)doc");
 }
 

@@ -18,82 +18,79 @@
 #endif
 
 extern "C" {
-__C infiniStatus_t infiniopCreateHypotDescriptor(
+__INFINI_C infiniStatus_t infiniopCreateHypotDescriptor(
     infiniopHandle_t handle,
     infiniopHypotDescriptor_t *desc_ptr,
     infiniopTensorDescriptor_t output,
     infiniopTensorDescriptor_t input_x,
     infiniopTensorDescriptor_t input_y) {
 
-
-    #define CREATE(CASE, NAMESPACE)                                             \
-        case CASE:                                                              \
-            return op::hypot::NAMESPACE::Descriptor::create(                    \
-                handle,                                                         \
-                reinterpret_cast<op::hypot::NAMESPACE::Descriptor **>(desc_ptr),\
-                output,                                                         \
-                {input_x, input_y})
+#define CREATE(CASE, NAMESPACE)                                              \
+    case CASE:                                                               \
+        return op::hypot::NAMESPACE::Descriptor::create(                     \
+            handle,                                                          \
+            reinterpret_cast<op::hypot::NAMESPACE::Descriptor **>(desc_ptr), \
+            output,                                                          \
+            {input_x, input_y})
 
     switch (handle->device) {
-    #ifdef ENABLE_CPU_API
+#ifdef ENABLE_CPU_API
         CREATE(INFINI_DEVICE_CPU, cpu);
-    #endif
-    #ifdef ENABLE_NVIDIA_API
+#endif
+#ifdef ENABLE_NVIDIA_API
         CREATE(INFINI_DEVICE_NVIDIA, nvidia);
-    #endif
-    #ifdef ENABLE_ILUVATAR_API
+#endif
+#ifdef ENABLE_ILUVATAR_API
         CREATE(INFINI_DEVICE_ILUVATAR, nvidia);
-    #endif
-    #ifdef ENABLE_QY_API
+#endif
+#ifdef ENABLE_QY_API
         CREATE(INFINI_DEVICE_QY, nvidia);
-    #endif
-    #ifdef ENABLE_METAX_API
+#endif
+#ifdef ENABLE_METAX_API
         CREATE(INFINI_DEVICE_METAX, metax);
-    #endif
-    #ifdef ENABLE_MOORE_API
+#endif
+#ifdef ENABLE_MOORE_API
         CREATE(INFINI_DEVICE_MOORE, moore);
-    #endif
+#endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
-    #undef CREATE
+#undef CREATE
 }
 
+__INFINI_C infiniStatus_t infiniopGetHypotWorkspaceSize(infiniopHypotDescriptor_t desc, size_t *size) {
 
-__C infiniStatus_t infiniopGetHypotWorkspaceSize(infiniopHypotDescriptor_t desc, size_t *size) {
-
-    #define GET(CASE, NAMESPACE)                                                                   \
-        case CASE:                                                                                 \
-            *size = reinterpret_cast<op::hypot::NAMESPACE::Descriptor *>(desc)->workspaceSize();   \
-            return INFINI_STATUS_SUCCESS
+#define GET(CASE, NAMESPACE)                                                                 \
+    case CASE:                                                                               \
+        *size = reinterpret_cast<op::hypot::NAMESPACE::Descriptor *>(desc)->workspaceSize(); \
+        return INFINI_STATUS_SUCCESS
 
     switch (desc->device_type) {
-    #ifdef ENABLE_CPU_API
+#ifdef ENABLE_CPU_API
         GET(INFINI_DEVICE_CPU, cpu);
-    #endif
-    #ifdef ENABLE_NVIDIA_API
+#endif
+#ifdef ENABLE_NVIDIA_API
         GET(INFINI_DEVICE_NVIDIA, nvidia);
-    #endif
-    #ifdef ENABLE_MOORE_API
+#endif
+#ifdef ENABLE_MOORE_API
         GET(INFINI_DEVICE_MOORE, moore);
-    #endif
-    #ifdef ENABLE_ILUVATAR_API
+#endif
+#ifdef ENABLE_ILUVATAR_API
         GET(INFINI_DEVICE_ILUVATAR, nvidia);
-    #endif
-    #ifdef ENABLE_QY_API
+#endif
+#ifdef ENABLE_QY_API
         GET(INFINI_DEVICE_QY, nvidia);
-    #endif
-    #ifdef ENABLE_METAX_API
+#endif
+#ifdef ENABLE_METAX_API
         GET(INFINI_DEVICE_METAX, metax);
-    #endif 
+#endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
-    #undef GET
+#undef GET
 }
 
-
-__C infiniStatus_t infiniopHypot(
+__INFINI_C infiniStatus_t infiniopHypot(
     infiniopHypotDescriptor_t desc,
     void *workspace,
     size_t workspace_size,
@@ -101,67 +98,66 @@ __C infiniStatus_t infiniopHypot(
     const void *input_x,
     const void *input_y,
     void *stream) {
-    #define CALCULATE(CASE, NAMESPACE)                                          \
-        case CASE:                                                              \
-            return reinterpret_cast<const op::hypot::NAMESPACE::Descriptor *>(desc) \
-                ->calculate(workspace, workspace_size, output, {input_x, input_y}, stream)
+#define CALCULATE(CASE, NAMESPACE)                                              \
+    case CASE:                                                                  \
+        return reinterpret_cast<const op::hypot::NAMESPACE::Descriptor *>(desc) \
+            ->calculate(workspace, workspace_size, output, {input_x, input_y}, stream)
 
     switch (desc->device_type) {
-    #ifdef ENABLE_CPU_API
+#ifdef ENABLE_CPU_API
         CALCULATE(INFINI_DEVICE_CPU, cpu);
-    #endif
-    #ifdef ENABLE_NVIDIA_API
+#endif
+#ifdef ENABLE_NVIDIA_API
         CALCULATE(INFINI_DEVICE_NVIDIA, nvidia);
-    #endif
-    #ifdef ENABLE_MOORE_API
+#endif
+#ifdef ENABLE_MOORE_API
         CALCULATE(INFINI_DEVICE_MOORE, moore);
-    #endif
-    #ifdef ENABLE_ILUVATAR_API
+#endif
+#ifdef ENABLE_ILUVATAR_API
         CALCULATE(INFINI_DEVICE_ILUVATAR, nvidia);
-    #endif
-    #ifdef ENABLE_QY_API
+#endif
+#ifdef ENABLE_QY_API
         CALCULATE(INFINI_DEVICE_QY, nvidia);
-    #endif
-    #ifdef ENABLE_METAX_API
+#endif
+#ifdef ENABLE_METAX_API
         CALCULATE(INFINI_DEVICE_METAX, metax);
-    #endif 
+#endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
-    #undef CALCULATE
+#undef CALCULATE
 }
 
+__INFINI_C infiniStatus_t infiniopDestroyHypotDescriptor(infiniopHypotDescriptor_t desc) {
 
-__C infiniStatus_t infiniopDestroyHypotDescriptor(infiniopHypotDescriptor_t desc) {
-
-    #define DELETE(CASE, NAMESPACE)                                                          \
-        case CASE:                                                                           \
-            delete reinterpret_cast<const op::hypot::NAMESPACE::Descriptor *>(desc);         \
-            return INFINI_STATUS_SUCCESS
+#define DELETE(CASE, NAMESPACE)                                                  \
+    case CASE:                                                                   \
+        delete reinterpret_cast<const op::hypot::NAMESPACE::Descriptor *>(desc); \
+        return INFINI_STATUS_SUCCESS
 
     switch (desc->device_type) {
-    #ifdef ENABLE_CPU_API
+#ifdef ENABLE_CPU_API
         DELETE(INFINI_DEVICE_CPU, cpu);
-    #endif
-    #ifdef ENABLE_NVIDIA_API
+#endif
+#ifdef ENABLE_NVIDIA_API
         DELETE(INFINI_DEVICE_NVIDIA, nvidia);
-    #endif
-    #ifdef ENABLE_MOORE_API
+#endif
+#ifdef ENABLE_MOORE_API
         DELETE(INFINI_DEVICE_MOORE, moore);
-    #endif
-    #ifdef ENABLE_ILUVATAR_API
+#endif
+#ifdef ENABLE_ILUVATAR_API
         DELETE(INFINI_DEVICE_ILUVATAR, nvidia);
-    #endif
-    #ifdef ENABLE_QY_API
+#endif
+#ifdef ENABLE_QY_API
         DELETE(INFINI_DEVICE_QY, nvidia);
-    #endif
-    #ifdef ENABLE_METAX_API
+#endif
+#ifdef ENABLE_METAX_API
         DELETE(INFINI_DEVICE_METAX, metax);
-    #endif 
+#endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
-    #undef DELETE
+#undef DELETE
 }
 
 } // extern "C"

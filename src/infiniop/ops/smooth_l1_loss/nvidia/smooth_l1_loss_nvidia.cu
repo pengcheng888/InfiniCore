@@ -1,8 +1,8 @@
-#include "smooth_l1_loss_nvidia.cuh"
-#include "../cuda/kernel.cuh"
 #include "../../../handle.h"
-#include <cstdint>
+#include "../cuda/kernel.cuh"
+#include "smooth_l1_loss_nvidia.cuh"
 #include <algorithm>
+#include <cstdint>
 
 namespace op::smooth_l1_loss::nvidia {
 
@@ -19,7 +19,7 @@ bool is_aligned(const void *ptr, size_t alignment) {
 // ==================================================================
 template <typename T>
 void launch_kernel(
-    void *output, const void *input, const void *target, void* workspace,
+    void *output, const void *input, const void *target, void *workspace,
     size_t numel, float beta, int reduction,
     void *stream) {
 
@@ -35,10 +35,7 @@ void launch_kernel(
         auto out_ptr = reinterpret_cast<T *>(output);
         constexpr int TotalBytes = 16;
         constexpr int PackSize = TotalBytes / sizeof(T);
-        bool can_vectorize = (PackSize > 1) && (numel % PackSize == 0) &&
-                             is_aligned<T>(output, TotalBytes) &&
-                             is_aligned<T>(input, TotalBytes) &&
-                             is_aligned<T>(target, TotalBytes);
+        bool can_vectorize = (PackSize > 1) && (numel % PackSize == 0) && is_aligned<T>(output, TotalBytes) && is_aligned<T>(input, TotalBytes) && is_aligned<T>(target, TotalBytes);
 
         if (can_vectorize) {
             size_t num_packs = numel / PackSize;
@@ -52,14 +49,14 @@ void launch_kernel(
             op::smooth_l1_loss::cuda::smooth_l1_loss_kernel<T>
                 <<<grid_size, block_size, 0, cuda_stream>>>(out_ptr, in_ptr, tar_ptr, numel, functor);
         }
-    } 
+    }
     // ------------------------------------------
     // 模式 2: Reduction (Mean / Sum)
     // ------------------------------------------
     else {
         // 使用 workspace 作为临时的 float 累加器 (精度更高，且方便 atomicAdd)
-        float* acc_ptr = reinterpret_cast<float*>(workspace);
-        
+        float *acc_ptr = reinterpret_cast<float *>(workspace);
+
         // 1. 清零 Accumulator
         cudaMemsetAsync(acc_ptr, 0, sizeof(float), cuda_stream);
 
@@ -71,13 +68,12 @@ void launch_kernel(
 
         op::smooth_l1_loss::cuda::smooth_l1_loss_reduce_kernel<T>
             <<<grid_size, block_size, 0, cuda_stream>>>(
-                acc_ptr, in_ptr, tar_ptr, numel, functor, scale
-            );
+                acc_ptr, in_ptr, tar_ptr, numel, functor, scale);
 
         // 3. 将结果从 float workspace 转回目标类型并写入 output
         // 输出只有 1 个元素
         op::smooth_l1_loss::cuda::cast_float_to_t<T>
-            <<<1, 1, 0, cuda_stream>>>(reinterpret_cast<T*>(output), acc_ptr);
+            <<<1, 1, 0, cuda_stream>>>(reinterpret_cast<T *>(output), acc_ptr);
     }
 }
 
@@ -86,7 +82,11 @@ void launch_kernel(
 // ==================================================================
 struct Descriptor::Opaque {};
 
-Descriptor::~Descriptor() { if (_opaque) delete _opaque; }
+Descriptor::~Descriptor() {
+    if (_opaque) {
+        delete _opaque;
+    }
+}
 
 infiniStatus_t Descriptor::create(
     infiniopHandle_t handle, Descriptor **desc_ptr,
@@ -94,7 +94,9 @@ infiniStatus_t Descriptor::create(
     float beta, int reduction) {
 
     auto info_result = SmoothL1LossInfo::create(out_desc, input_desc, target_desc, beta, reduction);
-    if (!info_result) return info_result.status();
+    if (!info_result) {
+        return info_result.status();
+    }
 
     // [关键] 如果是 Reduction 模式，我们需要 4 字节的 workspace 来存 float 中间结果
     size_t workspace_size = 0;

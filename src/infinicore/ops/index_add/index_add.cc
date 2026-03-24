@@ -1,8 +1,8 @@
 #include "infinicore/ops/index_add.hpp"
+#include "infinicore/tensor.hpp"
 #include <stdexcept>
-#include <vector>
 #include <string>
-#include "infinicore/tensor.hpp" 
+#include <vector>
 
 namespace infinicore::op {
 
@@ -22,10 +22,9 @@ void IndexAdd::execute(Tensor output, Tensor input, int64_t dim, Tensor index, T
     func(output, input, dim, index, source, alpha);
 }
 
-
-static void check_index_add_args(const Tensor& input, int64_t& dim, const Tensor& index, const Tensor& source) {
+static void check_index_add_args(const Tensor &input, int64_t &dim, const Tensor &index, const Tensor &source) {
     int64_t ndim = static_cast<int64_t>(input->ndim());
-    
+
     if (dim < 0) {
         dim += ndim;
     }
@@ -36,7 +35,7 @@ static void check_index_add_args(const Tensor& input, int64_t& dim, const Tensor
     if (index->ndim() != 1) {
         throw std::runtime_error("IndexAdd: Index tensor must be 1D.");
     }
-    
+
     // 使用 DataType::I64 和 I32
     if (index->dtype() != DataType::I64 && index->dtype() != DataType::I32) {
         throw std::runtime_error("IndexAdd: Index tensor must be I32 or I64.");
@@ -69,8 +68,12 @@ Tensor index_add(Tensor input, int64_t dim, Tensor index, Tensor source, float a
 
     Tensor output = Tensor::empty(input->shape(), input->dtype(), input->device());
     output->copy_from(input);
-    if (!index->is_contiguous()) index = index->contiguous();
-    if (!source->is_contiguous()) source = source->contiguous();
+    if (!index->is_contiguous()) {
+        index = index->contiguous();
+    }
+    if (!source->is_contiguous()) {
+        source = source->contiguous();
+    }
     IndexAdd::execute(output, output, dim, index, source, alpha);
 
     return output;
@@ -81,24 +84,26 @@ void index_add_(Tensor output, Tensor input, int64_t dim, Tensor index, Tensor s
     check_index_add_args(input, dim, index, source);
 
     if (output->shape() != input->shape()) {
-         throw std::runtime_error("IndexAdd (In-place): Output shape must match Input shape.");
+        throw std::runtime_error("IndexAdd (In-place): Output shape must match Input shape.");
     }
 
-    
     if (output.operator->() != input.operator->()) {
         output->copy_from(input);
     }
 
-    if (!index->is_contiguous()) index = index->contiguous();
-    if (!source->is_contiguous()) source = source->contiguous();
-    
-   
+    if (!index->is_contiguous()) {
+        index = index->contiguous();
+    }
+    if (!source->is_contiguous()) {
+        source = source->contiguous();
+    }
+
     if (!output->is_contiguous()) {
-        
+
         Tensor contiguous_out = output->contiguous();
 
         IndexAdd::execute(contiguous_out, contiguous_out, dim, index, source, alpha);
-        
+
         output->copy_from(contiguous_out);
     } else {
         // 正常路径: Output 已经是连续的，直接原地执行

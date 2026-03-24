@@ -21,18 +21,17 @@ infiniStatus_t Descriptor::create(
     infiniopTensorDescriptor_t target_desc,
     float beta,
     int reduction) {
-    
+
     auto handle = reinterpret_cast<device::cpu::Handle *>(handle_);
     auto result = SmoothL1LossInfo::create(out_desc, input_desc, target_desc, beta, reduction);
     CHECK_RESULT(result);
-    
+
     *desc_ptr = new Descriptor(
         nullptr,
         result.take(),
         0,
-        handle->device, 
-        handle->device_id
-    );
+        handle->device,
+        handle->device_id);
 
     return INFINI_STATUS_SUCCESS;
 }
@@ -50,7 +49,7 @@ void calculate_cpu_impl(
     size_t numel = info.numel();
     float beta = info.beta();
     int reduction = info.reduction();
-    
+
     float inv_beta = (beta > 0) ? (1.0f / beta) : 0.0f;
     float half_beta = 0.5f * beta;
 
@@ -62,8 +61,8 @@ void calculate_cpu_impl(
     // 模式 A: Elementwise (None)
     // ----------------------------------------------------
     if (reduction == 0) {
-        #pragma omp parallel for schedule(static)
-        for (size_t i = 0; i < numel; ++i) {
+#pragma omp parallel for schedule(static)
+        for (ptrdiff_t i = 0; i < (ptrdiff_t)numel; ++i) {
             float in_val = utils::cast<float>(in_ptr[i]);
             float tar_val = utils::cast<float>(tar_ptr[i]);
 
@@ -86,8 +85,8 @@ void calculate_cpu_impl(
     else {
         double total_sum = 0.0;
 
-        #pragma omp parallel for reduction(+:total_sum) schedule(static)
-        for (size_t i = 0; i < numel; ++i) {
+#pragma omp parallel for reduction(+ : total_sum) schedule(static)
+        for (ptrdiff_t i = 0; i < (ptrdiff_t)numel; ++i) {
             float in_val = utils::cast<float>(in_ptr[i]);
             float tar_val = utils::cast<float>(tar_ptr[i]);
 
@@ -99,7 +98,7 @@ void calculate_cpu_impl(
             } else {
                 loss = diff - half_beta;
             }
-            
+
             total_sum += static_cast<double>(loss);
         }
 
@@ -125,9 +124,9 @@ infiniStatus_t Descriptor::calculate(
 
     auto dtype = _info.dtype();
 
-    #define DISPATCH_TYPE(T) \
-        cpu::calculate_cpu_impl<T>(_info, output, input, target); \
-        return INFINI_STATUS_SUCCESS;
+#define DISPATCH_TYPE(T)                                      \
+    cpu::calculate_cpu_impl<T>(_info, output, input, target); \
+    return INFINI_STATUS_SUCCESS;
 
     switch (dtype) {
     case INFINI_DTYPE_F32:
@@ -142,7 +141,7 @@ infiniStatus_t Descriptor::calculate(
     default:
         return INFINI_STATUS_BAD_TENSOR_DTYPE;
     }
-    #undef DISPATCH_TYPE
+#undef DISPATCH_TYPE
 }
 
 } // namespace op::smooth_l1_loss::cpu

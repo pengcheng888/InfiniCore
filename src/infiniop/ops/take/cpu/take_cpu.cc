@@ -1,8 +1,8 @@
 #include "take_cpu.h"
 #include "../../../devices/cpu/common_cpu.h"
 #include <algorithm>
+#include <cstring>
 #include <omp.h>
-#include <cstring> 
 
 namespace op::take::cpu {
 
@@ -17,19 +17,18 @@ infiniStatus_t Descriptor::create(
     infiniopTensorDescriptor_t out_desc,
     infiniopTensorDescriptor_t in_desc,
     infiniopTensorDescriptor_t indices_desc) {
-    
+
     auto handle = reinterpret_cast<device::cpu::Handle *>(handle_);
 
     auto result = TakeInfo::create(out_desc, in_desc, indices_desc);
     CHECK_RESULT(result);
-    
+
     *desc_ptr = new Descriptor(
-        nullptr,             // Opaque*
-        result.take(),       // Info
-        0,                   // Workspace Size
-        handle->device, 
-        handle->device_id
-    );
+        nullptr,       // Opaque*
+        result.take(), // Info
+        0,             // Workspace Size
+        handle->device,
+        handle->device_id);
 
     return INFINI_STATUS_SUCCESS;
 }
@@ -53,7 +52,7 @@ void calculate_cpu_impl(
 
     // OpenMP 并行化处理
 #pragma omp parallel for schedule(static)
-    for (size_t i = 0; i < num_out; ++i) {
+    for (ptrdiff_t i = 0; i < (ptrdiff_t)num_out; ++i) {
         TIdx idx = idx_ptr[i];
 
         // 边界检查
@@ -85,18 +84,18 @@ infiniStatus_t Descriptor::calculate(
     auto dtype = _info.dtype();
     auto idx_dtype = _info.idx_dtype();
 
-    // 辅助宏：根据 idx_dtype 分发
-    #define DISPATCH_IDX(TDATA) \
-        switch (idx_dtype) { \
-        case INFINI_DTYPE_I32: \
-            cpu::calculate_cpu_impl<TDATA, int32_t>(_info, output, input, indices); \
-            return INFINI_STATUS_SUCCESS; \
-        case INFINI_DTYPE_I64: \
-            cpu::calculate_cpu_impl<TDATA, int64_t>(_info, output, input, indices); \
-            return INFINI_STATUS_SUCCESS; \
-        default: \
-            return INFINI_STATUS_BAD_TENSOR_DTYPE; \
-        }
+// 辅助宏：根据 idx_dtype 分发
+#define DISPATCH_IDX(TDATA)                                                     \
+    switch (idx_dtype) {                                                        \
+    case INFINI_DTYPE_I32:                                                      \
+        cpu::calculate_cpu_impl<TDATA, int32_t>(_info, output, input, indices); \
+        return INFINI_STATUS_SUCCESS;                                           \
+    case INFINI_DTYPE_I64:                                                      \
+        cpu::calculate_cpu_impl<TDATA, int64_t>(_info, output, input, indices); \
+        return INFINI_STATUS_SUCCESS;                                           \
+    default:                                                                    \
+        return INFINI_STATUS_BAD_TENSOR_DTYPE;                                  \
+    }
 
     // 主 Switch：根据 dtype 分发
     switch (dtype) {
@@ -132,7 +131,7 @@ infiniStatus_t Descriptor::calculate(
         return INFINI_STATUS_BAD_TENSOR_DTYPE;
     }
 
-    #undef DISPATCH_IDX
+#undef DISPATCH_IDX
 }
 
 } // namespace op::take::cpu

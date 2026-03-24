@@ -8,7 +8,7 @@ namespace infinicore::op {
 class SmoothL1Loss {
 public:
     using schema = void (*)(Tensor, Tensor, Tensor, float, int64_t);
-    
+
     static void execute(Tensor output, Tensor input, Tensor target, float beta, int64_t reduction);
     static common::OpDispatcher<schema> &dispatcher();
 };

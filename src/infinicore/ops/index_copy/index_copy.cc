@@ -1,8 +1,8 @@
 #include "infinicore/ops/index_copy.hpp"
+#include "infinicore/tensor.hpp"
 #include <stdexcept>
-#include <vector>
 #include <string>
-#include "infinicore/tensor.hpp" 
+#include <vector>
 
 namespace infinicore::op {
 
@@ -24,9 +24,9 @@ void IndexCopy::execute(Tensor output, Tensor input, int64_t dim, Tensor index, 
 
     func(output, input, dim, index, source);
 }
-static void check_index_copy_args(const Tensor& input, int64_t& dim, const Tensor& index, const Tensor& source) {
+static void check_index_copy_args(const Tensor &input, int64_t &dim, const Tensor &index, const Tensor &source) {
     int64_t ndim = static_cast<int64_t>(input->ndim());
-    
+
     if (dim < 0) {
         dim += ndim;
     }
@@ -37,7 +37,7 @@ static void check_index_copy_args(const Tensor& input, int64_t& dim, const Tenso
     if (index->ndim() != 1) {
         throw std::runtime_error("IndexCopy: Index tensor must be 1D.");
     }
-    
+
     // 使用 DataType::I64 和 I32
     if (index->dtype() != DataType::I64 && index->dtype() != DataType::I32) {
         throw std::runtime_error("IndexCopy: Index tensor must be I32 or I64.");
@@ -64,13 +64,16 @@ static void check_index_copy_args(const Tensor& input, int64_t& dim, const Tenso
     }
 }
 
-
 Tensor index_copy(Tensor input, int64_t dim, Tensor index, Tensor source) {
     check_index_copy_args(input, dim, index, source);
     Tensor output = Tensor::empty(input->shape(), input->dtype(), input->device());
     output->copy_from(input);
-    if (!index->is_contiguous()) index = index->contiguous();
-    if (!source->is_contiguous()) source = source->contiguous();
+    if (!index->is_contiguous()) {
+        index = index->contiguous();
+    }
+    if (!source->is_contiguous()) {
+        source = source->contiguous();
+    }
     IndexCopy::execute(output, output, dim, index, source);
 
     return output;
@@ -81,23 +84,26 @@ void index_copy_(Tensor output, Tensor input, int64_t dim, Tensor index, Tensor 
     check_index_copy_args(input, dim, index, source);
 
     if (output->shape() != input->shape()) {
-         throw std::runtime_error("IndexCopy (In-place): Output shape must match Input shape.");
+        throw std::runtime_error("IndexCopy (In-place): Output shape must match Input shape.");
     }
 
     if (output.operator->() != input.operator->()) {
         output->copy_from(input);
     }
 
-    if (!index->is_contiguous()) index = index->contiguous();
-    if (!source->is_contiguous()) source = source->contiguous();
-    
+    if (!index->is_contiguous()) {
+        index = index->contiguous();
+    }
+    if (!source->is_contiguous()) {
+        source = source->contiguous();
+    }
+
     if (!output->is_contiguous()) {
         // 策略: Copy -> Compute -> CopyBack
         Tensor contiguous_out = output->contiguous();
-        
-       
+
         IndexCopy::execute(contiguous_out, contiguous_out, dim, index, source);
-        
+
         // 写回结果
         output->copy_from(contiguous_out);
     } else {

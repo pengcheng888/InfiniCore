@@ -1,7 +1,7 @@
 #include "../../utils.hpp"
 #include "infinicore/common/hash.hpp"
 #include "infinicore/ops/common/cache.hpp"
-#include "infinicore/ops/take.hpp" 
+#include "infinicore/ops/take.hpp"
 #include <infiniop.h>
 
 namespace infinicore::op::take_impl::infiniop {
@@ -43,9 +43,9 @@ void calculate(Tensor output, Tensor input, Tensor indices) {
 
     // 3. 执行计算：传入 input 和 indices 的数据指针
     INFINICORE_CHECK_ERROR(infiniopTake(
-        desc, 
+        desc,
         workspace->data(), workspace_size,
-        output->data(), input->data(), indices->data(), 
+        output->data(), input->data(), indices->data(),
         context::getStream()));
 }
 

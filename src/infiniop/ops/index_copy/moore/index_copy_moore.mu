@@ -1,9 +1,9 @@
 #include "index_copy_moore.h"
 #include "index_copy_moore_kernel.h" // 包含 IndexCopyOp Functor 定义
 
-#include <musa_runtime.h>
-#include <musa_fp16.h>
 #include <musa_bf16.h>
+#include <musa_fp16.h>
+#include <musa_runtime.h>
 
 #include "../../../devices/moore/moore_handle.h"
 
@@ -15,10 +15,10 @@ namespace op::index_copy::moore {
 
 template <typename T, typename TIdx>
 __global__ void index_copy_kernel(
-    const size_t num_elements,  // Source 元素总数 (线程任务总量)
-    const size_t index_len,     // Index 长度
-    const size_t inner_size,    // Stride
-    const size_t dim_size,      // Output 在 dim 维度的长度
+    const size_t num_elements, // Source 元素总数 (线程任务总量)
+    const size_t index_len,    // Index 长度
+    const size_t inner_size,   // Stride
+    const size_t dim_size,     // Output 在 dim 维度的长度
     const T *source,
     const TIdx *indices,
     T *output) {
@@ -81,8 +81,7 @@ void index_copy_moore_launch(
         info.dim_size(),
         source,
         indices_ptr,
-        output
-    );
+        output);
 }
 
 // ==================================================================
@@ -114,8 +113,7 @@ infiniStatus_t Descriptor::create(
         *info_result,
         0, // No workspace needed
         handle->device,
-        handle->device_id
-    );
+        handle->device_id);
 
     return INFINI_STATUS_SUCCESS;
 }
@@ -133,31 +131,31 @@ infiniStatus_t Descriptor::calculate(
         return INFINI_STATUS_INSUFFICIENT_WORKSPACE;
     }
 
-    // --------------------------------------------------------------
-    // 定义分发宏：Data Type x Index Type
-    // --------------------------------------------------------------
-    #define LAUNCH_KERNEL(T)                                                            \
-        do {                                                                            \
-            if (_info.idx_dtype() == INFINI_DTYPE_I32) {                                \
-                index_copy_moore_launch<T, int32_t>(                                    \
-                    _info,                                                              \
-                    static_cast<T *>(output),                                           \
-                    static_cast<const T *>(input),                                      \
-                    static_cast<const T *>(source),                                     \
-                    index,                                                              \
-                    stream);                                                            \
-            } else if (_info.idx_dtype() == INFINI_DTYPE_I64) {                         \
-                index_copy_moore_launch<T, int64_t>(                                    \
-                    _info,                                                              \
-                    static_cast<T *>(output),                                           \
-                    static_cast<const T *>(input),                                      \
-                    static_cast<const T *>(source),                                     \
-                    index,                                                              \
-                    stream);                                                            \
-            } else {                                                                    \
-                return INFINI_STATUS_BAD_TENSOR_DTYPE;                                  \
-            }                                                                           \
-        } while (0)
+// --------------------------------------------------------------
+// 定义分发宏：Data Type x Index Type
+// --------------------------------------------------------------
+#define LAUNCH_KERNEL(T)                                    \
+    do {                                                    \
+        if (_info.idx_dtype() == INFINI_DTYPE_I32) {        \
+            index_copy_moore_launch<T, int32_t>(            \
+                _info,                                      \
+                static_cast<T *>(output),                   \
+                static_cast<const T *>(input),              \
+                static_cast<const T *>(source),             \
+                index,                                      \
+                stream);                                    \
+        } else if (_info.idx_dtype() == INFINI_DTYPE_I64) { \
+            index_copy_moore_launch<T, int64_t>(            \
+                _info,                                      \
+                static_cast<T *>(output),                   \
+                static_cast<const T *>(input),              \
+                static_cast<const T *>(source),             \
+                index,                                      \
+                stream);                                    \
+        } else {                                            \
+            return INFINI_STATUS_BAD_TENSOR_DTYPE;          \
+        }                                                   \
+    } while (0)
 
     // --------------------------------------------------------------
     // 根据数据类型分发
@@ -166,7 +164,7 @@ infiniStatus_t Descriptor::calculate(
     case INFINI_DTYPE_F16:
         LAUNCH_KERNEL(half);
         break;
-        
+
     case INFINI_DTYPE_BF16:
         LAUNCH_KERNEL(__mt_bfloat16);
         break;
@@ -178,7 +176,7 @@ infiniStatus_t Descriptor::calculate(
     case INFINI_DTYPE_F64:
         LAUNCH_KERNEL(double);
         break;
-    
+
     case INFINI_DTYPE_I32:
         LAUNCH_KERNEL(int32_t);
         break;
@@ -199,7 +197,7 @@ infiniStatus_t Descriptor::calculate(
         return INFINI_STATUS_BAD_TENSOR_DTYPE;
     }
 
-    #undef LAUNCH_KERNEL
+#undef LAUNCH_KERNEL
 
     return INFINI_STATUS_SUCCESS;
 }

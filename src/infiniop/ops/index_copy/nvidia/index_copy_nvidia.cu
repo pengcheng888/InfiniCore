@@ -1,11 +1,11 @@
-#include "index_copy_nvidia.cuh"
-#include "../cuda/kernel.cuh" // 假设这是通用 kernel 头文件路径，或者是 index_copy_cuda.h
 #include "../../../handle.h"
+#include "../cuda/kernel.cuh" // 假设这是通用 kernel 头文件路径，或者是 index_copy_cuda.h
+#include "index_copy_nvidia.cuh"
 #include <cstdint>
 
 // 【关键】引入 CUDA 浮点类型定义
-#include <cuda_fp16.h>
 #include <cuda_bf16.h>
+#include <cuda_fp16.h>
 
 namespace op::index_copy::nvidia {
 
@@ -36,8 +36,8 @@ void launch_kernel(
     // 获取几何信息 (无 alpha)
     size_t outer_size = info.outer_size();
     size_t inner_size = info.inner_size();
-    size_t dim_size   = info.dim_size();
-    size_t index_len  = info.index_len();
+    size_t dim_size = info.dim_size();
+    size_t index_len = info.index_len();
 
     // Source 总元素数
     size_t num_source = outer_size * index_len * inner_size;
@@ -47,29 +47,27 @@ void launch_kernel(
     // IndexCopy 是从 Source 读取并写入 Output，Source 是连续读取，适合向量化 Load
     constexpr int TotalBytes = 16;
     constexpr int PackSize = TotalBytes / sizeof(T);
-    
+
     // 向量化条件检查：
     // 1. PackSize > 1
     // 2. Source 总数能整除 PackSize (简化 tail 处理)
     // 3. Source 指针地址对齐 (Load Vectorized 要求)
-    bool can_vectorize = (PackSize > 1) && 
-                         (num_source % PackSize == 0) &&
-                         is_aligned<T>(source, TotalBytes);
+    bool can_vectorize = (PackSize > 1) && (num_source % PackSize == 0) && is_aligned<T>(source, TotalBytes);
 
     if (can_vectorize) {
         // === 路径 A: 向量化读取 Kernel ===
         size_t num_packs = num_source / PackSize;
-        
+
         size_t block_size = 256;
         size_t grid_size = (num_packs + block_size - 1) / block_size;
 
         op::index_copy::cuda::index_copy_kernel_vectorized<T, TIdx, PackSize>
             <<<grid_size, block_size, 0, cuda_stream>>>(
-            out_ptr, src_ptr, idx_ptr, 
-            outer_size, inner_size, dim_size, index_len, 
-            num_packs
-            // 注意：移除了 alpha
-        );
+                out_ptr, src_ptr, idx_ptr,
+                outer_size, inner_size, dim_size, index_len,
+                num_packs
+                // 注意：移除了 alpha
+            );
     } else {
         // === 路径 B: 标量 Kernel ===
         size_t block_size = 256;
@@ -77,11 +75,11 @@ void launch_kernel(
 
         op::index_copy::cuda::index_copy_kernel<T, TIdx>
             <<<grid_size, block_size, 0, cuda_stream>>>(
-            out_ptr, src_ptr, idx_ptr, 
-            outer_size, inner_size, dim_size, index_len, 
-            num_source
-            // 注意：移除了 alpha
-        );
+                out_ptr, src_ptr, idx_ptr,
+                outer_size, inner_size, dim_size, index_len,
+                num_source
+                // 注意：移除了 alpha
+            );
     }
 }
 
@@ -92,7 +90,9 @@ void launch_kernel(
 struct Descriptor::Opaque {};
 
 Descriptor::~Descriptor() {
-    if (_opaque) delete _opaque;
+    if (_opaque) {
+        delete _opaque;
+    }
 }
 
 infiniStatus_t Descriptor::create(
@@ -106,11 +106,12 @@ infiniStatus_t Descriptor::create(
 
     // Info 创建
     auto info_result = IndexCopyInfo::create(out_desc, in_desc, dim, index_desc, source_desc); // 无 alpha
-    if (!info_result) return info_result.status();
+    if (!info_result) {
+        return info_result.status();
+    }
 
     *desc_ptr = new Descriptor(
-        new Opaque(), info_result.take(), 0, handle->device, handle->device_id
-    );
+        new Opaque(), info_result.take(), 0, handle->device, handle->device_id);
     return INFINI_STATUS_SUCCESS;
 }
 
@@ -129,18 +130,19 @@ infiniStatus_t Descriptor::calculate(
     auto dtype = _info.dtype();
     auto idx_dtype = _info.idx_dtype();
 
-    // 宏：根据 T_STORAGE 类型实例化 launch_kernel
-    // T_STORAGE 将会是: float, double, int32_t, __half, __nv_bfloat16
-    #define LAUNCH_BY_SIZE(T_STORAGE) \
-        switch (idx_dtype) { \
-        case INFINI_DTYPE_I32: \
-            launch_kernel<T_STORAGE, int32_t>(output, source, index, _info, stream); \
-            break; \
-        case INFINI_DTYPE_I64: \
-            launch_kernel<T_STORAGE, int64_t>(output, source, index, _info, stream); \
-            break; \
-        default: return INFINI_STATUS_BAD_TENSOR_DTYPE; \
-        }
+// 宏：根据 T_STORAGE 类型实例化 launch_kernel
+// T_STORAGE 将会是: float, double, int32_t, __half, __nv_bfloat16
+#define LAUNCH_BY_SIZE(T_STORAGE)                                                \
+    switch (idx_dtype) {                                                         \
+    case INFINI_DTYPE_I32:                                                       \
+        launch_kernel<T_STORAGE, int32_t>(output, source, index, _info, stream); \
+        break;                                                                   \
+    case INFINI_DTYPE_I64:                                                       \
+        launch_kernel<T_STORAGE, int64_t>(output, source, index, _info, stream); \
+        break;                                                                   \
+    default:                                                                     \
+        return INFINI_STATUS_BAD_TENSOR_DTYPE;                                   \
+    }
 
     switch (dtype) {
     // 32-bit Float
@@ -166,13 +168,13 @@ infiniStatus_t Descriptor::calculate(
     case INFINI_DTYPE_I64:
         LAUNCH_BY_SIZE(int64_t);
         break;
-    
+
     // 如果有其他整型需求 (I8, U8 等)，也在这里添加 case
-    default: 
+    default:
         return INFINI_STATUS_BAD_TENSOR_DTYPE;
     }
 
-    #undef LAUNCH_BY_SIZE
+#undef LAUNCH_BY_SIZE
     return INFINI_STATUS_SUCCESS;
 }
 
