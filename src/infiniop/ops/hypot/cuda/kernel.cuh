@@ -30,7 +30,7 @@ public:
 
         else if constexpr (std::is_same_v<T, half>) {
             return hsqrt(__hfma(x, x, __hmul(y, y)));
-        } else if constexpr (std::is_same_v<T, nv_bfloat162>) {
+        } else if constexpr (std::is_same_v<T, cuda_bfloat162>) {
 
             float f0_x = __bfloat162float(__low2bfloat16(x));
             float f1_x = __bfloat162float(__high2bfloat16(x));
