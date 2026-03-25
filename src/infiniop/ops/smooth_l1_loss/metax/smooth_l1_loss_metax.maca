@@ -5,13 +5,6 @@
 #include <cmath>
 #include <cstdio>
 #include <vector>
-#if defined(ENABLE_METAX_MC_API)
-#include <common/mc_library_types.h>
-#include <mcr/mc_runtime.h>
-#else
-#include <common/hc_library_types.h>
-#include <hcr/hc_runtime.h>
-#endif
 
 #include "../../../tensor.h"
 #include "../cuda/kernel.cuh"
@@ -217,9 +210,7 @@ infiniStatus_t Descriptor::calculate(
         LAUNCH(__half);
         break;
     case INFINI_DTYPE_BF16:
-#if defined(__MACA__) || defined(ENABLE_METAX_MC_API)
         LAUNCH(cuda_bfloat16);
-#endif
         break;
     case INFINI_DTYPE_F32:
         LAUNCH(float);

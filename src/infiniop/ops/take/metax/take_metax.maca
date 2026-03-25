@@ -4,17 +4,6 @@
 #include "take_metax.h"
 #include <cmath>
 #include <cstdio>
-#if defined(ENABLE_METAX_MC_API)
-#include <maca_bfloat16.h>
-#include <maca_fp16.h>
-#include <common/mc_library_types.h>
-#include <mcr/mc_runtime.h>
-#else
-#include <hpcc_bfloat16.h>
-#include <hpcc_fp16.h>
-#include <common/hc_library_types.h>
-#include <hcr/hc_runtime.h>
-#endif
 #include <vector>
 
 #include "../../../tensor.h"

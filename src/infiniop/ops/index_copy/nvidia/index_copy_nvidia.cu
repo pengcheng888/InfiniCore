@@ -1,13 +1,10 @@
+#include "../../../devices/nvidia/nvidia_common.cuh"
+#include "../../../devices/nvidia/nvidia_kernel_common.cuh"
 #include "../../../handle.h"
-#include "../cuda/kernel.cuh" // 假设这是通用 kernel 头文件路径，或者是 index_copy_cuda.h
+
+#include "../cuda/kernel.cuh"
 #include "index_copy_nvidia.cuh"
 #include <cstdint>
-
-#if defined(ENABLE_NVIDIA_API) || defined(ENABLE_ALI_API) || defined(ENABLE_ILUVATAR_API) || defined(ENABLE_HYGON_API)
-#include "../../../devices/nvidia/nvidia_kernel_common.cuh"
-#include <cuda_bf16.h>
-#include <cuda_fp16.h>
-#endif
 
 namespace op::index_copy::nvidia {
 

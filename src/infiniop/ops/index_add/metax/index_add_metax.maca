@@ -2,21 +2,12 @@
 #include "../../../devices/metax/metax_handle.h"
 #include "../../../devices/metax/metax_kernel_common.h"
 #include "../../../tensor.h"
+
 #include "../cuda/kernel.cuh"
 #include "index_add_metax.h"
 #include <cmath>
 #include <cstdio>
-#if defined(ENABLE_METAX_MC_API)
-#include <common/mc_library_types.h>
-#include <maca_bfloat16.h>
-#include <maca_fp16.h>
-#include <mcr/mc_runtime.h>
-#else
-#include <common/hc_library_types.h>
-#include <hpcc_bfloat16.h>
-#include <hpcc_fp16.h>
-#include <hcr/hc_runtime.h>
-#endif
+
 #include <vector>
 
 namespace op::index_add::metax {

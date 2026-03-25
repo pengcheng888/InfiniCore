@@ -37,27 +37,36 @@ infiniStatus_t calculateArgWhere(
     const void *x) {
 
     const Tdata *x_data = reinterpret_cast<const Tdata *>(x);
-    // int64_t *y_data = reinterpret_cast<int64_t *>(y);
-    std::vector<size_t> positions;
-    // #pragma omp parallel for
+
+    std::vector<int64_t> positions;
+    const size_t ndim = info.shapes.size();
+
     for (size_t i = 0; i < info.num_elements; i++) {
-        size_t pos = 0, tem = i;
-        std::vector<size_t> position(info.strides.size());
-        for (size_t j = info.strides.size() - 1; j >= 0; j--) {
-            position[j] = tem % info.shapes[j];
-            tem /= info.shapes[j];
-            pos += position[j] * info.strides[j];
+        size_t pos = 0;
+        size_t tmp = i;
+
+        std::vector<int64_t> coord(ndim);
+
+        // unravel index
+        for (size_t j = ndim; j-- > 0;) {
+            coord[j] = tmp % info.shapes[j];
+            tmp /= info.shapes[j];
+            pos += coord[j] * info.strides[j];
         }
-        if (fabs(x_data[pos] - 0.0f) > 1e-5) {
-            for (auto p : position) {
-                positions.push_back(p);
+
+        // PyTorch semantics: != 0
+        if (x_data[pos] != Tdata(0)) {
+            for (size_t j = 0; j < ndim; j++) {
+                positions.push_back(coord[j]);
             }
         }
     }
 
+    *count = positions.size() / ndim;
+
     *y = new int64_t[positions.size()];
     memcpy(*y, positions.data(), positions.size() * sizeof(int64_t));
-    *count = positions.size() / info.strides.size();
+
     return INFINI_STATUS_SUCCESS;
 }
 

@@ -1,12 +1,6 @@
 #ifndef __SIDMOID_CUDA_H__
 #define __SIDMOID_CUDA_H__
 
-#include "../../../elementwise/nvidia/elementwise_nvidia.cuh"
-#if defined(ENABLE_NVIDIA_API) || defined(ENABLE_ALI_API) || defined(ENABLE_ILUVATAR_API)
-#include <cuda_bf16.h>
-#include <cuda_fp16.h>
-#endif
-
 namespace op::sigmoid::cuda {
 typedef struct SigmoidOp {
 public:
@@ -20,8 +14,8 @@ public:
         } else if constexpr (std::is_same_v<T, half>) {
             half denominator = __hadd(__float2half(1.0f), hexp(__hneg(x)));
             return hrcp(denominator);
-        } else if constexpr (std::is_same_v<T, __nv_bfloat16>) {
-            __nv_bfloat16 denominator = __float2bfloat16(__fadd_rn(1.0f, __expf(__bfloat162float(-x))));
+        } else if constexpr (std::is_same_v<T, cuda_bfloat16>) {
+            cuda_bfloat16 denominator = __float2bfloat16(__fadd_rn(1.0f, __expf(__bfloat162float(-x))));
             return __float2bfloat16(1.0f) / denominator;
         } else if constexpr (std::is_same_v<T, float>) {
             if (x >= 0.0f) {

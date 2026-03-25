@@ -1,8 +1,12 @@
 #define INFINIOP_METAX_KERNEL __global__ void
 
 #ifdef ENABLE_METAX_MC_API
+#include <maca_bfloat16.h>
+#include <maca_fp16.h>
 #include <maca_fp8.h>
 #else
+#include <hpcc_bfloat16.h>
+#include <hpcc_fp16.h>
 #include <hpcc_fp8.h>
 #endif
 

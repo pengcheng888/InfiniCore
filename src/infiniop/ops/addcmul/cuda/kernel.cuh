@@ -1,10 +1,6 @@
 #ifndef __ADDCMUL_CUDA_CUH__
 #define __ADDCMUL_CUDA_CUH__
 
-#if defined(ENABLE_NVIDIA_API) || defined(ENABLE_ALI_API) || defined(ENABLE_ILUVATAR_API)
-#include <cuda_bf16.h>
-#include <cuda_fp16.h>
-#endif
 #include <type_traits>
 
 namespace op::addcmul::cuda {

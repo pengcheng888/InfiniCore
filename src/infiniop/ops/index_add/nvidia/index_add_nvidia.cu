@@ -1,3 +1,5 @@
+#include "../../../devices/nvidia/nvidia_common.cuh"
+#include "../../../devices/nvidia/nvidia_kernel_common.cuh"
 #include "../../../handle.h"
 
 // Iluvatar does not support atomic add yet
@@ -7,10 +9,6 @@
 
 #include "index_add_nvidia.cuh"
 #include <cstdint>
-#if defined(ENABLE_NVIDIA_API) || defined(ENABLE_ALI_API) || defined(ENABLE_ILUVATAR_API)
-#include <cuda_bf16.h>
-#include <cuda_fp16.h>
-#endif
 
 namespace op::index_add::nvidia {
 

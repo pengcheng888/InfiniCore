@@ -1,5 +1,6 @@
 #include "../../../devices/nvidia/nvidia_kernel_common.cuh"
 #include "../../../handle.h"
+
 #include "../cuda/kernel.cuh"
 #include "smooth_l1_loss_nvidia.cuh"
 #include <algorithm>

@@ -1,20 +1,6 @@
 #ifndef __INDEX_ADD_CUDA_H__
 #define __INDEX_ADD_CUDA_H__
 
-#if ENABLE_METAX_API
-#if defined(ENABLE_METAX_MC_API)
-#include <maca_bfloat16.h>
-#include <maca_fp16.h>
-#else
-#include <hpcc_bfloat16.h>
-#include <hpcc_fp16.h>
-#endif
-#endif
-#if defined(ENABLE_NVIDIA_API) || defined(ENABLE_ALI_API) || defined(ENABLE_ILUVATAR_API) || defined(ENABLE_HYGON_API)
-#include "../../../devices/nvidia/nvidia_kernel_common.cuh"
-#include <cuda_bf16.h>
-#include <cuda_fp16.h>
-#endif
 #include <cstdint>
 
 namespace op::index_add::cuda {

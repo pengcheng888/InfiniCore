@@ -6,9 +6,11 @@
 #ifdef ENABLE_METAX_MC_API
 #include <mcblas/mcblas.h>
 #include <mcdnn/mcdnn.h>
+#include <mcr/mc_runtime.h>
 #else
 #include <hcblas/hcblas.h>
 #include <hcdnn/hcdnn.h>
+#include <hcr/hc_runtime.h>
 #endif
 #include <functional>
 #include <memory>
