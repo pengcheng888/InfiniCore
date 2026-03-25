@@ -17,6 +17,8 @@ from .silu_and_mul import silu_and_mul
 from .smooth_l1_loss import smooth_l1_loss
 from .swiglu import swiglu
 from .tanhshrink import tanhshrink
+from .adaptive_avg_pool1d import adaptive_avg_pool1d
+from .affine_grid import affine_grid  
 
 __all__ = [
     "adaptive_max_pool1d",
@@ -26,6 +28,8 @@ __all__ = [
     "linear",
     "binary_cross_entropy_with_logits",
     "random_sample",
+    "adaptive_avg_pool1d",
+    "affine_grid",  
     "rms_norm",
     "silu",
     "smooth_l1_loss",

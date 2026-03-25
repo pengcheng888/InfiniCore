@@ -56,6 +56,9 @@ from infinicore.ops.argwhere import argwhere
 from infinicore.ops.asin import asin
 from infinicore.ops.asinh import asinh
 from infinicore.ops.atanh import atanh
+from infinicore.ops.acos import acos
+from infinicore.ops.floor import floor
+from infinicore.ops.addbmm import addbmm
 from infinicore.ops.attention import attention
 from infinicore.ops.baddbmm import baddbmm
 from infinicore.ops.bilinear import bilinear
@@ -160,6 +163,9 @@ __all__ = [
     "add_rms_norm_",
     "argwhere",
     "asin",
+    "acos",
+    "addbmm",
+    "floor",
     "attention",
     "kv_caching",
     "asinh",

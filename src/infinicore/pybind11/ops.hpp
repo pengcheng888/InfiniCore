@@ -13,6 +13,10 @@
 #include "ops/asin.hpp"
 #include "ops/asinh.hpp"
 #include "ops/atanh.hpp"
+#include "ops/adaptive_avg_pool1d.hpp"
+#include "ops/addbmm.hpp"
+#include "ops/affine_grid.hpp"
+#include "ops/acos.hpp"
 #include "ops/attention.hpp"
 #include "ops/avg_pool1d.hpp"
 #include "ops/baddbmm.hpp"
@@ -60,6 +64,7 @@
 #include "ops/topk.hpp"
 #include "ops/var.hpp"
 #include "ops/var_mean.hpp"
+#include "ops/floor.hpp"
 
 namespace py = pybind11;
 
@@ -73,6 +78,12 @@ inline void bind(py::module &m) {
     bind_addr(m);
     bind_asin(m);
     bind_add_rms_norm(m);
+    bind_add(m); 
+    bind_addbmm(m); 
+    bind_acos(m); 
+    bind_affine_grid(m); 
+    bind_floor(m); 
+    bind_adaptive_avg_pool1d(m);
     bind_attention(m);
     bind_asinh(m);
     bind_baddbmm(m);
