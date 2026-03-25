@@ -1,14 +1,13 @@
 #include "../../../devices/metax/metax_common.h"
 #include "../../../devices/metax/metax_handle.h"
+#include "../../../devices/metax/metax_kernel_common.h"
 #include "../../../tensor.h"
+
 #include "../cuda/kernel.cuh"
 #include "index_add_metax.h"
 #include <cmath>
-#include <common/mc_library_types.h>
 #include <cstdio>
-#include <maca_bfloat16.h>
-#include <maca_fp16.h>
-#include <mcr/mc_runtime.h>
+
 #include <vector>
 
 namespace op::index_add::metax {
@@ -33,8 +32,8 @@ __device__ __forceinline__ void gpuAtomicAdd(
 
 template <>
 __device__ __forceinline__ void gpuAtomicAdd(
-    __maca_bfloat16 *address,
-    __maca_bfloat16 val) {
+    cuda_bfloat16 *address,
+    cuda_bfloat16 val) {
     unsigned int *addr = (unsigned int *)((char *)address - ((size_t)address & 2));
 
     unsigned int old = *addr;
@@ -47,7 +46,7 @@ __device__ __forceinline__ void gpuAtomicAdd(
                                    ? (assumed >> 16)
                                    : (assumed & 0xFFFF);
 
-        __maca_bfloat16 sum = (__maca_bfloat16)((float)*reinterpret_cast<__maca_bfloat16 *>(&old_val) + (float)val);
+        cuda_bfloat16 sum = (cuda_bfloat16)((float)*reinterpret_cast<cuda_bfloat16 *>(&old_val) + (float)val);
 
         unsigned short res = *reinterpret_cast<unsigned short *>(&sum);
 
@@ -266,7 +265,7 @@ infiniStatus_t Descriptor::calculate(
             break;
 
         case INFINI_DTYPE_BF16:
-            LAUNCH(__maca_bfloat16, int32_t);
+            LAUNCH(cuda_bfloat16, int32_t);
             break;
 
         case INFINI_DTYPE_F32:
@@ -297,7 +296,7 @@ infiniStatus_t Descriptor::calculate(
             break;
 
         case INFINI_DTYPE_BF16:
-            LAUNCH(__maca_bfloat16, int64_t);
+            LAUNCH(cuda_bfloat16, int64_t);
             break;
 
         case INFINI_DTYPE_F32:

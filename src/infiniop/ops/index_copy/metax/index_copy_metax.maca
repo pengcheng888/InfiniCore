@@ -1,17 +1,10 @@
 #include "../../../devices/metax/metax_common.h"
 #include "../../../devices/metax/metax_handle.h"
+#include "../../../devices/metax/metax_kernel_common.h"
 #include "index_copy_metax.h"
 #include <cmath>
-#include <common/mc_library_types.h>
 #include <cstdio>
-#include <mcr/mc_runtime.h>
 #include <vector>
-#if defined(__MACA__) || defined(__MACACC__)
-#include <maca_bfloat16.h>
-#include <maca_fp16.h>
-#endif
-#include "../../../tensor.h"
-#include "../cuda/kernel.cuh"
 
 #include "../../../tensor.h"
 #include "../cuda/kernel.cuh"
@@ -149,8 +142,8 @@ infiniStatus_t Descriptor::calculate(
             LAUNCH(__half, int32_t);
             break;
         case INFINI_DTYPE_BF16:
-#if defined(__MACA__) || defined(__MACACC__)
-            LAUNCH(__maca_bfloat16, int32_t);
+#if defined(__MACA__) || defined(ENABLE_METAX_MC_API)
+            LAUNCH(cuda_bfloat16, int32_t);
 #endif
             break;
         case INFINI_DTYPE_F32:
@@ -174,8 +167,8 @@ infiniStatus_t Descriptor::calculate(
             LAUNCH(__half, int64_t);
             break;
         case INFINI_DTYPE_BF16:
-#if defined(__MACA__) || defined(__MACACC__)
-            LAUNCH(__maca_bfloat16, int64_t);
+#if defined(__MACA__) || defined(ENABLE_METAX_MC_API)
+            LAUNCH(cuda_bfloat16, int64_t);
 #endif
             break;
         case INFINI_DTYPE_F32:

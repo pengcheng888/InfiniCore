@@ -1,16 +1,6 @@
 #ifndef __INDEX_ADD_CUDA_H__
 #define __INDEX_ADD_CUDA_H__
 
-#if ENABLE_METAX_API
-#include <maca_bfloat16.h>
-#include <maca_fp16.h>
-#define __nv_bfloat16 __maca_bfloat16
-#define __nv_bfloat162 __maca_bfloat162
-#else
-#include <cuda_bf16.h>
-#include <cuda_fp16.h>
-#include <cuda_runtime.h>
-#endif
 #include <cstdint>
 
 namespace op::index_add::cuda {
@@ -40,7 +30,7 @@ __device__ __forceinline__ void atomic_add_custom(__half *address, __half val) {
 #endif
 }
 
-__device__ __forceinline__ void atomic_add_custom(__nv_bfloat16 *address, __nv_bfloat16 val) {
+__device__ __forceinline__ void atomic_add_custom(cuda_bfloat16 *address, cuda_bfloat16 val) {
 #if __CUDA_ARCH__ >= 800
     atomicAdd(address, val);
 #else
@@ -52,9 +42,9 @@ __device__ __forceinline__ void atomic_add_custom(__nv_bfloat16 *address, __nv_b
     do {
         assumed = old;
         unsigned short old_val_raw = (size_t)address & 2 ? (old >> 16) : (old & 0xffff);
-        __nv_bfloat16 old_val = *reinterpret_cast<__nv_bfloat16 *>(&old_val_raw);
+        cuda_bfloat16 old_val = *reinterpret_cast<cuda_bfloat16 *>(&old_val_raw);
 
-        __nv_bfloat16 new_val = old_val + val;
+        cuda_bfloat16 new_val = old_val + val;
         unsigned short new_val_raw = *reinterpret_cast<unsigned short *>(&new_val);
 
         unsigned int new_int = (size_t)address & 2 ? (old & 0xffff) | (new_val_raw << 16)

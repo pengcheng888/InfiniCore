@@ -1,16 +1,6 @@
 #ifndef __INDEX_COPY_CUDA_H__
 #define __INDEX_COPY_CUDA_H__
 
-// #include <cuda_runtime.h>
-#if defined(__MACA__) || defined(__MACACC__)
-#include <maca_bfloat16.h>
-#include <maca_fp16.h>
-using nv_bfloat162 = __maca_bfloat162;
-#else
-#include <cuda_bf16.h>
-#include <cuda_fp16.h>
-#endif
-
 #include <cstdint>
 
 namespace op::index_copy::cuda {

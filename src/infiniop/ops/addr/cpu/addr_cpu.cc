@@ -1,6 +1,6 @@
 #include "addr_cpu.h"
 #include "../../../devices/cpu/common_cpu.h"
-#include <spdlog/spdlog.h>
+
 namespace op::addr::cpu {
 Descriptor::~Descriptor() = default;
 

@@ -1,12 +1,9 @@
 #include "../../../devices/metax/metax_common.h"
 #include "../../../devices/metax/metax_handle.h"
+#include "../../../devices/metax/metax_kernel_common.h"
 #include "take_metax.h"
 #include <cmath>
-#include <common/mc_library_types.h>
 #include <cstdio>
-#include <maca_bfloat16.h>
-#include <maca_fp16.h>
-#include <mcr/mc_runtime.h>
 #include <vector>
 
 #include "../../../tensor.h"
@@ -193,7 +190,7 @@ infiniStatus_t Descriptor::calculate(
             break;
 
         case INFINI_DTYPE_BF16:
-            LAUNCH(__maca_bfloat16, int32_t);
+            LAUNCH(cuda_bfloat16, int32_t);
             break;
 
         case INFINI_DTYPE_F32:
@@ -224,7 +221,7 @@ infiniStatus_t Descriptor::calculate(
             break;
 
         case INFINI_DTYPE_BF16:
-            LAUNCH(__maca_bfloat16, int64_t);
+            LAUNCH(cuda_bfloat16, int64_t);
             break;
 
         case INFINI_DTYPE_F32:

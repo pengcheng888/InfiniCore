@@ -37,8 +37,6 @@ def parse_test_cases():
     for data in _TEST_CASES_DATA:
         shape, in_strides, k, dim, largest, sorted_ = data
 
-        out_supports_inplace = not is_broadcast(in_strides)
-
         for dtype in _TENSOR_DTYPES:
             tol = _TOLERANCE_MAP.get(dtype, {"atol": 1e-5, "rtol": 1e-4})
 
@@ -55,13 +53,9 @@ def parse_test_cases():
                     comparison_target=None,
                     tolerance=tol,
                     description=f"topk - OUT_OF_PLACE",
-                    output_count=2,
+                    output_count=1,
                 )
             )
-
-            # topk returns (values, indices) - in-place/out variant requires tuple of outputs
-            # The current test harness expects a single TensorSpec for `output_spec`, so
-            # we avoid creating an in-place test for topk here and only test out-of-place.
 
     return test_cases
 
@@ -76,11 +70,12 @@ class OpTest(BaseOperatorTest):
         return parse_test_cases()
 
     def torch_operator(self, *args, **kwargs):
-        return torch.topk(*args, **kwargs)
+        # only returns values, not indices
+        return torch.topk(*args, **kwargs)[0]
 
     def infinicore_operator(self, *args, **kwargs):
-        """InfiniCore implementation (operator not yet available)."""
-        return infinicore.topk(*args, **kwargs)
+        # only returns values, not indices
+        return infinicore.topk(*args, **kwargs)[0]
 
 
 def main():

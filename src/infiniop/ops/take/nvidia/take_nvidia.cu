@@ -1,4 +1,6 @@
+#include "../../../devices/nvidia/nvidia_kernel_common.cuh"
 #include "../../../handle.h"
+
 #include "../cuda/kernel.cuh"
 #include "take_nvidia.cuh"
 #include <cstdint>

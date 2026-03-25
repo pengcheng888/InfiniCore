@@ -3,14 +3,6 @@
 
 #include <cmath>
 #include <type_traits>
-#if ENABLE_METAX_API
-#include <maca_bfloat16.h>
-#include <maca_fp16.h>
-using nv_bfloat162 = __maca_bfloat162;
-#else
-#include <cuda_bf16.h>
-#include <cuda_fp16.h>
-#endif
 
 namespace op::hypot::cuda {
 

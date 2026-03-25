@@ -1,4 +1,6 @@
+#include "../../../devices/metax/metax_common.h"
 #include "../../../devices/metax/metax_handle.h"
+#include "../../../devices/metax/metax_kernel_common.h"
 #include "cdist_metax.h"
 #include <iostream>
 namespace op::cdist::metax {
@@ -126,7 +128,7 @@ infiniStatus_t Descriptor::calculate(
         return INFINI_STATUS_BAD_TENSOR_DTYPE;
     }
 
-    mcStream_t custream = (mcStream_t)stream;
+    hcStream_t custream = (hcStream_t)stream;
     dim3 block(16, 16);
     dim3 grid(
         static_cast<unsigned int>((_info.n + block.x - 1) / block.x),
@@ -151,8 +153,8 @@ infiniStatus_t Descriptor::calculate(
         _info.y_matrix.col_stride,
         _p);
 
-    auto err = mcGetLastError();
-    if (err != mcSuccess) {
+    auto err = hcGetLastError();
+    if (err != hcSuccess) {
         return INFINI_STATUS_INTERNAL_ERROR;
     }
 

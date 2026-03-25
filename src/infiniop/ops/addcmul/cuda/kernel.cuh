@@ -1,8 +1,6 @@
 #ifndef __ADDCMUL_CUDA_CUH__
 #define __ADDCMUL_CUDA_CUH__
 
-#include <cuda_bf16.h>
-#include <cuda_fp16.h>
 #include <type_traits>
 
 namespace op::addcmul::cuda {
