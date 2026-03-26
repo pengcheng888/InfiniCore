@@ -1,6 +1,6 @@
 #include "infinicore/ops/addbmm.hpp"
-#include "infinicore/ops/addbmm.hpp"
 #include "../../utils.hpp"
+#include "infinicore/ops/addbmm.hpp"
 
 namespace infinicore::op {
 
@@ -10,9 +10,8 @@ common::OpDispatcher<Addbmm::schema> &Addbmm::dispatcher() {
     return dispatcher_;
 };
 
-
 void Addbmm::execute(Tensor output, Tensor input, Tensor batch1, Tensor batch2, float beta, float alpha) {
-    
+
     // 切换上下文
     infinicore::context::setDevice(output->device());
 

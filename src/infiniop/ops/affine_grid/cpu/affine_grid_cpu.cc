@@ -1,11 +1,10 @@
 #include "affine_grid_cpu.h"
 #include "../../../devices/cpu/common_cpu.h"
-#include <cmath>
 #include <algorithm>
+#include <cmath>
 #include <omp.h>
 
 namespace op::affine_grid::cpu {
-
 
 template <typename T>
 inline float to_float(T val) {
@@ -33,7 +32,7 @@ infiniStatus_t Descriptor::create(
     infiniopTensorDescriptor_t out_desc,
     infiniopTensorDescriptor_t in_desc,
     bool align_corners) { // 接收 align_corners
-    
+
     auto handle = reinterpret_cast<device::cpu::Handle *>(handle_);
     auto dtype = out_desc->dtype();
 
@@ -46,12 +45,11 @@ infiniStatus_t Descriptor::create(
 
     // 3. 创建 Descriptor
     *desc_ptr = new Descriptor(
-        nullptr,             // Opaque*
-        result.take(),       // Info
-        0,                   // Workspace Size (AffineGrid CPU 不需要额外 workspace)
-        handle->device, 
-        handle->device_id
-    );
+        nullptr,       // Opaque*
+        result.take(), // Info
+        0,             // Workspace Size (AffineGrid CPU 不需要额外 workspace)
+        handle->device,
+        handle->device_id);
 
     return INFINI_STATUS_SUCCESS;
 }
@@ -72,17 +70,17 @@ void calculate_cpu_impl(
 
     // 并行化处理 Batch
 #pragma omp parallel for
-    for (size_t n = 0; n < batch; ++n) {
-       
+    for (ptrdiff_t n = 0; n < (ptrdiff_t)batch; ++n) {
+
         const Tdata *theta_n = in_ptr + n * 6;
 
         // 提取仿射矩阵参数并转为 float
         float r00 = to_float(theta_n[0]);
         float r01 = to_float(theta_n[1]);
-        float tx  = to_float(theta_n[2]);
+        float tx = to_float(theta_n[2]);
         float r10 = to_float(theta_n[3]);
         float r11 = to_float(theta_n[4]);
-        float ty  = to_float(theta_n[5]);
+        float ty = to_float(theta_n[5]);
 
         // 遍历空间维度
         for (size_t h = 0; h < H; ++h) {
@@ -132,7 +130,7 @@ infiniStatus_t Descriptor::calculate(
     case INFINI_DTYPE_F32:
         cpu::calculate_cpu_impl<float>(_info, output, input);
         return INFINI_STATUS_SUCCESS;
-    
+
     case INFINI_DTYPE_F64:
         cpu::calculate_cpu_impl<double>(_info, output, input);
         return INFINI_STATUS_SUCCESS;

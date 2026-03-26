@@ -5,4 +5,4 @@
 
 DESCRIPTOR(cpu)
 
-#endif  //_GRID_CPU_H_
+#endif //_GRID_CPU_H_

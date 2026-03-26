@@ -1,10 +1,9 @@
 #include "addbmm_moore.h"
-#include "addbmm_moore_kernel.h" 
 
-#include <musa_runtime.h>
-#include <musa_fp16.h> 
-#include <musa_bf16.h>
 #include "../../../devices/moore/moore_handle.h"
+#include <musa_bf16.h>
+#include <musa_fp16.h>
+#include <musa_runtime.h>
 #include <vector>
 
 namespace op::addbmm::moore {
@@ -51,7 +50,7 @@ __global__ void addbmm_kernel(
 
                 T val1 = batch1[offset1];
                 T val2 = batch2[offset2];
-                
+
                 float v1_f, v2_f;
                 if constexpr (std::is_same_v<T, half>) {
                     v1_f = __half2float(val1);
@@ -70,7 +69,7 @@ __global__ void addbmm_kernel(
         // 直接计算偏移：Input[n, p]
         int64_t in_offset = n * in_s0 + p * in_s1;
         T in_val = input[in_offset];
-        
+
         float in_val_f;
         if constexpr (std::is_same_v<T, half>) {
             in_val_f = __half2float(in_val);
@@ -112,10 +111,10 @@ void addbmm_moore_launch(
     int threads = 256;
     int blocks = (total_elements + threads - 1) / threads;
 
-    const auto& out_strides = info.out_strides();
-    const auto& in_strides = info.in_strides();
-    const auto& b1_strides = info.b1_strides();
-    const auto& b2_strides = info.b2_strides();
+    const auto &out_strides = info.out_strides();
+    const auto &in_strides = info.in_strides();
+    const auto &b1_strides = info.b1_strides();
+    const auto &b2_strides = info.b2_strides();
 
     addbmm_kernel<T><<<blocks, threads, 0, (musaStream_t)stream>>>(
         info.b(), info.n(), info.m(), info.p(),
@@ -124,8 +123,7 @@ void addbmm_moore_launch(
         out_strides[0], out_strides[1],
         in_strides[0], in_strides[1],
         b1_strides[0], b1_strides[1], b1_strides[2],
-        b2_strides[0], b2_strides[1], b2_strides[2]
-    );
+        b2_strides[0], b2_strides[1], b2_strides[2]);
 }
 
 // ==================================================================
@@ -159,12 +157,11 @@ infiniStatus_t Descriptor::create(
     }
 
     *desc_ptr = new Descriptor(
-        nullptr, 
+        nullptr,
         *info_result,
-        0, 
+        0,
         handle->device,
-        handle->device_id
-    );
+        handle->device_id);
 
     return INFINI_STATUS_SUCCESS;
 }

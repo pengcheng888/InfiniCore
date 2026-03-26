@@ -1,20 +1,22 @@
 
+#include "../../../devices/nvidia/nvidia_common.cuh"
+#include "../../../devices/nvidia/nvidia_kernel_common.cuh"
+#include "../../../handle.h"
+
 #include "../cuda/kernel.cuh"
 #include "adaptive_avg_pool1d_nvidia.cuh"
-#include "../../../handle.h" 
 
 namespace op::adaptive_avg_pool1d::nvidia {
 
-
 template <typename T>
 void launch_kernel(
-    void *output, 
-    const void *input, 
+    void *output,
+    const void *input,
     size_t num_channels, // 这里实际上是 total_channels (Batch * C)
-    size_t isize, 
-    size_t osize, 
+    size_t isize,
+    size_t osize,
     void *stream) {
-    
+
     auto out_ptr = reinterpret_cast<T *>(output);
     auto in_ptr = reinterpret_cast<const T *>(input);
     auto cuda_stream = reinterpret_cast<cudaStream_t>(stream);
@@ -22,11 +24,10 @@ void launch_kernel(
     cuda::launch_adaptive_avg_pool1d<T>(
         out_ptr,
         in_ptr,
-        num_channels, 
+        num_channels,
         isize,
         osize,
-        cuda_stream
-    );
+        cuda_stream);
 }
 
 struct Descriptor::Opaque {};
@@ -52,11 +53,11 @@ infiniStatus_t Descriptor::create(
 
     // 2. 创建 Descriptor
     *desc_ptr = new Descriptor(
-        new Opaque(),        // Opaque 指针
-        info,                // Info 对象
-        0,                   // Workspace size
-        handle->device,      // Device Type
-        handle->device_id    // Device ID
+        new Opaque(),     // Opaque 指针
+        info,             // Info 对象
+        0,                // Workspace size
+        handle->device,   // Device Type
+        handle->device_id // Device ID
     );
 
     return INFINI_STATUS_SUCCESS;
@@ -80,8 +81,7 @@ infiniStatus_t Descriptor::calculate(
         break;
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
     case INFINI_DTYPE_BF16:
-        // 使用标准类型 nv_bfloat16
-        launch_kernel<nv_bfloat16>(output, input, num_channels, input_size, output_size, stream);
+        launch_kernel<cuda_bfloat16>(output, input, num_channels, input_size, output_size, stream);
         break;
 #endif
     case INFINI_DTYPE_F32:

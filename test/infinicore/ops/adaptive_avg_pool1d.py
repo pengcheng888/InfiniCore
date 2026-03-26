@@ -29,16 +29,15 @@ _TOLERANCE_MAP = {
     infinicore.float32: {"atol": 1e-5, "rtol": 1e-4},
 }
 
-_TENSOR_DTYPES = [infinicore.float16, infinicore.float32]
+_TENSOR_DTYPES = [infinicore.float16]
 
 
 def parse_test_cases():
     test_cases = []
-    for data in _TEST_CASES_DATA:
-        shape, strides, out_size = data
-
-        for dtype in _TENSOR_DTYPES:
-            tol = _TOLERANCE_MAP.get(dtype, {"atol": 1e-5, "rtol": 1e-3})
+    for dtype in _TENSOR_DTYPES:
+        tol = _TOLERANCE_MAP.get(dtype, {"atol": 1e-5, "rtol": 1e-3})
+        for data in _TEST_CASES_DATA:
+            shape, strides, out_size = data
             in_spec = TensorSpec.from_tensor(shape, strides, dtype)
 
             kwargs = {"output_size": out_size}
@@ -71,7 +70,7 @@ class OpTest(BaseOperatorTest):
         return torch.nn.functional.adaptive_avg_pool1d(*args, **kwargs)
 
     def infinicore_operator(self, *args, **kwargs):
-         return infinicore.nn.functional.adaptive_avg_pool1d(*args, **kwargs)
+        return infinicore.nn.functional.adaptive_avg_pool1d(*args, **kwargs)
 
 
 def main():

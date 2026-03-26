@@ -1,13 +1,5 @@
 #ifndef __ACOS_CUDA_H__
 #define __ACOS_CUDA_H__
-#if ENABLE_METAX_API
-    #include <maca_fp16.h>
-    #include <maca_bfloat16.h>
-    using nv_bfloat162 = __maca_bfloat162;
-#else
-    #include <cuda_fp16.h>
-    #include <cuda_bf16.h>
-#endif
 
 #include <cmath>
 #include <math.h>
@@ -29,10 +21,10 @@ __device__ __forceinline__ float fast_acosf(float x) {
 // ----------------------
 // float kernel (F32)
 // ----------------------
-template<typename T>
+template <typename T>
 __device__ __forceinline__ T acos_impl(T val);
 
-template<>
+template <>
 __device__ __forceinline__ float acos_impl<float>(float val) {
     return fast_acosf(val);
 }
@@ -40,7 +32,7 @@ __device__ __forceinline__ float acos_impl<float>(float val) {
 // ----------------------
 // half kernel (F16)
 // ----------------------
-template<>
+template <>
 __device__ __forceinline__ half acos_impl<half>(half val) {
 #if (__CUDA_ARCH__ >= 530)
     float f = __half2float(val);
@@ -54,7 +46,7 @@ __device__ __forceinline__ half acos_impl<half>(half val) {
 // ----------------------
 // half2 kernel (F16x2 vectorized)
 // ----------------------
-template<>
+template <>
 __device__ __forceinline__ half2 acos_impl<half2>(half2 val) {
 #if (__CUDA_ARCH__ >= 530)
     float2 f = __half22float2(val);
@@ -72,7 +64,7 @@ __device__ __forceinline__ half2 acos_impl<half2>(half2 val) {
 // ----------------------
 // bfloat16 kernel (BF16)
 // ----------------------
-template<>
+template <>
 __device__ __forceinline__ cuda_bfloat16 acos_impl<cuda_bfloat16>(cuda_bfloat16 val) {
     float f = __bfloat162float(val);
     return __float2bfloat16(fast_acosf(f));
@@ -81,7 +73,7 @@ __device__ __forceinline__ cuda_bfloat16 acos_impl<cuda_bfloat16>(cuda_bfloat16 
 // ----------------------
 // Fallback kernel
 // ----------------------
-template<typename T>
+template <typename T>
 __device__ __forceinline__ T acos_impl(T val) {
     return static_cast<T>(fast_acosf(static_cast<float>(val)));
 }

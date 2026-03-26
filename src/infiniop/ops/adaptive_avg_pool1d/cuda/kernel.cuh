@@ -1,21 +1,17 @@
 #ifndef __ADAPTIVE_AVG_POOL1D_CUDA_H__
 #define __ADAPTIVE_AVG_POOL1D_CUDA_H__
 
-#include <cuda_fp16.h>
-#include <cuda_bf16.h>
-#include <cuda_runtime.h>
-#include <type_traits>
 #include <cmath>
-#include <stdio.h>
+#include <type_traits>
 
 namespace op::adaptive_avg_pool1d::cuda {
 
 // -------------------------------------------
 // 工具：Warp 级归约求和
 // -------------------------------------------
-template<typename T>
+template <typename T>
 __device__ __forceinline__ T warp_reduce_sum(T val) {
-    #pragma unroll
+#pragma unroll
     for (int offset = 16; offset > 0; offset /= 2) {
         val += __shfl_down_sync(0xffffffff, val, offset);
     }
@@ -27,20 +23,32 @@ __device__ __forceinline__ T warp_reduce_sum(T val) {
 // -------------------------------------------
 template <typename T>
 __device__ __forceinline__ float to_float(const T &x) {
-    if constexpr (std::is_same_v<T, half>) return __half2float(x);
+    if constexpr (std::is_same_v<T, half>) {
+        return __half2float(x);
+    }
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
-    else if constexpr (std::is_same_v<T, nv_bfloat16>) return __bfloat162float(x);
+    else if constexpr (std::is_same_v<T, cuda_bfloat16>) {
+        return __bfloat162float(x);
+    }
 #endif
-    else return static_cast<float>(x);
+    else {
+        return static_cast<float>(x);
+    }
 }
 
 template <typename T>
 __device__ __forceinline__ T from_float(float x) {
-    if constexpr (std::is_same_v<T, half>) return __float2half(x);
+    if constexpr (std::is_same_v<T, half>) {
+        return __float2half(x);
+    }
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ >= 800
-    else if constexpr (std::is_same_v<T, nv_bfloat16>) return __float2bfloat16(x);
+    else if constexpr (std::is_same_v<T, cuda_bfloat16>) {
+        return __float2bfloat16(x);
+    }
 #endif
-    else return static_cast<T>(x);
+    else {
+        return static_cast<T>(x);
+    }
 }
 
 // -------------------------------------------
@@ -49,16 +57,17 @@ __device__ __forceinline__ T from_float(float x) {
 // -------------------------------------------
 template <typename T>
 __global__ void global_avg_pool1d_kernel(
-    T* output,
-    const T* input,
+    T *output,
+    const T *input,
     size_t total_channels, // batch * channels
-    size_t isize
-) {
+    size_t isize) {
     // 每一个 Block 处理一个 (Batch, Channel) 任务
-    size_t channel_idx = blockIdx.x; 
-    if (channel_idx >= total_channels) return;
+    size_t channel_idx = blockIdx.x;
+    if (channel_idx >= total_channels) {
+        return;
+    }
 
-    const T* channel_input = input + channel_idx * isize;
+    const T *channel_input = input + channel_idx * isize;
     float sum = 0.0f;
 
     // Grid-Stride Loop within the channel (handle isize > blockDim.x)
@@ -96,12 +105,11 @@ __global__ void global_avg_pool1d_kernel(
 // -------------------------------------------
 template <typename T>
 __global__ void adaptive_avg_pool1d_general_kernel(
-    T* output,
-    const T* input,
+    T *output,
+    const T *input,
     size_t batch_channels,
     size_t isize,
-    size_t osize
-) {
+    size_t osize) {
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
     size_t stride = gridDim.x * blockDim.x;
     size_t total_elements = batch_channels * osize;
@@ -113,13 +121,13 @@ __global__ void adaptive_avg_pool1d_general_kernel(
         size_t bc_idx = idx / osize;
         size_t out_idx = idx % osize;
 
-        const T* in_ptr = input + bc_idx * isize;
+        const T *in_ptr = input + bc_idx * isize;
 
         // 使用浮点数计算起止点，替代 (i * isize) / osize
         // 注意：PyTorch 官方实现使用 float 进行索引计算
         int istart = static_cast<int>(floorf(out_idx * stride_factor));
-        int iend   = static_cast<int>(ceilf((out_idx + 1) * stride_factor));
-        
+        int iend = static_cast<int>(ceilf((out_idx + 1) * stride_factor));
+
         // 边界保护
         istart = max(0, istart);
         iend = min(static_cast<int>(isize), iend);
@@ -142,42 +150,47 @@ __global__ void adaptive_avg_pool1d_general_kernel(
 // -------------------------------------------
 template <typename T>
 void launch_adaptive_avg_pool1d(
-    T* output,
-    const T* input,
+    T *output,
+    const T *input,
     size_t batch_channels,
     size_t isize,
     size_t osize,
-    cudaStream_t stream
-) {
+    cudaStream_t stream) {
     // 策略分发
     if (osize == 1) {
         // Case 1: Global Average Pooling (Gap)
         // 每个 Block 处理一个 Channel
         int threads = 256;
         // 如果 isize 很小，减少线程数
-        if (isize < 256) threads = 128;
-        if (isize < 128) threads = 64;
-        if (isize < 64)  threads = 32;
+        if (isize < 256) {
+            threads = 128;
+        }
+        if (isize < 128) {
+            threads = 64;
+        }
+        if (isize < 64) {
+            threads = 32;
+        }
 
         dim3 block(threads);
-        dim3 grid(batch_channels); 
-        
+        dim3 grid(batch_channels);
+
         global_avg_pool1d_kernel<T><<<grid, block, 0, stream>>>(
-            output, input, batch_channels, isize
-        );
+            output, input, batch_channels, isize);
     } else {
         // Case 2: General Case
         // 这里的并行度基于输出元素个数
         size_t total_output = batch_channels * osize;
         int threads = 256;
         int blocks = (total_output + threads - 1) / threads;
-        
+
         // 限制最大 Grid 大小，防止超限
-        if (blocks > 65535) blocks = 65535; 
+        if (blocks > 65535) {
+            blocks = 65535;
+        }
 
         adaptive_avg_pool1d_general_kernel<T><<<blocks, threads, 0, stream>>>(
-            output, input, batch_channels, isize, osize
-        );
+            output, input, batch_channels, isize, osize);
     }
 }
 

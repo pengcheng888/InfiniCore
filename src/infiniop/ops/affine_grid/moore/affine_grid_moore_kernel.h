@@ -1,24 +1,22 @@
 #ifndef __AFFINE_GRID_MOORE_KERNEL_H__
 #define __AFFINE_GRID_MOORE_KERNEL_H__
 
-#include <musa_runtime.h>
-#include <musa_fp16.h> 
 #include <musa_bf16.h> // 包含 __mt_bfloat16 定义
-
+#include <musa_fp16.h>
+#include <musa_runtime.h>
 
 namespace op::affine_grid::moore {
 typedef struct AffineGridOp {
 public:
-    static constexpr size_t num_dimensions = 2; 
+    static constexpr size_t num_dimensions = 2;
 
     template <typename T>
     __device__ __forceinline__ void operator()(
-        const int w_idx, const int h_idx, 
-        const int W, const int H, 
-        const T* theta,         
+        const int w_idx, const int h_idx,
+        const int W, const int H,
+        const T *theta,
         const bool align_corners,
-        T* out_x, T* out_y      
-    ) const {
+        T *out_x, T *out_y) const {
         // 1. 归一化坐标计算
         float x_norm, y_norm;
         if (align_corners) {

@@ -14,15 +14,12 @@ thread_local common::OpCache<size_t, infiniopAcosDescriptor_t> caches(
             INFINICORE_CHECK_ERROR(infiniopDestroyAcosDescriptor(desc));
             desc = nullptr;
         }
-    }
-);
-
+    });
 
 struct WorkspaceEntry {
     size_t size = 0;
     std::shared_ptr<Memory> buf = nullptr;
 };
-
 
 void calculate(Tensor output, Tensor input) {
     size_t seed = hash_combine(output, input);
@@ -60,7 +57,7 @@ void calculate(Tensor output, Tensor input) {
         }
         it = s_workspace_map.emplace(desc, std::move(entry)).first;
     } else {
-        
+
         size_t required_size = 0;
         INFINICORE_CHECK_ERROR(infiniopGetAcosWorkspaceSize(desc, &required_size));
         if (required_size > it->second.size) {
@@ -68,7 +65,7 @@ void calculate(Tensor output, Tensor input) {
             it->second.size = required_size;
         }
     }
-    void* workspace_ptr = (it != s_workspace_map.end() && it->second.buf) ? it->second.buf->data() : nullptr;
+    void *workspace_ptr = (it != s_workspace_map.end() && it->second.buf) ? it->second.buf->data() : nullptr;
     size_t workspace_size = (it != s_workspace_map.end()) ? it->second.size : 0;
     INFINICORE_CHECK_ERROR(infiniopAcos(
         desc,
@@ -76,10 +73,8 @@ void calculate(Tensor output, Tensor input) {
         workspace_size,
         output->data(),
         input->data(),
-        context::getStream()
-    ));
+        context::getStream()));
 }
-
 
 static bool registered = []() {
     Acos::dispatcher().registerAll(&calculate, false);

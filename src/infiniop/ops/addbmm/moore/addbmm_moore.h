@@ -3,7 +3,6 @@
 
 #include "../addbmm.h"
 
-
 DESCRIPTOR(moore)
 
 #endif // __ADDBMM_MOORE_API_H__

@@ -1,6 +1,6 @@
 #include "../../utils.hpp"
 #include "infinicore/common/hash.hpp"
-#include "infinicore/ops/addbmm.hpp" 
+#include "infinicore/ops/addbmm.hpp"
 #include "infinicore/ops/common/cache.hpp"
 #include <infiniop.h>
 #include <vector>
@@ -12,24 +12,23 @@ struct AddbmmContext {
     std::shared_ptr<Memory> workspace_buf = nullptr;
     size_t workspace_size = 0;
 
-    void* getWorkspacePtr() const {
+    void *getWorkspacePtr() const {
         return workspace_buf ? workspace_buf->data() : nullptr;
     }
 };
 
 thread_local common::OpCache<size_t, AddbmmContext> caches(
-    256, 
+    256,
     [](AddbmmContext &ctx) {
         if (ctx.desc != nullptr) {
             INFINICORE_CHECK_ERROR(infiniopDestroyAddbmmDescriptor(ctx.desc));
             ctx.desc = nullptr;
         }
         ctx.workspace_buf = nullptr;
-    }
-);
+    });
 
-inline size_t compute_key(const Tensor& output, const Tensor& input, 
-                          const Tensor& batch1, const Tensor& batch2, 
+inline size_t compute_key(const Tensor &output, const Tensor &input,
+                          const Tensor &batch1, const Tensor &batch2,
                           float beta, float alpha) {
     size_t seed = 0;
     infinicore::hash_combine(seed, reinterpret_cast<size_t>(output.operator->()));
@@ -48,7 +47,7 @@ void calculate(Tensor output, Tensor input, Tensor batch1, Tensor batch2, float 
     static thread_local bool last_ctx_valid = false;
     static thread_local AddbmmContext last_ctx;
 
-    AddbmmContext* ctx_ptr = nullptr;
+    AddbmmContext *ctx_ptr = nullptr;
 
     if (last_ctx_valid && seed == last_seed) {
         ctx_ptr = &last_ctx;
@@ -62,19 +61,19 @@ void calculate(Tensor output, Tensor input, Tensor batch1, Tensor batch2, float 
             last_ctx = *opt_ctx;
         } else {
             AddbmmContext new_ctx;
-            
+
             INFINICORE_CHECK_ERROR(infiniopCreateAddbmmDescriptor(
-                context::getInfiniopHandle(output->device()), 
+                context::getInfiniopHandle(output->device()),
                 &new_ctx.desc,
-                output->desc(), 
-                input->desc(), 
-                batch1->desc(), 
+                output->desc(),
+                input->desc(),
+                batch1->desc(),
                 batch2->desc(),
                 alpha,
                 beta));
 
             INFINICORE_CHECK_ERROR(infiniopGetAddbmmWorkspaceSize(new_ctx.desc, &new_ctx.workspace_size));
-            
+
             if (new_ctx.workspace_size > 0) {
                 new_ctx.workspace_buf = context::allocateMemory(new_ctx.workspace_size);
             }
@@ -89,12 +88,12 @@ void calculate(Tensor output, Tensor input, Tensor batch1, Tensor batch2, float 
     }
 
     INFINICORE_CHECK_ERROR(infiniopAddbmm(
-        ctx_ptr->desc, 
-        ctx_ptr->getWorkspacePtr(), 
+        ctx_ptr->desc,
+        ctx_ptr->getWorkspacePtr(),
         ctx_ptr->workspace_size,
-        output->data(), 
-        input->data(), 
-        batch1->data(), 
+        output->data(),
+        input->data(),
+        batch1->data(),
         batch2->data(),
         context::getStream()));
 }

@@ -41,10 +41,10 @@ public:
     size_t p() const { return _p; }
 
     // 【新增】Strides Getters
-    const std::vector<int64_t>& out_strides() const { return _out_strides; }
-    const std::vector<int64_t>& in_strides() const { return _in_strides; }
-    const std::vector<int64_t>& b1_strides() const { return _b1_strides; }
-    const std::vector<int64_t>& b2_strides() const { return _b2_strides; }
+    const std::vector<int64_t> &out_strides() const { return _out_strides; }
+    const std::vector<int64_t> &in_strides() const { return _in_strides; }
+    const std::vector<int64_t> &b1_strides() const { return _b1_strides; }
+    const std::vector<int64_t> &b2_strides() const { return _b2_strides; }
 
     float alpha() const { return _alpha; }
     float beta() const { return _beta; }
@@ -60,9 +60,7 @@ public:
 
         // 1. 检查数据类型一致性
         int dtype = out_desc->dtype();
-        if (in_desc->dtype() != dtype || 
-            batch1_desc->dtype() != dtype || 
-            batch2_desc->dtype() != dtype) {
+        if (in_desc->dtype() != dtype || batch1_desc->dtype() != dtype || batch2_desc->dtype() != dtype) {
             return INFINI_STATUS_BAD_TENSOR_DTYPE;
         }
 
@@ -74,10 +72,10 @@ public:
             return INFINI_STATUS_BAD_TENSOR_SHAPE;
         }
 
-        const auto& b1_shape = batch1_desc->shape();
-        const auto& b2_shape = batch2_desc->shape();
-        const auto& in_shape = in_desc->shape();
-        const auto& out_shape = out_desc->shape();
+        const auto &b1_shape = batch1_desc->shape();
+        const auto &b2_shape = batch2_desc->shape();
+        const auto &in_shape = in_desc->shape();
+        const auto &out_shape = out_desc->shape();
 
         // 3. 解析并校验维度
         size_t b = b1_shape[0];
@@ -105,7 +103,10 @@ public:
 
         // 5. 返回 Info 对象
         AddbmmInfo info;
-        info._b = b; info._n = n; info._m = m; info._p = p;
+        info._b = b;
+        info._n = n;
+        info._m = m;
+        info._p = p;
         info._out_strides = out_strides;
         info._in_strides = in_strides;
         info._b1_strides = b1_strides;

@@ -1,7 +1,7 @@
 #include "infinicore/ops/affine_grid.hpp"
 #include <stdexcept>
-#include <vector>
 #include <string>
+#include <vector>
 
 namespace infinicore::op {
 
@@ -21,7 +21,7 @@ void AffineGrid::execute(Tensor output, Tensor theta, bool align_corners) {
     func(output, theta, align_corners);
 }
 
-Tensor affine_grid(Tensor theta, const std::vector<int64_t>& size, bool align_corners) {
+Tensor affine_grid(Tensor theta, const std::vector<int64_t> &size, bool align_corners) {
     if (theta->ndim() != 3) {
         throw std::runtime_error("AffineGrid: Theta tensor must be 3D (N, 2, 3).");
     }

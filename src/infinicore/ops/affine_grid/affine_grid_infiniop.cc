@@ -17,7 +17,7 @@ thread_local common::OpCache<size_t, infiniopAffineGridDescriptor_t> caches(
     });
 
 void calculate(Tensor output, Tensor theta, bool align_corners) {
-   
+
     size_t seed = hash_combine(output, theta, align_corners);
 
     auto device_type = context::getDevice().getType();
@@ -31,31 +31,28 @@ void calculate(Tensor output, Tensor theta, bool align_corners) {
 
     if (!desc_opt) {
         INFINICORE_CHECK_ERROR(infiniopCreateAffineGridDescriptor(
-            context::getInfiniopHandle(output->device()), 
+            context::getInfiniopHandle(output->device()),
             &desc,
-            output->desc(), 
-            theta->desc(), 
+            output->desc(),
+            theta->desc(),
             align_corners)); // 传递 align_corners
         cache.put(seed, desc);
     } else {
         desc = *desc_opt;
     }
 
-   
     size_t workspace_size = 0;
     INFINICORE_CHECK_ERROR(infiniopGetAffineGridWorkspaceSize(desc, &workspace_size));
     std::shared_ptr<Memory> workspace = context::allocateMemory(workspace_size);
 
-
     INFINICORE_CHECK_ERROR(infiniopAffineGrid(
-        desc, 
-        workspace->data(), 
+        desc,
+        workspace->data(),
         workspace_size,
-        output->data(), 
-        theta->data(), 
+        output->data(),
+        theta->data(),
         context::getStream()));
 }
-
 
 static bool registered = []() {
     AffineGrid::dispatcher().registerAll(&calculate, false);

@@ -12,6 +12,6 @@ public:
     static void execute(Tensor output, Tensor theta, bool align_corners);
     static common::OpDispatcher<schema> &dispatcher();
 };
-Tensor affine_grid(Tensor theta, const std::vector<int64_t>& size, bool align_corners = false);
+Tensor affine_grid(Tensor theta, const std::vector<int64_t> &size, bool align_corners = false);
 
 } // namespace infinicore::op

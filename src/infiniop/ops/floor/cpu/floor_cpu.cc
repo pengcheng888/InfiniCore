@@ -21,13 +21,12 @@ infiniStatus_t Descriptor::create(
 
     // 【修改点 3】Floor 算子通常支持浮点和整数
     // (整数做 floor 结果不变，但为了通用性建议加上)
-    CHECK_DTYPE(dtype, 
-        INFINI_DTYPE_BF16, INFINI_DTYPE_F16, INFINI_DTYPE_F32, INFINI_DTYPE_F64,
-        INFINI_DTYPE_I8,   INFINI_DTYPE_U8,
-        INFINI_DTYPE_I16,  INFINI_DTYPE_U16,
-        INFINI_DTYPE_I32,  INFINI_DTYPE_U32,
-        INFINI_DTYPE_I64,  INFINI_DTYPE_U64
-    );
+    CHECK_DTYPE(dtype,
+                INFINI_DTYPE_BF16, INFINI_DTYPE_F16, INFINI_DTYPE_F32, INFINI_DTYPE_F64,
+                INFINI_DTYPE_I8, INFINI_DTYPE_U8,
+                INFINI_DTYPE_I16, INFINI_DTYPE_U16,
+                INFINI_DTYPE_I32, INFINI_DTYPE_U32,
+                INFINI_DTYPE_I64, INFINI_DTYPE_U64);
 
     CHECK_SAME_SHAPE(output_shape, input_shape);
 

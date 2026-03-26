@@ -20,13 +20,12 @@ infiniStatus_t Descriptor::create(
     const auto &input_desc = input_desc_vec.at(0);
     const auto &output_shape = out_desc->shape();
     const auto &input_shape = input_desc->shape();
-    CHECK_DTYPE(dtype, 
-        INFINI_DTYPE_BF16, INFINI_DTYPE_F16, INFINI_DTYPE_F32, INFINI_DTYPE_F64,
-        INFINI_DTYPE_I8,   INFINI_DTYPE_U8,
-        INFINI_DTYPE_I16,  INFINI_DTYPE_U16,
-        INFINI_DTYPE_I32,  INFINI_DTYPE_U32,
-        INFINI_DTYPE_I64,  INFINI_DTYPE_U64
-    );
+    CHECK_DTYPE(dtype,
+                INFINI_DTYPE_BF16, INFINI_DTYPE_F16, INFINI_DTYPE_F32, INFINI_DTYPE_F64,
+                INFINI_DTYPE_I8, INFINI_DTYPE_U8,
+                INFINI_DTYPE_I16, INFINI_DTYPE_U16,
+                INFINI_DTYPE_I32, INFINI_DTYPE_U32,
+                INFINI_DTYPE_I64, INFINI_DTYPE_U64);
 
     CHECK_SAME_SHAPE(output_shape, input_shape);
 
@@ -60,7 +59,7 @@ infiniStatus_t Descriptor::calculate(
         return _device_info->calculate<256, cuda::FloorOp, float>(_info, workspace, output, inputs, stream);
     case INFINI_DTYPE_F64:
         return _device_info->calculate<256, cuda::FloorOp, double>(_info, workspace, output, inputs, stream);
-    
+
     // === 整数类型 (调用 FloorOp 也会正确处理，直接返回原值) ===
     case INFINI_DTYPE_I8:
         return _device_info->calculate<256, cuda::FloorOp, int8_t>(_info, workspace, output, inputs, stream);

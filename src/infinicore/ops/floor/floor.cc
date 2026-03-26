@@ -10,7 +10,7 @@ void Floor::execute(Tensor output, Tensor input) {
 }
 
 Tensor floor(Tensor input) {
-    
+
     auto output = Tensor::empty(input->shape(), input->dtype(), input->device());
     floor_(output, input);
     return output;
@@ -19,4 +19,4 @@ void floor_(Tensor output, Tensor input) {
     Floor::execute(output, input);
 }
 
-}
+} // namespace infinicore::op

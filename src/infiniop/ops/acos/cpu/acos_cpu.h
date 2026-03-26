@@ -19,11 +19,9 @@ public:
     T operator()(const T &x) const {
         if constexpr (std::is_integral_v<T>) {
             return static_cast<T>(std::acos(static_cast<double>(x)));
-        } 
-        else if constexpr (std::is_same_v<T, float> || std::is_same_v<T, double>) {
+        } else if constexpr (std::is_same_v<T, float> || std::is_same_v<T, double>) {
             return std::acos(x);
-        }
-        else {
+        } else {
             return static_cast<T>(std::acos(static_cast<float>(x)));
         }
     }

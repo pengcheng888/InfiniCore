@@ -1,9 +1,9 @@
 #include "adaptive_avg_pool1d_moore.h"
 #include "adaptive_avg_pool1d_moore_kernel.h"
 
-#include <musa_runtime.h>
-#include <musa_fp16.h>
 #include <musa_bf16.h>
+#include <musa_fp16.h>
+#include <musa_runtime.h>
 #include <type_traits>
 
 #include "../../../devices/moore/moore_handle.h"
@@ -21,7 +21,7 @@ __global__ void adaptive_avg_pool1d_kernel(
     const int output_size,
     const T *input,
     T *output) {
-    
+
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
 
     if (idx < total_elements) {
@@ -35,7 +35,9 @@ __global__ void adaptive_avg_pool1d_kernel(
         end = (end > input_size) ? input_size : end;
 
         int kernel_size = end - start;
-        if (kernel_size < 1) kernel_size = 1;
+        if (kernel_size < 1) {
+            kernel_size = 1;
+        }
 
         const T *in_ptr = input + bc * input_size;
 
@@ -73,10 +75,10 @@ void adaptive_avg_pool1d_moore_launch(
     T *output,
     const T *input,
     void *stream) {
-    
+
     int input_size = info.input_size();
     int output_size = info.output_size();
-    
+
     size_t total_elements = info.num_channels() * output_size;
 
     int threads = 256;
@@ -87,8 +89,7 @@ void adaptive_avg_pool1d_moore_launch(
         input_size,
         output_size,
         input,
-        output
-    );
+        output);
 }
 
 // ==================================================================
@@ -115,8 +116,7 @@ infiniStatus_t Descriptor::create(
         *info_result,
         0,
         handle->device,
-        handle->device_id
-    );
+        handle->device_id);
 
     return INFINI_STATUS_SUCCESS;
 }
@@ -135,33 +135,33 @@ infiniStatus_t Descriptor::calculate(
     switch (_info.dtype()) {
     case INFINI_DTYPE_F16:
         adaptive_avg_pool1d_moore_launch<half>(
-            _info, 
-            static_cast<half *>(output), 
-            static_cast<const half *>(input), 
+            _info,
+            static_cast<half *>(output),
+            static_cast<const half *>(input),
             stream);
         break;
-        
+
     case INFINI_DTYPE_BF16:
         adaptive_avg_pool1d_moore_launch<__mt_bfloat16>(
-            _info, 
-            static_cast<__mt_bfloat16 *>(output), 
-            static_cast<const __mt_bfloat16 *>(input), 
+            _info,
+            static_cast<__mt_bfloat16 *>(output),
+            static_cast<const __mt_bfloat16 *>(input),
             stream);
         break;
 
     case INFINI_DTYPE_F32:
         adaptive_avg_pool1d_moore_launch<float>(
-            _info, 
-            static_cast<float *>(output), 
-            static_cast<const float *>(input), 
+            _info,
+            static_cast<float *>(output),
+            static_cast<const float *>(input),
             stream);
         break;
 
     case INFINI_DTYPE_F64:
         adaptive_avg_pool1d_moore_launch<double>(
-            _info, 
-            static_cast<double *>(output), 
-            static_cast<const double *>(input), 
+            _info,
+            static_cast<double *>(output),
+            static_cast<const double *>(input),
             stream);
         break;
 

@@ -21,7 +21,7 @@ public:
         // 1. 整数类型：直接返回
         if constexpr (std::is_integral_v<T>) {
             return x;
-        } 
+        }
         // 2. 标准浮点类型 (float, double)：直接调用 std::floor，不降精度
         else if constexpr (std::is_same_v<T, float> || std::is_same_v<T, double>) {
             return std::floor(x);

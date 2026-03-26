@@ -1,7 +1,7 @@
 #pragma once
 
+#include "infinicore/ops/addbmm.hpp"
 #include <pybind11/pybind11.h>
-#include "infinicore/ops/addbmm.hpp" 
 
 namespace py = pybind11;
 
@@ -16,8 +16,8 @@ inline void bind_addbmm(py::module &m) {
           py::arg("input"),
           py::arg("batch1"),
           py::arg("batch2"),
-          py::arg("beta") = 1.0f,  
-          py::arg("alpha") = 1.0f, 
+          py::arg("beta") = 1.0f,
+          py::arg("alpha") = 1.0f,
           R"doc(Performs a batch matrix-matrix product of matrices stored in batch1 and batch2,
 with a reduced add step (summing over all matrices in the batch).
 
@@ -39,8 +39,8 @@ Returns:
     // 2. [新增] In-place 接口: addbmm_(out, ...)
     // -----------------------------------------------------------
     m.def("addbmm_",
-          &op::addbmm_, // 绑定到 C++ 的 void addbmm_(...)
-          py::arg("out"),   // 第一个参数通常是输出 Tensor
+          &op::addbmm_,   // 绑定到 C++ 的 void addbmm_(...)
+          py::arg("out"), // 第一个参数通常是输出 Tensor
           py::arg("input"),
           py::arg("batch1"),
           py::arg("batch2"),

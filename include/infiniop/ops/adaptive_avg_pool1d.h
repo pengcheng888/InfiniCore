@@ -7,19 +7,19 @@
 typedef struct InfiniopDescriptor *infiniopAdaptiveAvgPool1dDescriptor_t;
 
 // 1. 创建算子描述符
-__C __export infiniStatus_t infiniopCreateAdaptiveAvgPool1dDescriptor(
+__INFINI_C __export infiniStatus_t infiniopCreateAdaptiveAvgPool1dDescriptor(
     infiniopHandle_t handle,
     infiniopAdaptiveAvgPool1dDescriptor_t *desc_ptr,
     infiniopTensorDescriptor_t out_desc,
     infiniopTensorDescriptor_t input_desc);
 
 // 2. 获取 Workspace 大小
-__C __export infiniStatus_t infiniopGetAdaptiveAvgPool1dWorkspaceSize(
-    infiniopAdaptiveAvgPool1dDescriptor_t desc, 
+__INFINI_C __export infiniStatus_t infiniopGetAdaptiveAvgPool1dWorkspaceSize(
+    infiniopAdaptiveAvgPool1dDescriptor_t desc,
     size_t *size);
 
 // 3. 执行计算
-__C __export infiniStatus_t infiniopAdaptiveAvgPool1d(
+__INFINI_C __export infiniStatus_t infiniopAdaptiveAvgPool1d(
     infiniopAdaptiveAvgPool1dDescriptor_t desc,
     void *workspace,
     size_t workspace_size,
@@ -28,7 +28,7 @@ __C __export infiniStatus_t infiniopAdaptiveAvgPool1d(
     void *stream);
 
 // 4. 销毁描述符
-__C __export infiniStatus_t infiniopDestroyAdaptiveAvgPool1dDescriptor(
+__INFINI_C __export infiniStatus_t infiniopDestroyAdaptiveAvgPool1dDescriptor(
     infiniopAdaptiveAvgPool1dDescriptor_t desc);
 
 #endif // __INFINIOP_ADAPTIVE_AVG_POOL1D_API_H__

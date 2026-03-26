@@ -3,7 +3,6 @@
 // 引入 Moore 平台的通用 Elementwise 描述符宏
 #include "../../../elementwise/moore/elementwise_moore.h"
 
-
 #include "acos_moore_kernel.h"
 
 namespace op::acos::moore {
@@ -59,7 +58,7 @@ infiniStatus_t Descriptor::calculate(
         return _device_info->calculate<256, moore::AcosOp, float>(_info, workspace, output, inputs, stream);
     case INFINI_DTYPE_F64:
         return _device_info->calculate<256, moore::AcosOp, double>(_info, workspace, output, inputs, stream);
-    
+
     default:
         return INFINI_STATUS_BAD_TENSOR_DTYPE;
     }

@@ -1,9 +1,9 @@
 #ifndef __ADAPTIVE_AVG_POOL1D_MOORE_KERNEL_H__
 #define __ADAPTIVE_AVG_POOL1D_MOORE_KERNEL_H__
 
-#include <musa_runtime.h>
+#include <musa_bf16.h>
 #include <musa_fp16.h>
-#include <musa_bf16.h> 
+#include <musa_runtime.h>
 
 #include <type_traits>
 
@@ -16,10 +16,9 @@ public:
         const int w_out,
         const int input_size,
         const int output_size,
-        const T* input_base,
-        T* output_ptr
-    ) const {
-        
+        const T *input_base,
+        T *output_ptr) const {
+
         int start = (w_out * input_size) / output_size;
         int end = ((w_out + 1) * input_size + output_size - 1) / output_size;
 

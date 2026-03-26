@@ -1,7 +1,7 @@
 #include "adaptive_avg_pool1d_cpu.h"
 #include "../../../devices/cpu/common_cpu.h"
-#include <cmath>
 #include <algorithm>
+#include <cmath>
 
 namespace op::adaptive_avg_pool1d::cpu {
 
@@ -12,7 +12,7 @@ infiniStatus_t Descriptor::create(
     Descriptor **desc_ptr,
     infiniopTensorDescriptor_t out_desc,
     infiniopTensorDescriptor_t in_desc) {
-    
+
     auto handle = reinterpret_cast<device::cpu::Handle *>(handle_);
     auto dtype = out_desc->dtype();
 
@@ -21,12 +21,11 @@ infiniStatus_t Descriptor::create(
     CHECK_RESULT(result);
 
     *desc_ptr = new Descriptor(
-        nullptr,             // Opaque*
-        result.take(),       // Info
-        0,                   // Workspace Size
-        handle->device, 
-        handle->device_id
-    );
+        nullptr,       // Opaque*
+        result.take(), // Info
+        0,             // Workspace Size
+        handle->device,
+        handle->device_id);
 
     return INFINI_STATUS_SUCCESS;
 }
@@ -37,55 +36,42 @@ void calculate(
     void *output,
     const void *input) {
 
-    size_t num_channels = info.num_channels(); // Batch * Channels
-    size_t isize = info.input_size();          // L_in
-    size_t osize = info.output_size();         // L_out
+    size_t num_channels = info.num_channels();
+    size_t isize = info.input_size();
+    size_t osize = info.output_size();
 
     auto out_ptr = reinterpret_cast<Tdata *>(output);
     auto in_ptr = reinterpret_cast<const Tdata *>(input);
 
-   
 #pragma omp parallel for
-    for (size_t c = 0; c < num_channels; ++c) {
+    for (ptrdiff_t c = 0; c < (ptrdiff_t)num_channels; ++c) {
+
         const Tdata *in_c = in_ptr + c * isize;
         Tdata *out_c = out_ptr + c * osize;
 
-        // 遍历输出的每一个元素
         for (size_t i = 0; i < osize; ++i) {
-            size_t istart = std::floor((float)(i * isize) / osize);
-            size_t iend = std::ceil((float)((i + 1) * isize) / osize);
 
-            // 边界修正
-            istart = std::max((size_t)0, std::min(istart, isize));
-            iend = std::max((size_t)0, std::min(iend, isize));
+            size_t istart = (i * isize) / osize;
+            size_t iend = ((i + 1) * isize + osize - 1) / osize;
 
             size_t klen = iend - istart;
 
-            // 使用 float 累加防止溢出
-            float sum = 0;
+            float sum = 0.0f;
+
             for (size_t j = istart; j < iend; ++j) {
-                
-                if constexpr (std::is_same<Tdata, fp16_t>::value || std::is_same<Tdata, bf16_t>::value) {
+                if constexpr (std::is_same_v<Tdata, fp16_t> || std::is_same_v<Tdata, bf16_t>) {
                     sum += utils::cast<float>(in_c[j]);
                 } else {
-                    sum += static_cast<float>(in_c[j]);
+                    sum += (float)in_c[j];
                 }
             }
 
-            // 计算平均值并回填
-            if (klen > 0) {
-                float avg = sum / static_cast<float>(klen);
-                if constexpr (std::is_same<Tdata, fp16_t>::value || std::is_same<Tdata, bf16_t>::value) {
-                    out_c[i] = utils::cast<Tdata>(avg);
-                } else {
-                    out_c[i] = static_cast<Tdata>(avg);
-                }
+            float avg = (klen > 0) ? (sum / (float)klen) : 0.0f;
+
+            if constexpr (std::is_same_v<Tdata, fp16_t> || std::is_same_v<Tdata, bf16_t>) {
+                out_c[i] = utils::cast<Tdata>(avg);
             } else {
-                if constexpr (std::is_same<Tdata, fp16_t>::value || std::is_same<Tdata, bf16_t>::value) {
-                    out_c[i] = utils::cast<Tdata>(0.0f);
-                } else {
-                    out_c[i] = static_cast<Tdata>(0);
-                }
+                out_c[i] = (Tdata)avg;
             }
         }
     }
@@ -113,7 +99,7 @@ infiniStatus_t Descriptor::calculate(
     case INFINI_DTYPE_F32:
         cpu::calculate<float>(_info, output, input);
         return INFINI_STATUS_SUCCESS;
-    
+
     case INFINI_DTYPE_F64:
         cpu::calculate<double>(_info, output, input);
         return INFINI_STATUS_SUCCESS;

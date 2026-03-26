@@ -1,7 +1,7 @@
 #include "../../utils.hpp"
 #include "infinicore/common/hash.hpp"
 #include "infinicore/ops/common/cache.hpp"
-#include "infinicore/ops/floor.hpp" 
+#include "infinicore/ops/floor.hpp"
 #include <infiniop.h>
 
 namespace infinicore::op::floor_impl::infiniop {
@@ -40,7 +40,7 @@ void calculate(Tensor output, Tensor input) {
     INFINICORE_CHECK_ERROR(infiniopGetFloorWorkspaceSize(desc, &workspace_size));
     std::shared_ptr<Memory> workspace = context::allocateMemory(workspace_size);
     INFINICORE_CHECK_ERROR(infiniopFloor(
-        desc, 
+        desc,
         workspace->data(), workspace_size,
         output->data(), input->data(), // 参数顺序通常是 Output, Input
         context::getStream()));

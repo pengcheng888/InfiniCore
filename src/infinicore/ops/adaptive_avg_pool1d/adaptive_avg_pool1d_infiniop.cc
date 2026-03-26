@@ -13,35 +13,34 @@ struct AdaptiveAvgPool1dContext {
     std::shared_ptr<Memory> workspace_buf = nullptr;
     size_t workspace_size = 0;
 
-    void* getWorkspacePtr() const {
+    void *getWorkspacePtr() const {
         return workspace_buf ? workspace_buf->data() : nullptr;
     }
 };
 
 // 2. 缓存定义
 thread_local common::OpCache<size_t, AdaptiveAvgPool1dContext> caches(
-    256, 
+    256,
     [](AdaptiveAvgPool1dContext &ctx) {
         if (ctx.desc != nullptr) {
             INFINICORE_CHECK_ERROR(infiniopDestroyAdaptiveAvgPool1dDescriptor(ctx.desc));
             ctx.desc = nullptr;
         }
         ctx.workspace_buf = nullptr;
-    }
-);
+    });
 
 // 3. 核心计算函数
 void calculate(Tensor output, Tensor input) {
     size_t seed = reinterpret_cast<size_t>(input.operator->());
     if (output->ndim() >= 3) {
-        seed ^= (output->shape()[2] << 1); 
+        seed ^= (output->shape()[2] << 1);
     }
 
     static thread_local size_t last_seed = 0;
     static thread_local bool last_ctx_valid = false;
     static thread_local AdaptiveAvgPool1dContext last_ctx;
 
-    AdaptiveAvgPool1dContext* active_ctx = nullptr;
+    AdaptiveAvgPool1dContext *active_ctx = nullptr;
 
     if (last_ctx_valid && seed == last_seed) {
         active_ctx = &last_ctx;
@@ -57,9 +56,9 @@ void calculate(Tensor output, Tensor input) {
             AdaptiveAvgPool1dContext new_ctx;
 
             INFINICORE_CHECK_ERROR(infiniopCreateAdaptiveAvgPool1dDescriptor(
-                context::getInfiniopHandle(output->device()), 
+                context::getInfiniopHandle(output->device()),
                 &new_ctx.desc,
-                output->desc(), 
+                output->desc(),
                 input->desc()));
 
             INFINICORE_CHECK_ERROR(infiniopGetAdaptiveAvgPool1dWorkspaceSize(new_ctx.desc, &new_ctx.workspace_size));
@@ -83,8 +82,7 @@ void calculate(Tensor output, Tensor input) {
         active_ctx->workspace_size,
         output->data(),
         input->data(),
-        context::getStream()
-    ));
+        context::getStream()));
 }
 
 // 注册

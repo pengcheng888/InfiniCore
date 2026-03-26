@@ -1,12 +1,12 @@
 #include "addbmm_cpu.h"
-#include <cstdint>
-#include <stddef.h>
-#include <vector>
-#include <cstring>
-#include <cmath>
-#include <algorithm>
 #include "../../../devices/cpu/common_cpu.h"
 #include "../../../handle.h"
+#include <algorithm>
+#include <cmath>
+#include <cstdint>
+#include <cstring>
+#include <stddef.h>
+#include <vector>
 
 namespace op::addbmm::cpu {
 
@@ -42,34 +42,33 @@ void calculate_impl(
     const void *batch2) {
 
     // [变更 1] 使用 Getter 获取维度
-    size_t b_dim = info.b(); 
-    size_t n = info.n();     
-    size_t m = info.m();     
-    size_t p = info.p();     
-    
+    size_t b_dim = info.b();
+    size_t n = info.n();
+    size_t m = info.m();
+    size_t p = info.p();
+
     float alpha = info.alpha();
     float beta = info.beta();
-    
+
     // 指针转换
     Tdata *out_ptr = reinterpret_cast<Tdata *>(output);
     const Tdata *inp_ptr = reinterpret_cast<const Tdata *>(input);
-    const Tdata *b1_ptr = reinterpret_cast<const Tdata *>(batch1); 
-    const Tdata *b2_ptr = reinterpret_cast<const Tdata *>(batch2); 
+    const Tdata *b1_ptr = reinterpret_cast<const Tdata *>(batch1);
+    const Tdata *b2_ptr = reinterpret_cast<const Tdata *>(batch2);
 
-    
     const int64_t *out_strides = info.out_strides().data();
     const int64_t *in_strides = info.in_strides().data();
     const int64_t *b1_strides = info.b1_strides().data();
     const int64_t *b2_strides = info.b2_strides().data();
 
-    // 1. 初始化 output = beta * input 
-    for (size_t i = 0; i < n; ++i) { 
-        for (size_t k = 0; k < p; ++k) { 
+    // 1. 初始化 output = beta * input
+    for (size_t i = 0; i < n; ++i) {
+        for (size_t k = 0; k < p; ++k) {
             size_t out_idx = offset_2d(i, k, out_strides);
             size_t in_idx = offset_2d(i, k, in_strides);
-            
+
             float val_in = (beta != 0.0f) ? utils::cast<float>(inp_ptr[in_idx]) : 0.0f;
-            
+
             if (beta == 0.0f && alpha == 0.0f) {
                 out_ptr[out_idx] = utils::cast<Tdata>(0.0f);
             } else {
@@ -78,21 +77,21 @@ void calculate_impl(
         }
     }
 
-    // 2. 累加矩阵乘法: out += alpha * sum(b1 @ b2) 
-    for (size_t b = 0; b < b_dim; ++b) {           // Batch
-        for (size_t i = 0; i < n; ++i) {           // Row
-            for (size_t k = 0; k < p; ++k) {       // Col
-                
+    // 2. 累加矩阵乘法: out += alpha * sum(b1 @ b2)
+    for (size_t b = 0; b < b_dim; ++b) {     // Batch
+        for (size_t i = 0; i < n; ++i) {     // Row
+            for (size_t k = 0; k < p; ++k) { // Col
+
                 float dot_product = 0.0f;
-                
+
                 // 内部点积 (Inner dimension m)
                 for (size_t j = 0; j < m; ++j) {
                     size_t b1_idx = offset_3d(b, i, j, b1_strides);
                     size_t b2_idx = offset_3d(b, j, k, b2_strides);
-                    
+
                     float v1 = utils::cast<float>(b1_ptr[b1_idx]);
                     float v2 = utils::cast<float>(b2_ptr[b2_idx]);
-                    
+
                     dot_product += v1 * v2;
                 }
 
@@ -113,7 +112,7 @@ infiniStatus_t Descriptor::create(
     infiniopHandle_t handle_,
     Descriptor **desc_ptr,
     infiniopTensorDescriptor_t out_desc,
-    std::vector<infiniopTensorDescriptor_t> input_desc_vec, 
+    std::vector<infiniopTensorDescriptor_t> input_desc_vec,
     float alpha,
     float beta) {
 
@@ -127,7 +126,7 @@ infiniStatus_t Descriptor::create(
 
     auto dtype = out_desc->dtype();
     CHECK_DTYPE(dtype, INFINI_DTYPE_F16, INFINI_DTYPE_F32, INFINI_DTYPE_BF16, INFINI_DTYPE_F64);
-    
+
     // 创建 Info 对象
     auto result = AddbmmInfo::create(out_desc, in_desc, batch1_desc, batch2_desc, alpha, beta);
     CHECK_RESULT(result);
@@ -138,9 +137,8 @@ infiniStatus_t Descriptor::create(
         nullptr,
         result.take(),
         0,
-        handle->device, 
-        handle->device_id
-    );
+        handle->device,
+        handle->device_id);
 
     return INFINI_STATUS_SUCCESS;
 }
@@ -149,7 +147,7 @@ infiniStatus_t Descriptor::calculate(
     void *workspace,
     size_t workspace_size,
     void *output,
-    std::vector<const void *> inputs, 
+    std::vector<const void *> inputs,
     void *stream) const {
 
     if (inputs.size() != 3) {
@@ -174,7 +172,7 @@ infiniStatus_t Descriptor::calculate(
     case INFINI_DTYPE_F32:
         calculate_impl<float>(_info, output, input, batch1, batch2);
         return INFINI_STATUS_SUCCESS;
-    
+
     case INFINI_DTYPE_F64:
         calculate_impl<double>(_info, output, input, batch1, batch2);
         return INFINI_STATUS_SUCCESS;
