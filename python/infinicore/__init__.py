@@ -47,8 +47,10 @@ from infinicore.dtype import (
     short,
     uint8,
 )
+from infinicore.ops.acos import acos
 from infinicore.ops.add import add
 from infinicore.ops.add_rms_norm import add_rms_norm
+from infinicore.ops.addbmm import addbmm
 from infinicore.ops.addcmul import addcmul
 from infinicore.ops.addr import addr
 from infinicore.ops.all import all
@@ -66,6 +68,7 @@ from infinicore.ops.cat import cat
 from infinicore.ops.cdist import cdist
 from infinicore.ops.cross_entropy import cross_entropy
 from infinicore.ops.equal import equal
+from infinicore.ops.floor import floor
 from infinicore.ops.fmin import fmin
 from infinicore.ops.fmod import fmod
 from infinicore.ops.hypot import hypot
@@ -160,6 +163,9 @@ __all__ = [
     "add_rms_norm_",
     "argwhere",
     "asin",
+    "acos",
+    "addbmm",
+    "floor",
     "attention",
     "kv_caching",
     "asinh",
