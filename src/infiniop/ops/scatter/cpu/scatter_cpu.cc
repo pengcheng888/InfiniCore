@@ -2,9 +2,9 @@
 #include "../../../devices/cpu/common_cpu.h"
 #include <algorithm>
 #include <cmath>
-#include <vector>
 #include <cstring> // for memcpy
 #include <numeric>
+#include <vector>
 
 #include "../../../../utils.h"
 #include "../../../../utils/custom_types.h"
@@ -14,33 +14,39 @@ struct ScatterCpuOpaque {
     std::vector<int64_t> updates_shape;
     std::vector<int64_t> updates_strides;
     std::vector<int64_t> output_strides;
-    std::vector<int64_t> indices_strides; 
-    size_t input_total_bytes;             
-    
-    ScatterCpuOpaque(const infiniopTensorDescriptor_t upd, 
+    std::vector<int64_t> indices_strides;
+    size_t input_total_bytes;
+
+    ScatterCpuOpaque(const infiniopTensorDescriptor_t upd,
                      const infiniopTensorDescriptor_t indices,
                      const infiniopTensorDescriptor_t out) {
         // 1. 几何信息
-        const auto& u_shape = upd->shape();
+        const auto &u_shape = upd->shape();
         updates_shape.assign(u_shape.begin(), u_shape.end());
 
-        const auto& u_strides = upd->strides();
+        const auto &u_strides = upd->strides();
         updates_strides.assign(u_strides.begin(), u_strides.end());
 
-        const auto& i_strides = indices->strides();
+        const auto &i_strides = indices->strides();
         indices_strides.assign(i_strides.begin(), i_strides.end()); // <--- 记录 indices strides
 
-        const auto& o_strides = out->strides();
+        const auto &o_strides = out->strides();
         output_strides.assign(o_strides.begin(), o_strides.end());
-        
+
         size_t total_elements = 1;
-        for (auto s : out->shape()) total_elements *= s;
-        
+        for (auto s : out->shape()) {
+            total_elements *= s;
+        }
+
         size_t dtype_size = 0;
-        if (out->dtype() == INFINI_DTYPE_F32) dtype_size = 4;
-        else if (out->dtype() == INFINI_DTYPE_F64) dtype_size = 8;
-        else dtype_size = 2; // f16/bf16
-        
+        if (out->dtype() == INFINI_DTYPE_F32) {
+            dtype_size = 4;
+        } else if (out->dtype() == INFINI_DTYPE_F64) {
+            dtype_size = 8;
+        } else {
+            dtype_size = 2; // f16/bf16
+        }
+
         input_total_bytes = total_elements * dtype_size;
     }
 };
@@ -50,7 +56,10 @@ struct Descriptor::Opaque : public ScatterCpuOpaque {
 };
 
 Descriptor::~Descriptor() {
-    if (_opaque) { delete _opaque; _opaque = nullptr; }
+    if (_opaque) {
+        delete _opaque;
+        _opaque = nullptr;
+    }
 }
 
 infiniStatus_t Descriptor::create(
@@ -74,16 +83,16 @@ infiniStatus_t Descriptor::create(
     return INFINI_STATUS_SUCCESS;
 }
 
-inline void offset_to_coords(int64_t offset, int ndim, const int64_t* shape, int64_t* coords) {
-    for (int i = ndim - 1; i >= 0; --i) {
+inline void offset_to_coords(int64_t offset, size_t ndim, const int64_t *shape, int64_t *coords) {
+    for (size_t i = ndim - 1; i >= 0; --i) {
         coords[i] = offset % shape[i];
         offset /= shape[i];
     }
 }
 
-inline int64_t coords_to_offset(int ndim, const int64_t* coords, const int64_t* strides) {
+inline int64_t coords_to_offset(size_t ndim, const int64_t *coords, const int64_t *strides) {
     int64_t offset = 0;
-    for (int i = 0; i < ndim; ++i) {
+    for (size_t i = 0; i < ndim; ++i) {
         offset += coords[i] * strides[i];
     }
     return offset;
@@ -100,18 +109,20 @@ void calculate_cpu_kernel(
     int axis = info.axis();
     int reduction = info.reduction();
     size_t ndim = info.ndim();
-    
-    T* out_ptr = reinterpret_cast<T*>(output);
-    const IdxT* idx_ptr = reinterpret_cast<const IdxT*>(indices);
-    const T* upd_ptr = reinterpret_cast<const T*>(updates);
 
-    const int64_t* upd_shape_ptr = opaque->updates_shape.data();
-    const int64_t* upd_strides_ptr = opaque->updates_strides.data();
-    const int64_t* idx_strides_ptr = opaque->indices_strides.data(); // <--- 使用 indices strides
-    const int64_t* out_strides_ptr = opaque->output_strides.data();
+    T *out_ptr = reinterpret_cast<T *>(output);
+    const IdxT *idx_ptr = reinterpret_cast<const IdxT *>(indices);
+    const T *upd_ptr = reinterpret_cast<const T *>(updates);
+
+    const int64_t *upd_shape_ptr = opaque->updates_shape.data();
+    const int64_t *upd_strides_ptr = opaque->updates_strides.data();
+    const int64_t *idx_strides_ptr = opaque->indices_strides.data(); // <--- 使用 indices strides
+    const int64_t *out_strides_ptr = opaque->output_strides.data();
 
     size_t total_elements = 1;
-    for (auto s : opaque->updates_shape) total_elements *= s;
+    for (auto s : opaque->updates_shape) {
+        total_elements *= s;
+    }
 
     // Serial loop
     for (size_t i = 0; i < total_elements; ++i) {
@@ -120,7 +131,7 @@ void calculate_cpu_kernel(
 
         int64_t upd_offset = coords_to_offset(ndim, coords.data(), upd_strides_ptr);
         int64_t idx_offset = coords_to_offset(ndim, coords.data(), idx_strides_ptr);
-        
+
         T upd_val = upd_ptr[upd_offset];
         IdxT idx_val = idx_ptr[idx_offset];
 
@@ -128,13 +139,13 @@ void calculate_cpu_kernel(
 
         int64_t out_offset = coords_to_offset(ndim, coords.data(), out_strides_ptr);
 
-        if (reduction == 0) { 
+        if (reduction == 0) {
             out_ptr[out_offset] = upd_val;
-        } else if (reduction == 1) { 
+        } else if (reduction == 1) {
             float val_out = utils::cast<float>(out_ptr[out_offset]);
             float val_upd = utils::cast<float>(upd_val);
             out_ptr[out_offset] = utils::cast<T>(val_out + val_upd);
-        } else if (reduction == 2) { 
+        } else if (reduction == 2) {
             float val_out = utils::cast<float>(out_ptr[out_offset]);
             float val_upd = utils::cast<float>(upd_val);
             out_ptr[out_offset] = utils::cast<T>(val_out * val_upd);
@@ -150,7 +161,7 @@ void calculate_cpu_impl(
     const void *input, // 需要 input 指针
     const void *indices,
     const void *updates) {
-    
+
     if (input != output) {
         std::memcpy(output, input, opaque->input_total_bytes);
     }

@@ -1,12 +1,11 @@
 from typing import Optional
+
 from infinicore.lib import _infinicore
 from infinicore.tensor import Tensor
 
+
 def float_power(
-    input: Tensor, 
-    exponent: float, 
-    *, 
-    out: Optional[Tensor] = None
+    input: Tensor, exponent: float, *, out: Optional[Tensor] = None
 ) -> Tensor:
     r"""Computes the power of each element in input with the given exponent.
 
@@ -21,7 +20,7 @@ def float_power(
     Returns:
         Tensor: The result tensor.
     """
-    
+
     # 1. 确保输入内存连续 (Contiguous check)
     if not input.is_contiguous():
         input = input.contiguous()
@@ -31,18 +30,9 @@ def float_power(
     if out is not None:
         if not out.is_contiguous():
             raise RuntimeError("Output tensor must be contiguous")
-            
-        _infinicore.float_power_(
-            out._underlying, 
-            input._underlying, 
-            exponent
-        )
+
+        _infinicore.float_power_(out._underlying, input._underlying, exponent)
         return out
 
     # 否则调用底层的 functional 接口，返回新 Tensor
-    return Tensor(
-        _infinicore.float_power(
-            input._underlying, 
-            exponent
-        )
-    )
+    return Tensor(_infinicore.float_power(input._underlying, exponent))

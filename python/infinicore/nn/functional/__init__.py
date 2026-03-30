@@ -11,6 +11,7 @@ from .hardswish import hardswish
 from .hardtanh import hardtanh
 from .linear import linear
 from .linear_w8a8i8 import linear_w8a8i8
+from .multi_margin_loss import multi_margin_loss
 from .random_sample import random_sample
 from .rms_norm import rms_norm
 from .rope import RopeAlgo, rope
@@ -19,7 +20,6 @@ from .silu_and_mul import silu_and_mul
 from .smooth_l1_loss import smooth_l1_loss
 from .swiglu import swiglu
 from .tanhshrink import tanhshrink
-from .multi_margin_loss import multi_margin_loss 
 
 __all__ = [
     "adaptive_max_pool1d",

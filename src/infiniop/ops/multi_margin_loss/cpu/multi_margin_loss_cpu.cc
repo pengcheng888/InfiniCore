@@ -2,8 +2,8 @@
 #include "../../../devices/cpu/common_cpu.h"
 #include <algorithm>
 #include <cmath>
-#include <omp.h>
 #include <cstdint>
+#include <omp.h>
 
 #include "../../../../utils/custom_types.h"
 
@@ -30,17 +30,16 @@ infiniStatus_t Descriptor::create(
     int reduction) {
 
     auto handle = reinterpret_cast<device::cpu::Handle *>(handle_);
-    
+
     auto result = MultiMarginLossInfo::create(out_desc, input_desc, target_desc, weight_desc, p, margin, reduction);
     CHECK_RESULT(result);
 
     *desc_ptr = new Descriptor(
         new Opaque(),
         result.take(),
-        0, 
-        handle->device, 
-        handle->device_id
-    );
+        0,
+        handle->device,
+        handle->device_id);
 
     return INFINI_STATUS_SUCCESS;
 }
@@ -66,21 +65,23 @@ void calculate_cpu_impl(
     auto weight_ptr = reinterpret_cast<const T *>(weight);
 
     if (reduction == 0) {
-        #pragma omp parallel for schedule(static)
-        for (size_t n = 0; n < N; ++n) {
+#pragma omp parallel for schedule(static)
+        for (ptrdiff_t n = 0; n < (ptrdiff_t)N; ++n) {
             int64_t target_idx = tar_ptr[n];
-            
+
             if (target_idx < 0 || target_idx >= static_cast<int64_t>(C)) {
                 out_ptr[n] = utils::cast<T>(0.0f);
                 continue;
             }
 
-            const T* row_ptr = in_ptr + n * C;
+            const T *row_ptr = in_ptr + n * C;
             float target_score = utils::cast<float>(row_ptr[target_idx]);
             float sum_loss = 0.0f;
 
             for (size_t c = 0; c < C; ++c) {
-                if (c == static_cast<size_t>(target_idx)) continue;
+                if (c == static_cast<size_t>(target_idx)) {
+                    continue;
+                }
 
                 float other_score = utils::cast<float>(row_ptr[c]);
                 float diff = margin - target_score + other_score;
@@ -102,18 +103,22 @@ void calculate_cpu_impl(
     } else {
         double total_loss = 0.0;
 
-        #pragma omp parallel for reduction(+:total_loss) schedule(static)
-        for (size_t n = 0; n < N; ++n) {
+#pragma omp parallel for reduction(+ : total_loss) schedule(static)
+        for (ptrdiff_t n = 0; n < (ptrdiff_t)N; ++n) {
             int64_t target_idx = tar_ptr[n];
 
-            if (target_idx < 0 || target_idx >= static_cast<int64_t>(C)) continue;
+            if (target_idx < 0 || target_idx >= static_cast<int64_t>(C)) {
+                continue;
+            }
 
-            const T* row_ptr = in_ptr + n * C;
+            const T *row_ptr = in_ptr + n * C;
             float target_score = utils::cast<float>(row_ptr[target_idx]);
             float sum_sample_loss = 0.0f;
 
             for (size_t c = 0; c < C; ++c) {
-                if (c == static_cast<size_t>(target_idx)) continue;
+                if (c == static_cast<size_t>(target_idx)) {
+                    continue;
+                }
 
                 float other_score = utils::cast<float>(row_ptr[c]);
                 float diff = margin - target_score + other_score;
@@ -133,7 +138,7 @@ void calculate_cpu_impl(
             total_loss += static_cast<double>(sum_sample_loss);
         }
 
-        if (reduction == 1) { 
+        if (reduction == 1) {
             total_loss /= static_cast<double>(N);
         }
 

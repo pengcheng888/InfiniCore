@@ -18,8 +18,7 @@ thread_local common::OpCache<size_t, infiniopFloatPowerDescriptor_t> caches(
                 infiniopDestroyFloatPowerDescriptor(desc));
             desc = nullptr;
         }
-    }
-);
+    });
 
 // =======================================================================
 // 1. Scalar Exponent
@@ -27,12 +26,11 @@ thread_local common::OpCache<size_t, infiniopFloatPowerDescriptor_t> caches(
 
 void calculate_scalar(Tensor output,
                       Tensor input,
-                      double exponent)   
-{
+                      double exponent) {
     // Hash: output / input meta + double exponent
     size_t seed = hash_combine(output, input, exponent);
 
-    auto device_type  = context::getDevice().getType();
+    auto device_type = context::getDevice().getType();
     auto device_index = context::getDevice().getIndex();
     auto &cache = caches.getCache(device_type, device_index);
 
@@ -46,10 +44,8 @@ void calculate_scalar(Tensor output,
                 &desc,
                 output->desc(),
                 input->desc(),
-                nullptr,  // exponent tensor descriptor = null
-                static_cast<float>(exponent) 
-            )
-        );
+                nullptr, // exponent tensor descriptor = null
+                static_cast<float>(exponent)));
         cache.put(seed, desc);
     } else {
         desc = *desc_opt;
@@ -59,8 +55,7 @@ void calculate_scalar(Tensor output,
     INFINICORE_CHECK_ERROR(
         infiniopGetFloatPowerWorkspaceSize(desc, &workspace_size));
 
-    std::shared_ptr<Memory> workspace =
-        context::allocateMemory(workspace_size);
+    std::shared_ptr<Memory> workspace = context::allocateMemory(workspace_size);
 
     INFINICORE_CHECK_ERROR(
         infiniopFloatPower(
@@ -70,9 +65,7 @@ void calculate_scalar(Tensor output,
             output->data(),
             input->data(),
             nullptr, // exponent data pointer = null
-            context::getStream()
-        )
-    );
+            context::getStream()));
 }
 
 // =======================================================================
@@ -81,11 +74,10 @@ void calculate_scalar(Tensor output,
 
 void calculate_tensor(Tensor output,
                       Tensor input,
-                      Tensor exponent)
-{
+                      Tensor exponent) {
     size_t seed = hash_combine(output, input, exponent);
 
-    auto device_type  = context::getDevice().getType();
+    auto device_type = context::getDevice().getType();
     auto device_index = context::getDevice().getIndex();
     auto &cache = caches.getCache(device_type, device_index);
 
@@ -101,8 +93,7 @@ void calculate_tensor(Tensor output,
                 input->desc(),
                 exponent->desc(), // tensor exponent
                 0.0f              // scalar ignored
-            )
-        );
+                ));
         cache.put(seed, desc);
     } else {
         desc = *desc_opt;
@@ -112,8 +103,7 @@ void calculate_tensor(Tensor output,
     INFINICORE_CHECK_ERROR(
         infiniopGetFloatPowerWorkspaceSize(desc, &workspace_size));
 
-    std::shared_ptr<Memory> workspace =
-        context::allocateMemory(workspace_size);
+    std::shared_ptr<Memory> workspace = context::allocateMemory(workspace_size);
 
     INFINICORE_CHECK_ERROR(
         infiniopFloatPower(
@@ -123,9 +113,7 @@ void calculate_tensor(Tensor output,
             output->data(),
             input->data(),
             exponent->data(),
-            context::getStream()
-        )
-    );
+            context::getStream()));
 }
 
 // =======================================================================

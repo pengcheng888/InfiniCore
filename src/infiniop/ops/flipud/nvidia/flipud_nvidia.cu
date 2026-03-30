@@ -1,8 +1,11 @@
-#include "flipud_nvidia.cuh"
-#include "../cuda/kernel.cuh"
+#include "../../../devices/nvidia/nvidia_common.cuh"
+#include "../../../devices/nvidia/nvidia_kernel_common.cuh"
 #include "../../../handle.h"
-#include <cstdint>
+
+#include "../cuda/kernel.cuh"
+#include "flipud_nvidia.cuh"
 #include <algorithm>
+#include <cstdint>
 #include <vector>
 
 namespace op::flipud::nvidia {
@@ -37,25 +40,22 @@ void launch_kernel(
     auto in_ptr = reinterpret_cast<const T *>(input);
     auto out_ptr = reinterpret_cast<T *>(output);
     auto cuda_stream = reinterpret_cast<cudaStream_t>(stream);
-    
+
     constexpr int TotalBytes = 16; // 128-bit
     constexpr int PackSize = TotalBytes / sizeof(T);
-    
+
     // ------------------------------------------
     // 向量化判定 (Vectorization Check)
     // ------------------------------------------
     bool is_ptr_aligned = is_pointer_aligned(output, TotalBytes) && is_pointer_aligned(input, TotalBytes);
 
-
     bool is_numel_divisible = (numel % PackSize == 0);
 
-    bool is_last_dim_aligned = (layout.ndim > 0) && (layout.shape[layout.ndim-1] % PackSize == 0);
+    bool is_last_dim_aligned = (layout.ndim > 0) && (layout.shape[layout.ndim - 1] % PackSize == 0);
 
     // 4. 连续性条件：维度 > 1 且 最内层连续
-    bool is_inner_contiguous = (layout.ndim > 1) && 
-                               (layout.in_strides[layout.ndim-1] == 1) && 
-                               (layout.out_strides[layout.ndim-1] == 1);
-    
+    bool is_inner_contiguous = (layout.ndim > 1) && (layout.in_strides[layout.ndim - 1] == 1) && (layout.out_strides[layout.ndim - 1] == 1);
+
     // 5. 步长对齐条件
     bool is_stride_aligned = true;
     for (int i = 0; i < layout.ndim - 1; ++i) {
@@ -65,24 +65,19 @@ void launch_kernel(
         }
     }
 
-    bool can_vectorize = (PackSize > 1) && 
-                         is_ptr_aligned &&
-                         is_numel_divisible &&
-                         is_last_dim_aligned &&
-                         is_inner_contiguous &&
-                         is_stride_aligned;
+    bool can_vectorize = (PackSize > 1) && is_ptr_aligned && is_numel_divisible && is_last_dim_aligned && is_inner_contiguous && is_stride_aligned;
 
     if (can_vectorize) {
         size_t num_packs = numel / PackSize;
         size_t block_size = 256;
         size_t grid_size = (num_packs + block_size - 1) / block_size;
-        
+
         op::flipud::cuda::flipud_kernel_vectorized<T, PackSize>
             <<<grid_size, block_size, 0, cuda_stream>>>(out_ptr, in_ptr, num_packs, layout);
     } else {
         size_t block_size = 256;
         size_t grid_size = (numel + block_size - 1) / block_size;
-        
+
         op::flipud::cuda::flipud_kernel<T>
             <<<grid_size, block_size, 0, cuda_stream>>>(out_ptr, in_ptr, numel, layout);
     }
@@ -91,8 +86,10 @@ void launch_kernel(
 // ==================================================================
 // Descriptor 实现
 // ==================================================================
-Descriptor::~Descriptor() { 
-    if (_opaque) delete _opaque; 
+Descriptor::~Descriptor() {
+    if (_opaque) {
+        delete _opaque;
+    }
 }
 
 infiniStatus_t Descriptor::create(
@@ -100,19 +97,21 @@ infiniStatus_t Descriptor::create(
     infiniopTensorDescriptor_t out_desc, infiniopTensorDescriptor_t input_desc) {
 
     auto info_result = FlipudInfo::create(out_desc, input_desc);
-    if (!info_result) return info_result.status();
+    if (!info_result) {
+        return info_result.status();
+    }
 
     auto opaque = new Opaque();
     opaque->layout.ndim = static_cast<int>(input_desc->ndim());
-    
+
     if (opaque->layout.ndim > op::flipud::cuda::MAX_DIMS) {
         delete opaque;
         return INFINI_STATUS_BAD_TENSOR_SHAPE;
     }
 
-    const auto& shape = input_desc->shape();
-    const auto& in_strides = input_desc->strides();
-    const auto& out_strides = out_desc->strides();
+    const auto &shape = input_desc->shape();
+    const auto &in_strides = input_desc->strides();
+    const auto &out_strides = out_desc->strides();
 
     for (int i = 0; i < opaque->layout.ndim; ++i) {
         opaque->layout.shape[i] = shape[i];
@@ -137,7 +136,7 @@ infiniStatus_t Descriptor::calculate(
         launch_kernel<half>(output, input, _opaque->layout, numel, stream);
         break;
     case INFINI_DTYPE_BF16:
-        launch_kernel<nv_bfloat16>(output, input, _opaque->layout, numel, stream);
+        launch_kernel<cuda_bfloat16>(output, input, _opaque->layout, numel, stream);
         break;
     case INFINI_DTYPE_F32:
         launch_kernel<float>(output, input, _opaque->layout, numel, stream);

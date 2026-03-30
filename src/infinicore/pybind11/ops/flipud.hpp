@@ -1,7 +1,7 @@
 #pragma once
 
+#include "infinicore/ops/flipud.hpp"
 #include <pybind11/pybind11.h>
-#include "infinicore/ops/flipud.hpp" 
 
 namespace py = pybind11;
 

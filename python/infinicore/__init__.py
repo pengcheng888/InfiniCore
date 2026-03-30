@@ -68,7 +68,10 @@ from infinicore.ops.cat import cat
 from infinicore.ops.cdist import cdist
 from infinicore.ops.cross_entropy import cross_entropy
 from infinicore.ops.equal import equal
+from infinicore.ops.flipud import flipud
+from infinicore.ops.float_power import float_power
 from infinicore.ops.floor import floor
+from infinicore.ops.floor_divide import floor_divide
 from infinicore.ops.fmin import fmin
 from infinicore.ops.fmod import fmod
 from infinicore.ops.hypot import hypot
@@ -87,9 +90,6 @@ from infinicore.ops.paged_attention_prefill import paged_attention_prefill
 from infinicore.ops.paged_caching import paged_caching
 from infinicore.ops.rearrange import rearrange
 from infinicore.ops.reciprocal import reciprocal
-from infinicore.ops.floor_divide import floor_divide
-from infinicore.ops.float_power import float_power
-from infinicore.ops.flipud import flipud
 from infinicore.ops.scatter import scatter
 from infinicore.ops.squeeze import squeeze
 from infinicore.ops.sum import sum

@@ -1,9 +1,9 @@
 #include "flipud_cpu.h"
 #include "../../../devices/cpu/common_cpu.h"
 #include <algorithm>
-#include <vector>
-#include <omp.h>
 #include <cstdint>
+#include <omp.h>
+#include <vector>
 
 // 引用框架定义的 float16/bfloat16 类型支持
 #include "../../../../utils/custom_types.h"
@@ -14,9 +14,9 @@ namespace op::flipud::cpu {
 // 0. 定义 Opaque 结构体
 // ==================================================================
 struct Descriptor::Opaque {
-    std::vector<int64_t> shape;       
-    std::vector<int64_t> in_strides;  
-    std::vector<int64_t> out_strides; 
+    std::vector<int64_t> shape;
+    std::vector<int64_t> in_strides;
+    std::vector<int64_t> out_strides;
     int ndim;
 };
 
@@ -38,22 +38,22 @@ infiniStatus_t Descriptor::create(
     Descriptor **desc_ptr,
     infiniopTensorDescriptor_t out_desc,
     infiniopTensorDescriptor_t input_desc) {
-    
+
     auto handle = reinterpret_cast<device::cpu::Handle *>(handle_);
-    
+
     // 1. 创建 Info
     auto result = FlipudInfo::create(out_desc, input_desc);
     CHECK_RESULT(result);
-    
+
     // 2. 创建并填充 Opaque
     auto opaque = new Descriptor::Opaque();
     opaque->ndim = static_cast<int>(input_desc->ndim());
-    
-    const auto& shape = input_desc->shape();
-    const auto& in_strides = input_desc->strides();
-    const auto& out_strides = out_desc->strides();
 
-    for(int i = 0; i < opaque->ndim; ++i) {
+    const auto &shape = input_desc->shape();
+    const auto &in_strides = input_desc->strides();
+    const auto &out_strides = out_desc->strides();
+
+    for (int i = 0; i < opaque->ndim; ++i) {
         opaque->shape.push_back(shape[i]);
         opaque->in_strides.push_back(in_strides[i]);
         opaque->out_strides.push_back(out_strides[i]);
@@ -63,10 +63,9 @@ infiniStatus_t Descriptor::create(
     *desc_ptr = new Descriptor(
         opaque,
         result.take(),
-        0, 
-        handle->device, 
-        handle->device_id
-    );
+        0,
+        handle->device,
+        handle->device_id);
 
     return INFINI_STATUS_SUCCESS;
 }
@@ -78,24 +77,24 @@ infiniStatus_t Descriptor::create(
 template <typename T>
 void calculate_cpu_impl(
     int ndim,
-    const std::vector<int64_t>& shape,
-    const std::vector<int64_t>& in_strides,
-    const std::vector<int64_t>& out_strides,
+    const std::vector<int64_t> &shape,
+    const std::vector<int64_t> &in_strides,
+    const std::vector<int64_t> &out_strides,
     size_t numel,
     void *output,
     const void *input) {
 
     auto out_ptr = reinterpret_cast<T *>(output);
     auto in_ptr = reinterpret_cast<const T *>(input);
-    
+
     // 维度 0 的大小
     int64_t dim0_size = shape[0];
 
-    #pragma omp parallel for schedule(static)
-    for (size_t i = 0; i < numel; ++i) {
+#pragma omp parallel for schedule(static)
+    for (ptrdiff_t i = 0; i < (ptrdiff_t)numel; ++i) {
         // --- A. 坐标反解 ---
         std::vector<int64_t> coords(ndim);
-        
+
         size_t temp_idx = i;
         for (int d = ndim - 1; d >= 0; --d) {
             coords[d] = temp_idx % shape[d];
@@ -140,25 +139,25 @@ infiniStatus_t Descriptor::calculate(
     switch (dtype) {
     case INFINI_DTYPE_F32:
         cpu::calculate_cpu_impl<float>(
-            _opaque->ndim, _opaque->shape, _opaque->in_strides, _opaque->out_strides, 
+            _opaque->ndim, _opaque->shape, _opaque->in_strides, _opaque->out_strides,
             numel, output, input);
         break;
-        
+
     case INFINI_DTYPE_F64:
         cpu::calculate_cpu_impl<double>(
-            _opaque->ndim, _opaque->shape, _opaque->in_strides, _opaque->out_strides, 
+            _opaque->ndim, _opaque->shape, _opaque->in_strides, _opaque->out_strides,
             numel, output, input);
         break;
-        
+
     case INFINI_DTYPE_F16:
         cpu::calculate_cpu_impl<fp16_t>(
-            _opaque->ndim, _opaque->shape, _opaque->in_strides, _opaque->out_strides, 
+            _opaque->ndim, _opaque->shape, _opaque->in_strides, _opaque->out_strides,
             numel, output, input);
         break;
-        
+
     case INFINI_DTYPE_BF16:
         cpu::calculate_cpu_impl<bf16_t>(
-            _opaque->ndim, _opaque->shape, _opaque->in_strides, _opaque->out_strides, 
+            _opaque->ndim, _opaque->shape, _opaque->in_strides, _opaque->out_strides,
             numel, output, input);
         break;
     default:

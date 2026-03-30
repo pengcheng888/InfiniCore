@@ -16,7 +16,7 @@ Tensor flipud(Tensor input) {
     // Flipud 操作不改变张量的形状和数据类型
     // Output shape == Input shape
     auto output = Tensor::empty(input->shape(), input->dtype(), input->device());
-    
+
     flipud_(output, input);
     return output;
 }

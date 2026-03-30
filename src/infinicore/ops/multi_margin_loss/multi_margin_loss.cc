@@ -17,12 +17,12 @@ Tensor multi_margin_loss(Tensor input, Tensor target, Tensor weight, int64_t p, 
     Shape output_shape;
     if (reduction == 0) { // None
         output_shape = {input->shape()[0]};
-    } else { 
+    } else {
         output_shape = {}; // Scalar
     }
 
     auto output = Tensor::empty(output_shape, input->dtype(), input->device());
-    
+
     multi_margin_loss_(output, input, target, weight, p, margin, reduction);
     return output;
 }

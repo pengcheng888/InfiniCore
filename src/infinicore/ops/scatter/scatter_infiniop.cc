@@ -33,16 +33,15 @@ void calculate(Tensor output, Tensor input, int64_t dim, Tensor index, Tensor sr
         // C++ Op 参数: output, input, dim, index, src, reduction
         // C API 参数: output, input, indices, updates, axis, reduction
         INFINICORE_CHECK_ERROR(infiniopCreateScatterDescriptor(
-            context::getInfiniopHandle(output->device()), 
+            context::getInfiniopHandle(output->device()),
             &desc,
-            output->desc(), 
-            input->desc(), 
+            output->desc(),
+            input->desc(),
             index->desc(), // 对应 C API indices
             src->desc(),   // 对应 C API updates
             static_cast<int>(dim),
-            static_cast<int>(reduction)
-        ));
-        
+            static_cast<int>(reduction)));
+
         cache.put(seed, desc);
     } else {
         desc = *desc_opt;
@@ -54,15 +53,14 @@ void calculate(Tensor output, Tensor input, int64_t dim, Tensor index, Tensor sr
     std::shared_ptr<Memory> workspace = context::allocateMemory(workspace_size);
 
     INFINICORE_CHECK_ERROR(infiniopScatter(
-        desc, 
-        workspace->data(), 
+        desc,
+        workspace->data(),
         workspace_size,
-        output->data(), 
-        input->data(), 
-        index->data(), 
+        output->data(),
+        input->data(),
+        index->data(),
         src->data(),
-        context::getStream()
-    ));
+        context::getStream()));
 }
 
 static bool registered = []() {

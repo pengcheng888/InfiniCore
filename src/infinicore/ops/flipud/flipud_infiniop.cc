@@ -31,12 +31,11 @@ void calculate(Tensor output, Tensor input) {
     // 2. 获取或创建描述符
     if (!desc_opt) {
         INFINICORE_CHECK_ERROR(infiniopCreateFlipudDescriptor(
-            context::getInfiniopHandle(output->device()), 
+            context::getInfiniopHandle(output->device()),
             &desc,
-            output->desc(), 
-            input->desc()
-        ));
-        
+            output->desc(),
+            input->desc()));
+
         cache.put(seed, desc);
     } else {
         desc = *desc_opt;
@@ -45,13 +44,12 @@ void calculate(Tensor output, Tensor input) {
     INFINICORE_CHECK_ERROR(infiniopGetFlipudWorkspaceSize(desc, &workspace_size));
     std::shared_ptr<Memory> workspace = context::allocateMemory(workspace_size);
     INFINICORE_CHECK_ERROR(infiniopFlipud(
-        desc, 
-        workspace->data(), 
+        desc,
+        workspace->data(),
         workspace_size,
-        output->data(), 
-        input->data(), 
-        context::getStream()
-    ));
+        output->data(),
+        input->data(),
+        context::getStream()));
 }
 
 static bool registered = []() {

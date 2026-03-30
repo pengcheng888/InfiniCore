@@ -15,7 +15,7 @@ Tensor scatter(Tensor input, int64_t dim, Tensor index, Tensor src, int64_t redu
     // 创建与 input 形状、数据类型、设备一致的 Output Tensor
     auto output = Tensor::empty(input->shape(), input->dtype(), input->device());
     scatter_(output, input, dim, index, src, reduction);
-    
+
     return output;
 }
 

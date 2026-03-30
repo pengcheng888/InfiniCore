@@ -37,8 +37,8 @@ public:
     // Dispatchers
     // ==========================================================
 
-    static common::OpDispatcher<schema_scalar>& dispatcher_scalar();
-    static common::OpDispatcher<schema_tensor>& dispatcher_tensor();
+    static common::OpDispatcher<schema_scalar> &dispatcher_scalar();
+    static common::OpDispatcher<schema_tensor> &dispatcher_tensor();
 };
 
 // =======================================================================

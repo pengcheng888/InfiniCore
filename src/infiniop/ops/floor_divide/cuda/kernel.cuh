@@ -1,7 +1,6 @@
 #ifndef __FLOOR_DIVIDE_CUDA_H__
 #define __FLOOR_DIVIDE_CUDA_H__
 
-#include <cuda_fp16.h>
 #include <type_traits>
 
 namespace op::floor_divide::cuda {

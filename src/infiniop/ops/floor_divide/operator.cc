@@ -11,30 +11,24 @@
 #ifdef ENABLE_METAX_API
 #include "metax/floor_divide_metax.h"
 #endif
-#ifdef ENABLE_KUNLUN_API
-#include "kunlun/floor_divide_kunlun.h"
-#endif
-#ifdef ENABLE_CAMBRICON_API
-#include "bang/floor_divide_bang.h"
-#endif
 #ifdef ENABLE_MOORE_API
 #include "moore/floor_divide_moore.h"
 #endif
 
-__C infiniStatus_t infiniopCreateFloorDivideDescriptor(
+__INFINI_C infiniStatus_t infiniopCreateFloorDivideDescriptor(
     infiniopHandle_t handle,
     infiniopFloorDivideDescriptor_t *desc_ptr,
     infiniopTensorDescriptor_t c_desc,
     infiniopTensorDescriptor_t a_desc,
     infiniopTensorDescriptor_t b_desc) {
 
-#define CREATE(CASE, NAMESPACE)                                                   \
-    case CASE:                                                                    \
-        return op::floor_divide::NAMESPACE::Descriptor::create(                   \
-            handle,                                                               \
+#define CREATE(CASE, NAMESPACE)                                                     \
+    case CASE:                                                                      \
+        return op::floor_divide::NAMESPACE::Descriptor::create(                     \
+            handle,                                                                 \
             reinterpret_cast<op::floor_divide::NAMESPACE::Descriptor **>(desc_ptr), \
-            c_desc,                                                               \
-            {a_desc,                                                              \
+            c_desc,                                                                 \
+            {a_desc,                                                                \
              b_desc})
 
     switch (handle->device) {
@@ -54,12 +48,6 @@ __C infiniStatus_t infiniopCreateFloorDivideDescriptor(
 #ifdef ENABLE_METAX_API
         CREATE(INFINI_DEVICE_METAX, metax);
 #endif
-#ifdef ENABLE_KUNLUN_API
-        CREATE(INFINI_DEVICE_KUNLUN, kunlun);
-#endif
-#ifdef ENABLE_CAMBRICON_API
-        CREATE(INFINI_DEVICE_CAMBRICON, bang);
-#endif
 #ifdef ENABLE_MOORE_API
         CREATE(INFINI_DEVICE_MOORE, moore);
 #endif
@@ -71,10 +59,10 @@ __C infiniStatus_t infiniopCreateFloorDivideDescriptor(
 #undef CREATE
 }
 
-__C infiniStatus_t infiniopGetFloorDivideWorkspaceSize(infiniopFloorDivideDescriptor_t desc, size_t *size) {
+__INFINI_C infiniStatus_t infiniopGetFloorDivideWorkspaceSize(infiniopFloorDivideDescriptor_t desc, size_t *size) {
 
-#define GET(CASE, NAMESPACE)                                                                   \
-    case CASE:                                                                                 \
+#define GET(CASE, NAMESPACE)                                                                        \
+    case CASE:                                                                                      \
         *size = reinterpret_cast<op::floor_divide::NAMESPACE::Descriptor *>(desc)->workspaceSize(); \
         return INFINI_STATUS_SUCCESS
 
@@ -94,12 +82,6 @@ __C infiniStatus_t infiniopGetFloorDivideWorkspaceSize(infiniopFloorDivideDescri
 #ifdef ENABLE_METAX_API
         GET(INFINI_DEVICE_METAX, metax);
 #endif
-#ifdef ENABLE_KUNLUN_API
-        GET(INFINI_DEVICE_KUNLUN, kunlun);
-#endif
-#ifdef ENABLE_CAMBRICON_API
-        GET(INFINI_DEVICE_CAMBRICON, bang);
-#endif
 #ifdef ENABLE_MOORE_API
         GET(INFINI_DEVICE_MOORE, moore);
 #endif
@@ -111,7 +93,7 @@ __C infiniStatus_t infiniopGetFloorDivideWorkspaceSize(infiniopFloorDivideDescri
     return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
 
-__C infiniStatus_t infiniopFloorDivide(
+__INFINI_C infiniStatus_t infiniopFloorDivide(
     infiniopFloorDivideDescriptor_t desc,
     void *workspace,
     size_t workspace_size,
@@ -120,8 +102,8 @@ __C infiniStatus_t infiniopFloorDivide(
     const void *b,
     void *stream) {
 
-#define CALCULATE(CASE, NAMESPACE)                                        \
-    case CASE:                                                            \
+#define CALCULATE(CASE, NAMESPACE)                                                     \
+    case CASE:                                                                         \
         return reinterpret_cast<const op::floor_divide::NAMESPACE::Descriptor *>(desc) \
             ->calculate(workspace, workspace_size, c, {a, b}, stream)
 
@@ -142,12 +124,6 @@ __C infiniStatus_t infiniopFloorDivide(
 #ifdef ENABLE_METAX_API
         CALCULATE(INFINI_DEVICE_METAX, metax);
 #endif
-#ifdef ENABLE_KUNLUN_API
-        CALCULATE(INFINI_DEVICE_KUNLUN, kunlun);
-#endif
-#ifdef ENABLE_CAMBRICON_API
-        CALCULATE(INFINI_DEVICE_CAMBRICON, bang);
-#endif
 #ifdef ENABLE_MOORE_API
         CALCULATE(INFINI_DEVICE_MOORE, moore);
 #endif
@@ -159,11 +135,11 @@ __C infiniStatus_t infiniopFloorDivide(
 #undef CALCULATE
 }
 
-__C infiniStatus_t
+__INFINI_C infiniStatus_t
 infiniopDestroyFloorDivideDescriptor(infiniopFloorDivideDescriptor_t desc) {
 
-#define DELETE(CASE, NAMESPACE)                                                        \
-    case CASE:                                                                         \
+#define DELETE(CASE, NAMESPACE)                                                         \
+    case CASE:                                                                          \
         delete reinterpret_cast<const op::floor_divide::NAMESPACE::Descriptor *>(desc); \
         return INFINI_STATUS_SUCCESS
 
@@ -183,12 +159,6 @@ infiniopDestroyFloorDivideDescriptor(infiniopFloorDivideDescriptor_t desc) {
 #endif
 #ifdef ENABLE_METAX_API
         DELETE(INFINI_DEVICE_METAX, metax);
-#endif
-#ifdef ENABLE_KUNLUN_API
-        DELETE(INFINI_DEVICE_KUNLUN, kunlun);
-#endif
-#ifdef ENABLE_CAMBRICON_API
-        DELETE(INFINI_DEVICE_CAMBRICON, bang);
 #endif
 #ifdef ENABLE_MOORE_API
         DELETE(INFINI_DEVICE_MOORE, moore);

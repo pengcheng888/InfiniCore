@@ -1,9 +1,9 @@
 #include "float_power_cpu.h"
+#include "../../../../utils/custom_types.h"
 #include "../../../devices/cpu/common_cpu.h"
 #include <algorithm>
 #include <cmath>
 #include <omp.h>
-#include "../../../../utils/custom_types.h"
 
 namespace op::float_power::cpu {
 
@@ -17,22 +17,21 @@ infiniStatus_t Descriptor::create(
     Descriptor **desc_ptr,
     infiniopTensorDescriptor_t y,
     infiniopTensorDescriptor_t x,
-    infiniopTensorDescriptor_t exponent, 
-    float scalar_exponent) {            
-    
+    infiniopTensorDescriptor_t exponent,
+    float scalar_exponent) {
+
     auto handle = reinterpret_cast<device::cpu::Handle *>(handle_);
-    
+
     // 创建 Info 对象进行校验 (Info 类已更新，支持混合精度和 Tensor 指数)
     auto result = FloatPowerInfo::create(y, x, exponent, scalar_exponent);
     CHECK_RESULT(result);
-    
+
     *desc_ptr = new Descriptor(
         nullptr,
         result.take(),
         0, // CPU 不需要 workspace
-        handle->device, 
-        handle->device_id
-    );
+        handle->device,
+        handle->device_id);
 
     return INFINI_STATUS_SUCCESS;
 }
@@ -49,11 +48,11 @@ void calculate_cpu_impl(
     const void *exponent_ptr) {
 
     size_t numel = info.num_elements();
-    
+
     // 获取指数模式
     bool is_scalar = info.is_scalar_exponent();
     float scalar_exp = info.scalar_exponent();
-    
+
     auto out_ptr = reinterpret_cast<T_OUT *>(output);
     auto in_ptr = reinterpret_cast<const T_IN *>(input);
     auto exp_ptr = reinterpret_cast<const T_IN *>(exponent_ptr);
@@ -63,8 +62,8 @@ void calculate_cpu_impl(
     bool is_sqrt = is_scalar && (scalar_exp == 0.5f);
     bool is_identity = is_scalar && (scalar_exp == 1.0f);
 
-    #pragma omp parallel for schedule(static)
-    for (size_t i = 0; i < numel; ++i) {
+#pragma omp parallel for schedule(static)
+    for (ptrdiff_t i = 0; i < ptrdiff_t(numel); ++i) {
         // 1. 读取输入并转为 float
         float in_val = utils::cast<float>(in_ptr[i]);
         float exp_val;
@@ -103,30 +102,30 @@ infiniStatus_t Descriptor::calculate(
     size_t workspace_size,
     void *output,
     const void *input,
-    const void *exponent, 
+    const void *exponent,
     void *stream) const {
 
     auto in_dtype = _info.input_dtype();
     auto out_dtype = _info.output_dtype();
 
-    // 定义内层宏：根据 Output 类型分发
-    #define DISPATCH_OUT(IN_T)                                      \
-        switch (out_dtype) {                                        \
-        case INFINI_DTYPE_F32:                                      \
-            cpu::calculate_cpu_impl<float, IN_T>(_info, output, input, exponent); \
-            return INFINI_STATUS_SUCCESS;                           \
-        case INFINI_DTYPE_F64:                                      \
-            cpu::calculate_cpu_impl<double, IN_T>(_info, output, input, exponent); \
-            return INFINI_STATUS_SUCCESS;                           \
-        case INFINI_DTYPE_F16:                                      \
-            cpu::calculate_cpu_impl<fp16_t, IN_T>(_info, output, input, exponent); \
-            return INFINI_STATUS_SUCCESS;                           \
-        case INFINI_DTYPE_BF16:                                     \
-            cpu::calculate_cpu_impl<bf16_t, IN_T>(_info, output, input, exponent); \
-            return INFINI_STATUS_SUCCESS;                           \
-        default:                                                    \
-            return INFINI_STATUS_BAD_TENSOR_DTYPE;                  \
-        }
+// 定义内层宏：根据 Output 类型分发
+#define DISPATCH_OUT(IN_T)                                                     \
+    switch (out_dtype) {                                                       \
+    case INFINI_DTYPE_F32:                                                     \
+        cpu::calculate_cpu_impl<float, IN_T>(_info, output, input, exponent);  \
+        return INFINI_STATUS_SUCCESS;                                          \
+    case INFINI_DTYPE_F64:                                                     \
+        cpu::calculate_cpu_impl<double, IN_T>(_info, output, input, exponent); \
+        return INFINI_STATUS_SUCCESS;                                          \
+    case INFINI_DTYPE_F16:                                                     \
+        cpu::calculate_cpu_impl<fp16_t, IN_T>(_info, output, input, exponent); \
+        return INFINI_STATUS_SUCCESS;                                          \
+    case INFINI_DTYPE_BF16:                                                    \
+        cpu::calculate_cpu_impl<bf16_t, IN_T>(_info, output, input, exponent); \
+        return INFINI_STATUS_SUCCESS;                                          \
+    default:                                                                   \
+        return INFINI_STATUS_BAD_TENSOR_DTYPE;                                 \
+    }
 
     // 外层 Switch：根据 Input 类型分发
     switch (in_dtype) {
@@ -142,7 +141,7 @@ infiniStatus_t Descriptor::calculate(
         return INFINI_STATUS_BAD_TENSOR_DTYPE;
     }
 
-    #undef DISPATCH_OUT
+#undef DISPATCH_OUT
 }
 
 } // namespace op::float_power::cpu

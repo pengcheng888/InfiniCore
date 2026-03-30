@@ -29,7 +29,7 @@ public:
 
     // 构造函数
     MultiMarginLossInfo(int dtype, int p, float margin, int reduction, bool has_weight, size_t batch, size_t classes)
-        : _dtype(dtype), _p(p), _margin(margin), _reduction(reduction), 
+        : _dtype(dtype), _p(p), _margin(margin), _reduction(reduction),
           _has_weight(has_weight), _batch_size(batch), _num_classes(classes) {}
 
     static utils::Result<MultiMarginLossInfo> create(
@@ -44,7 +44,7 @@ public:
         // 1. 检查输入形状 (Input vs Target)
         // Input: (N, C), Target: (N)
         if (input_desc->ndim() != 2) {
-            return INFINI_STATUS_BAD_TENSOR_SHAPE; 
+            return INFINI_STATUS_BAD_TENSOR_SHAPE;
         }
         if (target_desc->ndim() != 1) {
             return INFINI_STATUS_BAD_TENSOR_SHAPE;
@@ -85,7 +85,7 @@ public:
             }
         }
         if (p != 1 && p != 2) {
-             return INFINI_STATUS_BAD_PARAM;
+            return INFINI_STATUS_BAD_PARAM;
         }
         return utils::Result<MultiMarginLossInfo>(MultiMarginLossInfo{
             input_desc->dtype(), // _dtype

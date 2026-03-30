@@ -47,16 +47,16 @@ public:
             return INFINI_STATUS_BAD_PARAM;
         }
 
-        const auto& in_shape = input_desc->shape();
-        const auto& out_shape = out_desc->shape();
+        const auto &in_shape = input_desc->shape();
+        const auto &out_shape = out_desc->shape();
         for (size_t i = 0; i < ndim; ++i) {
             if (in_shape[i] != out_shape[i]) {
                 return INFINI_STATUS_BAD_TENSOR_SHAPE;
             }
         }
 
-        const auto& idx_shape = indices_desc->shape();
-        const auto& upd_shape = updates_desc->shape();
+        const auto &idx_shape = indices_desc->shape();
+        const auto &upd_shape = updates_desc->shape();
         for (size_t i = 0; i < ndim; ++i) {
             if (idx_shape[i] != upd_shape[i]) {
                 return INFINI_STATUS_BAD_TENSOR_SHAPE;
@@ -64,13 +64,12 @@ public:
         }
 
         for (size_t i = 0; i < ndim; ++i) {
-             if (idx_shape[i] > in_shape[i]) {
-                 return INFINI_STATUS_BAD_TENSOR_SHAPE;
-             }
+            if (idx_shape[i] > in_shape[i]) {
+                return INFINI_STATUS_BAD_TENSOR_SHAPE;
+            }
         }
 
-        if (input_desc->dtype() != updates_desc->dtype() || 
-            input_desc->dtype() != out_desc->dtype()) {
+        if (input_desc->dtype() != updates_desc->dtype() || input_desc->dtype() != out_desc->dtype()) {
             return INFINI_STATUS_BAD_TENSOR_DTYPE;
         }
 
@@ -79,7 +78,7 @@ public:
         }
 
         if (reduction < 0 || reduction > 2) {
-             return INFINI_STATUS_BAD_PARAM;
+            return INFINI_STATUS_BAD_PARAM;
         }
 
         return utils::Result<ScatterInfo>(ScatterInfo{
@@ -87,8 +86,7 @@ public:
             indices_desc->dtype(),
             canonical_axis,
             reduction,
-            ndim
-        });
+            ndim});
     }
 };
 

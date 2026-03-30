@@ -1,12 +1,10 @@
-#include "flipud_metax.h"
 #include "../../../devices/metax/metax_common.h"
 #include "../../../devices/metax/metax_handle.h"
-#include <mcr/mc_runtime.h>
-#include <cstdint>
+#include "../../../devices/metax/metax_kernel_common.h"
+#include "flipud_metax.h"
 #include <algorithm>
+#include <cstdint>
 #include <vector>
-#include <maca_fp16.h>
-#include <maca_bfloat16.h>
 
 namespace op::flipud::metax {
 
@@ -19,17 +17,27 @@ struct TensorLayout {
     int out_strides[MAX_DIMS];
 };
 
-template <int Bytes> struct VectorType;
-template <> struct VectorType<16> { using type = int4; }; // 128-bit
-template <> struct VectorType<8>  { using type = int2; }; // 64-bit
-template <> struct VectorType<4>  { using type = int; };  // 32-bit
+template <int Bytes>
+struct VectorType;
+template <>
+struct VectorType<16> {
+    using type = int4;
+}; // 128-bit
+template <>
+struct VectorType<8> {
+    using type = int2;
+}; // 64-bit
+template <>
+struct VectorType<4> {
+    using type = int;
+}; // 32-bit
 
 // ---------------------------------------------------------
 
-__device__ inline size_t get_offset(int idx, const int* strides, int ndim, const int* shape) {
+__device__ inline size_t get_offset(int idx, const int *strides, int ndim, const int *shape) {
     size_t offset = 0;
     int rem = idx;
-    #pragma unroll
+#pragma unroll
     for (int i = ndim - 1; i >= 0; --i) {
         int dim_sz = shape[i];
         int pos = rem % dim_sz;
@@ -39,15 +47,15 @@ __device__ inline size_t get_offset(int idx, const int* strides, int ndim, const
     return offset;
 }
 
-__device__ inline size_t get_flipud_src_offset(int idx, const int* strides, int ndim, const int* shape) {
+__device__ inline size_t get_flipud_src_offset(int idx, const int *strides, int ndim, const int *shape) {
     size_t offset = 0;
     int rem = idx;
-    #pragma unroll
+#pragma unroll
     for (int i = ndim - 1; i >= 0; --i) {
         int dim_sz = shape[i];
         int pos = rem % dim_sz;
         rem /= dim_sz;
-        
+
         if (i == 0) {
             pos = dim_sz - 1 - pos;
         }
@@ -59,10 +67,11 @@ __device__ inline size_t get_flipud_src_offset(int idx, const int* strides, int 
 // 标量 Kernel
 template <typename T>
 __global__ void flipud_kernel(
-    T* dst, const T* src, size_t n, TensorLayout layout) 
-{
+    T *dst, const T *src, size_t n, TensorLayout layout) {
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx >= n) return;
+    if (idx >= n) {
+        return;
+    }
 
     size_t dst_off = get_offset(idx, layout.out_strides, layout.ndim, layout.shape);
     size_t src_off = get_flipud_src_offset(idx, layout.in_strides, layout.ndim, layout.shape);
@@ -73,20 +82,21 @@ __global__ void flipud_kernel(
 // 向量化 Kernel
 template <typename T, int PackSize>
 __global__ void flipud_kernel_vectorized(
-    T* dst, const T* src, size_t num_packs, TensorLayout layout) 
-{
+    T *dst, const T *src, size_t num_packs, TensorLayout layout) {
     // [修正] 使用 int4/int2 替代 aligned_storage
     using VecT = typename VectorType<sizeof(T) * PackSize>::type;
-    
+
     size_t pack_idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (pack_idx >= num_packs) return;
-    
+    if (pack_idx >= num_packs) {
+        return;
+    }
+
     int strides_in[MAX_DIMS], strides_out[MAX_DIMS], shape[MAX_DIMS];
-    
-    #pragma unroll
-    for(int i=0; i<MAX_DIMS; ++i) {
+
+#pragma unroll
+    for (int i = 0; i < MAX_DIMS; ++i) {
         shape[i] = layout.shape[i];
-        
+
         // [逻辑正确] 确保所有步长都除以 PackSize
         if (i == layout.ndim - 1) {
             strides_in[i] = 1;
@@ -96,17 +106,17 @@ __global__ void flipud_kernel_vectorized(
             strides_out[i] = layout.out_strides[i] / PackSize;
         }
     }
-    
+
     if (layout.ndim > 0) {
-        shape[layout.ndim-1] /= PackSize; 
+        shape[layout.ndim - 1] /= PackSize;
     }
 
     size_t dst_pack_off = get_offset(pack_idx, strides_out, layout.ndim, shape);
     size_t src_pack_off = get_flipud_src_offset(pack_idx, strides_in, layout.ndim, shape);
 
     // 强转为向量类型进行读写
-    const VecT* src_vec = reinterpret_cast<const VecT*>(src);
-    VecT* dst_vec = reinterpret_cast<VecT*>(dst);
+    const VecT *src_vec = reinterpret_cast<const VecT *>(src);
+    VecT *dst_vec = reinterpret_cast<VecT *>(dst);
 
     dst_vec[dst_pack_off] = src_vec[src_pack_off];
 }
@@ -128,23 +138,23 @@ void launch_kernel(
 
     auto in_ptr = reinterpret_cast<const T *>(input);
     auto out_ptr = reinterpret_cast<T *>(output);
-    auto mc_stream = reinterpret_cast<mcStream_t>(stream);
-    
-    constexpr int TotalBytes = 16; 
+    auto hc_stream = reinterpret_cast<hcStream_t>(stream);
+
+    constexpr int TotalBytes = 16;
     constexpr int PackSize = TotalBytes / sizeof(T);
-    
+
     // ---------------- Check Vectorization ----------------
     bool is_ptr_aligned = is_pointer_aligned(output, TotalBytes) && is_pointer_aligned(input, TotalBytes);
     bool is_numel_divisible = (numel % PackSize == 0);
-    bool is_last_dim_aligned = (layout.ndim > 0) && (layout.shape[layout.ndim-1] % PackSize == 0);
+    bool is_last_dim_aligned = (layout.ndim > 0) && (layout.shape[layout.ndim - 1] % PackSize == 0);
 
     bool is_inner_contiguous = false;
     if (layout.ndim > 0) {
-        if (layout.in_strides[layout.ndim-1] == 1 && layout.out_strides[layout.ndim-1] == 1) {
+        if (layout.in_strides[layout.ndim - 1] == 1 && layout.out_strides[layout.ndim - 1] == 1) {
             is_inner_contiguous = true;
         }
     }
-    
+
     bool is_stride_aligned = true;
     for (int i = 0; i < layout.ndim - 1; ++i) {
         if (layout.in_strides[i] % PackSize != 0 || layout.out_strides[i] % PackSize != 0) {
@@ -156,32 +166,28 @@ void launch_kernel(
     // [逻辑正确] 1D Tensor 禁止向量化
     bool is_dim_safe = (layout.ndim > 1);
 
-    bool can_vectorize = (PackSize > 1) && 
-                         is_ptr_aligned &&
-                         is_numel_divisible &&
-                         is_last_dim_aligned &&
-                         is_inner_contiguous &&
-                         is_stride_aligned &&
-                         is_dim_safe;
+    bool can_vectorize = (PackSize > 1) && is_ptr_aligned && is_numel_divisible && is_last_dim_aligned && is_inner_contiguous && is_stride_aligned && is_dim_safe;
 
     if (can_vectorize) {
         size_t num_packs = numel / PackSize;
         size_t block_size = 256;
         size_t grid_size = (num_packs + block_size - 1) / block_size;
-        
+
         flipud_kernel_vectorized<T, PackSize>
-            <<<grid_size, block_size, 0, mc_stream>>>(out_ptr, in_ptr, num_packs, layout);
+            <<<grid_size, block_size, 0, hc_stream>>>(out_ptr, in_ptr, num_packs, layout);
     } else {
         size_t block_size = 256;
         size_t grid_size = (numel + block_size - 1) / block_size;
-        
+
         flipud_kernel<T>
-            <<<grid_size, block_size, 0, mc_stream>>>(out_ptr, in_ptr, numel, layout);
+            <<<grid_size, block_size, 0, hc_stream>>>(out_ptr, in_ptr, numel, layout);
     }
 }
 
-Descriptor::~Descriptor() { 
-    if (_opaque) delete _opaque; 
+Descriptor::~Descriptor() {
+    if (_opaque) {
+        delete _opaque;
+    }
 }
 
 infiniStatus_t Descriptor::create(
@@ -190,19 +196,21 @@ infiniStatus_t Descriptor::create(
 
     auto handle = reinterpret_cast<device::metax::Handle *>(handle_);
     auto info_result = FlipudInfo::create(out_desc, input_desc);
-    if (!info_result) return info_result.status();
+    if (!info_result) {
+        return info_result.status();
+    }
 
     auto opaque = new Opaque();
     opaque->layout.ndim = static_cast<int>(input_desc->ndim());
-    
+
     if (opaque->layout.ndim > MAX_DIMS) {
         delete opaque;
         return INFINI_STATUS_BAD_TENSOR_SHAPE;
     }
 
-    const auto& shape = input_desc->shape();
-    const auto& in_strides = input_desc->strides();
-    const auto& out_strides = out_desc->strides();
+    const auto &shape = input_desc->shape();
+    const auto &in_strides = input_desc->strides();
+    const auto &out_strides = out_desc->strides();
 
     for (int i = 0; i < opaque->layout.ndim; ++i) {
         opaque->layout.shape[i] = shape[i];
@@ -226,7 +234,7 @@ infiniStatus_t Descriptor::calculate(
         launch_kernel<__half>(output, input, _opaque->layout, numel, stream);
         break;
     case INFINI_DTYPE_BF16:
-        launch_kernel<__maca_bfloat16>(output, input, _opaque->layout, numel, stream);
+        launch_kernel<__hpcc_bfloat16>(output, input, _opaque->layout, numel, stream);
         break;
     case INFINI_DTYPE_F32:
         launch_kernel<float>(output, input, _opaque->layout, numel, stream);

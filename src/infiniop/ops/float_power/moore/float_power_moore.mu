@@ -1,8 +1,8 @@
+#include "../../../devices/moore/moore_handle.h"
 #include "float_power_moore.h"
 #include "float_power_moore_kernel.h"
-#include "../../../devices/moore/moore_handle.h"
-#include <cstdint>
 #include <algorithm>
+#include <cstdint>
 
 namespace op::float_power::moore {
 
@@ -19,9 +19,9 @@ bool is_aligned(const void *ptr, size_t alignment) {
 // ==================================================================
 template <typename T_OUT, typename T_IN>
 void launch_kernel(
-    void *output, 
-    const void *input, 
-    const void *exponent, 
+    void *output,
+    const void *input,
+    const void *exponent,
     const FloatPowerInfo &info,
     void *stream) {
 
@@ -45,11 +45,7 @@ void launch_kernel(
     // 只有当输入和输出类型大小相同时，当前的 1:1 Pack 向量化逻辑才生效
     bool types_same_size = (sizeof(T_IN) == sizeof(T_OUT));
 
-    bool can_vectorize_base = types_same_size &&
-                              (PackSizeIn > 1) &&
-                              (numel % PackSizeIn == 0) &&
-                              is_aligned<T_IN>(input, AlignBytes) &&
-                              is_aligned<T_OUT>(output, AlignBytes);
+    bool can_vectorize_base = types_same_size && (PackSizeIn > 1) && (numel % PackSizeIn == 0) && is_aligned<T_IN>(input, AlignBytes) && is_aligned<T_OUT>(output, AlignBytes);
 
     if (can_vectorize_base) {
         size_t num_packs = numel / PackSizeIn;
@@ -60,15 +56,13 @@ void launch_kernel(
             // 路径 A1: 标量指数向量化
             op::float_power::moore::float_power_kernel_vectorized_scalar<T_OUT, T_IN, PackSizeIn>
                 <<<grid_size, block_size, 0, musa_stream>>>(
-                    out_ptr, in_ptr, scalar_exp, num_packs, functor
-                );
+                    out_ptr, in_ptr, scalar_exp, num_packs, functor);
             return;
         } else if (is_aligned<T_IN>(exponent, AlignBytes)) {
             // 路径 A2: 张量指数向量化
             op::float_power::moore::float_power_kernel_vectorized_tensor<T_OUT, T_IN, PackSizeIn>
                 <<<grid_size, block_size, 0, musa_stream>>>(
-                    out_ptr, in_ptr, exp_ptr, num_packs, functor
-                );
+                    out_ptr, in_ptr, exp_ptr, num_packs, functor);
             return;
         }
     }
@@ -81,8 +75,7 @@ void launch_kernel(
 
     op::float_power::moore::float_power_kernel<T_OUT, T_IN, T_IN>
         <<<grid_size, block_size, 0, musa_stream>>>(
-            out_ptr, in_ptr, exp_ptr, scalar_exp, is_scalar, numel, functor
-        );
+            out_ptr, in_ptr, exp_ptr, scalar_exp, is_scalar, numel, functor);
 }
 
 // ==================================================================
@@ -90,19 +83,25 @@ void launch_kernel(
 // ==================================================================
 struct Descriptor::Opaque {};
 
-Descriptor::~Descriptor() { if (_opaque) delete _opaque; }
+Descriptor::~Descriptor() {
+    if (_opaque) {
+        delete _opaque;
+    }
+}
 
 infiniStatus_t Descriptor::create(
     infiniopHandle_t handle_, Descriptor **desc_ptr,
-    infiniopTensorDescriptor_t y, 
+    infiniopTensorDescriptor_t y,
     infiniopTensorDescriptor_t x,
-    infiniopTensorDescriptor_t exponent, 
+    infiniopTensorDescriptor_t exponent,
     float scalar_exponent) {
 
     auto handle = reinterpret_cast<device::moore::Handle *>(handle_);
 
     auto info_result = FloatPowerInfo::create(y, x, exponent, scalar_exponent);
-    if (!info_result) return info_result.status();
+    if (!info_result) {
+        return info_result.status();
+    }
 
     size_t workspace_size = 0;
     *desc_ptr = new Descriptor(new Opaque(), info_result.take(), workspace_size, handle->device, handle->device_id);
@@ -111,7 +110,7 @@ infiniStatus_t Descriptor::create(
 
 infiniStatus_t Descriptor::calculate(
     void *workspace, size_t workspace_size, void *output,
-    const void *input, const void *exponent, 
+    const void *input, const void *exponent,
     void *stream) const {
 
     auto in_dtype = _info.input_dtype();

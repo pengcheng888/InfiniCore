@@ -33,8 +33,8 @@ void calculate(Tensor output, Tensor input, Tensor target, Tensor weight, int64_
     auto desc_opt = cache.get(seed);
     infiniopMultiMarginLossDescriptor_t desc = nullptr;
     infiniopTensorDescriptor_t weight_desc = nullptr;
-    const void* weight_data = nullptr;
-    
+    const void *weight_data = nullptr;
+
     if (has_weight) {
         weight_desc = weight->desc();
         weight_data = weight->data();
@@ -43,17 +43,16 @@ void calculate(Tensor output, Tensor input, Tensor target, Tensor weight, int64_
     if (!desc_opt) {
         //  创建描述符
         INFINICORE_CHECK_ERROR(infiniopCreateMultiMarginLossDescriptor(
-            context::getInfiniopHandle(output->device()), 
+            context::getInfiniopHandle(output->device()),
             &desc,
-            output->desc(), 
-            input->desc(), 
-            target->desc(), 
-            weight_desc, 
+            output->desc(),
+            input->desc(),
+            target->desc(),
+            weight_desc,
             static_cast<int>(p),
             margin,
-            static_cast<int>(reduction)
-        ));
-        
+            static_cast<int>(reduction)));
+
         cache.put(seed, desc);
     } else {
         desc = *desc_opt;
@@ -65,15 +64,14 @@ void calculate(Tensor output, Tensor input, Tensor target, Tensor weight, int64_
     std::shared_ptr<Memory> workspace = context::allocateMemory(workspace_size);
 
     INFINICORE_CHECK_ERROR(infiniopMultiMarginLoss(
-        desc, 
-        workspace->data(), 
+        desc,
+        workspace->data(),
         workspace_size,
-        output->data(), 
-        input->data(), 
-        target->data(), 
+        output->data(),
+        input->data(),
+        target->data(),
         weight_data,
-        context::getStream()
-    ));
+        context::getStream()));
 }
 
 static bool registered = []() {

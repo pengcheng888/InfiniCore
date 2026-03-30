@@ -9,7 +9,7 @@ class Flipud {
 public:
     // Schema signature: (Output, Input)
     using schema = void (*)(Tensor, Tensor);
-    
+
     static void execute(Tensor output, Tensor input);
     static common::OpDispatcher<schema> &dispatcher();
 };

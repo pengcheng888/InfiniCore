@@ -1,16 +1,17 @@
 #pragma once
 
+#include "infinicore/ops/multi_margin_loss.hpp"
 #include <pybind11/pybind11.h>
-#include "infinicore/ops/multi_margin_loss.hpp" 
 
 namespace py = pybind11;
 
 namespace infinicore::ops {
 
 inline void bind_multi_margin_loss(py::module &m) {
-    m.def("multi_margin_loss",
-        [](const Tensor& input, const Tensor& target, py::object weight, int p, float margin, int reduction) {
-            Tensor weight_tensor; 
+    m.def(
+        "multi_margin_loss",
+        [](const Tensor &input, const Tensor &target, py::object weight, int p, float margin, int reduction) {
+            Tensor weight_tensor;
             if (!weight.is_none()) {
                 weight_tensor = weight.cast<Tensor>();
             }
@@ -33,8 +34,9 @@ inline void bind_multi_margin_loss(py::module &m) {
         reduction (int, optional): Specifies the reduction to apply to the output: 0=None, 1=Mean, 2=Sum. Default: 1.
     )doc");
 
-    m.def("multi_margin_loss_",
-        [](Tensor& output, const Tensor& input, const Tensor& target, py::object weight, int p, float margin, int reduction) {
+    m.def(
+        "multi_margin_loss_",
+        [](Tensor &output, const Tensor &input, const Tensor &target, py::object weight, int p, float margin, int reduction) {
             Tensor weight_tensor;
             if (!weight.is_none()) {
                 weight_tensor = weight.cast<Tensor>();

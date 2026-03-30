@@ -1,9 +1,9 @@
 #ifndef __FLOOR_DIVIDE_CPU_H__
 #define __FLOOR_DIVIDE_CPU_H__
 
+#include "../../../elementwise/cpu/elementwise_cpu.h"
 #include <cmath>
 #include <type_traits>
-#include "../../../elementwise/cpu/elementwise_cpu.h"
 
 ELEMENTWISE_DESCRIPTOR(floor_divide, cpu)
 

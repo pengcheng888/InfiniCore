@@ -1,7 +1,7 @@
+#include "../../../devices/moore/moore_handle.h"
 #include "../../../elementwise/moore/elementwise_moore.h"
 #include "floor_divide_moore.h"
 #include "floor_divide_moore_kernel.h"
-#include "../../../devices/moore/moore_handle.h"
 
 namespace op::floor_divide::moore {
 

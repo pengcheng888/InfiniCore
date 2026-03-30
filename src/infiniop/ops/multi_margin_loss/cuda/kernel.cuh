@@ -1,12 +1,8 @@
 #ifndef __MULTI_MARGIN_LOSS_CUDA_CUH__
 #define __MULTI_MARGIN_LOSS_CUDA_CUH__
 
-#include <cuda_runtime.h>
-#include <cuda_fp16.h>
-#include <cuda_bf16.h>
-
 #include <cmath>
-#include <cstdio> 
+#include <cstdio>
 
 namespace op::multi_margin_loss::cuda {
 template <typename T, int N>
@@ -19,8 +15,9 @@ struct alignas(sizeof(T) * N) Pack {
 // ==================================================================
 __device__ __forceinline__ float warpReduceSum(float val) {
     unsigned int mask = 0xffffffff;
-    for (int offset = warpSize / 2; offset > 0; offset /= 2)
+    for (int offset = warpSize / 2; offset > 0; offset /= 2) {
         val += __shfl_down_sync(mask, val, offset);
+    }
     return val;
 }
 
@@ -30,12 +27,16 @@ __device__ __forceinline__ float blockReduceSum(float val) {
     int wid = threadIdx.x / warpSize;
 
     val = warpReduceSum(val);
-    if (lane == 0) shared[wid] = val;
+    if (lane == 0) {
+        shared[wid] = val;
+    }
     __syncthreads();
 
     // 假设 BlockDim 也是 32 的倍数
     val = (threadIdx.x < blockDim.x / warpSize) ? shared[lane] : 0.0f;
-    if (wid == 0) val = warpReduceSum(val);
+    if (wid == 0) {
+        val = warpReduceSum(val);
+    }
     return val;
 }
 
@@ -46,7 +47,7 @@ struct MultiMarginLossFunctor {
     int p;
     float margin;
 
-    __host__ __device__ MultiMarginLossFunctor(int p_val, float margin_val) 
+    __host__ __device__ MultiMarginLossFunctor(int p_val, float margin_val)
         : p(p_val), margin(margin_val) {}
 
     // 计算单个 class c 的 loss 分量
@@ -60,19 +61,19 @@ struct MultiMarginLossFunctor {
 };
 template <typename T>
 __global__ void multi_margin_loss_kernel(
-    T * __restrict__ output,        // [N]
-    const T * __restrict__ input,   // [N, C]
-    const int64_t * __restrict__ target, // [N]
-    const T * __restrict__ weight,  // [C] (Optional)
+    T *__restrict__ output,             // [N]
+    const T *__restrict__ input,        // [N, C]
+    const int64_t *__restrict__ target, // [N]
+    const T *__restrict__ weight,       // [C] (Optional)
     size_t N,
     size_t C,
     MultiMarginLossFunctor functor) {
 
     size_t n = blockIdx.x * blockDim.x + threadIdx.x;
-    
+
     if (n < N) {
         int64_t target_idx = target[n];
-        
+
         // 越界检查
         if (target_idx < 0 || target_idx >= static_cast<int64_t>(C)) {
             output[n] = static_cast<T>(0.0f);
@@ -80,13 +81,15 @@ __global__ void multi_margin_loss_kernel(
         }
 
         // 定位当前行的起始位置
-        const T* row_ptr = input + n * C;
+        const T *row_ptr = input + n * C;
         float target_score = static_cast<float>(row_ptr[target_idx]);
         float sum_loss = 0.0f;
 
         // 遍历所有类别
         for (size_t c = 0; c < C; ++c) {
-            if (c == static_cast<size_t>(target_idx)) continue;
+            if (c == static_cast<size_t>(target_idx)) {
+                continue;
+            }
 
             float other_score = static_cast<float>(row_ptr[c]);
             float diff = functor.margin - target_score + other_score;
@@ -107,10 +110,10 @@ __global__ void multi_margin_loss_kernel(
 }
 template <typename T>
 __global__ void multi_margin_loss_reduce_kernel(
-    float * output,                 // [1] Accumulator (Float)
-    const T * __restrict__ input,   // [N, C]
-    const int64_t * __restrict__ target, // [N]
-    const T * __restrict__ weight,  // [C]
+    float *output,                      // [1] Accumulator (Float)
+    const T *__restrict__ input,        // [N, C]
+    const int64_t *__restrict__ target, // [N]
+    const T *__restrict__ weight,       // [C]
     size_t N,
     size_t C,
     MultiMarginLossFunctor functor,
@@ -123,20 +126,22 @@ __global__ void multi_margin_loss_reduce_kernel(
     // Grid-Stride Loop over Batch Dimension N
     for (size_t n = idx; n < N; n += stride) {
         int64_t target_idx = target[n];
-        
+
         if (target_idx >= 0 && target_idx < static_cast<int64_t>(C)) {
-            const T* row_ptr = input + n * C;
+            const T *row_ptr = input + n * C;
             float target_score = static_cast<float>(row_ptr[target_idx]);
             float sample_loss = 0.0f;
 
             for (size_t c = 0; c < C; ++c) {
-                if (c == static_cast<size_t>(target_idx)) continue;
+                if (c == static_cast<size_t>(target_idx)) {
+                    continue;
+                }
 
                 float other_score = static_cast<float>(row_ptr[c]);
                 float diff = functor.margin - target_score + other_score;
                 sample_loss += functor.compute(diff);
             }
-            
+
             sample_loss /= static_cast<float>(C);
 
             if (weight != nullptr) {
@@ -157,7 +162,7 @@ __global__ void multi_margin_loss_reduce_kernel(
     }
 }
 template <typename T>
-__global__ void cast_float_to_t(T* output, const float* src) {
+__global__ void cast_float_to_t(T *output, const float *src) {
     *output = static_cast<T>(*src);
 }
 

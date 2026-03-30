@@ -1,13 +1,13 @@
 #ifndef __SCATTER_MOORE_KERNEL_H__
 #define __SCATTER_MOORE_KERNEL_H__
 
-#include <musa_runtime.h>
-#include <musa_fp16.h>
 #include <musa_bf16.h>
+#include <musa_fp16.h>
+#include <musa_runtime.h>
 
 #include <cmath>
-#include <cstdio>
 #include <cstdint>
+#include <cstdio>
 
 namespace op::scatter::moore {
 
@@ -25,25 +25,28 @@ __device__ __forceinline__ float to_float(double val) { return static_cast<float
 __device__ __forceinline__ float to_float(half val) { return __half2float(val); }
 __device__ __forceinline__ float to_float(__mt_bfloat16 val) { return __bfloat162float(val); }
 
-template <typename T> __device__ __forceinline__ T from_float(float val) { return static_cast<T>(val); }
-template <> __device__ __forceinline__ half from_float<half>(float val) { return __float2half(val); }
-template <> __device__ __forceinline__ __mt_bfloat16 from_float<__mt_bfloat16>(float val) { return __float2bfloat16(val); }
+template <typename T>
+__device__ __forceinline__ T from_float(float val) { return static_cast<T>(val); }
+template <>
+__device__ __forceinline__ half from_float<half>(float val) { return __float2half(val); }
+template <>
+__device__ __forceinline__ __mt_bfloat16 from_float<__mt_bfloat16>(float val) { return __float2bfloat16(val); }
 
 // ==================================================================
 // 坐标/偏移计算逻辑 (保持不变)
 // ==================================================================
 
-__device__ __forceinline__ void offset_to_coords(int64_t offset, int ndim, const int64_t* shape, int64_t* coords) {
-    #pragma unroll
+__device__ __forceinline__ void offset_to_coords(int64_t offset, int ndim, const int64_t *shape, int64_t *coords) {
+#pragma unroll
     for (int i = ndim - 1; i >= 0; --i) {
         coords[i] = offset % shape[i];
         offset /= shape[i];
     }
 }
 
-__device__ __forceinline__ int64_t coords_to_offset(int ndim, const int64_t* coords, const int64_t* strides) {
+__device__ __forceinline__ int64_t coords_to_offset(int ndim, const int64_t *coords, const int64_t *strides) {
     int64_t offset = 0;
-    #pragma unroll
+#pragma unroll
     for (int i = 0; i < ndim; ++i) {
         offset += coords[i] * strides[i];
     }
@@ -56,14 +59,14 @@ __device__ __forceinline__ int64_t coords_to_offset(int ndim, const int64_t* coo
 
 template <typename T, typename IdxT>
 __global__ void scatter_kernel(
-    T * __restrict__ output,
-    const T * __restrict__ updates,
-    const IdxT * __restrict__ indices,
+    T *__restrict__ output,
+    const T *__restrict__ updates,
+    const IdxT *__restrict__ indices,
     TensorGeometry geometry,
     int axis,
     int reduction,
     size_t num_updates) {
-    
+
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
     size_t stride = blockDim.x * gridDim.x;
 
@@ -76,7 +79,7 @@ __global__ void scatter_kernel(
         // 2. 获取 updates 中的值
         int64_t upd_offset = coords_to_offset(geometry.ndim, coords, geometry.updates_strides);
         T upd_val = updates[upd_offset];
-        
+
         // 3. 获取对应的 indices 值 (使用 indices_strides)
         int64_t idx_offset = coords_to_offset(geometry.ndim, coords, geometry.indices_strides);
         IdxT idx_val = indices[idx_offset];

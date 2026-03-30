@@ -1,12 +1,10 @@
 from typing import Optional
+
 from infinicore.lib import _infinicore
 from infinicore.tensor import Tensor
 
-def flipud(
-    input: Tensor, 
-    *, 
-    out: Optional[Tensor] = None
-) -> Tensor:
+
+def flipud(input: Tensor, *, out: Optional[Tensor] = None) -> Tensor:
     r"""Flip array in the up/down direction.
 
     Flips the entries in axis 0 (preserving the shape).
@@ -23,6 +21,4 @@ def flipud(
     if out is not None:
         _infinicore.flipud_(out._underlying, input._underlying)
         return out
-    return Tensor(
-        _infinicore.flipud(input._underlying)
-    )
+    return Tensor(_infinicore.flipud(input._underlying))

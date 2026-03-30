@@ -1,10 +1,10 @@
 #ifndef __FLOAT_POWER_MOORE_KERNEL_H__
 #define __FLOAT_POWER_MOORE_KERNEL_H__
 
-#include <musa_runtime.h>
-#include <musa_fp16.h>
-#include <musa_bf16.h>
 #include <cmath>
+#include <musa_bf16.h>
+#include <musa_fp16.h>
+#include <musa_runtime.h>
 #include <type_traits>
 
 namespace op::float_power::moore {
@@ -59,19 +59,19 @@ struct FloatPowerFunctor {
 // ==================================================================
 template <typename T_OUT, typename T_IN, typename T_EXP>
 __global__ void float_power_kernel(
-    T_OUT * __restrict__ output, 
-    const T_IN * __restrict__ input, 
-    const T_EXP * __restrict__ exponent, 
-    float scalar_exponent, 
-    bool is_scalar, 
-    size_t numel, 
+    T_OUT *__restrict__ output,
+    const T_IN *__restrict__ input,
+    const T_EXP *__restrict__ exponent,
+    float scalar_exponent,
+    bool is_scalar,
+    size_t numel,
     FloatPowerFunctor functor) {
-    
+
     // Grid-Stride Loop
-    for (size_t idx = blockIdx.x * blockDim.x + threadIdx.x; 
-         idx < numel; 
+    for (size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
+         idx < numel;
          idx += blockDim.x * gridDim.x) {
-         
+
         float exp_val_f = is_scalar ? scalar_exponent : to_float(exponent[idx]);
         output[idx] = from_float<T_OUT>(functor.compute(input[idx], exp_val_f));
     }
@@ -82,25 +82,25 @@ __global__ void float_power_kernel(
 // ==================================================================
 template <typename T_OUT, typename T_IN, int PackSize>
 __global__ void float_power_kernel_vectorized_scalar(
-    T_OUT * __restrict__ output, 
-    const T_IN * __restrict__ input, 
-    float scalar_exponent, 
-    size_t num_packs, 
+    T_OUT *__restrict__ output,
+    const T_IN *__restrict__ input,
+    float scalar_exponent,
+    size_t num_packs,
     FloatPowerFunctor functor) {
-    
+
     using PackTypeIn = Pack<T_IN, PackSize>;
     using PackTypeOut = Pack<T_OUT, PackSize>;
 
-    auto in_vec = reinterpret_cast<const PackTypeIn*>(input);
-    auto out_vec = reinterpret_cast<PackTypeOut*>(output);
-    
+    auto in_vec = reinterpret_cast<const PackTypeIn *>(input);
+    auto out_vec = reinterpret_cast<PackTypeOut *>(output);
+
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-    
+
     if (idx < num_packs) {
         PackTypeIn in_pack = in_vec[idx];
         PackTypeOut out_pack;
-        
-        #pragma unroll
+
+#pragma unroll
         for (int i = 0; i < PackSize; ++i) {
             out_pack.val[i] = from_float<T_OUT>(functor.compute(in_pack.val[i], scalar_exponent));
         }
@@ -113,27 +113,27 @@ __global__ void float_power_kernel_vectorized_scalar(
 // ==================================================================
 template <typename T_OUT, typename T_IN, int PackSize>
 __global__ void float_power_kernel_vectorized_tensor(
-    T_OUT * __restrict__ output, 
-    const T_IN * __restrict__ input, 
-    const T_IN * __restrict__ exponent, 
-    size_t num_packs, 
+    T_OUT *__restrict__ output,
+    const T_IN *__restrict__ input,
+    const T_IN *__restrict__ exponent,
+    size_t num_packs,
     FloatPowerFunctor functor) {
-    
+
     using PackTypeIn = Pack<T_IN, PackSize>;
     using PackTypeOut = Pack<T_OUT, PackSize>;
 
-    auto in_vec = reinterpret_cast<const PackTypeIn*>(input);
-    auto exp_vec = reinterpret_cast<const PackTypeIn*>(exponent);
-    auto out_vec = reinterpret_cast<PackTypeOut*>(output);
-    
+    auto in_vec = reinterpret_cast<const PackTypeIn *>(input);
+    auto exp_vec = reinterpret_cast<const PackTypeIn *>(exponent);
+    auto out_vec = reinterpret_cast<PackTypeOut *>(output);
+
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-    
+
     if (idx < num_packs) {
         PackTypeIn in_pack = in_vec[idx];
-        PackTypeIn exp_pack = exp_vec[idx]; 
+        PackTypeIn exp_pack = exp_vec[idx];
         PackTypeOut out_pack;
-        
-        #pragma unroll
+
+#pragma unroll
         for (int i = 0; i < PackSize; ++i) {
             float e = to_float(exp_pack.val[i]);
             out_pack.val[i] = from_float<T_OUT>(functor.compute(in_pack.val[i], e));

@@ -1,8 +1,8 @@
+#include "../../../devices/moore/moore_handle.h"
 #include "flipud_moore.h"
 #include "flipud_moore_kernel.h"
-#include "../../../devices/moore/moore_handle.h"
-#include <cstdint>
 #include <algorithm>
+#include <cstdint>
 #include <vector>
 
 namespace op::flipud::moore {
@@ -34,10 +34,10 @@ void launch_kernel(
     auto in_ptr = reinterpret_cast<const T *>(input);
     auto out_ptr = reinterpret_cast<T *>(output);
     auto musa_stream = reinterpret_cast<musaStream_t>(stream);
-    
+
     constexpr int TotalBytes = 16; // 128-bit
     constexpr int PackSize = TotalBytes / sizeof(T);
-    
+
     // ------------------------------------------
     // 向量化判定 (Vectorization Check)
     // ------------------------------------------
@@ -48,13 +48,11 @@ void launch_kernel(
     bool is_numel_divisible = (numel % PackSize == 0);
 
     // 3. 最后一维大小必须是 PackSize 的倍数 (保证 Pack 不会跨行读取)
-    bool is_last_dim_aligned = (layout.ndim > 0) && (layout.shape[layout.ndim-1] % PackSize == 0);
+    bool is_last_dim_aligned = (layout.ndim > 0) && (layout.shape[layout.ndim - 1] % PackSize == 0);
 
     // 4. 连续性条件：维度 > 1 且 最内层在内存中是连续的 (stride=1)
-    bool is_inner_contiguous = (layout.ndim > 1) && 
-                               (layout.in_strides[layout.ndim-1] == 1) && 
-                               (layout.out_strides[layout.ndim-1] == 1);
-    
+    bool is_inner_contiguous = (layout.ndim > 1) && (layout.in_strides[layout.ndim - 1] == 1) && (layout.out_strides[layout.ndim - 1] == 1);
+
     // 5. 步长对齐条件: 除非是最内层维度，否则所有 Stride 都必须是 PackSize 的倍数
     // 这样保证每个 Pack 读取的起始地址都是对齐的
     bool is_stride_aligned = true;
@@ -65,24 +63,19 @@ void launch_kernel(
         }
     }
 
-    bool can_vectorize = (PackSize > 1) && 
-                         is_ptr_aligned &&
-                         is_numel_divisible &&
-                         is_last_dim_aligned &&
-                         is_inner_contiguous &&
-                         is_stride_aligned;
+    bool can_vectorize = (PackSize > 1) && is_ptr_aligned && is_numel_divisible && is_last_dim_aligned && is_inner_contiguous && is_stride_aligned;
 
     if (can_vectorize) {
         size_t num_packs = numel / PackSize;
         size_t block_size = 256;
         size_t grid_size = (num_packs + block_size - 1) / block_size;
-        
+
         op::flipud::moore::flipud_kernel_vectorized<T, PackSize>
             <<<grid_size, block_size, 0, musa_stream>>>(out_ptr, in_ptr, num_packs, layout);
     } else {
         size_t block_size = 256;
         size_t grid_size = (numel + block_size - 1) / block_size;
-        
+
         op::flipud::moore::flipud_kernel<T>
             <<<grid_size, block_size, 0, musa_stream>>>(out_ptr, in_ptr, numel, layout);
     }
@@ -91,8 +84,10 @@ void launch_kernel(
 // ==================================================================
 // Descriptor 实现
 // ==================================================================
-Descriptor::~Descriptor() { 
-    if (_opaque) delete _opaque; 
+Descriptor::~Descriptor() {
+    if (_opaque) {
+        delete _opaque;
+    }
 }
 
 infiniStatus_t Descriptor::create(
@@ -102,19 +97,21 @@ infiniStatus_t Descriptor::create(
     auto handle = reinterpret_cast<device::moore::Handle *>(handle_);
 
     auto info_result = FlipudInfo::create(out_desc, input_desc);
-    if (!info_result) return info_result.status();
+    if (!info_result) {
+        return info_result.status();
+    }
 
     auto opaque = new Opaque();
     opaque->layout.ndim = static_cast<int>(input_desc->ndim());
-    
+
     if (opaque->layout.ndim > op::flipud::moore::MAX_DIMS) {
         delete opaque;
         return INFINI_STATUS_BAD_TENSOR_SHAPE;
     }
 
-    const auto& shape = input_desc->shape();
-    const auto& in_strides = input_desc->strides();
-    const auto& out_strides = out_desc->strides();
+    const auto &shape = input_desc->shape();
+    const auto &in_strides = input_desc->strides();
+    const auto &out_strides = out_desc->strides();
 
     for (int i = 0; i < opaque->layout.ndim; ++i) {
         opaque->layout.shape[i] = shape[i];

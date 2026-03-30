@@ -1,10 +1,10 @@
 #ifndef __FLOOR_DIVIDE_MOORE_H__
 #define __FLOOR_DIVIDE_MOORE_H__
 
-#include <musa_fp16.h>
-#include <musa_bf16.h>
-#include <type_traits>
 #include <cmath>
+#include <musa_bf16.h>
+#include <musa_fp16.h>
+#include <type_traits>
 
 namespace op::floor_divide::moore {
 typedef struct FloorDivideOp {

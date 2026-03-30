@@ -1,5 +1,5 @@
 #include "infinicore/ops/float_power.hpp"
-#include "infinicore/tensor.hpp" 
+#include "infinicore/tensor.hpp"
 
 namespace infinicore::op {
 
@@ -7,12 +7,12 @@ namespace infinicore::op {
 // 1. Dispatcher 单例
 // =======================================================================
 
-common::OpDispatcher<FloatPower::schema_scalar>& FloatPower::dispatcher_scalar() {
+common::OpDispatcher<FloatPower::schema_scalar> &FloatPower::dispatcher_scalar() {
     static common::OpDispatcher<FloatPower::schema_scalar> dispatcher_;
     return dispatcher_;
 }
 
-common::OpDispatcher<FloatPower::schema_tensor>& FloatPower::dispatcher_tensor() {
+common::OpDispatcher<FloatPower::schema_tensor> &FloatPower::dispatcher_tensor() {
     static common::OpDispatcher<FloatPower::schema_tensor> dispatcher_;
     return dispatcher_;
 }
@@ -38,21 +38,19 @@ void FloatPower::execute(Tensor output, Tensor input, Tensor exponent) {
 Tensor float_power(Tensor input, double exponent) {
     auto output = Tensor::empty(
         input->shape(),
-        infinicore::DataType::F64, 
-        input->device()
-    );
+        infinicore::DataType::F64,
+        input->device());
 
     float_power_(output, input, exponent);
     return output;
 }
 
 Tensor float_power(Tensor input, Tensor exponent) {
-    Shape output_shape = input->shape(); 
+    Shape output_shape = input->shape();
     auto output = Tensor::empty(
         output_shape,
-        infinicore::DataType::F64, 
-        input->device()
-    );
+        infinicore::DataType::F64,
+        input->device());
 
     float_power_(output, input, exponent);
     return output;
