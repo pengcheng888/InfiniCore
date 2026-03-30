@@ -19,6 +19,7 @@ from .silu_and_mul import silu_and_mul
 from .smooth_l1_loss import smooth_l1_loss
 from .swiglu import swiglu
 from .tanhshrink import tanhshrink
+from .multi_margin_loss import multi_margin_loss 
 
 __all__ = [
     "adaptive_max_pool1d",
@@ -48,4 +49,5 @@ __all__ = [
     "silu_and_mul",
     "adaptive_avg_pool3d",
     "tanhshrink",
+    "multi_margin_loss",
 ]

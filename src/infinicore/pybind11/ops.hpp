@@ -65,6 +65,11 @@
 #include "ops/topk.hpp"
 #include "ops/var.hpp"
 #include "ops/var_mean.hpp"
+#include "ops/floor_divide.hpp"
+#include "ops/float_power.hpp"
+#include "ops/flipud.hpp"
+#include "ops/multi_margin_loss.hpp"
+#include "ops/scatter.hpp"
 
 namespace py = pybind11;
 
@@ -123,6 +128,11 @@ inline void bind(py::module &m) {
     bind_tan(m);
     bind_tanhshrink(m);
     bind_rope(m);
+    bind_floor_divide(m);
+    bind_float_power(m);
+    bind_flipud(m);
+    bind_multi_margin_loss(m);
+    bind_scatter(m);
     bind_embedding(m);
     bind_linear_w8a8i8(m);
     bind_silu_and_mul(m);
