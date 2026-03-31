@@ -102,6 +102,7 @@ from infinicore.ops.topk import topk
 from infinicore.ops.unsqueeze import unsqueeze
 from infinicore.ops.var import var
 from infinicore.ops.var_mean import var_mean
+from infinicore.ops.broadcast_to import broadcast_to
 from infinicore.tensor import (
     Tensor,
     empty,
@@ -215,6 +216,7 @@ __all__ = [
     "index_add",
     "take",
     "ones",
+    "broadcast_to",
     "strided_empty",
     "strided_from_blob",
     "zeros",

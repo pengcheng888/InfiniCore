@@ -14,12 +14,18 @@
 #ifdef ENABLE_KUNLUN_API
 #include "kunlun/softplus_kunlun.h"
 #endif
+#ifdef ENABLE_MOORE_API
+#include "moore/softplus_moore.h"
+#endif
+
 
 __INFINI_C infiniStatus_t infiniopCreateSoftplusDescriptor(
     infiniopHandle_t handle,
     infiniopSoftplusDescriptor_t *desc_ptr,
     infiniopTensorDescriptor_t y_desc,
-    infiniopTensorDescriptor_t x_desc) {
+    infiniopTensorDescriptor_t x_desc,
+    float beta,
+    float threshold) {
 
 #define CREATE(CASE, NAMESPACE)                                                 \
     case CASE:                                                                  \
@@ -27,7 +33,9 @@ __INFINI_C infiniStatus_t infiniopCreateSoftplusDescriptor(
             handle,                                                             \
             reinterpret_cast<op::softplus::NAMESPACE::Descriptor **>(desc_ptr), \
             y_desc,                                                             \
-            {x_desc})
+            {x_desc},                                                           \
+            beta,                                                               \
+            threshold)
 
     switch (handle->device) {
 
@@ -52,7 +60,9 @@ __INFINI_C infiniStatus_t infiniopCreateSoftplusDescriptor(
 #ifdef ENABLE_ALI_API
         CREATE(INFINI_DEVICE_ALI, nvidia);
 #endif
-
+#ifdef ENABLE_MOORE_API
+        CREATE(INFINI_DEVICE_MOORE, moore);
+#endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
@@ -89,7 +99,9 @@ __INFINI_C infiniStatus_t infiniopGetSoftplusWorkspaceSize(infiniopSoftplusDescr
 #ifdef ENABLE_ALI_API
         GET(INFINI_DEVICE_ALI, nvidia);
 #endif
-
+#ifdef ENABLE_MOORE_API
+        GET(INFINI_DEVICE_MOORE, moore);
+#endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
@@ -106,8 +118,8 @@ __INFINI_C infiniStatus_t infiniopSoftplus(
     const void *x,
     void *stream) {
 
-#define CALCULATE(CASE, NAMESPACE)                                                 \
-    case CASE:                                                                     \
+#define CALCULATE(CASE, NAMESPACE)                                         \
+    case CASE:                                                             \
         return reinterpret_cast<const op::softplus::NAMESPACE::Descriptor *>(desc) \
             ->calculate(workspace, workspace_size, y, {x}, stream)
 
@@ -134,7 +146,9 @@ __INFINI_C infiniStatus_t infiniopSoftplus(
 #ifdef ENABLE_ALI_API
         CALCULATE(INFINI_DEVICE_ALI, nvidia);
 #endif
-
+#ifdef ENABLE_MOORE_API
+        CALCULATE(INFINI_DEVICE_MOORE, moore);
+#endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
@@ -173,7 +187,9 @@ infiniopDestroySoftplusDescriptor(infiniopSoftplusDescriptor_t desc) {
 #ifdef ENABLE_ALI_API
         DELETE(INFINI_DEVICE_ALI, nvidia);
 #endif
-
+#ifdef ENABLE_MOORE_API
+        DELETE(INFINI_DEVICE_MOORE, moore);
+#endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }

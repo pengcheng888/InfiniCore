@@ -18,6 +18,9 @@ from .rope import RopeAlgo, rope
 from .silu import silu
 from .silu_and_mul import silu_and_mul
 from .smooth_l1_loss import smooth_l1_loss
+from .softplus import softplus
+from .softsign import softsign
+from .huber_loss import huber_loss
 from .swiglu import swiglu
 from .tanhshrink import tanhshrink
 from .triplet_margin_loss import triplet_margin_loss
@@ -55,4 +58,7 @@ __all__ = [
     "adaptive_avg_pool3d",
     "tanhshrink",
     "multi_margin_loss",
+    "softplus",
+    "siftsign",
+    "huber_loss",
 ]

@@ -73,7 +73,6 @@
 #include "infiniop/ops/silu_and_mul.h"
 #include "infiniop/ops/smooth_l1_loss.h"
 #include "infiniop/ops/softmax.h"
-#include "infiniop/ops/softplus.h"
 #include "infiniop/ops/sub.h"
 #include "infiniop/ops/sum.h"
 #include "infiniop/ops/swiglu.h"
@@ -89,5 +88,9 @@
 #include "infiniop/ops/var.h"
 #include "infiniop/ops/var_mean.h"
 #include "infiniop/ops/zeros.h"
+#include "infiniop/ops/broadcast_to.h"
+#include "infiniop/ops/softplus.h"
+#include "infiniop/ops/softsign.h"
+#include "infiniop/ops/huber_loss.h"
 #include "infiniop/tensor_descriptor.h"
 #endif // __INFINIOP_API_H__
