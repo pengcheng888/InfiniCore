@@ -29,7 +29,10 @@
 #include "ops/embedding.hpp"
 #include "ops/equal.hpp"
 #include "ops/flash_attention.hpp"
+#include "ops/flipud.hpp"
+#include "ops/float_power.hpp"
 #include "ops/floor.hpp"
+#include "ops/floor_divide.hpp"
 #include "ops/fmin.hpp"
 #include "ops/fmod.hpp"
 #include "ops/hardswish.hpp"
@@ -46,6 +49,7 @@
 #include "ops/mha_kvcache.hpp"
 #include "ops/mha_varlen.hpp"
 #include "ops/mul.hpp"
+#include "ops/multi_margin_loss.hpp"
 #include "ops/paged_attention.hpp"
 #include "ops/paged_attention_prefill.hpp"
 #include "ops/paged_caching.hpp"
@@ -54,6 +58,7 @@
 #include "ops/reciprocal.hpp"
 #include "ops/rms_norm.hpp"
 #include "ops/rope.hpp"
+#include "ops/scatter.hpp"
 #include "ops/silu.hpp"
 #include "ops/silu_and_mul.hpp"
 #include "ops/smooth_l1_loss.hpp"
@@ -123,6 +128,11 @@ inline void bind(py::module &m) {
     bind_tan(m);
     bind_tanhshrink(m);
     bind_rope(m);
+    bind_floor_divide(m);
+    bind_float_power(m);
+    bind_flipud(m);
+    bind_multi_margin_loss(m);
+    bind_scatter(m);
     bind_embedding(m);
     bind_linear_w8a8i8(m);
     bind_silu_and_mul(m);

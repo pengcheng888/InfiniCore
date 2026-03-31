@@ -11,6 +11,7 @@ from .hardswish import hardswish
 from .hardtanh import hardtanh
 from .linear import linear
 from .linear_w8a8i8 import linear_w8a8i8
+from .multi_margin_loss import multi_margin_loss
 from .random_sample import random_sample
 from .rms_norm import rms_norm
 from .rope import RopeAlgo, rope
@@ -48,4 +49,5 @@ __all__ = [
     "silu_and_mul",
     "adaptive_avg_pool3d",
     "tanhshrink",
+    "multi_margin_loss",
 ]
