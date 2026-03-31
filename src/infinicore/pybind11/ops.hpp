@@ -70,6 +70,11 @@
 #include "ops/topk.hpp"
 #include "ops/var.hpp"
 #include "ops/var_mean.hpp"
+#include "ops/triplet_margin_loss.hpp"
+#include "ops/upsample_bilinear.hpp"
+#include "ops/kthvalue.hpp"
+#include "ops/lerp.hpp"
+#include "ops/ldexp.hpp"
 
 namespace py = pybind11;
 
@@ -147,6 +152,11 @@ inline void bind(py::module &m) {
     bind_cdist(m);
     bind_binary_cross_entropy_with_logits(m);
     bind_reciprocal(m);
+    bind_upsample_bilinear(m);
+    bind_kthvalue(m);
+    bind_ldexp(m);
+    bind_lerp(m);
+    bind_triplet_margin_loss(m);
 }
 
 } // namespace infinicore::ops
