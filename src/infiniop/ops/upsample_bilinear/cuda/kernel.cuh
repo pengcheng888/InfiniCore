@@ -1,16 +1,6 @@
 #ifndef __UPSAMPLE_BILINEAR_CUDA_CUH__
 #define __UPSAMPLE_BILINEAR_CUDA_CUH__
 
-#include <cuda_runtime.h>
-#if defined ENABLE_METAX_API
-    #include <maca_fp16.h>
-    #include <maca_bfloat16.h>
-    using nv_bfloat162 = __maca_bfloat162;
-#else
-    #include <cuda_fp16.h>
-    #include <cuda_bf16.h>
-#endif
-
 #include <cmath>
 #include <cstdio>
 
@@ -23,7 +13,7 @@ __device__ __forceinline__ float get_source_coord(
     float scale,
     int out_index,
     bool align_corners) {
-    
+
     if (align_corners) {
         return static_cast<float>(out_index) * scale;
     } else {
@@ -41,16 +31,16 @@ __device__ __forceinline__ int clamp(int val, int min_val, int max_val) {
 // ==================================================================
 template <typename T>
 __global__ void upsample_bilinear_kernel(
-    T * __restrict__ output,        // [N, C, H_out, W_out]
-    const T * __restrict__ input,   // [N, C, H_in, W_in]
+    T *__restrict__ output,      // [N, C, H_out, W_out]
+    const T *__restrict__ input, // [N, C, H_in, W_in]
     size_t N,
     size_t C,
     size_t H_in,
     size_t W_in,
     size_t H_out,
     size_t W_out,
-    float scale_h,                  // 预计算的缩放比例
-    float scale_w,                  // 预计算的缩放比例
+    float scale_h, // 预计算的缩放比例
+    float scale_w, // 预计算的缩放比例
     bool align_corners) {
 
     // Grid-Stride Loop: 处理每一个输出元素
@@ -94,7 +84,7 @@ __global__ void upsample_bilinear_kernel(
 
         // 6. 读取数据
         // 计算当前 Batch 和 Channel 的 Input 基地址
-        const T* img_base = input + (n_idx * C + c_idx) * H_in * W_in;
+        const T *img_base = input + (n_idx * C + c_idx) * H_in * W_in;
 
         float val00 = static_cast<float>(img_base[h0 * W_in + w0]);
         float val01 = static_cast<float>(img_base[h0 * W_in + w1]);
@@ -103,8 +93,7 @@ __global__ void upsample_bilinear_kernel(
 
         // 7. 双线性插值计算
         // result = (val00 * w0 + val01 * w1) * h0 + (val10 * w0 + val11 * w1) * h1
-        float val = h0_lambda * (w0_lambda * val00 + w1_lambda * val01) +
-                    h1_lambda * (w0_lambda * val10 + w1_lambda * val11);
+        float val = h0_lambda * (w0_lambda * val00 + w1_lambda * val01) + h1_lambda * (w0_lambda * val10 + w1_lambda * val11);
 
         output[i] = static_cast<T>(val);
     }

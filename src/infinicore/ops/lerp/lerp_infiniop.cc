@@ -23,20 +23,19 @@ void calculate(Tensor output, Tensor start, Tensor end, Tensor weight) {
 
     auto &cache = caches.getCache(device_type, device_index);
     auto desc_opt = cache.get(seed);
-    
+
     infiniopLerpDescriptor_t desc = nullptr;
 
     if (!desc_opt) {
         INFINICORE_CHECK_ERROR(infiniopCreateLerpDescriptor(
-            context::getInfiniopHandle(output->device()), 
+            context::getInfiniopHandle(output->device()),
             &desc,
-            output->desc(), 
-            start->desc(), 
-            end->desc(), 
-            weight->desc(), 
-            0.0f 
-        ));
-        
+            output->desc(),
+            start->desc(),
+            end->desc(),
+            weight->desc(),
+            0.0f));
+
         cache.put(seed, desc);
     } else {
         desc = *desc_opt;
@@ -47,15 +46,14 @@ void calculate(Tensor output, Tensor start, Tensor end, Tensor weight) {
     std::shared_ptr<Memory> workspace = context::allocateMemory(workspace_size);
 
     INFINICORE_CHECK_ERROR(infiniopLerp(
-        desc, 
-        workspace->data(), 
+        desc,
+        workspace->data(),
         workspace_size,
-        output->data(), 
-        start->data(), 
-        end->data(), 
+        output->data(),
+        start->data(),
+        end->data(),
         weight->data(),
-        context::getStream()
-    ));
+        context::getStream()));
 }
 
 void calculate(Tensor output, Tensor start, Tensor end, float weight) {
@@ -66,20 +64,19 @@ void calculate(Tensor output, Tensor start, Tensor end, float weight) {
 
     auto &cache = caches.getCache(device_type, device_index);
     auto desc_opt = cache.get(seed);
-    
+
     infiniopLerpDescriptor_t desc = nullptr;
 
     if (!desc_opt) {
         INFINICORE_CHECK_ERROR(infiniopCreateLerpDescriptor(
-            context::getInfiniopHandle(output->device()), 
+            context::getInfiniopHandle(output->device()),
             &desc,
-            output->desc(), 
-            start->desc(), 
-            end->desc(), 
-            nullptr, 
-            weight
-        ));
-        
+            output->desc(),
+            start->desc(),
+            end->desc(),
+            nullptr,
+            weight));
+
         cache.put(seed, desc);
     } else {
         desc = *desc_opt;
@@ -90,29 +87,26 @@ void calculate(Tensor output, Tensor start, Tensor end, float weight) {
     std::shared_ptr<Memory> workspace = context::allocateMemory(workspace_size);
 
     INFINICORE_CHECK_ERROR(infiniopLerp(
-        desc, 
-        workspace->data(), 
+        desc,
+        workspace->data(),
         workspace_size,
-        output->data(), 
-        start->data(), 
-        end->data(), 
+        output->data(),
+        start->data(),
+        end->data(),
         nullptr,
-        context::getStream()
-    ));
+        context::getStream()));
 }
 
 static bool registered = []() {
     using SchemaTensor = void (*)(Tensor, Tensor, Tensor, Tensor);
     Lerp::dispatcher<SchemaTensor>().registerAll(
-        static_cast<SchemaTensor>(&calculate), 
-        false
-    );
+        static_cast<SchemaTensor>(&calculate),
+        false);
 
     using SchemaScalar = void (*)(Tensor, Tensor, Tensor, float);
     Lerp::dispatcher<SchemaScalar>().registerAll(
-        static_cast<SchemaScalar>(&calculate), 
-        false
-    );
+        static_cast<SchemaScalar>(&calculate),
+        false);
 
     return true;
 }();

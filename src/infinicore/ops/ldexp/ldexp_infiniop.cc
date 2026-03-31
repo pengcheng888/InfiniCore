@@ -22,10 +22,14 @@ void calculate(Tensor output, Tensor input, Tensor other) {
     size_t seed = 0;
     auto combine_tensor_meta = [&](Tensor t) {
         infinicore::hash_combine(seed, static_cast<size_t>(t->dtype()));
-        for (auto s : t->shape()) infinicore::hash_combine(seed, s);
-        for (auto str : t->strides()) infinicore::hash_combine(seed, str);
+        for (auto s : t->shape()) {
+            infinicore::hash_combine(seed, s);
+        }
+        for (auto str : t->strides()) {
+            infinicore::hash_combine(seed, str);
+        }
     };
-    
+
     combine_tensor_meta(output);
     combine_tensor_meta(input);
     combine_tensor_meta(other);
@@ -42,13 +46,12 @@ void calculate(Tensor output, Tensor input, Tensor other) {
         // 3. 创建描述符
         // 这里后端 (CPU/GPU) 会根据 input/other 类型决定是否需要 workspace
         INFINICORE_CHECK_ERROR(infiniopCreateLdexpDescriptor(
-            context::getInfiniopHandle(input->device()), 
+            context::getInfiniopHandle(input->device()),
             &desc,
             output->desc(),
             input->desc(),
-            other->desc()
-        ));
-        
+            other->desc()));
+
         cache.put(seed, desc);
     } else {
         desc = *desc_opt;
@@ -57,19 +60,18 @@ void calculate(Tensor output, Tensor input, Tensor other) {
     // 4. 获取 Workspace 并执行
     size_t workspace_size = 0;
     INFINICORE_CHECK_ERROR(infiniopGetLdexpWorkspaceSize(desc, &workspace_size));
-    
+
     // 如果后端检测到需要转换 Int32 -> Float，workspace_size 会 > 0
     std::shared_ptr<Memory> workspace = context::allocateMemory(workspace_size);
 
     INFINICORE_CHECK_ERROR(infiniopLdexp(
-        desc, 
-        workspace->data(), 
+        desc,
+        workspace->data(),
         workspace_size,
-        output->data(), 
-        input->data(), 
-        other->data(), 
-        context::getStream()
-    ));
+        output->data(),
+        input->data(),
+        other->data(),
+        context::getStream()));
 }
 
 // 5. 注册算子

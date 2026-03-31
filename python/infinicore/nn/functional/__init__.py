@@ -20,8 +20,8 @@ from .silu_and_mul import silu_and_mul
 from .smooth_l1_loss import smooth_l1_loss
 from .swiglu import swiglu
 from .tanhshrink import tanhshrink
-from .upsample_bilinear import upsample_bilinear, interpolate
-from .triplet_margin_loss import triplet_margin_loss 
+from .triplet_margin_loss import triplet_margin_loss
+from .upsample_bilinear import interpolate, upsample_bilinear
 
 __all__ = [
     "adaptive_max_pool1d",
@@ -40,7 +40,7 @@ __all__ = [
     "linear",
     "triplet_margin_loss",
     "upsample_bilinear",
-    "interpolate", 
+    "interpolate",
     "embedding",
     "rope",
     "RopeAlgo",

@@ -41,7 +41,10 @@
 #include "ops/index_add.hpp"
 #include "ops/index_copy.hpp"
 #include "ops/inner.hpp"
+#include "ops/kthvalue.hpp"
 #include "ops/kv_caching.hpp"
+#include "ops/ldexp.hpp"
+#include "ops/lerp.hpp"
 #include "ops/linear.hpp"
 #include "ops/linear_w8a8i8.hpp"
 #include "ops/masked_select.hpp"
@@ -68,13 +71,10 @@
 #include "ops/tan.hpp"
 #include "ops/tanhshrink.hpp"
 #include "ops/topk.hpp"
-#include "ops/var.hpp"
-#include "ops/var_mean.hpp"
 #include "ops/triplet_margin_loss.hpp"
 #include "ops/upsample_bilinear.hpp"
-#include "ops/kthvalue.hpp"
-#include "ops/lerp.hpp"
-#include "ops/ldexp.hpp"
+#include "ops/var.hpp"
+#include "ops/var_mean.hpp"
 
 namespace py = pybind11;
 

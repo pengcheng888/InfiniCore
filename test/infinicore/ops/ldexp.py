@@ -5,7 +5,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import infinicore
 import torch
-from framework import BaseOperatorTest, TensorSpec, TestCase, GenericTestRunner
+from framework import BaseOperatorTest, TensorSpec, TestCase, GenericTestRunner, TensorInitializer
 
 # ldexp(input, other) computes input * (2**other)
 
@@ -33,9 +33,9 @@ def parse_test_cases():
             in_spec = TensorSpec.from_tensor(shape, None, dtype)
 
             if other_shape is None:
-                other_spec = TensorSpec.from_tensor((1,), None, infinicore.int32)
+                other_spec = TensorSpec.from_tensor((1,), None, infinicore.int32, TensorInitializer.RANDINT, low=0, high=3)
             else:
-                other_spec = TensorSpec.from_tensor(other_shape, None, infinicore.int32)
+                other_spec = TensorSpec.from_tensor(other_shape, None, infinicore.int32, TensorInitializer.RANDINT, low=0, high=3)
 
             # out-of-place
             cases.append(
@@ -86,12 +86,11 @@ class OpTest(BaseOperatorTest):
     def get_test_cases(self):
         return parse_test_cases()
 
-    def torch_operator(self, *args, **kwargs):
-        return torch.ldexp(*args, **kwargs)
+    def torch_operator(self, input, other, **kwargs):
+        return torch.ldexp(input, other, **kwargs).to(input.dtype)
 
-    # def infinicore_operator(self, *args, **kwargs):
-    #     """InfiniCore implementation (operator not yet available)."""
-    #     return infinicore.ldexp(*args, **kwargs)
+    def infinicore_operator(self, *args, **kwargs):
+        return infinicore.ldexp(*args, **kwargs)
 
 
 def main():

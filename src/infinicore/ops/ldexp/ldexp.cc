@@ -18,11 +18,11 @@ Tensor ldexp(Tensor input, Tensor other) {
     // 计算广播后的输出形状 (Broadcasting Logic)
     const auto &shape_a = input->shape();
     const auto &shape_b = other->shape();
-    
+
     size_t ndim_a = shape_a.size();
     size_t ndim_b = shape_b.size();
     size_t ndim_out = std::max(ndim_a, ndim_b);
-    
+
     Shape output_shape(ndim_out);
 
     // 从后往前对齐维度进行广播检查
@@ -36,10 +36,10 @@ Tensor ldexp(Tensor input, Tensor other) {
     // 分配输出 Tensor
     // ldexp 的输出类型通常跟随 input (尾数)，设备跟随 input
     auto output = Tensor::empty(output_shape, input->dtype(), input->device());
-    
+
     // 调用 Explicit output 接口
     ldexp_(output, input, other);
-    
+
     return output;
 }
 

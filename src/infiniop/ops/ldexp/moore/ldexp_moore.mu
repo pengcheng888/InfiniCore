@@ -1,11 +1,11 @@
+#include "../../../devices/moore/moore_handle.h"
+#include "../../../handle.h"
 #include "ldexp_moore.h"
 #include "ldexp_moore_kernel.h"
-#include "../../../handle.h"
-#include "../../../devices/moore/moore_handle.h"
-#include <vector>
-#include <musa_runtime.h>
-#include <musa_fp16.h>
 #include <musa_bf16.h>
+#include <musa_fp16.h>
+#include <musa_runtime.h>
+#include <vector>
 
 namespace op::ldexp::moore {
 
@@ -15,26 +15,26 @@ namespace op::ldexp::moore {
 
 template <typename T, typename TExp>
 void launch_kernel(
-    void *output, 
-    const void *x, 
-    const void *exp, 
-    const LdexpInfo& info, 
+    void *output,
+    const void *x,
+    const void *exp,
+    const LdexpInfo &info,
     void *stream) {
 
     auto out_ptr = reinterpret_cast<T *>(output);
     auto x_ptr = reinterpret_cast<const T *>(x);
-    auto exp_ptr = reinterpret_cast<const TExp *>(exp); 
+    auto exp_ptr = reinterpret_cast<const TExp *>(exp);
     auto musa_stream = reinterpret_cast<musaStream_t>(stream);
-    
+
     size_t n = info.count();
 
     op::ldexp::moore::KernelShapeInfo k_info;
     k_info.ndim = info.ndim();
     if (k_info.ndim > op::ldexp::moore::MAX_DIMS) {
-        k_info.ndim = op::ldexp::moore::MAX_DIMS; 
+        k_info.ndim = op::ldexp::moore::MAX_DIMS;
     }
 
-    for(int i = 0; i < k_info.ndim; ++i) {
+    for (int i = 0; i < k_info.ndim; ++i) {
         k_info.shape[i] = info.shape()[i];
         k_info.stride_x[i] = info.x_strides()[i];
         k_info.stride_exp[i] = info.exp_strides()[i];
@@ -42,12 +42,13 @@ void launch_kernel(
 
     constexpr int block_size = 256;
     size_t grid_size = (n + block_size - 1) / block_size;
-    if (grid_size > 65535) grid_size = 65535;
-    
+    if (grid_size > 65535) {
+        grid_size = 65535;
+    }
+
     op::ldexp::moore::ldexp_broadcast_kernel<T, TExp>
         <<<grid_size, block_size, 0, musa_stream>>>(
-            out_ptr, x_ptr, exp_ptr, n, k_info
-        );
+            out_ptr, x_ptr, exp_ptr, n, k_info);
 }
 
 // ==================================================================
@@ -55,29 +56,32 @@ void launch_kernel(
 // ==================================================================
 struct Descriptor::Opaque {};
 
-Descriptor::~Descriptor() { 
-    if (_opaque) delete _opaque; 
+Descriptor::~Descriptor() {
+    if (_opaque) {
+        delete _opaque;
+    }
 }
 
 infiniStatus_t Descriptor::create(
-    infiniopHandle_t handle, 
+    infiniopHandle_t handle,
     Descriptor **desc_ptr,
-    infiniopTensorDescriptor_t y_desc, 
-    infiniopTensorDescriptor_t x_desc, 
+    infiniopTensorDescriptor_t y_desc,
+    infiniopTensorDescriptor_t x_desc,
     infiniopTensorDescriptor_t exp_desc) {
 
     auto info_result = LdexpInfo::create(y_desc, x_desc, exp_desc);
-    if (!info_result) return info_result.status();
+    if (!info_result) {
+        return info_result.status();
+    }
 
     size_t workspace_size = 0;
 
     *desc_ptr = new Descriptor(
-        new Opaque(), 
-        info_result.take(), 
-        workspace_size, 
-        handle->device, 
-        handle->device_id
-    );
+        new Opaque(),
+        info_result.take(),
+        workspace_size,
+        handle->device,
+        handle->device_id);
     return INFINI_STATUS_SUCCESS;
 }
 
@@ -95,11 +99,11 @@ infiniStatus_t Descriptor::calculate(
 }
 
 infiniStatus_t Descriptor::calculate(
-    void *workspace, 
-    size_t workspace_size, 
-    void *output, 
-    const void *x, 
-    const void *exp, 
+    void *workspace,
+    size_t workspace_size,
+    void *output,
+    const void *x,
+    const void *exp,
     void *stream) const {
 
     auto dtype = _info.dtype();

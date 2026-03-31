@@ -16,7 +16,7 @@ void Kthvalue::execute(Tensor values, Tensor indices, Tensor input, int64_t k, i
 std::tuple<Tensor, Tensor> kthvalue(Tensor input, int64_t k, int64_t dim, bool keepdim) {
     auto input_shape = input->shape();
     int64_t ndim = input_shape.size();
-    
+
     // 处理负数维度
     if (dim < 0) {
         dim += ndim;

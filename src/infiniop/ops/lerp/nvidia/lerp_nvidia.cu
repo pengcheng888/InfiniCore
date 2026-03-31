@@ -1,11 +1,14 @@
-#include "lerp_nvidia.cuh"
-#include "../cuda/kernel.cuh"
+#include "../../../devices/nvidia/nvidia_common.cuh"
+#include "../../../devices/nvidia/nvidia_handle.h"
+#include "../../../devices/nvidia/nvidia_kernel_common.cuh"
 #include "../../../handle.h"
-#include "../../../devices/nvidia/nvidia_handle.h" 
 
+#include "../cuda/kernel.cuh"
+#include "lerp_nvidia.cuh"
+
+#include <algorithm>
 #include <cstdint>
 #include <vector>
-#include <algorithm>
 
 namespace op::lerp::nvidia {
 
@@ -14,12 +17,12 @@ namespace op::lerp::nvidia {
 // ==================================================================
 struct LerpOpaqueData {
     int ndim;
-    
+
     // Device Pointers
-    int64_t* d_shape = nullptr;
-    int64_t* d_start_strides = nullptr;
-    int64_t* d_end_strides = nullptr;
-    int64_t* d_weight_strides = nullptr;
+    int64_t *d_shape = nullptr;
+    int64_t *d_start_strides = nullptr;
+    int64_t *d_end_strides = nullptr;
+    int64_t *d_weight_strides = nullptr;
 };
 
 // 让 Opaque 继承自 LerpOpaqueData
@@ -27,10 +30,18 @@ struct Descriptor::Opaque : public LerpOpaqueData {};
 
 Descriptor::~Descriptor() {
     if (_opaque) {
-        if (_opaque->d_shape) cudaFree(_opaque->d_shape);
-        if (_opaque->d_start_strides) cudaFree(_opaque->d_start_strides);
-        if (_opaque->d_end_strides) cudaFree(_opaque->d_end_strides);
-        if (_opaque->d_weight_strides) cudaFree(_opaque->d_weight_strides);
+        if (_opaque->d_shape) {
+            cudaFree(_opaque->d_shape);
+        }
+        if (_opaque->d_start_strides) {
+            cudaFree(_opaque->d_start_strides);
+        }
+        if (_opaque->d_end_strides) {
+            cudaFree(_opaque->d_end_strides);
+        }
+        if (_opaque->d_weight_strides) {
+            cudaFree(_opaque->d_weight_strides);
+        }
         delete _opaque;
         _opaque = nullptr;
     }
@@ -41,16 +52,16 @@ Descriptor::~Descriptor() {
 // ==================================================================
 
 static std::vector<int64_t> compute_broadcast_strides(
-    const std::vector<size_t>& out_shape,
+    const std::vector<size_t> &out_shape,
     infiniopTensorDescriptor_t input_desc) {
-    
+
     int out_ndim = static_cast<int>(out_shape.size());
     int in_ndim = static_cast<int>(input_desc->ndim());
-    
+
     // 使用引用接收 vector
-    const auto& in_shape = input_desc->shape();
-    const auto& in_strides = input_desc->strides();
-    
+    const auto &in_shape = input_desc->shape();
+    const auto &in_strides = input_desc->strides();
+
     std::vector<int64_t> effective_strides(out_ndim, 0);
 
     for (int i = 0; i < out_ndim; ++i) {
@@ -72,9 +83,11 @@ static std::vector<int64_t> compute_broadcast_strides(
 }
 
 template <typename T>
-static T* upload_to_device(const std::vector<T>& host_vec) {
-    if (host_vec.empty()) return nullptr;
-    T* d_ptr = nullptr;
+static T *upload_to_device(const std::vector<T> &host_vec) {
+    if (host_vec.empty()) {
+        return nullptr;
+    }
+    T *d_ptr = nullptr;
     size_t size_bytes = host_vec.size() * sizeof(T);
     cudaMalloc(&d_ptr, size_bytes);
     cudaMemcpy(d_ptr, host_vec.data(), size_bytes, cudaMemcpyHostToDevice);
@@ -92,8 +105,8 @@ void launch_kernel(
     const void *start,
     const void *end,
     const void *weight,
-    const LerpInfo& info,
-    const LerpOpaqueData* opaque, 
+    const LerpInfo &info,
+    const LerpOpaqueData *opaque,
     void *stream) {
 
     auto cuda_stream = reinterpret_cast<cudaStream_t>(stream);
@@ -101,8 +114,8 @@ void launch_kernel(
     auto out_ptr = reinterpret_cast<T *>(output);
     auto start_ptr = reinterpret_cast<const T *>(start);
     auto end_ptr = reinterpret_cast<const T *>(end);
-    
-    const T* weight_ptr = nullptr;
+
+    const T *weight_ptr = nullptr;
     float weight_scalar = 0.0f;
 
     if (info.is_scalar_weight()) {
@@ -129,8 +142,7 @@ void launch_kernel(
             opaque->d_shape,
             opaque->d_start_strides,
             opaque->d_end_strides,
-            opaque->d_weight_strides
-        );
+            opaque->d_weight_strides);
 }
 
 // ==================================================================
@@ -156,9 +168,9 @@ infiniStatus_t Descriptor::create(
     opaque->ndim = static_cast<int>(out_desc->ndim());
 
     // 直接拷贝 vector
-    const auto& shape_vec = out_desc->shape();
+    const auto &shape_vec = out_desc->shape();
     std::vector<int64_t> host_shape(shape_vec.begin(), shape_vec.end());
-    
+
     opaque->d_shape = upload_to_device(host_shape);
 
     std::vector<size_t> shape_dims(host_shape.begin(), host_shape.end());
@@ -177,10 +189,9 @@ infiniStatus_t Descriptor::create(
     *desc_ptr = new Descriptor(
         opaque,
         info,
-        0, 
+        0,
         handle->device,
-        handle->device_id
-    );
+        handle->device_id);
 
     return INFINI_STATUS_SUCCESS;
 }
@@ -205,7 +216,7 @@ infiniStatus_t Descriptor::calculate(
         launch_kernel<half>(output, start, end, weight, _info, _opaque, stream);
         break;
     case INFINI_DTYPE_BF16:
-        launch_kernel<nv_bfloat16>(output, start, end, weight, _info, _opaque, stream);
+        launch_kernel<cuda_bfloat16>(output, start, end, weight, _info, _opaque, stream);
         break;
     case INFINI_DTYPE_F32:
         launch_kernel<float>(output, start, end, weight, _info, _opaque, stream);

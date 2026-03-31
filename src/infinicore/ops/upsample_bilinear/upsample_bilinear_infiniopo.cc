@@ -1,7 +1,7 @@
 #include "../../utils.hpp"
 #include "infinicore/common/hash.hpp"
 #include "infinicore/ops/common/cache.hpp"
-#include "infinicore/ops/upsample_bilinear.hpp" 
+#include "infinicore/ops/upsample_bilinear.hpp"
 #include <infiniop.h>
 
 namespace infinicore::op::upsample_bilinear_impl::infiniop {
@@ -33,13 +33,12 @@ void calculate(Tensor output, Tensor input, bool align_corners) {
         // 3. 创建描述符
         // 注意：C 接口中 align_corners 通常用 int 传递
         INFINICORE_CHECK_ERROR(infiniopCreateUpsampleBilinearDescriptor(
-            context::getInfiniopHandle(output->device()), 
+            context::getInfiniopHandle(output->device()),
             &desc,
-            output->desc(), 
-            input->desc(), 
-            static_cast<int>(align_corners)
-        ));
-        
+            output->desc(),
+            input->desc(),
+            static_cast<int>(align_corners)));
+
         cache.put(seed, desc);
     } else {
         desc = *desc_opt;
@@ -51,13 +50,12 @@ void calculate(Tensor output, Tensor input, bool align_corners) {
     std::shared_ptr<Memory> workspace = context::allocateMemory(workspace_size);
 
     INFINICORE_CHECK_ERROR(infiniopUpsampleBilinear(
-        desc, 
-        workspace->data(), 
+        desc,
+        workspace->data(),
         workspace_size,
-        output->data(), 
-        input->data(), 
-        context::getStream()
-    ));
+        output->data(),
+        input->data(),
+        context::getStream()));
 }
 
 static bool registered = []() {

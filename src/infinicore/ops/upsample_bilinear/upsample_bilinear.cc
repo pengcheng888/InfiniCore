@@ -19,17 +19,17 @@ Tensor upsample_bilinear(Tensor input, std::vector<int64_t> output_size, bool al
     // output_size 通常只包含 (H_out, W_out)
     Shape input_shape = input->shape();
     size_t ndim = input_shape.size();
-    
+
     Shape output_shape = input_shape;
-    
+
     // 更新最后两个维度为 output_size 指定的大小
     if (output_size.size() == 2 && ndim >= 2) {
         output_shape[ndim - 2] = output_size[0];
         output_shape[ndim - 1] = output_size[1];
-    } 
+    }
 
     auto output = Tensor::empty(output_shape, input->dtype(), input->device());
-    
+
     upsample_bilinear_(output, input, align_corners);
     return output;
 }

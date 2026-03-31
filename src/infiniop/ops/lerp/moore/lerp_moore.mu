@@ -1,14 +1,14 @@
+#include "../../../devices/moore/moore_handle.h"
+#include "../../../handle.h"
 #include "lerp_moore.h"
 #include "lerp_moore_kernel.h"
-#include "../../../handle.h"
-#include "../../../devices/moore/moore_handle.h"
 
-#include <cstdint>
-#include <vector>
 #include <algorithm>
-#include <musa_runtime.h>
-#include <musa_fp16.h>
+#include <cstdint>
 #include <musa_bf16.h>
+#include <musa_fp16.h>
+#include <musa_runtime.h>
+#include <vector>
 
 namespace op::lerp::moore {
 
@@ -17,22 +17,30 @@ namespace op::lerp::moore {
 // ==================================================================
 struct LerpOpaqueData {
     int ndim;
-    
+
     // Device Pointers
-    int64_t* d_shape = nullptr;
-    int64_t* d_start_strides = nullptr;
-    int64_t* d_end_strides = nullptr;
-    int64_t* d_weight_strides = nullptr;
+    int64_t *d_shape = nullptr;
+    int64_t *d_start_strides = nullptr;
+    int64_t *d_end_strides = nullptr;
+    int64_t *d_weight_strides = nullptr;
 };
 
 struct Descriptor::Opaque : public LerpOpaqueData {};
 
 Descriptor::~Descriptor() {
     if (_opaque) {
-        if (_opaque->d_shape) musaFree(_opaque->d_shape);
-        if (_opaque->d_start_strides) musaFree(_opaque->d_start_strides);
-        if (_opaque->d_end_strides) musaFree(_opaque->d_end_strides);
-        if (_opaque->d_weight_strides) musaFree(_opaque->d_weight_strides);
+        if (_opaque->d_shape) {
+            musaFree(_opaque->d_shape);
+        }
+        if (_opaque->d_start_strides) {
+            musaFree(_opaque->d_start_strides);
+        }
+        if (_opaque->d_end_strides) {
+            musaFree(_opaque->d_end_strides);
+        }
+        if (_opaque->d_weight_strides) {
+            musaFree(_opaque->d_weight_strides);
+        }
         delete _opaque;
         _opaque = nullptr;
     }
@@ -43,15 +51,15 @@ Descriptor::~Descriptor() {
 // ==================================================================
 
 static std::vector<int64_t> compute_broadcast_strides(
-    const std::vector<size_t>& out_shape,
+    const std::vector<size_t> &out_shape,
     infiniopTensorDescriptor_t input_desc) {
-    
+
     int out_ndim = static_cast<int>(out_shape.size());
     int in_ndim = static_cast<int>(input_desc->ndim());
-    
-    const auto& in_shape = input_desc->shape();
-    const auto& in_strides = input_desc->strides();
-    
+
+    const auto &in_shape = input_desc->shape();
+    const auto &in_strides = input_desc->strides();
+
     std::vector<int64_t> effective_strides(out_ndim, 0);
 
     for (int i = 0; i < out_ndim; ++i) {
@@ -73,9 +81,11 @@ static std::vector<int64_t> compute_broadcast_strides(
 }
 
 template <typename T>
-static T* upload_to_device(const std::vector<T>& host_vec) {
-    if (host_vec.empty()) return nullptr;
-    T* d_ptr = nullptr;
+static T *upload_to_device(const std::vector<T> &host_vec) {
+    if (host_vec.empty()) {
+        return nullptr;
+    }
+    T *d_ptr = nullptr;
     size_t size_bytes = host_vec.size() * sizeof(T);
     musaMalloc(&d_ptr, size_bytes);
     musaMemcpy(d_ptr, host_vec.data(), size_bytes, musaMemcpyHostToDevice);
@@ -92,8 +102,8 @@ void launch_kernel(
     const void *start,
     const void *end,
     const void *weight,
-    const LerpInfo& info,
-    const LerpOpaqueData* opaque, 
+    const LerpInfo &info,
+    const LerpOpaqueData *opaque,
     void *stream) {
 
     auto musa_stream = reinterpret_cast<musaStream_t>(stream);
@@ -101,8 +111,8 @@ void launch_kernel(
     auto out_ptr = reinterpret_cast<T *>(output);
     auto start_ptr = reinterpret_cast<const T *>(start);
     auto end_ptr = reinterpret_cast<const T *>(end);
-    
-    const T* weight_ptr = nullptr;
+
+    const T *weight_ptr = nullptr;
     float weight_scalar = 0.0f;
 
     if (info.is_scalar_weight()) {
@@ -116,7 +126,9 @@ void launch_kernel(
 
     size_t block_size = 256;
     size_t grid_size = (numel + block_size - 1) / block_size;
-    if (grid_size > 65535) grid_size = 65535;
+    if (grid_size > 65535) {
+        grid_size = 65535;
+    }
 
     op::lerp::moore::lerp_kernel<T>
         <<<grid_size, block_size, 0, musa_stream>>>(
@@ -130,8 +142,7 @@ void launch_kernel(
             opaque->d_shape,
             opaque->d_start_strides,
             opaque->d_end_strides,
-            opaque->d_weight_strides
-        );
+            opaque->d_weight_strides);
 }
 
 // ==================================================================
@@ -149,15 +160,17 @@ infiniStatus_t Descriptor::create(
     auto handle = reinterpret_cast<device::moore::Handle *>(handle_);
 
     auto result = LerpInfo::create(out_desc, start_desc, end_desc, weight_desc, weight_scalar);
-    if (!result) return result.status();
+    if (!result) {
+        return result.status();
+    }
     auto info = result.take();
 
     auto opaque = new Opaque();
     opaque->ndim = static_cast<int>(out_desc->ndim());
 
-    const auto& shape_vec = out_desc->shape();
+    const auto &shape_vec = out_desc->shape();
     std::vector<int64_t> host_shape(shape_vec.begin(), shape_vec.end());
-    
+
     opaque->d_shape = upload_to_device(host_shape);
 
     std::vector<size_t> shape_dims(host_shape.begin(), host_shape.end());
@@ -176,10 +189,9 @@ infiniStatus_t Descriptor::create(
     *desc_ptr = new Descriptor(
         opaque,
         info,
-        0, 
+        0,
         handle->device,
-        handle->device_id
-    );
+        handle->device_id);
 
     return INFINI_STATUS_SUCCESS;
 }

@@ -32,7 +32,7 @@ infiniStatus_t Descriptor::create(
     int reduction) {
 
     auto handle = reinterpret_cast<device::cpu::Handle *>(handle_);
-    
+
     // 创建 Info 对象
     auto result = TripletMarginLossInfo::create(out_desc, anchor_desc, positive_desc, negative_desc, margin, p, eps, swap, reduction);
     CHECK_RESULT(result);
@@ -40,17 +40,16 @@ infiniStatus_t Descriptor::create(
     *desc_ptr = new Descriptor(
         new Opaque(),
         result.take(),
-        0, 
-        handle->device, 
-        handle->device_id
-    );
+        0,
+        handle->device,
+        handle->device_id);
 
     return INFINI_STATUS_SUCCESS;
 }
 
 // 辅助函数：计算两个向量之间的 p-范数距离
 template <typename T>
-inline float compute_distance(const T* x, const T* y, size_t D, int p, float eps) {
+inline float compute_distance(const T *x, const T *y, size_t D, int p, float eps) {
     float sum = 0.0f;
     for (size_t i = 0; i < D; ++i) {
         float diff = std::abs(utils::cast<float>(x[i]) - utils::cast<float>(y[i]));
@@ -64,7 +63,7 @@ inline float compute_distance(const T* x, const T* y, size_t D, int p, float eps
     }
 
     if (p == 1) {
-        return sum+eps;
+        return sum + eps;
     } else if (p == 2) {
         // 标准 TripletMarginLoss 在 p=2 时通常加上 eps 再开方
         return std::sqrt(sum + eps);
@@ -96,11 +95,11 @@ void calculate_cpu_impl(
 
     // Reduction == 0: None
     if (reduction == 0) {
-        #pragma omp parallel for schedule(static)
-        for (size_t n = 0; n < N; ++n) {
-            const T* a_row = anc_ptr + n * D;
-            const T* p_row = pos_ptr + n * D;
-            const T* n_row = neg_ptr + n * D;
+#pragma omp parallel for schedule(static)
+        for (ptrdiff_t n = 0; n < (ptrdiff_t)N; ++n) {
+            const T *a_row = anc_ptr + n * D;
+            const T *p_row = pos_ptr + n * D;
+            const T *n_row = neg_ptr + n * D;
 
             float dist_pos = compute_distance(a_row, p_row, D, p, eps);
             float dist_neg = compute_distance(a_row, n_row, D, p, eps);
@@ -116,16 +115,16 @@ void calculate_cpu_impl(
             float loss = std::max(0.0f, dist_pos - dist_neg + margin);
             out_ptr[n] = utils::cast<T>(loss);
         }
-    } 
+    }
     // Reduction != 0: Mean or Sum
     else {
         double total_loss = 0.0;
 
-        #pragma omp parallel for reduction(+:total_loss) schedule(static)
-        for (size_t n = 0; n < N; ++n) {
-            const T* a_row = anc_ptr + n * D;
-            const T* p_row = pos_ptr + n * D;
-            const T* n_row = neg_ptr + n * D;
+#pragma omp parallel for reduction(+ : total_loss) schedule(static)
+        for (ptrdiff_t n = 0; n < (ptrdiff_t)N; ++n) {
+            const T *a_row = anc_ptr + n * D;
+            const T *p_row = pos_ptr + n * D;
+            const T *n_row = neg_ptr + n * D;
 
             float dist_pos = compute_distance(a_row, p_row, D, p, eps);
             float dist_neg = compute_distance(a_row, n_row, D, p, eps);

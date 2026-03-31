@@ -2,8 +2,8 @@
 #include "../../../devices/cpu/common_cpu.h"
 #include <algorithm>
 #include <cmath>
-#include <vector>
 #include <omp.h>
+#include <vector>
 
 #include "../../../../utils/custom_types.h"
 
@@ -26,7 +26,7 @@ infiniStatus_t Descriptor::create(
     int align_corners) {
 
     auto handle = reinterpret_cast<device::cpu::Handle *>(handle_);
-    
+
     // 创建 Info 对象
     auto result = UpsampleBilinearInfo::create(output_desc, input_desc, align_corners);
     CHECK_RESULT(result);
@@ -34,10 +34,9 @@ infiniStatus_t Descriptor::create(
     *desc_ptr = new Descriptor(
         new Opaque(),
         result.take(),
-        0, 
-        handle->device, 
-        handle->device_id
-    );
+        0,
+        handle->device,
+        handle->device_id);
 
     return INFINI_STATUS_SUCCESS;
 }
@@ -52,12 +51,12 @@ struct BilinearParam {
 
 // 预计算维度的索引和权重
 std::vector<BilinearParam> pre_compute_indices_and_weights(
-    size_t out_size, 
-    size_t in_size, 
+    size_t out_size,
+    size_t in_size,
     bool align_corners) {
-    
+
     std::vector<BilinearParam> params(out_size);
-    
+
     float scale;
     if (align_corners) {
         scale = (out_size > 1) ? static_cast<float>(in_size - 1) / (out_size - 1) : 0.0f;
@@ -71,13 +70,17 @@ std::vector<BilinearParam> pre_compute_indices_and_weights(
             real_idx = i * scale;
         } else {
             real_idx = (i + 0.5f) * scale - 0.5f;
-            if (real_idx < 0) real_idx = 0; // 防止越界
+            if (real_idx < 0) {
+                real_idx = 0; // 防止越界
+            }
         }
 
         int64_t idx0 = static_cast<int64_t>(real_idx);
         int64_t idx1 = idx0 + 1;
-        
-        if (idx1 >= static_cast<int64_t>(in_size)) idx1 = in_size - 1;
+
+        if (idx1 >= static_cast<int64_t>(in_size)) {
+            idx1 = in_size - 1;
+        }
 
         float w1 = real_idx - idx0;
         float w0 = 1.0f - w1;
@@ -111,20 +114,20 @@ void calculate_cpu_impl(
 
     size_t n_c = N * C; // 合并 Batch 和 Channel 维度进行并行
 
-    #pragma omp parallel for schedule(static)
-    for (size_t nc = 0; nc < n_c; ++nc) {
+#pragma omp parallel for schedule(static)
+    for (ptrdiff_t nc = 0; nc < (ptrdiff_t)n_c; ++nc) {
         // 当前 channel 的输入输出起始指针
-        const T* src_base = in_ptr + nc * in_h * in_w;
-        T* dst_base = out_ptr + nc * out_h * out_w;
+        const T *src_base = in_ptr + nc * in_h * in_w;
+        T *dst_base = out_ptr + nc * out_h * out_w;
 
         for (size_t h = 0; h < out_h; ++h) {
-            const auto& hp = h_params[h];
+            const auto &hp = h_params[h];
             // 缓存行指针，避免内层循环重复计算乘法
-            const T* src_row0 = src_base + hp.idx0 * in_w;
-            const T* src_row1 = src_base + hp.idx1 * in_w;
+            const T *src_row0 = src_base + hp.idx0 * in_w;
+            const T *src_row1 = src_base + hp.idx1 * in_w;
 
             for (size_t w = 0; w < out_w; ++w) {
-                const auto& wp = w_params[w];
+                const auto &wp = w_params[w];
 
                 // 获取四个采样点的值
                 float val00 = utils::cast<float>(src_row0[wp.idx0]);

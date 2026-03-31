@@ -1,11 +1,11 @@
 #include "kthvalue_cpu.h"
 #include "../../../devices/cpu/common_cpu.h"
 #include <algorithm>
-#include <vector>
-#include <utility>
-#include <omp.h>
 #include <cstdint>
+#include <omp.h>
 #include <type_traits> // 引入 type_traits 以支持 constexpr 判断
+#include <utility>
+#include <vector>
 
 #include "../../../../utils/custom_types.h"
 
@@ -31,17 +31,16 @@ infiniStatus_t Descriptor::create(
     int keepdim) {
 
     auto handle = reinterpret_cast<device::cpu::Handle *>(handle_);
-    
+
     auto result = KthvalueInfo::create(values_desc, indices_desc, input_desc, k, dim, keepdim);
     CHECK_RESULT(result);
 
     *desc_ptr = new Descriptor(
         new Opaque(),
         result.take(),
-        0, 
-        handle->device, 
-        handle->device_id
-    );
+        0,
+        handle->device,
+        handle->device_id);
 
     return INFINI_STATUS_SUCCESS;
 }
@@ -67,8 +66,8 @@ void calculate_cpu_impl(
     // k 在输入中是 1-based，转为 0-based 用于 vector索引
     int k_idx = k - 1;
 
-    #pragma omp parallel for schedule(static)
-    for (size_t task_id = 0; task_id < total_tasks; ++task_id) {
+#pragma omp parallel for schedule(static)
+    for (ptrdiff_t task_id = 0; task_id < (ptrdiff_t)total_tasks; ++task_id) {
         // 解算当前任务对应的外部索引和内部索引
         size_t o = task_id / inner_size;
         size_t i = task_id % inner_size;
@@ -95,15 +94,14 @@ void calculate_cpu_impl(
             row_data.begin(),
             row_data.begin() + k_idx,
             row_data.end(),
-            [](const std::pair<T, int64_t>& a, const std::pair<T, int64_t>& b) {
+            [](const std::pair<T, int64_t> &a, const std::pair<T, int64_t> &b) {
                 // 如果是标准算术类型，直接比较；如果是自定义类型，转换为 float 比较
                 if constexpr (std::is_arithmetic_v<T>) {
                     return a.first < b.first;
                 } else {
                     return utils::cast<float>(a.first) < utils::cast<float>(b.first);
                 }
-            }
-        );
+            });
 
         // 获取结果
         auto result_pair = row_data[k_idx];

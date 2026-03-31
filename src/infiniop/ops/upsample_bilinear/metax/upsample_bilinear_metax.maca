@@ -1,13 +1,11 @@
-#include "upsample_bilinear_metax.h"
 #include "../../../devices/metax/metax_common.h"
 #include "../../../devices/metax/metax_handle.h"
-#include <mcr/mc_runtime.h>
-#include <common/mc_library_types.h>
-#include <maca_fp16.h>
-#include <maca_bfloat16.h>
+#include "../../../devices/metax/metax_kernel_common.h"
+
+#include "upsample_bilinear_metax.h"
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
-#include <algorithm>
 
 namespace op::upsample_bilinear::metax {
 
@@ -21,11 +19,13 @@ __device__ __forceinline__ float to_float(T val) {
     return static_cast<float>(val);
 }
 
-template <> __device__ __forceinline__ float to_float<__half>(__half val) { 
-    return __half2float(val); 
+template <>
+__device__ __forceinline__ float to_float<__half>(__half val) {
+    return __half2float(val);
 }
-template <> __device__ __forceinline__ float to_float<__maca_bfloat16>(__maca_bfloat16 val) { 
-    return __bfloat162float(val); 
+template <>
+__device__ __forceinline__ float to_float<cuda_bfloat16>(cuda_bfloat16 val) {
+    return __bfloat162float(val);
 }
 
 // 2. 坐标计算辅助函数
@@ -33,7 +33,7 @@ __device__ __forceinline__ float get_source_coord(
     float scale,
     int out_index,
     bool align_corners) {
-    
+
     if (align_corners) {
         return static_cast<float>(out_index) * scale;
     } else {
@@ -52,16 +52,16 @@ __device__ __forceinline__ int clamp(int val, int min_val, int max_val) {
 
 template <typename T>
 __global__ void upsample_bilinear_kernel(
-    T * __restrict__ output,        // [N, C, H_out, W_out]
-    const T * __restrict__ input,   // [N, C, H_in, W_in]
+    T *__restrict__ output,      // [N, C, H_out, W_out]
+    const T *__restrict__ input, // [N, C, H_in, W_in]
     size_t N,
     size_t C,
     size_t H_in,
     size_t W_in,
     size_t H_out,
     size_t W_out,
-    float scale_h,                  // 预计算的缩放比例
-    float scale_w,                  // 预计算的缩放比例
+    float scale_h, // 预计算的缩放比例
+    float scale_w, // 预计算的缩放比例
     bool align_corners) {
 
     // Grid-Stride Loop
@@ -102,7 +102,7 @@ __global__ void upsample_bilinear_kernel(
         w1 = clamp(w1, 0, static_cast<int>(W_in) - 1);
 
         // 6. 读取数据并转换为 float
-        const T* img_base = input + (n_idx * C + c_idx) * H_in * W_in;
+        const T *img_base = input + (n_idx * C + c_idx) * H_in * W_in;
 
         float val00 = to_float(img_base[h0 * W_in + w0]);
         float val01 = to_float(img_base[h0 * W_in + w1]);
@@ -110,8 +110,7 @@ __global__ void upsample_bilinear_kernel(
         float val11 = to_float(img_base[h1 * W_in + w1]);
 
         // 7. 双线性插值计算
-        float val = h0_lambda * (w0_lambda * val00 + w1_lambda * val01) +
-                    h1_lambda * (w0_lambda * val10 + w1_lambda * val11);
+        float val = h0_lambda * (w0_lambda * val00 + w1_lambda * val01) + h1_lambda * (w0_lambda * val10 + w1_lambda * val11);
 
         output[i] = static_cast<T>(val);
     }
@@ -123,15 +122,15 @@ __global__ void upsample_bilinear_kernel(
 
 template <typename T>
 void launch_kernel(
-    void *output, 
-    const void *input, 
-    const UpsampleBilinearInfo& info,
+    void *output,
+    const void *input,
+    const UpsampleBilinearInfo &info,
     void *stream) {
 
     auto in_ptr = reinterpret_cast<const T *>(input);
     auto out_ptr = reinterpret_cast<T *>(output);
     auto hc_stream = reinterpret_cast<hcStream_t>(stream);
-    
+
     // 参数准备
     size_t N = info.n();
     size_t C = info.c();
@@ -155,18 +154,19 @@ void launch_kernel(
     size_t total_elements = N * C * H_out * W_out;
     size_t block_size = 256;
     size_t grid_size = (total_elements + block_size - 1) / block_size;
-    
+
     // 限制 grid size (虽然 MACA 可能支持更大，但保险起见保持一致)
-    if (grid_size > 65535) grid_size = 65535; 
+    if (grid_size > 65535) {
+        grid_size = 65535;
+    }
 
     upsample_bilinear_kernel<T>
         <<<grid_size, block_size, 0, hc_stream>>>(
-            out_ptr, 
-            in_ptr, 
-            N, C, H_in, W_in, H_out, W_out, 
-            scale_h, scale_w, 
-            align_corners
-        );
+            out_ptr,
+            in_ptr,
+            N, C, H_in, W_in, H_out, W_out,
+            scale_h, scale_w,
+            align_corners);
 }
 
 // ==================================================================
@@ -177,31 +177,35 @@ struct Descriptor::Opaque {
     // 无需额外存储
 };
 
-Descriptor::~Descriptor() { 
-    if (_opaque) delete _opaque; 
+Descriptor::~Descriptor() {
+    if (_opaque) {
+        delete _opaque;
+    }
 }
 
 infiniStatus_t Descriptor::create(
-    infiniopHandle_t handle, 
+    infiniopHandle_t handle,
     Descriptor **desc_ptr,
-    infiniopTensorDescriptor_t out_desc, 
-    infiniopTensorDescriptor_t input_desc, 
+    infiniopTensorDescriptor_t out_desc,
+    infiniopTensorDescriptor_t input_desc,
     int align_corners) {
 
     auto metax_handle = reinterpret_cast<device::metax::Handle *>(handle);
 
     auto info_result = UpsampleBilinearInfo::create(out_desc, input_desc, align_corners);
-    if (!info_result) return info_result.status();
-    
+    if (!info_result) {
+        return info_result.status();
+    }
+
     *desc_ptr = new Descriptor(new Opaque(), info_result.take(), 0, metax_handle->device, metax_handle->device_id);
     return INFINI_STATUS_SUCCESS;
 }
 
 infiniStatus_t Descriptor::calculate(
-    void *workspace, 
-    size_t workspace_size, 
+    void *workspace,
+    size_t workspace_size,
     void *output,
-    const void *input, 
+    const void *input,
     void *stream) const {
 
     auto dtype = _info.dtype();
@@ -215,7 +219,7 @@ infiniStatus_t Descriptor::calculate(
         launch_kernel<__half>(output, input, _info, stream);
         break;
     case INFINI_DTYPE_BF16:
-        launch_kernel<__maca_bfloat16>(output, input, _info, stream);
+        launch_kernel<cuda_bfloat16>(output, input, _info, stream);
         break;
     case INFINI_DTYPE_F32:
         launch_kernel<float>(output, input, _info, stream);

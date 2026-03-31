@@ -1,7 +1,7 @@
 #pragma once
 
+#include "infinicore/ops/triplet_margin_loss.hpp"
 #include <pybind11/pybind11.h>
-#include "infinicore/ops/triplet_margin_loss.hpp" 
 
 namespace py = pybind11;
 

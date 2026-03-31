@@ -9,7 +9,7 @@ class TripletMarginLoss {
 public:
     // Schema signature: output, anchor, positive, negative, margin, p, eps, swap, reduction
     using schema = void (*)(Tensor, Tensor, Tensor, Tensor, float, int64_t, float, bool, int64_t);
-    
+
     static void execute(Tensor output, Tensor anchor, Tensor positive, Tensor negative, float margin, int64_t p, float eps, bool swap, int64_t reduction);
     static common::OpDispatcher<schema> &dispatcher();
 };

@@ -1,10 +1,10 @@
 #include "ldexp_cpu.h"
 #include "../../../devices/cpu/common_cpu.h"
-#include <cmath>
 #include <algorithm>
-#include <vector>
+#include <cmath>
 #include <omp.h>
 #include <type_traits>
+#include <vector>
 
 #include "../../../../utils/custom_types.h"
 
@@ -35,10 +35,9 @@ infiniStatus_t Descriptor::create(
     *desc_ptr = new Descriptor(
         new Opaque(),
         result.take(),
-        0, 
+        0,
         handle->device,
-        handle->device_id
-    );
+        handle->device_id);
 
     return INFINI_STATUS_SUCCESS;
 }
@@ -73,17 +72,17 @@ void calculate_cpu_impl(
 
     // 获取广播所需的形状和步长信息
     int ndim = info.ndim();
-    const auto& shape = info.shape();
-    const auto& stride_x = info.x_strides();
-    const auto& stride_exp = info.exp_strides();
+    const auto &shape = info.shape();
+    const auto &stride_x = info.x_strides();
+    const auto &stride_exp = info.exp_strides();
 
     auto out_ptr = reinterpret_cast<T *>(output);
     auto x_ptr = reinterpret_cast<const T *>(x);
     // 使用 TExp 转换指针，避免将 int 数据误读为 float
     auto exp_ptr = reinterpret_cast<const TExp *>(exp);
 
-    #pragma omp parallel for schedule(static)
-    for (size_t i = 0; i < total_tasks; ++i) {
+#pragma omp parallel for schedule(static)
+    for (ptrdiff_t i = 0; i < (ptrdiff_t)total_tasks; ++i) {
         // 坐标映射逻辑：线性索引 -> 多维坐标 -> 输入偏移量
         size_t temp_idx = i;
         size_t offset_x = 0;

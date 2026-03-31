@@ -2,9 +2,9 @@
 #include "../../../devices/cpu/common_cpu.h"
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <omp.h>
 #include <vector>
-#include <cstdint>
 
 #include "../../../../utils/custom_types.h"
 
@@ -30,15 +30,15 @@ Descriptor::~Descriptor() {
 }
 
 static std::vector<int64_t> compute_broadcast_strides(
-    const std::vector<size_t>& out_shape,
+    const std::vector<size_t> &out_shape,
     infiniopTensorDescriptor_t input_desc) {
-    
+
     int out_ndim = static_cast<int>(out_shape.size());
     int in_ndim = static_cast<int>(input_desc->ndim());
-    
-    const auto& in_shape = input_desc->shape();
-    const auto& in_strides = input_desc->strides();
-    
+
+    const auto &in_shape = input_desc->shape();
+    const auto &in_strides = input_desc->strides();
+
     std::vector<int64_t> effective_strides(out_ndim, 0);
 
     for (int i = 0; i < out_ndim; ++i) {
@@ -69,7 +69,7 @@ infiniStatus_t Descriptor::create(
     float weight_scalar) {
 
     auto handle = reinterpret_cast<device::cpu::Handle *>(handle_);
-    
+
     auto result = LerpInfo::create(out_desc, start_desc, end_desc, weight_desc, weight_scalar);
     CHECK_RESULT(result);
     auto info = result.take();
@@ -88,10 +88,9 @@ infiniStatus_t Descriptor::create(
     *desc_ptr = new Descriptor(
         opaque,
         info,
-        0, 
-        handle->device, 
-        handle->device_id
-    );
+        0,
+        handle->device,
+        handle->device_id);
 
     return INFINI_STATUS_SUCCESS;
 }
@@ -100,7 +99,7 @@ infiniStatus_t Descriptor::create(
 template <typename T>
 void calculate_cpu_impl(
     const LerpInfo &info,
-    const LerpOpaqueData *opaque, 
+    const LerpOpaqueData *opaque,
     void *output,
     const void *start,
     const void *end,
@@ -109,20 +108,20 @@ void calculate_cpu_impl(
     size_t numel = info.numel();
     bool is_scalar_weight = info.is_scalar_weight();
     float scalar_w_val = info.weight_scalar();
-    
+
     auto out_ptr = reinterpret_cast<T *>(output);
     auto start_ptr = reinterpret_cast<const T *>(start);
     auto end_ptr = reinterpret_cast<const T *>(end);
     auto weight_ptr = is_scalar_weight ? nullptr : reinterpret_cast<const T *>(weight);
 
     int ndim = opaque->ndim;
-    const auto& shape = opaque->output_shape;
-    const auto& str_start = opaque->start_strides;
-    const auto& str_end = opaque->end_strides;
-    const auto& str_weight = opaque->weight_strides;
+    const auto &shape = opaque->output_shape;
+    const auto &str_start = opaque->start_strides;
+    const auto &str_end = opaque->end_strides;
+    const auto &str_weight = opaque->weight_strides;
 
-    #pragma omp parallel for schedule(static)
-    for (size_t i = 0; i < numel; ++i) {
+#pragma omp parallel for schedule(static)
+    for (ptrdiff_t i = 0; i < (ptrdiff_t)numel; ++i) {
         size_t temp_idx = i;
         int64_t offset_start = 0;
         int64_t offset_end = 0;
@@ -141,7 +140,7 @@ void calculate_cpu_impl(
 
         T val_start = start_ptr[offset_start];
         T val_end = end_ptr[offset_end];
-        
+
         T val_weight;
         if (is_scalar_weight) {
             val_weight = utils::cast<T>(scalar_w_val);

@@ -1,19 +1,9 @@
 #ifndef __KTHVALUE_CUDA_CUH__
 #define __KTHVALUE_CUDA_CUH__
 
-#include <cuda_runtime.h>
-#if defined ENABLE_METAX_API
-    #include <maca_fp16.h>
-    #include <maca_bfloat16.h>
-    using nv_bfloat162 = __maca_bfloat162;
-#else
-    #include <cuda_fp16.h>
-    #include <cuda_bf16.h>
-#endif
-
 #include <cmath>
-#include <limits>
 #include <cstdint>
+#include <limits>
 
 namespace op::kthvalue::cuda {
 
@@ -34,11 +24,11 @@ struct alignas(sizeof(int64_t) * 2) KeyValuePair { // 确保对齐
         // 简单起见，对于浮点数我们使用 infinity，整数使用 max
         // 在实际工程中可能需要针对 half/bf16 的特化
         if constexpr (std::is_floating_point_v<T>) {
-             return {static_cast<T>(INFINITY), -1};
+            return {static_cast<T>(INFINITY), -1};
         } else {
-             // 简单的回退策略，实际可能需要 std::numeric_limits 的 device 版特化
-             // 这里假设 T 支持强制转换 huge value
-             return {static_cast<T>(1e30), -1}; 
+            // 简单的回退策略，实际可能需要 std::numeric_limits 的 device 版特化
+            // 这里假设 T 支持强制转换 huge value
+            return {static_cast<T>(1e30), -1};
         }
     }
 };
@@ -46,7 +36,7 @@ struct alignas(sizeof(int64_t) * 2) KeyValuePair { // 确保对齐
 // 针对 half/bf16 的比较辅助函数
 // 如果系统头文件未重载 < 运算符，可能需要在此处添加
 template <typename T>
-__device__ __forceinline__ bool is_smaller(const T& a, const T& b) {
+__device__ __forceinline__ bool is_smaller(const T &a, const T &b) {
     return a < b;
 }
 
@@ -58,10 +48,10 @@ __device__ __forceinline__ void compare_and_swap(KeyValuePair<T> &a, KeyValuePai
     // dir: true for ascending, false for descending
     // 逻辑：如果 (a < b) != dir，说明顺序不对（或者 a > b 且 dir 为 true），则交换
     // 这里的 dir 含义：true 表示还需要保持 a < b
-    
+
     // 自定义比较：先比值，值相同比索引（保持稳定性可选，这里简化为只比值）
     bool smaller = is_smaller(a.val, b.val) || (a.val == b.val && a.idx < b.idx);
-    
+
     if (smaller != dir) {
         KeyValuePair<T> tmp = a;
         a = b;
@@ -79,9 +69,9 @@ __device__ __forceinline__ void compare_and_swap(KeyValuePair<T> &a, KeyValuePai
 // 4. BlockDim.x 至少为 power_of_2_dim / 2 (用于并行比较)
 template <typename T>
 __global__ void kthvalue_kernel(
-    T * __restrict__ out_values,        // [Outer * Inner] (Flat)
-    int64_t * __restrict__ out_indices, // [Outer * Inner] (Flat)
-    const T * __restrict__ input,       // [Outer, Dim, Inner]
+    T *__restrict__ out_values,        // [Outer * Inner] (Flat)
+    int64_t *__restrict__ out_indices, // [Outer * Inner] (Flat)
+    const T *__restrict__ input,       // [Outer, Dim, Inner]
     size_t dim_size,
     size_t inner_size,
     int k,
@@ -89,10 +79,10 @@ __global__ void kthvalue_kernel(
 ) {
     // 动态共享内存
     extern __shared__ char smem[];
-    auto s_data = reinterpret_cast<KeyValuePair<T>*>(smem);
+    auto s_data = reinterpret_cast<KeyValuePair<T> *>(smem);
 
     unsigned int tid = threadIdx.x;
-    unsigned int bid = blockIdx.x; 
+    unsigned int bid = blockIdx.x;
 
     // 1. 计算当前 Slice 的基地址
     // Batch layout logic: flat_id -> (outer, inner)
@@ -125,33 +115,33 @@ __global__ void kthvalue_kernel(
     for (unsigned int size = 2; size <= power_of_2_dim; size <<= 1) {
         // Bitonic Merge
         // dir: 升序或降序交替，构造双调序列
-        bool dir = (tid & (size / 2)) == 0; 
+        bool dir = (tid & (size / 2)) == 0;
 
         // 这里的逻辑稍微复杂，为了简单和稳定，我们使用全升序排序逻辑
         // 标准 Bitonic Sort 代码如下：
-        
+
         for (unsigned int stride_step = size >> 1; stride_step > 0; stride_step >>= 1) {
-            
+
             // 确保线程在范围内
             // 我们需要对所有 pairs (i, i+stride) 进行比较
             // 映射逻辑：
-            // tid 0 处理: (0, stride), (2*stride, 3*stride)... 
+            // tid 0 处理: (0, stride), (2*stride, 3*stride)...
             // 这种映射较复杂，常用如下方式：
             // pos = 2*tid - (tid & (stride - 1)) ... 这种是 Butterfly 模式
-            
+
             unsigned int pos = 2 * tid - (tid & (stride_step - 1));
 
             // 如果 pos + stride_step 在范围内
             if (pos + stride_step < power_of_2_dim) { // 边界检查，虽由 power_of_2_dim 保证
-                 unsigned int next_pos = pos + stride_step;
-                 
-                 // 计算比较方向
-                 // 在完整 Bitonic Sort 中，方向取决于 (pos & size)
-                 // 但这里我们仅实现简单的升序 Sort，
-                 // 需要更标准的 Bitonic Merge 网络:
-                 bool direction = ((pos & size) == 0);
+                unsigned int next_pos = pos + stride_step;
 
-                 compare_and_swap(s_data[pos], s_data[next_pos], direction);
+                // 计算比较方向
+                // 在完整 Bitonic Sort 中，方向取决于 (pos & size)
+                // 但这里我们仅实现简单的升序 Sort，
+                // 需要更标准的 Bitonic Merge 网络:
+                bool direction = ((pos & size) == 0);
+
+                compare_and_swap(s_data[pos], s_data[next_pos], direction);
             }
             __syncthreads();
         }

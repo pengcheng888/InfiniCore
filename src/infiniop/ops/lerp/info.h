@@ -10,10 +10,10 @@ class LerpInfo {
     LerpInfo() = default;
 
 public:
-    int _dtype;              // 输入/输出的数据类型
-    bool _is_scalar_weight;  // 是否使用标量权重
-    float _weight_scalar;    // 标量权重值 (当 _is_scalar_weight 为 true 时有效)
-    size_t _numel;           // 输出元素总数
+    int _dtype;             // 输入/输出的数据类型
+    bool _is_scalar_weight; // 是否使用标量权重
+    float _weight_scalar;   // 标量权重值 (当 _is_scalar_weight 为 true 时有效)
+    size_t _numel;          // 输出元素总数
 
     int dtype() const { return _dtype; }
     bool is_scalar_weight() const { return _is_scalar_weight; }
@@ -22,7 +22,7 @@ public:
 
     // 构造函数
     LerpInfo(int dtype, bool is_scalar_weight, float weight_scalar, size_t numel)
-        : _dtype(dtype), _is_scalar_weight(is_scalar_weight), 
+        : _dtype(dtype), _is_scalar_weight(is_scalar_weight),
           _weight_scalar(weight_scalar), _numel(numel) {}
 
     static utils::Result<LerpInfo> create(
@@ -55,7 +55,7 @@ public:
             if (weight_desc->dtype() != dtype) {
                 return INFINI_STATUS_BAD_TENSOR_DTYPE;
             }
-        } 
+        }
         // else: 标量模式，直接使用 weight_scalar
 
         // 4. 简单验证输出 (仅检查是否为空)
@@ -66,10 +66,10 @@ public:
         }
 
         return utils::Result<LerpInfo>(LerpInfo{
-            dtype,          // _dtype
-            is_scalar,      // _is_scalar_weight
-            weight_scalar,  // _weight_scalar
-            numel           // _numel
+            dtype,         // _dtype
+            is_scalar,     // _is_scalar_weight
+            weight_scalar, // _weight_scalar
+            numel          // _numel
         });
     }
 };

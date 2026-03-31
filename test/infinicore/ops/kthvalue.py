@@ -76,9 +76,8 @@ class OpTest(BaseOperatorTest):
     def torch_operator(self, *args, **kwargs):
         return torch.kthvalue(*args, **kwargs)
 
-    # def infinicore_operator(self, *args, **kwargs):
-    #     """InfiniCore implementation (operator not yet available)."""
-    #     return infinicore.kthvalue(*args, **kwargs)
+    def infinicore_operator(self, *args, **kwargs):
+        return infinicore.kthvalue(*args, **kwargs)
 
 
 def main():

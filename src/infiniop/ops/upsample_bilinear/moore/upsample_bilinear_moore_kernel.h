@@ -1,18 +1,18 @@
 #ifndef __UPSAMPLE_BILINEAR_MOORE_H__
 #define __UPSAMPLE_BILINEAR_MOORE_H__
 
-#include <musa_runtime.h>
-#include <musa_fp16.h>
-#include <musa_bf16.h>
 #include <cmath>
 #include <cstdio>
+#include <musa_bf16.h>
+#include <musa_fp16.h>
+#include <musa_runtime.h>
 
 namespace op::upsample_bilinear::moore {
 __device__ __forceinline__ float get_source_coord(
     float scale,
     int out_index,
     bool align_corners) {
-    
+
     if (align_corners) {
         return static_cast<float>(out_index) * scale;
     } else {
@@ -25,8 +25,8 @@ __device__ __forceinline__ int clamp(int val, int min_val, int max_val) {
 }
 template <typename T>
 __global__ void upsample_bilinear_kernel(
-    T * __restrict__ output,
-    const T * __restrict__ input,
+    T *__restrict__ output,
+    const T *__restrict__ input,
     size_t N,
     size_t C,
     size_t H_in,
@@ -67,15 +67,14 @@ __global__ void upsample_bilinear_kernel(
         w0 = clamp(w0, 0, static_cast<int>(W_in) - 1);
         w1 = clamp(w1, 0, static_cast<int>(W_in) - 1);
 
-        const T* img_base = input + (n_idx * C + c_idx) * H_in * W_in;
+        const T *img_base = input + (n_idx * C + c_idx) * H_in * W_in;
 
         float val00 = static_cast<float>(img_base[h0 * W_in + w0]);
         float val01 = static_cast<float>(img_base[h0 * W_in + w1]);
         float val10 = static_cast<float>(img_base[h1 * W_in + w0]);
         float val11 = static_cast<float>(img_base[h1 * W_in + w1]);
 
-        float val = h0_lambda * (w0_lambda * val00 + w1_lambda * val01) +
-                    h1_lambda * (w0_lambda * val10 + w1_lambda * val11);
+        float val = h0_lambda * (w0_lambda * val00 + w1_lambda * val01) + h1_lambda * (w0_lambda * val10 + w1_lambda * val11);
 
         output[i] = static_cast<T>(val);
     }

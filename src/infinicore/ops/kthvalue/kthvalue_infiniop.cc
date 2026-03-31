@@ -30,16 +30,15 @@ void calculate(Tensor values, Tensor indices, Tensor input, int64_t k, int64_t d
     if (!desc_opt) {
         // 3. 创建描述符
         INFINICORE_CHECK_ERROR(infiniopCreateKthvalueDescriptor(
-            context::getInfiniopHandle(input->device()), 
+            context::getInfiniopHandle(input->device()),
             &desc,
             values->desc(),
             indices->desc(),
             input->desc(),
             static_cast<int>(k),
             static_cast<int>(dim),
-            static_cast<int>(keepdim)
-        ));
-        
+            static_cast<int>(keepdim)));
+
         cache.put(seed, desc);
     } else {
         desc = *desc_opt;
@@ -51,14 +50,13 @@ void calculate(Tensor values, Tensor indices, Tensor input, int64_t k, int64_t d
     std::shared_ptr<Memory> workspace = context::allocateMemory(workspace_size);
 
     INFINICORE_CHECK_ERROR(infiniopKthvalue(
-        desc, 
-        workspace->data(), 
+        desc,
+        workspace->data(),
         workspace_size,
-        values->data(), 
-        indices->data(), 
-        input->data(), 
-        context::getStream()
-    ));
+        values->data(),
+        indices->data(),
+        input->data(),
+        context::getStream()));
 }
 
 static bool registered = []() {

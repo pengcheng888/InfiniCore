@@ -1,18 +1,8 @@
 #ifndef __TRIPLET_MARGIN_LOSS_CUDA_CUH__
 #define __TRIPLET_MARGIN_LOSS_CUDA_CUH__
 
-#include <cuda_runtime.h>
-#if defined ENABLE_METAX_API
-    #include <maca_fp16.h>
-    #include <maca_bfloat16.h>
-    using nv_bfloat162 = __maca_bfloat162;
-#else
-    #include <cuda_fp16.h>
-    #include <cuda_bf16.h>
-#endif
-
 #include <cmath>
-#include <cstdio> 
+#include <cstdio>
 
 namespace op::triplet_margin_loss::cuda {
 
@@ -26,8 +16,9 @@ struct alignas(sizeof(T) * N) Pack {
 // ==================================================================
 __device__ __forceinline__ float warpReduceSum(float val) {
     unsigned int mask = 0xffffffff;
-    for (int offset = warpSize / 2; offset > 0; offset /= 2)
+    for (int offset = warpSize / 2; offset > 0; offset /= 2) {
         val += __shfl_down_sync(mask, val, offset);
+    }
     return val;
 }
 
@@ -37,12 +28,16 @@ __device__ __forceinline__ float blockReduceSum(float val) {
     int wid = threadIdx.x / warpSize;
 
     val = warpReduceSum(val);
-    if (lane == 0) shared[wid] = val;
+    if (lane == 0) {
+        shared[wid] = val;
+    }
     __syncthreads();
 
     // 假设 BlockDim 也是 32 的倍数
     val = (threadIdx.x < blockDim.x / warpSize) ? shared[lane] : 0.0f;
-    if (wid == 0) val = warpReduceSum(val);
+    if (wid == 0) {
+        val = warpReduceSum(val);
+    }
     return val;
 }
 
@@ -55,13 +50,13 @@ struct TripletMarginLossFunctor {
     float eps;
     bool swap;
 
-    __host__ __device__ TripletMarginLossFunctor(float margin_, int p_, float eps_, bool swap_) 
+    __host__ __device__ TripletMarginLossFunctor(float margin_, int p_, float eps_, bool swap_)
         : margin(margin_), p(p_), eps(eps_), swap(swap_) {}
 
     // 辅助函数: 计算两个向量 x, y 之间的 p-范数距离
     // x, y 指针，长度 D
     template <typename T>
-    __device__ __forceinline__ float compute_dist(const T* x, const T* y, size_t D) const {
+    __device__ __forceinline__ float compute_dist(const T *x, const T *y, size_t D) const {
         float sum = 0.0f;
         for (size_t i = 0; i < D; ++i) {
             float diff = fabsf(static_cast<float>(x[i]) - static_cast<float>(y[i]));
@@ -75,7 +70,7 @@ struct TripletMarginLossFunctor {
         }
 
         if (p == 1) {
-            return sum+eps;
+            return sum + eps;
         } else if (p == 2) {
             return sqrtf(sum + eps);
         } else {
@@ -96,21 +91,21 @@ struct TripletMarginLossFunctor {
 // ==================================================================
 template <typename T>
 __global__ void triplet_margin_loss_kernel(
-    T * __restrict__ output,            // [N]
-    const T * __restrict__ anchor,      // [N, D]
-    const T * __restrict__ positive,    // [N, D]
-    const T * __restrict__ negative,    // [N, D]
+    T *__restrict__ output,         // [N]
+    const T *__restrict__ anchor,   // [N, D]
+    const T *__restrict__ positive, // [N, D]
+    const T *__restrict__ negative, // [N, D]
     size_t N,
     size_t D,
     TripletMarginLossFunctor functor) {
 
     size_t n = blockIdx.x * blockDim.x + threadIdx.x;
-    
+
     if (n < N) {
         // 定位当前样本的起始位置
-        const T* a_ptr = anchor + n * D;
-        const T* p_ptr = positive + n * D;
-        const T* n_ptr = negative + n * D;
+        const T *a_ptr = anchor + n * D;
+        const T *p_ptr = positive + n * D;
+        const T *n_ptr = negative + n * D;
 
         float dist_pos = functor.compute_dist(a_ptr, p_ptr, D);
         float dist_neg = functor.compute_dist(a_ptr, n_ptr, D);
@@ -134,10 +129,10 @@ __global__ void triplet_margin_loss_kernel(
 // ==================================================================
 template <typename T>
 __global__ void triplet_margin_loss_reduce_kernel(
-    float * output,                     // [1] Accumulator (Float)
-    const T * __restrict__ anchor,      // [N, D]
-    const T * __restrict__ positive,    // [N, D]
-    const T * __restrict__ negative,    // [N, D]
+    float *output,                  // [1] Accumulator (Float)
+    const T *__restrict__ anchor,   // [N, D]
+    const T *__restrict__ positive, // [N, D]
+    const T *__restrict__ negative, // [N, D]
     size_t N,
     size_t D,
     TripletMarginLossFunctor functor,
@@ -149,9 +144,9 @@ __global__ void triplet_margin_loss_reduce_kernel(
 
     // Grid-Stride Loop over Batch Dimension N
     for (size_t n = idx; n < N; n += stride) {
-        const T* a_ptr = anchor + n * D;
-        const T* p_ptr = positive + n * D;
-        const T* n_ptr = negative + n * D;
+        const T *a_ptr = anchor + n * D;
+        const T *p_ptr = positive + n * D;
+        const T *n_ptr = negative + n * D;
 
         float dist_pos = functor.compute_dist(a_ptr, p_ptr, D);
         float dist_neg = functor.compute_dist(a_ptr, n_ptr, D);
@@ -175,7 +170,7 @@ __global__ void triplet_margin_loss_reduce_kernel(
     }
 }
 template <typename T>
-__global__ void cast_float_to_t(T* output, const float* src) {
+__global__ void cast_float_to_t(T *output, const float *src) {
     *output = static_cast<T>(*src);
 }
 

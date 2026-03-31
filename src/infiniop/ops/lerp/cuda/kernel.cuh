@@ -1,16 +1,6 @@
 #ifndef __LERP_CUDA_CUH__
 #define __LERP_CUDA_CUH__
 
-#include <cuda_runtime.h>
-#if defined ENABLE_METAX_API
-    #include <maca_fp16.h>
-    #include <maca_bfloat16.h>
-    using nv_bfloat162 = __maca_bfloat162;
-#else
-    #include <cuda_fp16.h>
-    #include <cuda_bf16.h>
-#endif
-
 #include <cmath>
 #include <cstdio>
 
@@ -23,19 +13,19 @@ namespace op::lerp::cuda {
 __device__ __forceinline__ int64_t get_element_offset(
     size_t linear_idx,
     int ndim,
-    const int64_t* __restrict__ shape,   // Output Shape
-    const int64_t* __restrict__ strides) // Input Effective Strides
+    const int64_t *__restrict__ shape,   // Output Shape
+    const int64_t *__restrict__ strides) // Input Effective Strides
 {
     int64_t offset = 0;
     size_t remainder = linear_idx;
 
-    // 从倒数第 1 维开始向第 0 维反向重构坐标 
-    #pragma unroll
+// 从倒数第 1 维开始向第 0 维反向重构坐标
+#pragma unroll
     for (int i = ndim - 1; i >= 0; --i) {
         int64_t dim_size = shape[i];
         int64_t coord = remainder % dim_size;
         remainder /= dim_size;
-        
+
         // stride 为 0 表示该维度被广播，否则累加物理偏移
         offset += coord * strides[i];
     }
@@ -47,17 +37,17 @@ __device__ __forceinline__ int64_t get_element_offset(
 // ==================================================================
 template <typename T>
 __global__ void lerp_kernel(
-    T * __restrict__ output,
-    const T * __restrict__ start,
-    const T * __restrict__ end,
-    const T * __restrict__ weight, // nullptr 表示标量模式
+    T *__restrict__ output,
+    const T *__restrict__ start,
+    const T *__restrict__ end,
+    const T *__restrict__ weight, // nullptr 表示标量模式
     float weight_scalar,
     size_t numel,
     int ndim,
-    const int64_t * __restrict__ shape,         // Output Shape [ndim]
-    const int64_t * __restrict__ start_strides, // Broadcasted Strides for Start [ndim]
-    const int64_t * __restrict__ end_strides,   // Broadcasted Strides for End [ndim]
-    const int64_t * __restrict__ weight_strides // Broadcasted Strides for Weight [ndim] (Optional)
+    const int64_t *__restrict__ shape,         // Output Shape [ndim]
+    const int64_t *__restrict__ start_strides, // Broadcasted Strides for Start [ndim]
+    const int64_t *__restrict__ end_strides,   // Broadcasted Strides for End [ndim]
+    const int64_t *__restrict__ weight_strides // Broadcasted Strides for Weight [ndim] (Optional)
 ) {
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -65,7 +55,7 @@ __global__ void lerp_kernel(
         // 1. 计算 Start 和 End 的偏移量 (支持广播)
         int64_t off_start = get_element_offset(idx, ndim, shape, start_strides);
         int64_t off_end = get_element_offset(idx, ndim, shape, end_strides);
-        
+
         float s = static_cast<float>(start[off_start]);
         float e = static_cast<float>(end[off_end]);
         float w;

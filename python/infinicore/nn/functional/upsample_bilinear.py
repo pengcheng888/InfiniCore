@@ -1,6 +1,8 @@
-from typing import Optional, Union, Sequence, List
+from typing import Optional, Sequence, Union
+
 from infinicore.lib import _infinicore
 from infinicore.tensor import Tensor
+
 
 def upsample_bilinear(
     input: Tensor,
@@ -8,7 +10,7 @@ def upsample_bilinear(
     scale_factor: Optional[Union[float, Sequence[float]]] = None,
     align_corners: bool = False,
     *,
-    out: Optional[Tensor] = None
+    out: Optional[Tensor] = None,
 ) -> Tensor:
     r"""
     Applies bilinear interpolation upsampling to the input tensor.
@@ -23,14 +25,16 @@ def upsample_bilinear(
 
     # 计算目标输出尺寸 (H, W)
     output_size = []
-    
+
     if size is not None:
         if isinstance(size, int):
             # 如果是单个整数，应用于 H 和 W
             output_size = [size, size]
         elif isinstance(size, (list, tuple)):
             if len(size) < 2:
-                raise ValueError("size sequence must contain at least 2 elements for bilinear upsampling")
+                raise ValueError(
+                    "size sequence must contain at least 2 elements for bilinear upsampling"
+                )
             output_size = [size[0], size[1]]
         else:
             raise ValueError("size must be int or sequence of int")
@@ -41,12 +45,14 @@ def upsample_bilinear(
             scale_w = scale_factor
         elif isinstance(scale_factor, (list, tuple)):
             if len(scale_factor) < 2:
-                raise ValueError("scale_factor sequence must contain at least 2 elements")
+                raise ValueError(
+                    "scale_factor sequence must contain at least 2 elements"
+                )
             scale_h = scale_factor[0]
             scale_w = scale_factor[1]
         else:
             raise ValueError("scale_factor must be float or sequence of float")
-        
+
         # 假设输入是 (..., H, W)，取最后两维
         h_in = input.shape[-2]
         w_in = input.shape[-1]
@@ -56,30 +62,25 @@ def upsample_bilinear(
     if out is not None:
         if not out.is_contiguous():
             raise RuntimeError("out tensor must be contiguous")
-            
+
         _infinicore.upsample_bilinear_(
-            out._underlying,
-            input._underlying,
-            align_corners
+            out._underlying, input._underlying, align_corners
         )
         return out
 
     # 2. 函数式调用 (Functional API)
     return Tensor(
-        _infinicore.upsample_bilinear(
-            input._underlying,
-            output_size,
-            align_corners
-        )
+        _infinicore.upsample_bilinear(input._underlying, output_size, align_corners)
     )
+
 
 def interpolate(
     input: Tensor,
     size: Optional[Union[int, Sequence[int]]] = None,
     scale_factor: Optional[Union[float, Sequence[float]]] = None,
-    mode: str = 'nearest',
+    mode: str = "nearest",
     align_corners: Optional[bool] = None,
-    recompute_scale_factor: Optional[bool] = None
+    recompute_scale_factor: Optional[bool] = None,
 ) -> Tensor:
     r"""
     Down/up samples the input to either the given :attr:`size` or the given
@@ -94,11 +95,13 @@ def interpolate(
         align_corners (bool, optional): Geometrically, we consider the pixels of the
             input and output as squares rather than points.
     """
-    
+
     # 分发逻辑
-    if mode == 'bilinear':
+    if mode == "bilinear":
         # bilinear 模式下，align_corners 默认为 False (与 PyTorch 行为保持一致)
         if align_corners is None:
             align_corners = False
         return upsample_bilinear(input, size, scale_factor, align_corners)
-    raise NotImplementedError(f"Interpolation mode '{mode}' is not currently supported.")
+    raise NotImplementedError(
+        f"Interpolation mode '{mode}' is not currently supported."
+    )

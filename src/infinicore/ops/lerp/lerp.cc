@@ -10,12 +10,14 @@ namespace infinicore::op {
 // ========================================================================
 namespace {
 
-Shape compute_broadcast_shape(const std::vector<Shape>& shapes) {
-    if (shapes.empty()) return {};
-    
+Shape compute_broadcast_shape(const std::vector<Shape> &shapes) {
+    if (shapes.empty()) {
+        return {};
+    }
+
     // 1. 找出最大的维度数 (Max Rank)
     size_t max_ndim = 0;
-    for (const auto& shape : shapes) {
+    for (const auto &shape : shapes) {
         max_ndim = std::max(max_ndim, shape.size());
     }
 
@@ -26,14 +28,16 @@ Shape compute_broadcast_shape(const std::vector<Shape>& shapes) {
         size_t current_dim_val = 1;
         bool set = false;
 
-        for (const auto& shape : shapes) {
+        for (const auto &shape : shapes) {
             // 计算当前 shape 对应的维度索引 (从右对齐)
             // 比如 max_ndim=4, 当前 shape_ndim=2, i=0 (最右边)
             // shape index = 2 - 1 - 0 = 1
             if (i < shape.size()) {
                 size_t dim = shape[shape.size() - 1 - i];
-                
-                if (dim == 1) continue; // 1 可以被广播，忽略
+
+                if (dim == 1) {
+                    continue; // 1 可以被广播，忽略
+                }
 
                 if (!set) {
                     current_dim_val = dim;
@@ -41,8 +45,7 @@ Shape compute_broadcast_shape(const std::vector<Shape>& shapes) {
                 } else if (current_dim_val != dim) {
                     // 维度不相等，且都不为 1，无法广播
                     throw std::runtime_error(
-                        "Lerp: Shapes are not broadcastable. Mismatch at dimension offset " + 
-                        std::to_string(i));
+                        "Lerp: Shapes are not broadcastable. Mismatch at dimension offset " + std::to_string(i));
                 }
             }
         }
@@ -53,7 +56,7 @@ Shape compute_broadcast_shape(const std::vector<Shape>& shapes) {
     return out_shape;
 }
 
-} // namespace anonymous
+} // namespace
 
 // ========================================================================
 // 1. 定义 Dispatcher 单例
@@ -89,15 +92,13 @@ void Lerp::execute(Tensor output, Tensor start, Tensor end, float weight) {
 
 Tensor lerp(Tensor start, Tensor end, Tensor weight) {
     // 1. 调用本地实现的推导函数，计算 start, end, weight 三者的广播形状
-    Shape output_shape = compute_broadcast_shape({
-        start->shape(), 
-        end->shape(), 
-        weight->shape()
-    });
-    
+    Shape output_shape = compute_broadcast_shape({start->shape(),
+                                                  end->shape(),
+                                                  weight->shape()});
+
     // 2. 分配输出内存
     auto output = Tensor::empty(output_shape, start->dtype(), start->device());
-    
+
     // 3. 执行计算
     lerp_(output, start, end, weight);
     return output;
@@ -105,14 +106,12 @@ Tensor lerp(Tensor start, Tensor end, Tensor weight) {
 
 Tensor lerp(Tensor start, Tensor end, float weight) {
     // 1. 计算 start, end 两者的广播形状 (标量 weight 不参与形状计算)
-    Shape output_shape = compute_broadcast_shape({
-        start->shape(), 
-        end->shape()
-    });
+    Shape output_shape = compute_broadcast_shape({start->shape(),
+                                                  end->shape()});
 
     // 2. 分配输出内存
     auto output = Tensor::empty(output_shape, start->dtype(), start->device());
-    
+
     // 3. 执行计算
     lerp_(output, start, end, weight);
     return output;

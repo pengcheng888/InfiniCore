@@ -9,7 +9,7 @@ class Ldexp {
 public:
     // Schema signature: output(out), input(x), other(exp)
     using schema = void (*)(Tensor, Tensor, Tensor);
-    
+
     static void execute(Tensor output, Tensor input, Tensor other);
     static common::OpDispatcher<schema> &dispatcher();
 };

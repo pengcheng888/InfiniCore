@@ -1,8 +1,8 @@
 #pragma once
 
+#include "infinicore/ops/lerp.hpp"
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
-#include "infinicore/ops/lerp.hpp"
 
 namespace py = pybind11;
 
@@ -18,7 +18,7 @@ inline void bind_lerp(py::module &m) {
     // ========================================================================
     // 1. 绑定 functional 接口
     // ========================================================================
-    
+
     // 重载 1: weight 为 Tensor
     m.def("lerp",
           static_cast<LerpTensorFunc>(&op::lerp),
@@ -38,11 +38,10 @@ inline void bind_lerp(py::module &m) {
           py::arg("weight"),
           R"doc(Does a linear interpolation of two tensors start and end based on a scalar weight.)doc");
 
-
     // ========================================================================
     // 2. 绑定 explicit output 接口 (In-place)
     // ========================================================================
-    
+
     // 重载 1: weight 为 Tensor
     m.def("lerp_",
           static_cast<LerpTensorInplaceFunc>(&op::lerp_),

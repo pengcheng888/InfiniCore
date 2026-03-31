@@ -10,7 +10,7 @@ class UpsampleBilinear {
 public:
     // Schema signature: output, input, align_corners
     using schema = void (*)(Tensor, Tensor, bool);
-    
+
     static void execute(Tensor output, Tensor input, bool align_corners);
     static common::OpDispatcher<schema> &dispatcher();
 };
