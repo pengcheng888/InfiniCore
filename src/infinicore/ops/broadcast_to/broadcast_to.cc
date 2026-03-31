@@ -14,9 +14,9 @@ void BroadcastTo::execute(Tensor y, Tensor x) {
     dispatcher().lookup(y->device().getType())(y, x);
 }
 
-Tensor broadcast_to(Tensor x, const std::vector<int64_t>& shape) {
+Tensor broadcast_to(Tensor x, const std::vector<int64_t> &shape) {
     Shape target_shape(shape.begin(), shape.end());
-    
+
     auto y = Tensor::empty(target_shape, x->dtype(), x->device());
     broadcast_to_(y, x);
     return y;

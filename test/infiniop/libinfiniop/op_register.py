@@ -4,7 +4,17 @@ from .structs import (
     infiniopOperatorDescriptor_t,
 )
 
-from ctypes import c_int32, c_void_p, c_size_t, POINTER, c_float, c_double, c_uint64, c_bool
+from ctypes import (
+    c_int32,
+    c_void_p,
+    c_size_t,
+    POINTER,
+    c_float,
+    c_double,
+    c_uint64,
+    c_bool,
+)
+
 
 class OpRegister:
     registry = []
@@ -18,6 +28,7 @@ class OpRegister:
     def register_lib(cls, lib):
         for op in cls.registry:
             op(lib)
+
 
 @OpRegister.operator
 def atanh_(lib):
@@ -49,6 +60,7 @@ def atanh_(lib):
     lib.infiniopDestroyAtanhDescriptor.argtypes = [
         infiniopOperatorDescriptor_t,
     ]
+
 
 @OpRegister.operator
 def add_(lib):
@@ -83,122 +95,126 @@ def add_(lib):
         infiniopOperatorDescriptor_t,
     ]
 
+
 @OpRegister.operator
 def addcmul_(lib):
     lib.infiniopCreateAddcmulDescriptor.restype = c_int32
     lib.infiniopCreateAddcmulDescriptor.argtypes = [
-        infiniopHandle_t,                       # handle
+        infiniopHandle_t,  # handle
         POINTER(infiniopOperatorDescriptor_t),  # desc_ptr
-        infiniopTensorDescriptor_t,             # out_desc
-        infiniopTensorDescriptor_t,             # input_desc
-        infiniopTensorDescriptor_t,             # t1_desc
-        infiniopTensorDescriptor_t,             # t2_desc
-        c_float,                                # value (标量系数)
+        infiniopTensorDescriptor_t,  # out_desc
+        infiniopTensorDescriptor_t,  # input_desc
+        infiniopTensorDescriptor_t,  # t1_desc
+        infiniopTensorDescriptor_t,  # t2_desc
+        c_float,  # value (标量系数)
     ]
 
     lib.infiniopGetAddcmulWorkspaceSize.restype = c_int32
     lib.infiniopGetAddcmulWorkspaceSize.argtypes = [
-        infiniopOperatorDescriptor_t,           # descriptor
-        POINTER(c_size_t),                      # size_ptr
+        infiniopOperatorDescriptor_t,  # descriptor
+        POINTER(c_size_t),  # size_ptr
     ]
 
     lib.infiniopAddcmul.restype = c_int32
     lib.infiniopAddcmul.argtypes = [
-        infiniopOperatorDescriptor_t,           # descriptor
-        c_void_p,                               # workspace
-        c_size_t,                               # workspace_size
-        c_void_p,                               # out_ptr
-        c_void_p,                               # input_ptr
-        c_void_p,                               # t1_ptr
-        c_void_p,                               # t2_ptr
-        c_void_p,                               # stream
+        infiniopOperatorDescriptor_t,  # descriptor
+        c_void_p,  # workspace
+        c_size_t,  # workspace_size
+        c_void_p,  # out_ptr
+        c_void_p,  # input_ptr
+        c_void_p,  # t1_ptr
+        c_void_p,  # t2_ptr
+        c_void_p,  # stream
     ]
 
     lib.infiniopDestroyAddcmulDescriptor.restype = c_int32
     lib.infiniopDestroyAddcmulDescriptor.argtypes = [
-        infiniopOperatorDescriptor_t,           # descriptor
+        infiniopOperatorDescriptor_t,  # descriptor
     ]
-    
+
+
 @OpRegister.operator
 def cdist_(lib):
     # 1. 创建描述符接口
     # 接口通常接收 handle, 输出 desc, 两个输入 desc, 以及范数 p
     lib.infiniopCreateCdistDescriptor.restype = c_int32
     lib.infiniopCreateCdistDescriptor.argtypes = [
-        infiniopHandle_t,                       # handle
+        infiniopHandle_t,  # handle
         POINTER(infiniopOperatorDescriptor_t),  # desc_ptr
-        infiniopTensorDescriptor_t,             # y_desc (输出)
-        infiniopTensorDescriptor_t,             # x1_desc
-        infiniopTensorDescriptor_t,             # x2_desc
-        c_double,                               # p (范数阶数)
+        infiniopTensorDescriptor_t,  # y_desc (输出)
+        infiniopTensorDescriptor_t,  # x1_desc
+        infiniopTensorDescriptor_t,  # x2_desc
+        c_double,  # p (范数阶数)
     ]
 
     # 2. 获取 Workspace 大小接口
     lib.infiniopGetCdistWorkspaceSize.restype = c_int32
     lib.infiniopGetCdistWorkspaceSize.argtypes = [
-        infiniopOperatorDescriptor_t,           # descriptor
-        POINTER(c_size_t),                      # size_ptr
+        infiniopOperatorDescriptor_t,  # descriptor
+        POINTER(c_size_t),  # size_ptr
     ]
 
     # 3. 执行算子接口
     lib.infiniopCdist.restype = c_int32
     lib.infiniopCdist.argtypes = [
-        infiniopOperatorDescriptor_t,           # descriptor
-        c_void_p,                               # workspace
-        c_size_t,                               # workspace_size
-        c_void_p,                               # y_ptr
-        c_void_p,                               # x1_ptr
-        c_void_p,                               # x2_ptr
-        c_void_p,                               # stream
+        infiniopOperatorDescriptor_t,  # descriptor
+        c_void_p,  # workspace
+        c_size_t,  # workspace_size
+        c_void_p,  # y_ptr
+        c_void_p,  # x1_ptr
+        c_void_p,  # x2_ptr
+        c_void_p,  # stream
     ]
 
     # 4. 销毁描述符接口
     lib.infiniopDestroyCdistDescriptor.restype = c_int32
     lib.infiniopDestroyCdistDescriptor.argtypes = [
-        infiniopOperatorDescriptor_t,           # descriptor
+        infiniopOperatorDescriptor_t,  # descriptor
     ]
+
 
 @OpRegister.operator
 def binary_cross_entropy_with_logits_(lib):
     # 1. 创建描述符 (Descriptor Creation)
     lib.infiniopCreateBCEWithLogitsDescriptor.restype = c_int32
     lib.infiniopCreateBCEWithLogitsDescriptor.argtypes = [
-        infiniopHandle_t,                        # handle
-        POINTER(infiniopOperatorDescriptor_t),   # desc_ptr
-        infiniopTensorDescriptor_t,              # out_desc
-        infiniopTensorDescriptor_t,              # input_desc (logits)
-        infiniopTensorDescriptor_t,              # target_desc
-        infiniopTensorDescriptor_t,              # weight_desc (可选，不可用则传 NULL)
-        infiniopTensorDescriptor_t,              # pos_weight_desc (可选，不可用则传 NULL)
-        c_int32                                  # reduction (0:none, 1:mean, 2:sum)
+        infiniopHandle_t,  # handle
+        POINTER(infiniopOperatorDescriptor_t),  # desc_ptr
+        infiniopTensorDescriptor_t,  # out_desc
+        infiniopTensorDescriptor_t,  # input_desc (logits)
+        infiniopTensorDescriptor_t,  # target_desc
+        infiniopTensorDescriptor_t,  # weight_desc (可选，不可用则传 NULL)
+        infiniopTensorDescriptor_t,  # pos_weight_desc (可选，不可用则传 NULL)
+        c_int32,  # reduction (0:none, 1:mean, 2:sum)
     ]
 
     # 2. 获取工作空间大小 (Workspace Size)
     lib.infiniopGetBCEWithLogitsWorkspaceSize.restype = c_int32
     lib.infiniopGetBCEWithLogitsWorkspaceSize.argtypes = [
-        infiniopOperatorDescriptor_t,            # descriptor
-        POINTER(c_size_t),                       # size_ptr
+        infiniopOperatorDescriptor_t,  # descriptor
+        POINTER(c_size_t),  # size_ptr
     ]
 
     # 3. 执行算子 (Execution)
     lib.infiniopBCEWithLogits.restype = c_int32
     lib.infiniopBCEWithLogits.argtypes = [
-        infiniopOperatorDescriptor_t,            # descriptor
-        c_void_p,                                # workspace
-        c_size_t,                                # workspace_size
-        c_void_p,                                # out_ptr
-        c_void_p,                                # input_ptr (logits)
-        c_void_p,                                # target_ptr
-        c_void_p,                                # weight_ptr (可选)
-        c_void_p,                                # pos_weight_ptr (可选)
-        c_void_p,                                # stream
+        infiniopOperatorDescriptor_t,  # descriptor
+        c_void_p,  # workspace
+        c_size_t,  # workspace_size
+        c_void_p,  # out_ptr
+        c_void_p,  # input_ptr (logits)
+        c_void_p,  # target_ptr
+        c_void_p,  # weight_ptr (可选)
+        c_void_p,  # pos_weight_ptr (可选)
+        c_void_p,  # stream
     ]
 
     # 4. 销毁描述符 (Destruction)
     lib.infiniopDestroyBCEWithLogitsDescriptor.restype = c_int32
     lib.infiniopDestroyBCEWithLogitsDescriptor.argtypes = [
-        infiniopOperatorDescriptor_t,            # descriptor
+        infiniopOperatorDescriptor_t,  # descriptor
     ]
+
 
 @OpRegister.operator
 def reciprocal_(lib):
@@ -206,8 +222,8 @@ def reciprocal_(lib):
     lib.infiniopCreateReciprocalDescriptor.argtypes = [
         infiniopHandle_t,
         POINTER(infiniopOperatorDescriptor_t),
-        infiniopTensorDescriptor_t, # Output descriptor
-        infiniopTensorDescriptor_t, # Input descriptor
+        infiniopTensorDescriptor_t,  # Output descriptor
+        infiniopTensorDescriptor_t,  # Input descriptor
     ]
 
     # 获取工作空间大小接口
@@ -221,11 +237,11 @@ def reciprocal_(lib):
     lib.infiniopReciprocal.restype = c_int32
     lib.infiniopReciprocal.argtypes = [
         infiniopOperatorDescriptor_t,
-        c_void_p, # Workspace pointer
-        c_size_t, # Workspace size
-        c_void_p, # Output data pointer
-        c_void_p, # Input data pointer
-        c_void_p, # Stream pointer (optional)
+        c_void_p,  # Workspace pointer
+        c_size_t,  # Workspace size
+        c_void_p,  # Output data pointer
+        c_void_p,  # Input data pointer
+        c_void_p,  # Stream pointer (optional)
     ]
 
     # 销毁描述符接口
@@ -233,6 +249,8 @@ def reciprocal_(lib):
     lib.infiniopDestroyReciprocalDescriptor.argtypes = [
         infiniopOperatorDescriptor_t,
     ]
+
+
 @OpRegister.operator
 def equal_(lib):
     # =========================================================
@@ -241,11 +259,11 @@ def equal_(lib):
     # =========================================================
     lib.infiniopCreateEqualDescriptor.restype = c_int32
     lib.infiniopCreateEqualDescriptor.argtypes = [
-        infiniopHandle_t,                     # handle
-        POINTER(infiniopOperatorDescriptor_t),# desc_ptr (输出)
-        infiniopTensorDescriptor_t,           # output (c)
-        infiniopTensorDescriptor_t,           # input_a
-        infiniopTensorDescriptor_t,           # input_b
+        infiniopHandle_t,  # handle
+        POINTER(infiniopOperatorDescriptor_t),  # desc_ptr (输出)
+        infiniopTensorDescriptor_t,  # output (c)
+        infiniopTensorDescriptor_t,  # input_a
+        infiniopTensorDescriptor_t,  # input_b
     ]
 
     # =========================================================
@@ -264,13 +282,13 @@ def equal_(lib):
     # =========================================================
     lib.infiniopEqual.restype = c_int32
     lib.infiniopEqual.argtypes = [
-        infiniopOperatorDescriptor_t, # desc
-        c_void_p,                     # workspace ptr
-        c_size_t,                     # workspace size
-        c_void_p,                     # output data ptr
-        c_void_p,                     # input a data ptr
-        c_void_p,                     # input b data ptr
-        c_void_p,                     # stream
+        infiniopOperatorDescriptor_t,  # desc
+        c_void_p,  # workspace ptr
+        c_size_t,  # workspace size
+        c_void_p,  # output data ptr
+        c_void_p,  # input a data ptr
+        c_void_p,  # input b data ptr
+        c_void_p,  # stream
     ]
 
     # =========================================================
@@ -281,6 +299,7 @@ def equal_(lib):
     lib.infiniopDestroyEqualDescriptor.argtypes = [
         infiniopOperatorDescriptor_t,
     ]
+
 
 @OpRegister.operator
 def attention_(lib):
@@ -986,7 +1005,6 @@ def dequantize_(lib):
     ]
 
 
-
 @OpRegister.operator
 def dequantize_gptq_(lib):
     lib.infiniopCreateDequantizeGPTQDescriptor.restype = c_int32
@@ -1139,6 +1157,8 @@ def softplus_(lib):
         POINTER(infiniopOperatorDescriptor_t),
         infiniopTensorDescriptor_t,
         infiniopTensorDescriptor_t,
+        c_float,
+        c_float,
     ]
     lib.infiniopSoftplus.restype = c_int32
     lib.infiniopSoftplus.argtypes = [
@@ -1280,42 +1300,44 @@ def silu_(lib):
         infiniopOperatorDescriptor_t,
     ]
 
+
 @OpRegister.operator
 def hardtanh_(lib):
     # 1. Create Descriptor - 注意增加了两个 c_float 参数
     lib.infiniopCreateHardTanhDescriptor.restype = c_int32
     lib.infiniopCreateHardTanhDescriptor.argtypes = [
-        infiniopHandle_t,               # handle
-        POINTER(infiniopOperatorDescriptor_t), # desc_ptr
-        infiniopTensorDescriptor_t,     # output
-        infiniopTensorDescriptor_t,     # input
-        c_float,                        # min_val
-        c_float,                        # max_val
+        infiniopHandle_t,  # handle
+        POINTER(infiniopOperatorDescriptor_t),  # desc_ptr
+        infiniopTensorDescriptor_t,  # output
+        infiniopTensorDescriptor_t,  # input
+        c_float,  # min_val
+        c_float,  # max_val
     ]
 
     # 2. Get Workspace Size
     lib.infiniopGetHardTanhWorkspaceSize.restype = c_int32
     lib.infiniopGetHardTanhWorkspaceSize.argtypes = [
-        infiniopOperatorDescriptor_t,   # desc
-        POINTER(c_size_t),              # size
+        infiniopOperatorDescriptor_t,  # desc
+        POINTER(c_size_t),  # size
     ]
 
     # 3. Execute Operator
     lib.infiniopHardTanh.restype = c_int32
     lib.infiniopHardTanh.argtypes = [
-        infiniopOperatorDescriptor_t,   # desc
-        c_void_p,                       # workspace
-        c_size_t,                       # workspace_size
-        c_void_p,                       # output
-        c_void_p,                       # input
-        c_void_p,                       # stream
+        infiniopOperatorDescriptor_t,  # desc
+        c_void_p,  # workspace
+        c_size_t,  # workspace_size
+        c_void_p,  # output
+        c_void_p,  # input
+        c_void_p,  # stream
     ]
 
     # 4. Destroy Descriptor
     lib.infiniopDestroyHardTanhDescriptor.restype = c_int32
     lib.infiniopDestroyHardTanhDescriptor.argtypes = [
-        infiniopOperatorDescriptor_t,   # desc
+        infiniopOperatorDescriptor_t,  # desc
     ]
+
 
 @OpRegister.operator
 def hardswish_(lib):
@@ -1348,6 +1370,7 @@ def hardswish_(lib):
         infiniopOperatorDescriptor_t,
     ]
 
+
 @OpRegister.operator
 def avg_pool1d_(lib):
     # 1. Create 函数
@@ -1358,9 +1381,9 @@ def avg_pool1d_(lib):
         POINTER(infiniopOperatorDescriptor_t),
         infiniopTensorDescriptor_t,  # y_desc (Output)
         infiniopTensorDescriptor_t,  # x_desc (Input)
-        c_size_t,                    # kernel_size
-        c_size_t,                    # stride
-        c_size_t,                    # padding
+        c_size_t,  # kernel_size
+        c_size_t,  # stride
+        c_size_t,  # padding
     ]
 
     # 2. GetWorkspaceSize 函数
@@ -1386,6 +1409,7 @@ def avg_pool1d_(lib):
     lib.infiniopDestroyAvgPool1dDescriptor.argtypes = [
         infiniopOperatorDescriptor_t,
     ]
+
 
 @OpRegister.operator
 def layer_norm_(lib):
@@ -1531,47 +1555,43 @@ def scaled_mm_int8_(lib):
     ]
 
 
-
 @OpRegister.operator
 def kv_caching_(lib):
     lib.infiniopCreateKVCachingDescriptor.restype = c_int32
     lib.infiniopCreateKVCachingDescriptor.argtypes = [
         infiniopHandle_t,
         POINTER(infiniopOperatorDescriptor_t),
-        infiniopTensorDescriptor_t,  
-        infiniopTensorDescriptor_t,  
-        infiniopTensorDescriptor_t,  
-        infiniopTensorDescriptor_t,  
-        infiniopTensorDescriptor_t, 
+        infiniopTensorDescriptor_t,
+        infiniopTensorDescriptor_t,
+        infiniopTensorDescriptor_t,
+        infiniopTensorDescriptor_t,
+        infiniopTensorDescriptor_t,
     ]
 
-    
     lib.infiniopGetKVCachingWorkspaceSize.restype = c_int32
     lib.infiniopGetKVCachingWorkspaceSize.argtypes = [
         infiniopOperatorDescriptor_t,
         POINTER(c_size_t),
     ]
 
-    
     lib.infiniopKVCaching.restype = c_int32
     lib.infiniopKVCaching.argtypes = [
         infiniopOperatorDescriptor_t,
-        c_void_p,  
-        c_size_t,  
-        c_void_p,  
-        c_void_p,  
-        c_void_p,  
-        c_void_p,  
-        c_void_p,  
-        c_void_p,  
+        c_void_p,
+        c_size_t,
+        c_void_p,
+        c_void_p,
+        c_void_p,
+        c_void_p,
+        c_void_p,
+        c_void_p,
     ]
 
-    
     lib.infiniopDestroyKVCachingDescriptor.restype = c_int32
     lib.infiniopDestroyKVCachingDescriptor.argtypes = [
         infiniopOperatorDescriptor_t,
     ]
-    
+
 
 @OpRegister.operator
 def paged_attention_(lib):

@@ -18,7 +18,6 @@
 #include "moore/softplus_moore.h"
 #endif
 
-
 __INFINI_C infiniStatus_t infiniopCreateSoftplusDescriptor(
     infiniopHandle_t handle,
     infiniopSoftplusDescriptor_t *desc_ptr,
@@ -118,8 +117,8 @@ __INFINI_C infiniStatus_t infiniopSoftplus(
     const void *x,
     void *stream) {
 
-#define CALCULATE(CASE, NAMESPACE)                                         \
-    case CASE:                                                             \
+#define CALCULATE(CASE, NAMESPACE)                                                 \
+    case CASE:                                                                     \
         return reinterpret_cast<const op::softplus::NAMESPACE::Descriptor *>(desc) \
             ->calculate(workspace, workspace_size, y, {x}, stream)
 

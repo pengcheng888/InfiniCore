@@ -72,7 +72,7 @@ NUM_ITERATIONS = 1000
 
 
 def softplus(x):
-    return torch.nn.functional.softplus(x).to(x.dtype)
+    return torch.nn.functional.softplus(x, beta=1.0, threshold=20.0).to(x.dtype)
 
 
 def test(
@@ -109,7 +109,12 @@ def test(
     descriptor = infiniopOperatorDescriptor_t()
     check_error(
         LIBINFINIOP.infiniopCreateSoftplusDescriptor(
-            handle, ctypes.byref(descriptor), y.descriptor, x.descriptor
+            handle,
+            ctypes.byref(descriptor),
+            y.descriptor,
+            x.descriptor,
+            ctypes.c_float(1.0),
+            ctypes.c_float(20.0),
         )
     )
 

@@ -1,9 +1,9 @@
-#include "softplus_nvidia.cuh"
-#include "../cuda/kernel.cuh"
-#include "../../../handle.h"
-#include <cuda_fp16.h>
-#include <cuda_bf16.h>
 #include "../../../devices/nvidia/nvidia_common.cuh"
+#include "../../../devices/nvidia/nvidia_kernel_common.cuh"
+#include "../../../handle.h"
+#include "../cuda/kernel.cuh"
+#include "softplus_nvidia.cuh"
+
 namespace op::softplus::nvidia {
 
 // 最大支持维度，用于 Kernel 参数传递
@@ -25,9 +25,9 @@ __global__ void softplus_kernel_contiguous(
     size_t n,
     float beta,
     float threshold) {
-    
+
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-    
+
     if (idx < n) {
         op::softplus::cuda::SoftplusOp functor;
         output[idx] = functor(input[idx], beta, threshold);
@@ -43,15 +43,15 @@ __global__ void softplus_kernel_strided(
     float beta,
     float threshold,
     TensorMetadata meta) { // 按值传递元数据
-    
+
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-    
+
     if (idx < n) {
         size_t input_offset = 0;
         size_t temp_idx = idx;
 
-        // 坐标变换：Linear Index -> Coordinate -> Strided Offset
-        #pragma unroll
+// 坐标变换：Linear Index -> Coordinate -> Strided Offset
+#pragma unroll
         for (int d = meta.ndim - 1; d >= 0; --d) {
             size_t dim_size = meta.shape[d];
             size_t coord = temp_idx % dim_size;
@@ -76,7 +76,7 @@ void launch_kernel(
 
     size_t n = info.num_elements();
     auto cuda_stream = reinterpret_cast<cudaStream_t>(stream);
-    
+
     dim3 block(256);
     dim3 grid((n + block.x - 1) / block.x);
     if (info.is_contiguous()) {
@@ -85,17 +85,14 @@ void launch_kernel(
             reinterpret_cast<const T *>(input),
             n,
             info.beta(),
-            info.threshold()
-        );
-    } 
-    else {
+            info.threshold());
+    } else {
         // 准备元数据
         TensorMetadata meta;
         meta.ndim = info.ndim();
-        
 
-        const auto& shape_vec = info.shape();
-        const auto& stride_vec = info.strides();
+        const auto &shape_vec = info.shape();
+        const auto &stride_vec = info.strides();
 
         for (int i = 0; i < meta.ndim; ++i) {
             meta.shape[i] = shape_vec[i];
@@ -108,8 +105,7 @@ void launch_kernel(
             n,
             info.beta(),
             info.threshold(),
-            meta
-        );
+            meta);
     }
 }
 
@@ -145,8 +141,7 @@ infiniStatus_t Descriptor::create(
         result.take(),
         0,
         handle->device,
-        handle->device_id
-    );
+        handle->device_id);
 
     return INFINI_STATUS_SUCCESS;
 }
@@ -163,7 +158,7 @@ infiniStatus_t Descriptor::calculate(
         launch_kernel<half>(output, input, _info, stream);
         break;
     case INFINI_DTYPE_BF16:
-        launch_kernel<nv_bfloat16>(output, input, _info, stream);
+        launch_kernel<cuda_bfloat16>(output, input, _info, stream);
         break;
     case INFINI_DTYPE_F32:
         launch_kernel<float>(output, input, _info, stream);

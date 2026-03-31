@@ -1,18 +1,12 @@
-#include "softplus_metax.h"
 #include "../../../devices/metax/metax_common.h"
 #include "../../../devices/metax/metax_handle.h"
+#include "../../../devices/metax/metax_kernel_common.h"
+#include "softplus_metax.h"
 
-#include <mcr/mc_runtime.h>
-#include <maca_fp16.h>
-#include <maca_bfloat16.h>
-
-#include <cstdint>
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <type_traits>
-
-using nv_bfloat16  = __maca_bfloat16;
-using nv_bfloat162 = __maca_bfloat162;
 
 namespace op::softplus::metax {
 
@@ -26,7 +20,7 @@ struct SoftplusOp {
             float bx = beta * xf;
             float out = (bx > threshold) ? xf : log1pf(expf(bx)) / beta;
             return __float2half(out);
-        } else if constexpr (std::is_same_v<T, nv_bfloat16>) {
+        } else if constexpr (std::is_same_v<T, cuda_bfloat16>) {
             float xf = __bfloat162float(x);
             float bx = beta * xf;
             float out = (bx > threshold) ? xf : log1pf(expf(bx)) / beta;
@@ -68,9 +62,9 @@ __global__ void softplus_kernel_contiguous(
     size_t n,
     float beta,
     float threshold) {
-    
+
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-    
+
     if (idx < n) {
         SoftplusOp functor;
         output[idx] = functor(input[idx], beta, threshold);
@@ -85,9 +79,9 @@ __global__ void softplus_kernel_strided(
     float beta,
     float threshold,
     TensorMetadata meta) {
-    
+
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-    
+
     if (idx < n) {
         size_t input_offset = 0;
         size_t temp_idx = idx;
@@ -95,9 +89,9 @@ __global__ void softplus_kernel_strided(
 #pragma unroll
         for (int d = meta.ndim - 1; d >= 0; --d) {
             size_t dim_size = meta.shape[d];
-            size_t coord    = temp_idx % dim_size;
-            temp_idx       /= dim_size;
-            input_offset   += coord * meta.strides[d];
+            size_t coord = temp_idx % dim_size;
+            temp_idx /= dim_size;
+            input_offset += coord * meta.strides[d];
         }
 
         SoftplusOp functor;
@@ -113,40 +107,40 @@ void launch_kernel(
     void *stream) {
 
     size_t n = info.num_elements();
-    auto mc_stream = reinterpret_cast<mcStream_t>(stream);
-    
+    auto hc_stream = reinterpret_cast<hcStream_t>(stream);
+
     dim3 block(256);
     dim3 grid((n + block.x - 1) / block.x);
-    if (grid.x == 0) grid.x = 1;
+    if (grid.x == 0) {
+        grid.x = 1;
+    }
 
     if (info.is_contiguous()) {
-        softplus_kernel_contiguous<T><<<grid, block, 0, mc_stream>>>(
+        softplus_kernel_contiguous<T><<<grid, block, 0, hc_stream>>>(
             reinterpret_cast<T *>(output),
             reinterpret_cast<const T *>(input),
             n,
             info.beta(),
-            info.threshold()
-        );
+            info.threshold());
     } else {
         TensorMetadata meta;
         meta.ndim = info.ndim();
 
-        const auto &shape_vec  = info.shape();
+        const auto &shape_vec = info.shape();
         const auto &stride_vec = info.strides();
 
         for (int i = 0; i < meta.ndim && i < MAX_DIMS; ++i) {
-            meta.shape[i]   = shape_vec[i];
+            meta.shape[i] = shape_vec[i];
             meta.strides[i] = stride_vec[i];
         }
 
-        softplus_kernel_strided<T><<<grid, block, 0, mc_stream>>>(
+        softplus_kernel_strided<T><<<grid, block, 0, hc_stream>>>(
             reinterpret_cast<T *>(output),
             reinterpret_cast<const T *>(input),
             n,
             info.beta(),
             info.threshold(),
-            meta
-        );
+            meta);
     }
 }
 
@@ -179,8 +173,7 @@ infiniStatus_t Descriptor::create(
         result.take(),
         0,
         handle->device,
-        handle->device_id
-    );
+        handle->device_id);
 
     return INFINI_STATUS_SUCCESS;
 }
@@ -200,7 +193,7 @@ infiniStatus_t Descriptor::calculate(
         launch_kernel<__half>(output, input, _info, stream);
         break;
     case INFINI_DTYPE_BF16:
-        launch_kernel<nv_bfloat16>(output, input, _info, stream);
+        launch_kernel<cuda_bfloat16>(output, input, _info, stream);
         break;
     case INFINI_DTYPE_F32:
         launch_kernel<float>(output, input, _info, stream);

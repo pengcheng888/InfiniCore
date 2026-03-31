@@ -28,24 +28,24 @@ struct InfiniopSoftsignDescriptor {
 // Create Descriptor
 // -----------------------------------------------------------------------------
 
-__C infiniStatus_t infiniopCreateSoftsignDescriptor(
+__INFINI_C infiniStatus_t infiniopCreateSoftsignDescriptor(
     infiniopHandle_t handle,
     infiniopSoftsignDescriptor_t *desc_ptr,
     infiniopTensorDescriptor_t y_desc,
     infiniopTensorDescriptor_t x_desc) {
 
 // 使用 {x_desc} 构建 vector
-#define CREATE(CASE, NAMESPACE)                                                    \
-    case CASE: {                                                                   \
-        auto status = op::softsign::NAMESPACE::Descriptor::create(                 \
-            handle,                                                                \
-            reinterpret_cast<op::softsign::NAMESPACE::Descriptor **>(desc_ptr),    \
-            y_desc,                                                                \
-            {x_desc});                                                             \
-        if (status == INFINI_STATUS_SUCCESS) {                                     \
-            (*desc_ptr)->device_type = CASE;                                       \
-        }                                                                          \
-        return status;                                                             \
+#define CREATE(CASE, NAMESPACE)                                                 \
+    case CASE: {                                                                \
+        auto status = op::softsign::NAMESPACE::Descriptor::create(              \
+            handle,                                                             \
+            reinterpret_cast<op::softsign::NAMESPACE::Descriptor **>(desc_ptr), \
+            y_desc,                                                             \
+            {x_desc});                                                          \
+        if (status == INFINI_STATUS_SUCCESS) {                                  \
+            (*desc_ptr)->device_type = CASE;                                    \
+        }                                                                       \
+        return status;                                                          \
     }
 
     switch (handle->device) {
@@ -80,7 +80,7 @@ __C infiniStatus_t infiniopCreateSoftsignDescriptor(
 // Get Workspace Size
 // -----------------------------------------------------------------------------
 
-__C infiniStatus_t infiniopGetSoftsignWorkspaceSize(infiniopSoftsignDescriptor_t desc, size_t *size) {
+__INFINI_C infiniStatus_t infiniopGetSoftsignWorkspaceSize(infiniopSoftsignDescriptor_t desc, size_t *size) {
 
 #define GET(CASE, NAMESPACE)                                                                    \
     case CASE:                                                                                  \
@@ -118,7 +118,7 @@ __C infiniStatus_t infiniopGetSoftsignWorkspaceSize(infiniopSoftsignDescriptor_t
 // Execute (Calculate)
 // -----------------------------------------------------------------------------
 
-__C infiniStatus_t infiniopSoftsign(
+__INFINI_C infiniStatus_t infiniopSoftsign(
     infiniopSoftsignDescriptor_t desc,
     void *workspace,
     size_t workspace_size,
@@ -164,11 +164,11 @@ __C infiniStatus_t infiniopSoftsign(
 // Destroy Descriptor
 // -----------------------------------------------------------------------------
 
-__C infiniStatus_t
+__INFINI_C infiniStatus_t
 infiniopDestroySoftsignDescriptor(infiniopSoftsignDescriptor_t desc) {
 
-#define DELETE(CASE, NAMESPACE)                                                             \
-    case CASE:                                                                              \
+#define DELETE(CASE, NAMESPACE)                                                     \
+    case CASE:                                                                      \
         delete reinterpret_cast<const op::softsign::NAMESPACE::Descriptor *>(desc); \
         return INFINI_STATUS_SUCCESS
 

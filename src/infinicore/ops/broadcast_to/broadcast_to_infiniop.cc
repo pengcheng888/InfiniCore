@@ -1,7 +1,7 @@
 #include "../../utils.hpp"
 #include "infinicore/common/hash.hpp"
-#include "infinicore/ops/common/cache.hpp"
 #include "infinicore/ops/broadcast_to.hpp"
+#include "infinicore/ops/common/cache.hpp"
 #include <infiniop.h>
 
 namespace infinicore::op::broadcast_to_impl::infiniop {
@@ -31,9 +31,8 @@ void calculate(Tensor y, Tensor x) {
             context::getInfiniopHandle(device),
             &desc,
             y->desc(),
-            x->desc()
-        ));
-        
+            x->desc()));
+
         cache.put(seed, desc);
     } else {
         desc = *desc_opt;
@@ -50,8 +49,7 @@ void calculate(Tensor y, Tensor x) {
         workspace_size,
         y->data(),
         x->data(),
-        context::getStream()
-    ));
+        context::getStream()));
 }
 
 // 4. 注册算子实现

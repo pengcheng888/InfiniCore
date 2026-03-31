@@ -18,12 +18,12 @@ Tensor huber_loss(Tensor input, Tensor target, float delta, int64_t reduction) {
     if (reduction == 0) { // None
         // HuberLoss 是 Element-wise 的，reduction='none' 时输出形状通常与输入一致
         output_shape = input->shape();
-    } else { 
+    } else {
         output_shape = {}; // Scalar
     }
 
     auto output = Tensor::empty(output_shape, input->dtype(), input->device());
-    
+
     huber_loss_(output, input, target, delta, reduction);
     return output;
 }

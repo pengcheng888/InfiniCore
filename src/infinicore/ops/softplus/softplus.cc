@@ -12,7 +12,7 @@ common::OpDispatcher<Softplus::schema> &Softplus::dispatcher() {
 void Softplus::execute(Tensor y, Tensor x, float beta, float threshold) {
     INFINICORE_ASSERT_TENSORS_SAME_DEVICE(y, x);
     infinicore::context::setDevice(y->device());
-    
+
     // 修改：将 beta 和 threshold 传递给底层的实现 (infiniop wrapper)
     dispatcher().lookup(y->device().getType())(y, x, beta, threshold);
 }

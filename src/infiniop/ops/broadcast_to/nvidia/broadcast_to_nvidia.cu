@@ -1,8 +1,11 @@
-#include "broadcast_to_nvidia.cuh"
-#include "../cuda/kernel.cuh"   
+#include "../../../devices/nvidia/nvidia_common.cuh"
+#include "../../../devices/nvidia/nvidia_kernel_common.cuh"
 #include "../../../handle.h"
-#include <cstdint>
+
+#include "../cuda/kernel.cuh"
+#include "broadcast_to_nvidia.cuh"
 #include <algorithm>
+#include <cstdint>
 #include <vector>
 
 namespace op::broadcast_to::nvidia {
@@ -12,13 +15,13 @@ namespace op::broadcast_to::nvidia {
 // ==================================================================
 template <typename T>
 void launch_kernel(
-    void *output, 
-    const void *input, 
-    const BroadcastToInfo& info,
+    void *output,
+    const void *input,
+    const BroadcastToInfo &info,
     void *stream) {
     auto in_ptr = reinterpret_cast<const T *>(input);
     auto out_ptr = reinterpret_cast<T *>(output);
-    
+
     auto cuda_stream = reinterpret_cast<cudaStream_t>(stream);
     op::broadcast_to::cuda::BroadcastStrides strides;
     for (int i = 0; i < BroadcastToInfo::MAX_DIM; ++i) {
@@ -30,45 +33,47 @@ void launch_kernel(
     size_t grid_size = (count + block_size - 1) / block_size;
     op::broadcast_to::cuda::broadcast_kernel<T>
         <<<grid_size, block_size, 0, cuda_stream>>>(
-            out_ptr, 
-            in_ptr, 
-            info.ndim(), 
-            count, 
-            strides
-        );
+            out_ptr,
+            in_ptr,
+            info.ndim(),
+            count,
+            strides);
 }
 
 struct Descriptor::Opaque {};
 
-Descriptor::~Descriptor() { 
-    if (_opaque) delete _opaque; 
+Descriptor::~Descriptor() {
+    if (_opaque) {
+        delete _opaque;
+    }
 }
 
 infiniStatus_t Descriptor::create(
-    infiniopHandle_t handle, 
+    infiniopHandle_t handle,
     Descriptor **desc_ptr,
-    infiniopTensorDescriptor_t out_desc, 
+    infiniopTensorDescriptor_t out_desc,
     const std::vector<infiniopTensorDescriptor_t> &input_descs) {
     auto info_result = BroadcastToInfo::create(out_desc, input_descs);
-    if (!info_result) return info_result.status();
+    if (!info_result) {
+        return info_result.status();
+    }
     size_t workspace_size = 0;
 
     *desc_ptr = new Descriptor(
-        new Opaque(), 
-        info_result.take(), 
-        workspace_size, 
-        handle->device, 
-        handle->device_id
-    );
-    
+        new Opaque(),
+        info_result.take(),
+        workspace_size,
+        handle->device,
+        handle->device_id);
+
     return INFINI_STATUS_SUCCESS;
 }
 
 infiniStatus_t Descriptor::calculate(
-    void *workspace, 
-    size_t workspace_size, 
+    void *workspace,
+    size_t workspace_size,
     void *output,
-    const std::vector<const void *> &inputs, 
+    const std::vector<const void *> &inputs,
     void *stream) const {
 
     if (inputs.size() != 1) {
@@ -84,7 +89,7 @@ infiniStatus_t Descriptor::calculate(
         launch_kernel<half>(output, input, _info, stream);
         break;
     case INFINI_DTYPE_BF16:
-        launch_kernel<nv_bfloat16>(output, input, _info, stream);
+        launch_kernel<cuda_bfloat16>(output, input, _info, stream);
         break;
     case INFINI_DTYPE_F32:
         launch_kernel<float>(output, input, _info, stream);

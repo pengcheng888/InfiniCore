@@ -12,7 +12,7 @@ public:
     static void execute(Tensor y, Tensor x);
     static common::OpDispatcher<schema> &dispatcher();
 };
-Tensor broadcast_to(Tensor x, const std::vector<int64_t>& shape);
+Tensor broadcast_to(Tensor x, const std::vector<int64_t> &shape);
 void broadcast_to_(Tensor y, Tensor x);
 
 } // namespace infinicore::op

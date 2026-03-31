@@ -2,8 +2,8 @@
 #include "../../../devices/cpu/common_cpu.h"
 #include <algorithm>
 #include <cmath>
-#include <omp.h>
 #include <cstdint>
+#include <omp.h>
 #include <vector>
 
 #include "../../../../utils/custom_types.h"
@@ -29,7 +29,7 @@ infiniStatus_t Descriptor::create(
 
     auto handle = reinterpret_cast<device::cpu::Handle *>(handle_);
     auto result = SoftplusInfo::create(out_desc, input_desc, beta, threshold);
-    
+
     if (!result) {
         return result.status();
     }
@@ -38,10 +38,9 @@ infiniStatus_t Descriptor::create(
     *desc_ptr = new Descriptor(
         new Opaque(),
         result.take(),
-        0, 
+        0,
         handle->device,
-        handle->device_id
-    );
+        handle->device_id);
 
     return INFINI_STATUS_SUCCESS;
 }
@@ -58,18 +57,18 @@ void calculate_cpu_impl(
     size_t num_elements = info.num_elements();
     float beta = info.beta();
     float threshold = info.threshold();
-    
+
     // 获取内存布局信息 (依赖更新后的 SoftplusInfo)
     bool is_contiguous = info.is_contiguous();
     int ndim = info.ndim();
-    const auto& shape = info.shape();
-    const auto& strides = info.strides();
+    const auto &shape = info.shape();
+    const auto &strides = info.strides();
 
     auto out_ptr = reinterpret_cast<T *>(output);
     auto in_ptr = reinterpret_cast<const T *>(input);
 
-    #pragma omp parallel for schedule(static)
-    for (size_t i = 0; i < num_elements; ++i) {
+#pragma omp parallel for schedule(static)
+    for (ptrdiff_t i = 0; i < (ptrdiff_t)num_elements; ++i) {
         // 1. 计算输入偏移量 (Input Offset)
         size_t input_offset = i; // 默认为线性索引
 
@@ -85,11 +84,11 @@ void calculate_cpu_impl(
             }
         }
         using CalcType = std::conditional_t<std::is_same_v<T, double>, double, float>;
-        
+
         CalcType x = utils::cast<CalcType>(in_ptr[input_offset]);
         CalcType b = static_cast<CalcType>(beta);
         CalcType t = static_cast<CalcType>(threshold);
-        
+
         CalcType bx = b * x;
         CalcType result;
 
@@ -109,7 +108,7 @@ infiniStatus_t Descriptor::calculate(
     void *output,
     const void *input,
     void *stream) const {
-    
+
     auto dtype = _info.dtype();
 
     switch (dtype) {

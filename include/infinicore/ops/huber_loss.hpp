@@ -9,7 +9,7 @@ class HuberLoss {
 public:
     // Schema: output, input, target, delta, reduction
     using schema = void (*)(Tensor, Tensor, Tensor, float, int64_t);
-    
+
     static void execute(Tensor output, Tensor input, Tensor target, float delta, int64_t reduction);
     static common::OpDispatcher<schema> &dispatcher();
 };

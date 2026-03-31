@@ -1,9 +1,9 @@
-#include "softplus_moore.h"
-#include "softplus_moore_kernel.h" 
-#include "../../../handle.h"
-#include <musa_fp16.h>
-#include <musa_bf16.h>
 #include "../../../devices/moore/moore_handle.h"
+#include "../../../handle.h"
+#include "softplus_moore.h"
+#include "softplus_moore_kernel.h"
+#include <musa_bf16.h>
+#include <musa_fp16.h>
 
 namespace op::softplus::moore {
 
@@ -25,9 +25,9 @@ __global__ void softplus_kernel_contiguous(
     size_t n,
     float beta,
     float threshold) {
-    
+
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-    
+
     if (idx < n) {
         op::softplus::moore::SoftplusOp functor;
         output[idx] = functor(input[idx], beta, threshold);
@@ -45,14 +45,14 @@ __global__ void softplus_kernel_strided(
     float beta,
     float threshold,
     TensorMetadata meta) {
-    
+
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-    
+
     if (idx < n) {
         size_t input_offset = 0;
         size_t temp_idx = idx;
 
-        #pragma unroll
+#pragma unroll
         for (int d = meta.ndim - 1; d >= 0; --d) {
             size_t dim_size = meta.shape[d];
             size_t coord = temp_idx % dim_size;
@@ -77,7 +77,7 @@ void launch_kernel(
 
     size_t n = info.num_elements();
     auto musa_stream = reinterpret_cast<musaStream_t>(stream);
-    
+
     dim3 block(256);
     dim3 grid((n + block.x - 1) / block.x);
 
@@ -87,15 +87,13 @@ void launch_kernel(
             reinterpret_cast<const T *>(input),
             n,
             info.beta(),
-            info.threshold()
-        );
-    } 
-    else {
+            info.threshold());
+    } else {
         TensorMetadata meta;
         meta.ndim = info.ndim();
-        
-        const auto& shape_vec = info.shape();
-        const auto& stride_vec = info.strides();
+
+        const auto &shape_vec = info.shape();
+        const auto &stride_vec = info.strides();
 
         for (int i = 0; i < meta.ndim; ++i) {
             meta.shape[i] = shape_vec[i];
@@ -108,8 +106,7 @@ void launch_kernel(
             n,
             info.beta(),
             info.threshold(),
-            meta
-        );
+            meta);
     }
 }
 
@@ -145,8 +142,7 @@ infiniStatus_t Descriptor::create(
         result.take(),
         0,
         handle->device,
-        handle->device_id
-    );
+        handle->device_id);
 
     return INFINI_STATUS_SUCCESS;
 }

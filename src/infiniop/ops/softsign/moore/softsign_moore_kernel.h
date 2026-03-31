@@ -1,11 +1,11 @@
 #ifndef __SOFTSIGN_MOORE_KERNEL_H__
 #define __SOFTSIGN_MOORE_KERNEL_H__
 
-#include <musa_runtime.h>
-#include <musa_fp16.h>
-#include <musa_bf16.h>
-#include <type_traits>
 #include <cmath>
+#include <musa_bf16.h>
+#include <musa_fp16.h>
+#include <musa_runtime.h>
+#include <type_traits>
 
 namespace op::softsign::moore {
 
@@ -64,7 +64,7 @@ struct TensorMetadata {
 // Kernel 1: 连续内存
 // ================================================================
 template <typename T>
-__global__ void softsign_kernel_contiguous(T* output, const T* input, size_t n) {
+__global__ void softsign_kernel_contiguous(T *output, const T *input, size_t n) {
 
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -79,11 +79,10 @@ __global__ void softsign_kernel_contiguous(T* output, const T* input, size_t n) 
 // ================================================================
 template <typename T>
 __global__ void softsign_kernel_strided(
-    T* output,
-    const T* input,
+    T *output,
+    const T *input,
     size_t n,
-    TensorMetadata meta
-) {
+    TensorMetadata meta) {
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
 
     if (idx < n) {
@@ -108,13 +107,12 @@ __global__ void softsign_kernel_strided(
 // ================================================================
 template <typename T>
 void launch_kernel(
-    void* output,
-    const void* input,
-    const TensorMetadata& meta,
+    void *output,
+    const void *input,
+    const TensorMetadata &meta,
     size_t numel,
     bool is_contiguous,
-    void* stream
-) {
+    void *stream) {
     auto musa_stream = reinterpret_cast<musaStream_t>(stream);
 
     dim3 block(256);
@@ -122,17 +120,15 @@ void launch_kernel(
 
     if (is_contiguous) {
         softsign_kernel_contiguous<T><<<grid, block, 0, musa_stream>>>(
-            reinterpret_cast<T*>(output),
-            reinterpret_cast<const T*>(input),
-            numel
-        );
+            reinterpret_cast<T *>(output),
+            reinterpret_cast<const T *>(input),
+            numel);
     } else {
         softsign_kernel_strided<T><<<grid, block, 0, musa_stream>>>(
-            reinterpret_cast<T*>(output),
-            reinterpret_cast<const T*>(input),
+            reinterpret_cast<T *>(output),
+            reinterpret_cast<const T *>(input),
             numel,
-            meta
-        );
+            meta);
     }
 }
 

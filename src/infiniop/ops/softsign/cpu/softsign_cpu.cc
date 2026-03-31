@@ -15,7 +15,7 @@ infiniStatus_t Descriptor::create(
 
     // Softsign 只有一个输入
     const auto &x_desc = input_desc_vec.at(0);
-    
+
     const auto &y_shape = out_desc->shape();
     const auto &x_shape = x_desc->shape();
     CHECK_DTYPE(dtype, INFINI_DTYPE_F16, INFINI_DTYPE_F32, INFINI_DTYPE_F64, INFINI_DTYPE_BF16, INFINI_DTYPE_I32, INFINI_DTYPE_I64);

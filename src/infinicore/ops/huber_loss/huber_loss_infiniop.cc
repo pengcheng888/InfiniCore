@@ -26,19 +26,18 @@ void calculate(Tensor output, Tensor input, Tensor target, float delta, int64_t 
 
     auto desc_opt = cache.get(seed);
     infiniopHuberLossDescriptor_t desc = nullptr;
-    
+
     if (!desc_opt) {
         // 3. 创建描述符
         INFINICORE_CHECK_ERROR(infiniopCreateHuberLossDescriptor(
-            context::getInfiniopHandle(output->device()), 
+            context::getInfiniopHandle(output->device()),
             &desc,
-            output->desc(), 
-            input->desc(), 
-            target->desc(), 
+            output->desc(),
+            input->desc(),
+            target->desc(),
             delta,
-            static_cast<int>(reduction)
-        ));
-        
+            static_cast<int>(reduction)));
+
         cache.put(seed, desc);
     } else {
         desc = *desc_opt;
@@ -50,14 +49,13 @@ void calculate(Tensor output, Tensor input, Tensor target, float delta, int64_t 
     std::shared_ptr<Memory> workspace = context::allocateMemory(workspace_size);
 
     INFINICORE_CHECK_ERROR(infiniopHuberLoss(
-        desc, 
-        workspace->data(), 
+        desc,
+        workspace->data(),
         workspace_size,
-        output->data(), 
-        input->data(), 
-        target->data(), 
-        context::getStream()
-    ));
+        output->data(),
+        input->data(),
+        target->data(),
+        context::getStream()));
 }
 
 static bool registered = []() {

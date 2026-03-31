@@ -64,6 +64,7 @@ from infinicore.ops.bilinear import bilinear
 from infinicore.ops.binary_cross_entropy_with_logits import (
     binary_cross_entropy_with_logits,
 )
+from infinicore.ops.broadcast_to import broadcast_to
 from infinicore.ops.cat import cat
 from infinicore.ops.cdist import cdist
 from infinicore.ops.cross_entropy import cross_entropy
@@ -102,7 +103,6 @@ from infinicore.ops.topk import topk
 from infinicore.ops.unsqueeze import unsqueeze
 from infinicore.ops.var import var
 from infinicore.ops.var_mean import var_mean
-from infinicore.ops.broadcast_to import broadcast_to
 from infinicore.tensor import (
     Tensor,
     empty,

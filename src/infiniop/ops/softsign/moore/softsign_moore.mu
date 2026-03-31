@@ -2,8 +2,8 @@
 #include "softsign_moore_kernel.h"
 
 #include "../../../elementwise/moore/elementwise_moore.h"
-#include <musa_fp16.h>
 #include <musa_bf16.h>
+#include <musa_fp16.h>
 
 namespace op::softsign::moore {
 

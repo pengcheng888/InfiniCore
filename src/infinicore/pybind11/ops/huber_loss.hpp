@@ -1,15 +1,16 @@
 #pragma once
 
+#include "infinicore/ops/huber_loss.hpp"
 #include <pybind11/pybind11.h>
-#include "infinicore/ops/huber_loss.hpp" 
 
 namespace py = pybind11;
 
 namespace infinicore::ops {
 
 inline void bind_huber_loss(py::module &m) {
-    m.def("huber_loss",
-        [](const Tensor& input, const Tensor& target, float delta, int reduction) {
+    m.def(
+        "huber_loss",
+        [](const Tensor &input, const Tensor &target, float delta, int reduction) {
             return op::huber_loss(input, target, delta, reduction);
         },
         py::arg("input"),
@@ -28,8 +29,9 @@ inline void bind_huber_loss(py::module &m) {
     // -------------------------------------------------------------------------
     // 2. 绑定 in-place 接口 (huber_loss_)
     // -------------------------------------------------------------------------
-    m.def("huber_loss_",
-        [](Tensor& output, const Tensor& input, const Tensor& target, float delta, int reduction) {
+    m.def(
+        "huber_loss_",
+        [](Tensor &output, const Tensor &input, const Tensor &target, float delta, int reduction) {
             // 调用底层
             op::huber_loss_(output, input, target, delta, reduction);
         },

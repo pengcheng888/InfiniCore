@@ -1,8 +1,8 @@
+#include "../../../devices/moore/moore_handle.h"
 #include "broadcast_to_moore.h"
 #include "broadcast_to_moore_kernel.h"
-#include "../../../devices/moore/moore_handle.h"
-#include <cstdint>
 #include <algorithm>
+#include <cstdint>
 #include <vector>
 
 namespace op::broadcast_to::moore {
@@ -12,14 +12,14 @@ namespace op::broadcast_to::moore {
 // ==================================================================
 template <typename T>
 void launch_kernel(
-    void *output, 
-    const void *input, 
-    const BroadcastToInfo& info,
+    void *output,
+    const void *input,
+    const BroadcastToInfo &info,
     void *stream) {
-    
+
     auto in_ptr = reinterpret_cast<const T *>(input);
     auto out_ptr = reinterpret_cast<T *>(output);
-    
+
     auto musa_stream = reinterpret_cast<musaStream_t>(stream);
 
     // 复制 strides 到 Kernel 定义的结构体中
@@ -35,48 +35,50 @@ void launch_kernel(
 
     op::broadcast_to::moore::broadcast_kernel<T>
         <<<grid_size, block_size, 0, musa_stream>>>(
-            out_ptr, 
-            in_ptr, 
-            info.ndim(), 
-            count, 
-            strides
-        );
+            out_ptr,
+            in_ptr,
+            info.ndim(),
+            count,
+            strides);
 }
 
 struct Descriptor::Opaque {};
 
-Descriptor::~Descriptor() { 
-    if (_opaque) delete _opaque; 
+Descriptor::~Descriptor() {
+    if (_opaque) {
+        delete _opaque;
+    }
 }
 
 infiniStatus_t Descriptor::create(
-    infiniopHandle_t handle_, 
+    infiniopHandle_t handle_,
     Descriptor **desc_ptr,
-    infiniopTensorDescriptor_t out_desc, 
+    infiniopTensorDescriptor_t out_desc,
     const std::vector<infiniopTensorDescriptor_t> &input_descs) {
 
     auto handle = reinterpret_cast<device::moore::Handle *>(handle_);
 
     auto info_result = BroadcastToInfo::create(out_desc, input_descs);
-    if (!info_result) return info_result.status();
+    if (!info_result) {
+        return info_result.status();
+    }
     size_t workspace_size = 0;
 
     *desc_ptr = new Descriptor(
-        new Opaque(), 
-        info_result.take(), 
-        workspace_size, 
-        handle->device, 
-        handle->device_id
-    );
-    
+        new Opaque(),
+        info_result.take(),
+        workspace_size,
+        handle->device,
+        handle->device_id);
+
     return INFINI_STATUS_SUCCESS;
 }
 
 infiniStatus_t Descriptor::calculate(
-    void *workspace, 
-    size_t workspace_size, 
+    void *workspace,
+    size_t workspace_size,
     void *output,
-    const std::vector<const void *> &inputs, 
+    const std::vector<const void *> &inputs,
     void *stream) const {
 
     if (inputs.size() != 1) {

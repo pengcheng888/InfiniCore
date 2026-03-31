@@ -33,10 +33,10 @@ public:
         if (input_desc->ndim() != target_desc->ndim()) {
             return INFINI_STATUS_BAD_TENSOR_SHAPE;
         }
-        
+
         size_t total_count = input_desc->numel();
         if (target_desc->numel() != total_count) {
-             return INFINI_STATUS_BAD_TENSOR_SHAPE;
+            return INFINI_STATUS_BAD_TENSOR_SHAPE;
         }
 
         for (size_t i = 0; i < input_desc->ndim(); ++i) {
@@ -45,11 +45,10 @@ public:
             }
         }
 
-        if (input_desc->dtype() != target_desc->dtype() || 
-            input_desc->dtype() != out_desc->dtype()) {
+        if (input_desc->dtype() != target_desc->dtype() || input_desc->dtype() != out_desc->dtype()) {
             return INFINI_STATUS_BAD_TENSOR_DTYPE;
         }
-        
+
         if (reduction == 0) {
             if (out_desc->ndim() != input_desc->ndim()) {
                 return INFINI_STATUS_BAD_TENSOR_SHAPE;
@@ -69,8 +68,7 @@ public:
             input_desc->dtype(),
             delta,
             reduction,
-            total_count
-        });
+            total_count});
     }
 };
 

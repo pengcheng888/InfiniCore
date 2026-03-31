@@ -23,83 +23,83 @@ extern "C" {
 // =======================================================================
 // 1. 创建算子描述符
 // =======================================================================
-__C infiniStatus_t infiniopCreateBroadcastToDescriptor(
+__INFINI_C infiniStatus_t infiniopCreateBroadcastToDescriptor(
     infiniopHandle_t handle,
     infiniopBroadcastToDescriptor_t *desc_ptr,
     infiniopTensorDescriptor_t y_desc,
     infiniopTensorDescriptor_t x_desc) {
-    #define CREATE(CASE, NAMESPACE)                                                   \
-        case CASE:                                                                    \
-            return op::broadcast_to::NAMESPACE::Descriptor::create(                   \
-                handle,                                                               \
-                reinterpret_cast<op::broadcast_to::NAMESPACE::Descriptor **>(desc_ptr), \
-                y_desc,                                                               \
-                {x_desc})
+#define CREATE(CASE, NAMESPACE)                                                     \
+    case CASE:                                                                      \
+        return op::broadcast_to::NAMESPACE::Descriptor::create(                     \
+            handle,                                                                 \
+            reinterpret_cast<op::broadcast_to::NAMESPACE::Descriptor **>(desc_ptr), \
+            y_desc,                                                                 \
+            {x_desc})
 
     switch (handle->device) {
-    #ifdef ENABLE_CPU_API
+#ifdef ENABLE_CPU_API
         CREATE(INFINI_DEVICE_CPU, cpu);
-    #endif
-    #ifdef ENABLE_NVIDIA_API
+#endif
+#ifdef ENABLE_NVIDIA_API
         CREATE(INFINI_DEVICE_NVIDIA, nvidia);
-    #endif
-    #ifdef ENABLE_ILUVATAR_API
+#endif
+#ifdef ENABLE_ILUVATAR_API
         CREATE(INFINI_DEVICE_ILUVATAR, nvidia);
-    #endif
-    #ifdef ENABLE_QY_API
+#endif
+#ifdef ENABLE_QY_API
         CREATE(INFINI_DEVICE_QY, nvidia);
-    #endif
-    #ifdef ENABLE_METAX_API
+#endif
+#ifdef ENABLE_METAX_API
         CREATE(INFINI_DEVICE_METAX, metax);
-    #endif
-    #ifdef ENABLE_MOORE_API
+#endif
+#ifdef ENABLE_MOORE_API
         CREATE(INFINI_DEVICE_MOORE, moore);
-    #endif
+#endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
-    #undef CREATE
+#undef CREATE
 }
 
 // =======================================================================
 // 2. 获取 Workspace 大小
 // =======================================================================
-__C infiniStatus_t infiniopGetBroadcastToWorkspaceSize(infiniopBroadcastToDescriptor_t desc, size_t *size) {
+__INFINI_C infiniStatus_t infiniopGetBroadcastToWorkspaceSize(infiniopBroadcastToDescriptor_t desc, size_t *size) {
 
-    #define GET(CASE, NAMESPACE)                                                                   \
-        case CASE:                                                                                 \
-            *size = reinterpret_cast<op::broadcast_to::NAMESPACE::Descriptor *>(desc)->workspaceSize(); \
-            return INFINI_STATUS_SUCCESS
+#define GET(CASE, NAMESPACE)                                                                        \
+    case CASE:                                                                                      \
+        *size = reinterpret_cast<op::broadcast_to::NAMESPACE::Descriptor *>(desc)->workspaceSize(); \
+        return INFINI_STATUS_SUCCESS
 
     switch (desc->device_type) {
-    #ifdef ENABLE_CPU_API
+#ifdef ENABLE_CPU_API
         GET(INFINI_DEVICE_CPU, cpu);
-    #endif
-    #ifdef ENABLE_NVIDIA_API
+#endif
+#ifdef ENABLE_NVIDIA_API
         GET(INFINI_DEVICE_NVIDIA, nvidia);
-    #endif
-    #ifdef ENABLE_ILUVATAR_API
+#endif
+#ifdef ENABLE_ILUVATAR_API
         GET(INFINI_DEVICE_ILUVATAR, nvidia);
-    #endif
-    #ifdef ENABLE_QY_API
+#endif
+#ifdef ENABLE_QY_API
         GET(INFINI_DEVICE_QY, nvidia);
-    #endif
-    #ifdef ENABLE_METAX_API
+#endif
+#ifdef ENABLE_METAX_API
         GET(INFINI_DEVICE_METAX, metax);
-    #endif
-    #ifdef ENABLE_MOORE_API
+#endif
+#ifdef ENABLE_MOORE_API
         GET(INFINI_DEVICE_MOORE, moore);
-    #endif
+#endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
-    #undef GET
+#undef GET
 }
 
 // =======================================================================
 // 3. 执行计算 (Calculate)
 // =======================================================================
-__C infiniStatus_t infiniopBroadcastTo(
+__INFINI_C infiniStatus_t infiniopBroadcastTo(
     infiniopBroadcastToDescriptor_t desc,
     void *workspace,
     size_t workspace_size,
@@ -107,70 +107,70 @@ __C infiniStatus_t infiniopBroadcastTo(
     const void *x,
     void *stream) {
 
-    // 注意：{x} 用于构造 std::vector<const void*>
-    #define CALCULATE(CASE, NAMESPACE)                                            \
-        case CASE:                                                                \
-            return reinterpret_cast<const op::broadcast_to::NAMESPACE::Descriptor *>(desc) \
-                ->calculate(workspace, workspace_size, y, {x}, stream)
+// 注意：{x} 用于构造 std::vector<const void*>
+#define CALCULATE(CASE, NAMESPACE)                                                     \
+    case CASE:                                                                         \
+        return reinterpret_cast<const op::broadcast_to::NAMESPACE::Descriptor *>(desc) \
+            ->calculate(workspace, workspace_size, y, {x}, stream)
 
     switch (desc->device_type) {
-    #ifdef ENABLE_CPU_API
+#ifdef ENABLE_CPU_API
         CALCULATE(INFINI_DEVICE_CPU, cpu);
-    #endif
-    #ifdef ENABLE_NVIDIA_API
+#endif
+#ifdef ENABLE_NVIDIA_API
         CALCULATE(INFINI_DEVICE_NVIDIA, nvidia);
-    #endif
-    #ifdef ENABLE_ILUVATAR_API
+#endif
+#ifdef ENABLE_ILUVATAR_API
         CALCULATE(INFINI_DEVICE_ILUVATAR, nvidia);
-    #endif
-    #ifdef ENABLE_QY_API
+#endif
+#ifdef ENABLE_QY_API
         CALCULATE(INFINI_DEVICE_QY, nvidia);
-    #endif
-    #ifdef ENABLE_METAX_API
+#endif
+#ifdef ENABLE_METAX_API
         CALCULATE(INFINI_DEVICE_METAX, metax);
-    #endif
-    #ifdef ENABLE_MOORE_API
+#endif
+#ifdef ENABLE_MOORE_API
         CALCULATE(INFINI_DEVICE_MOORE, moore);
-    #endif
+#endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
-    #undef CALCULATE
+#undef CALCULATE
 }
 
 // =======================================================================
 // 4. 销毁算子描述符
 // =======================================================================
-__C infiniStatus_t infiniopDestroyBroadcastToDescriptor(infiniopBroadcastToDescriptor_t desc) {
+__INFINI_C infiniStatus_t infiniopDestroyBroadcastToDescriptor(infiniopBroadcastToDescriptor_t desc) {
 
-    #define DELETE(CASE, NAMESPACE)                                                        \
-        case CASE:                                                                         \
-            delete reinterpret_cast<const op::broadcast_to::NAMESPACE::Descriptor *>(desc); \
-            return INFINI_STATUS_SUCCESS
+#define DELETE(CASE, NAMESPACE)                                                         \
+    case CASE:                                                                          \
+        delete reinterpret_cast<const op::broadcast_to::NAMESPACE::Descriptor *>(desc); \
+        return INFINI_STATUS_SUCCESS
 
     switch (desc->device_type) {
-    #ifdef ENABLE_CPU_API
+#ifdef ENABLE_CPU_API
         DELETE(INFINI_DEVICE_CPU, cpu);
-    #endif
-    #ifdef ENABLE_NVIDIA_API
+#endif
+#ifdef ENABLE_NVIDIA_API
         DELETE(INFINI_DEVICE_NVIDIA, nvidia);
-    #endif
-    #ifdef ENABLE_ILUVATAR_API
+#endif
+#ifdef ENABLE_ILUVATAR_API
         DELETE(INFINI_DEVICE_ILUVATAR, nvidia);
-    #endif
-    #ifdef ENABLE_QY_API
+#endif
+#ifdef ENABLE_QY_API
         DELETE(INFINI_DEVICE_QY, nvidia);
-    #endif
-    #ifdef ENABLE_METAX_API
+#endif
+#ifdef ENABLE_METAX_API
         DELETE(INFINI_DEVICE_METAX, metax);
-    #endif
-    #ifdef ENABLE_MOORE_API
+#endif
+#ifdef ENABLE_MOORE_API
         DELETE(INFINI_DEVICE_MOORE, moore);
-    #endif
+#endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
-    #undef DELETE
+#undef DELETE
 }
 
 } // extern "C"

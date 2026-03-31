@@ -1,10 +1,8 @@
 #ifndef __SOFTSIGN_CUDA_H__
 #define __SOFTSIGN_CUDA_H__
 
-#include <cuda_fp16.h>
-#include <cuda_bf16.h>
-#include <type_traits>
 #include <cmath>
+#include <type_traits>
 
 namespace op::softsign::cuda {
 
@@ -25,7 +23,7 @@ struct SoftsignOp {
 #else
             return static_cast<half>(static_cast<float>(x) / (1.0f + fabsf(static_cast<float>(x))));
 #endif
-        } else if constexpr (std::is_same_v<T, nv_bfloat16>) {
+        } else if constexpr (std::is_same_v<T, cuda_bfloat16>) {
             // Avoid __habs which is for fp16. Use manual abs or operators to keep bf16 precision.
             const T abs_x = (x >= T(0.0f)) ? x : -x;
             return x / (T(1.0f) + abs_x);

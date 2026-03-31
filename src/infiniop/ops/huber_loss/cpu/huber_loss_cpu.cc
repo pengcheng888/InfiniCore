@@ -2,8 +2,8 @@
 #include "../../../devices/cpu/common_cpu.h"
 #include <algorithm>
 #include <cmath>
-#include <omp.h>
 #include <cstdint>
+#include <omp.h>
 
 #include "../../../../utils/custom_types.h"
 
@@ -34,10 +34,9 @@ infiniStatus_t Descriptor::create(
     *desc_ptr = new Descriptor(
         new Opaque(),
         result.take(),
-        0, 
-        handle->device, 
-        handle->device_id
-    );
+        0,
+        handle->device,
+        handle->device_id);
 
     return INFINI_STATUS_SUCCESS;
 }
@@ -60,11 +59,11 @@ void calculate_cpu_impl(
     float half_delta = 0.5f * delta;
 
     if (reduction == 0) { // None
-        #pragma omp parallel for schedule(static)
-        for (size_t i = 0; i < count; ++i) {
+#pragma omp parallel for schedule(static)
+        for (ptrdiff_t i = 0; i < (ptrdiff_t)count; ++i) {
             float val = utils::cast<float>(in_ptr[i]);
             float tgt = utils::cast<float>(tar_ptr[i]);
-            
+
             float diff = val - tgt;
             float abs_diff = std::abs(diff);
             float loss = 0.0f;
@@ -82,11 +81,11 @@ void calculate_cpu_impl(
     } else { // Mean or Sum
         double total_loss = 0.0;
 
-        #pragma omp parallel for reduction(+:total_loss) schedule(static)
-        for (size_t i = 0; i < count; ++i) {
+#pragma omp parallel for reduction(+ : total_loss) schedule(static)
+        for (ptrdiff_t i = 0; i < (ptrdiff_t)count; ++i) {
             float val = utils::cast<float>(in_ptr[i]);
             float tgt = utils::cast<float>(tar_ptr[i]);
-            
+
             float diff = val - tgt;
             float abs_diff = std::abs(diff);
             float loss = 0.0f;

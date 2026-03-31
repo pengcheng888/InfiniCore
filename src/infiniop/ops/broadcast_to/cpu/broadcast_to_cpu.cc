@@ -30,9 +30,8 @@ infiniStatus_t Descriptor::create(
         new Opaque(),
         result.take(),
         0, // CPU 实现不需要 workspace
-        handle->device, 
-        handle->device_id
-    );
+        handle->device,
+        handle->device_id);
 
     return INFINI_STATUS_SUCCESS;
 }
@@ -45,13 +44,13 @@ void calculate_cpu_impl(
 
     size_t count = info.count();
     int ndim = info.ndim();
-    
+
     auto out_ptr = reinterpret_cast<T *>(output);
     auto in_ptr = reinterpret_cast<const T *>(input);
 
-    // 并行遍历输出的每一个元素
-    #pragma omp parallel for schedule(static)
-    for (size_t i = 0; i < count; ++i) {
+// 并行遍历输出的每一个元素
+#pragma omp parallel for schedule(static)
+    for (ptrdiff_t i = 0; i < (ptrdiff_t)count; ++i) {
         size_t temp_idx = i;
         size_t input_offset = 0;
 

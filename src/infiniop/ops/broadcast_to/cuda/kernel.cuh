@@ -1,14 +1,9 @@
 #ifndef __BROADCAST_TO_CUDA_CUH__
 #define __BROADCAST_TO_CUDA_CUH__
 
-#include <cuda_runtime.h>
-#include <cuda_fp16.h>
-#include <cuda_bf16.h>
-
-
 #include <cmath>
-#include <cstdio>
 #include <cstdint>
+#include <cstdio>
 
 namespace op::broadcast_to::cuda {
 
@@ -20,11 +15,11 @@ struct BroadcastStrides {
 };
 template <typename T>
 __global__ void broadcast_kernel(
-    T * __restrict__ output,        // Output data pointer
-    const T * __restrict__ input,   // Input data pointer
+    T *__restrict__ output,      // Output data pointer
+    const T *__restrict__ input, // Input data pointer
     int ndim,
-    size_t count,                   // Total elements in output
-    BroadcastStrides strides) {     // Strides passed by value
+    size_t count,               // Total elements in output
+    BroadcastStrides strides) { // Strides passed by value
 
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -32,10 +27,12 @@ __global__ void broadcast_kernel(
         size_t temp_idx = idx;
         size_t input_offset = 0;
 
-        // 坐标变换与偏移计算
-        #pragma unroll
+// 坐标变换与偏移计算
+#pragma unroll
         for (int i = 0; i < MAX_DIM; ++i) {
-            if (i >= ndim) break;
+            if (i >= ndim) {
+                break;
+            }
 
             int64_t out_s = strides.out_strides[i];
             int64_t in_s = strides.in_strides[i];

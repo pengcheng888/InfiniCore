@@ -3,7 +3,6 @@
 #include "common/op.hpp"
 #include <optional>
 
-
 namespace infinicore::op {
 
 Tensor linear(Tensor input, Tensor weight, std::optional<Tensor> bias);
