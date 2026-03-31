@@ -78,9 +78,8 @@ class OpTest(BaseOperatorTest):
         # Use interpolate with bilinear mode
         return torch.nn.functional.interpolate(*args, **kwargs)
 
-    # def infinicore_operator(self, *args, **kwargs):
-    #     """InfiniCore implementation (operator not yet available)."""
-    #     return infinicore.nn.functional.interpolate(*args, **kwargs)
+    def infinicore_operator(self, *args, **kwargs):
+        return infinicore.nn.functional.interpolate(*args, **kwargs)
 
 
 def main():

@@ -78,7 +78,10 @@ from infinicore.ops.hypot import hypot
 from infinicore.ops.index_add import index_add
 from infinicore.ops.index_copy import index_copy
 from infinicore.ops.inner import inner
+from infinicore.ops.kthvalue import kthvalue
 from infinicore.ops.kv_caching import kv_caching
+from infinicore.ops.ldexp import ldexp
+from infinicore.ops.lerp import lerp
 from infinicore.ops.masked_select import masked_select
 from infinicore.ops.matmul import matmul
 from infinicore.ops.mha_kvcache import mha_kvcache
@@ -183,6 +186,9 @@ __all__ = [
     "equal",
     "mul",
     "narrow",
+    "ldexp",
+    "lerp",
+    "kthvalue",
     "squeeze",
     "unsqueeze",
     "rearrange",
