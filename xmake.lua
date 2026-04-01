@@ -247,7 +247,6 @@ if has_config("aten") then
     end
 end
 
-
 -- cuda graph
 option("graph")
     set_default(false)
@@ -258,7 +257,6 @@ option_end()
 if has_config("graph") then
     add_defines("USE_INFINIRT_GRAPH")
 end
-
 
 -- InfiniCCL
 option("ccl")
@@ -467,6 +465,22 @@ target("infinicore_cpp_api")
         if has_config("nv-gpu") then
             add_deps("flash-attn-nvidia")
         end
+        if has_config("qy-gpu") then
+            add_deps("flash-attn-qy")
+        end
+    end
+
+    if get_config("flash-attn") and get_config("flash-attn") ~= "" and has_config("qy-gpu") then
+        local flash_so_qy = _qy_flash_attn_cuda_so_path()
+        local flash_dir_qy = path.directory(flash_so_qy)
+        local flash_name_qy = path.filename(flash_so_qy)
+        before_link(function (target)
+            target:add(
+                "shflags",
+                "-Wl,--no-as-needed -L" .. flash_dir_qy .. " -l:" .. flash_name_qy .. " -Wl,-rpath," .. flash_dir_qy,
+                {force = true}
+            )
+        end)
     end
 
     before_build(function (target)

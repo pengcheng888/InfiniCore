@@ -3,6 +3,38 @@ if CUDNN_ROOT ~= nil then
     add_includedirs(CUDNN_ROOT .. "/include")
 end
 
+local FLASH_ATTN_ROOT = get_config("flash-attn")
+
+local INFINI_ROOT = os.getenv("INFINI_ROOT") or (os.getenv(is_host("windows") and "HOMEPATH" or "HOME") .. "/.infini")
+
+function _qy_flash_attn_cuda_so_path()
+    -- Highest priority: override the exact `.so` file to link.
+    local env_path = os.getenv("FLASH_ATTN_2_CUDA_SO")
+    if env_path and env_path ~= "" then
+        env_path = env_path:trim()
+        if os.isfile(env_path) then
+            return env_path
+        end
+        print(string.format("warning: qy+flash-attn: FLASH_ATTN_2_CUDA_SO is not a file: %s, fallback to container/default path", env_path))
+    end
+
+    -- Second priority: allow overriding the "expected" container path via env.
+    local container_path = os.getenv("FLASH_ATTN_QY_CUDA_SO_CONTAINER")
+    if not container_path or container_path == "" then
+        raise("Error: Flash Attention SO path not specified!\n")
+end
+
+    if not os.isfile(container_path) then
+        print(
+            string.format(
+                "warning: qy+flash-attn: expected %s; install flash-attn in conda env, or export FLASH_ATTN_2_CUDA_SO.",
+                container_path
+            )
+        )
+    end
+    return container_path
+end
+
 add_includedirs("/usr/local/denglin/sdk/include", "../include")
 add_linkdirs("/usr/local/denglin/sdk/lib")
 add_links("curt", "cublas", "cudnn")
@@ -44,10 +76,20 @@ rule("qy.cuda")
         local sdk_path = "/usr/local/denglin/sdk"
         local arch = "dlgput64"
 
-        local relpath = path.relative(sourcefile, project.directory())
-        local objfile = path.join(config.buildir(), ".objs", target:name(), "rules", "qy.cuda", relpath .. ".o")
+        
+        local relpath = path.relative(sourcefile, os.projectdir())
 
-        -- 🟢 强制注册 .o 文件给 target
+        relpath = relpath:gsub("%.%.", "__")
+
+        local objfile = path.join(
+            config.buildir(),
+            ".objs",
+            target:name(),
+            "rules",
+            "qy.cuda",
+            relpath .. ".o"
+        )
+
         target:add("objectfiles", objfile)
         target:set("buildadd", true)
         local argv = {
@@ -152,4 +194,27 @@ target("infiniccl-qy")
     end
     set_languages("cxx17")
 
+target_end()
+
+target("flash-attn-qy")
+    set_kind("phony")
+    set_default(false)
+    
+
+    if FLASH_ATTN_ROOT and FLASH_ATTN_ROOT ~= "" then
+        before_build(function (target)
+            target:add("includedirs", "/usr/local/denglin/sdk/include", {public = true})
+            local TORCH_DIR = os.iorunv("python", {"-c", "import torch, os; print(os.path.dirname(torch.__file__))"}):trim()
+            local PYTHON_INCLUDE = os.iorunv("python", {"-c", "import sysconfig; print(sysconfig.get_paths()['include'])"}):trim()
+            local PYTHON_LIB_DIR = os.iorunv("python", {"-c", "import sysconfig; print(sysconfig.get_config_var('LIBDIR'))"}):trim()
+            
+            -- Validate build/runtime env in container and keep these paths available for downstream linking.
+            target:add("includedirs", TORCH_DIR .. "/include", TORCH_DIR .. "/include/torch/csrc/api/include", PYTHON_INCLUDE, {public = false})
+            target:add("linkdirs", TORCH_DIR .. "/lib", PYTHON_LIB_DIR, {public = false})
+        end)
+    else
+        before_build(function (target)
+            print("Flash Attention not available, skipping flash-attn-qy integration")
+        end)
+    end
 target_end()

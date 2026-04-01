@@ -38,8 +38,13 @@ void run(void *planned_meta) {
 
     auto out_tensor = infinicore::adaptor::to_aten_tensor(p->out);
     auto q = infinicore::adaptor::to_aten_tensor(p->q);
+#if defined(ENABLE_NVIDIA_API)
     auto k_cache = infinicore::adaptor::to_aten_tensor(p->k_cache);
     auto v_cache = infinicore::adaptor::to_aten_tensor(p->v_cache);
+#elif defined(ENABLE_QY_API)
+    auto k_cache = infinicore::adaptor::to_aten_tensor(p->k_cache).contiguous();
+    auto v_cache = infinicore::adaptor::to_aten_tensor(p->v_cache).contiguous();
+#endif
     auto seqlens_k = std::optional<const at::Tensor>(infinicore::adaptor::to_aten_tensor(p->seqlens_k));
     auto block_table = std::optional<at::Tensor>(infinicore::adaptor::to_aten_tensor(p->block_table));
     auto alibi_slopes = p->alibi_slopes
