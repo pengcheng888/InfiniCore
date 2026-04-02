@@ -1,16 +1,6 @@
 #ifndef __VANDER_CUDA_CUH__
 #define __VANDER_CUDA_CUH__
 
-#include <cuda_runtime.h>
-#if defined ENABLE_METAX_API
-    #include <maca_fp16.h>
-    #include <maca_bfloat16.h>
-    using nv_bfloat162 = __maca_bfloat162;
-#else
-    #include <cuda_fp16.h>
-    #include <cuda_bf16.h>
-#endif
-
 #include <cmath>
 #include <cstdio>
 
@@ -21,8 +11,8 @@ namespace op::vander::cuda {
 // ==================================================================
 template <typename T>
 __global__ void vander_kernel(
-    T * __restrict__ output,        // [rows, cols]
-    const T * __restrict__ input,   // [rows]
+    T *__restrict__ output,      // [rows, cols]
+    const T *__restrict__ input, // [rows]
     size_t rows,
     size_t cols,
     bool increasing) {
@@ -35,7 +25,7 @@ __global__ void vander_kernel(
 
         // 加载输入 (同一个 row 的不同 col 线程会读取同一个 input[row]，L1 Cache 友好)
         float x = static_cast<float>(input[row]);
-        float power = increasing ? static_cast<float>(col) 
+        float power = increasing ? static_cast<float>(col)
                                  : static_cast<float>(cols - 1 - col);
         float res = powf(x, power);
 

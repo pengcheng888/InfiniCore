@@ -1,9 +1,9 @@
 #ifndef __LOGCUMSUMEXP_MOORE_KERNEL_H__
 #define __LOGCUMSUMEXP_MOORE_KERNEL_H__
 
-#include <musa_runtime.h>
-#include <musa_fp16.h>
 #include <musa_bf16.h>
+#include <musa_fp16.h>
+#include <musa_runtime.h>
 
 #include <cmath>
 #include <limits>
@@ -16,12 +16,12 @@ namespace op::logcumsumexp::moore {
 // ============================================================
 
 struct LSEState {
-    float m;   // running max
-    float s;   // sum(exp(x - m))
+    float m; // running max
+    float s; // sum(exp(x - m))
 
     // 数学单位元：log(0) = -inf
     __device__ __forceinline__ static LSEState identity() {
-        return { -INFINITY, 0.0f };
+        return {-INFINITY, 0.0f};
     }
 
     // prefix 更新
@@ -51,8 +51,8 @@ struct LSEState {
 
 template <typename T>
 __global__ void logcumsumexp_kernel(
-    T* __restrict__ y,
-    const T* __restrict__ x,
+    T *__restrict__ y,
+    const T *__restrict__ x,
 
     size_t outer_size,
     size_t axis_size,
@@ -67,11 +67,12 @@ __global__ void logcumsumexp_kernel(
     size_t y_outer_stride,
 
     bool exclusive,
-    bool reverse
-) {
+    bool reverse) {
     size_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     size_t num_vec = outer_size * inner_size;
-    if (tid >= num_vec) return;
+    if (tid >= num_vec) {
+        return;
+    }
 
     size_t o = tid / inner_size;
     size_t i = tid % inner_size;

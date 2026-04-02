@@ -2,9 +2,11 @@ import infinicore
 from infinicore.lib import _infinicore
 from infinicore.tensor import Tensor
 
+
 def logical_and(input: Tensor, other: Tensor, *, out=None) -> Tensor:
     r"""Computes the element-wise logical AND of the given input tensors."""
-    if infinicore.use_ntops and input.device.type in ("cuda", "musa"):
+    if input.device.type not in ("cpu"):
+        assert infinicore.use_ntops
         return infinicore.ntops.torch.logical_and(input, other, out=out)
 
     if out is None:

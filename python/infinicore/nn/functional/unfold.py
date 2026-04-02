@@ -1,15 +1,17 @@
-from typing import Optional, Union, Tuple, List
+from typing import List, Optional, Tuple, Union
+
 from infinicore.lib import _infinicore
 from infinicore.tensor import Tensor
 
+
 def unfold(
-    input: Tensor, 
-    kernel_size: Union[int, Tuple[int, ...], List[int]], 
-    dilation: Union[int, Tuple[int, ...], List[int]] = 1, 
-    padding: Union[int, Tuple[int, ...], List[int]] = 0, 
-    stride: Union[int, Tuple[int, ...], List[int]] = 1, 
-    *, 
-    out: Optional[Tensor] = None
+    input: Tensor,
+    kernel_size: Union[int, Tuple[int, ...], List[int]],
+    dilation: Union[int, Tuple[int, ...], List[int]] = 1,
+    padding: Union[int, Tuple[int, ...], List[int]] = 0,
+    stride: Union[int, Tuple[int, ...], List[int]] = 1,
+    *,
+    out: Optional[Tensor] = None,
 ) -> Tensor:
     r"""Extracts sliding local blocks from a batched input tensor.
 
@@ -38,21 +40,8 @@ def unfold(
 
     if out is not None:
         _infinicore.unfold_(
-            out._underlying,
-            input._underlying,
-            k_val,
-            d_val,
-            p_val,
-            s_val
+            out._underlying, input._underlying, k_val, d_val, p_val, s_val
         )
         return out
 
-    return Tensor(
-        _infinicore.unfold(
-            input._underlying,
-            k_val,
-            d_val,
-            p_val,
-            s_val
-        )
-    )
+    return Tensor(_infinicore.unfold(input._underlying, k_val, d_val, p_val, s_val))

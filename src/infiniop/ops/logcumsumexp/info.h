@@ -49,8 +49,7 @@ public:
         size_t x_os,
         size_t y_as,
         size_t y_is,
-        size_t y_os
-    )
+        size_t y_os)
         : _dtype(dtype),
           _axis(axis),
           _exclusive(exclusive),
@@ -109,13 +108,13 @@ public:
         // ================================
         // 物理 stride 计算 (已修复)
         // ================================
-        
+
         // 1. Axis Stride
         size_t x_axis_stride = static_cast<size_t>(x_desc->stride(axis));
         size_t y_axis_stride = static_cast<size_t>(y_desc->stride(axis));
 
         // 2. Inner Stride
-        // [关键修复]: 
+        // [关键修复]:
         // Kernel 将 inner 部分视为被展平的一维数组 (0 到 inner-1)。
         // 对于连续 (Contiguous) 的 Tensor，这部分数据的内存是连续的。
         // 因此，无论 inner 包含多少个逻辑维度，访问下一个元素的物理偏移量固定为 1。
@@ -142,8 +141,7 @@ public:
             x_outer_stride,
             y_axis_stride,
             y_inner_stride,
-            y_outer_stride
-        });
+            y_outer_stride});
     }
 };
 

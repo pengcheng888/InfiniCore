@@ -1,7 +1,7 @@
 #include "../../utils.hpp"
 #include "infinicore/common/hash.hpp"
-#include "infinicore/ops/logcumsumexp.hpp"
 #include "infinicore/ops/common/cache.hpp"
+#include "infinicore/ops/logcumsumexp.hpp"
 #include <infiniop.h>
 
 namespace infinicore::op::logcumsumexp_impl::infiniop {
@@ -33,12 +33,12 @@ void calculate(Tensor y, Tensor x, int axis, bool exclusive, bool reverse) {
     // 3. 如果缓存未命中，创建新的描述符
     if (!desc_opt) {
         INFINICORE_CHECK_ERROR(infiniopCreateLogCumSumExpDescriptor(
-            context::getInfiniopHandle(y->device()), 
+            context::getInfiniopHandle(y->device()),
             &desc,
-            y->desc(),  // 输出张量描述符
-            x->desc(),  // 输入张量描述符
-            axis, 
-            exclusive, 
+            y->desc(), // 输出张量描述符
+            x->desc(), // 输入张量描述符
+            axis,
+            exclusive,
             reverse));
         cache.put(seed, desc);
     } else {
@@ -52,11 +52,11 @@ void calculate(Tensor y, Tensor x, int axis, bool exclusive, bool reverse) {
 
     // 5. 执行算子
     INFINICORE_CHECK_ERROR(infiniopLogCumSumExp(
-        desc, 
-        workspace->data(), 
+        desc,
+        workspace->data(),
         workspace_size,
-        y->data(), 
-        x->data(), 
+        y->data(),
+        x->data(),
         context::getStream()));
 }
 

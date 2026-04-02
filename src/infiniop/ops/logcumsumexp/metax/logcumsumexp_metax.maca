@@ -1,24 +1,20 @@
-#include "logcumsumexp_metax.h" 
 #include "../../../devices/metax/metax_common.h"
 #include "../../../devices/metax/metax_handle.h"
-#include <mcr/mc_runtime.h>
-#include <cstdint>
+#include "../../../devices/metax/metax_kernel_common.h"
+#include "logcumsumexp_metax.h"
 #include <cmath>
+#include <cstdint>
 #include <limits>
-#include <maca_fp16.h>
-#include <maca_bfloat16.h>
-
 
 namespace op::logcumsumexp::metax {
 
-
 struct LSEState {
-    float m;   // running max
-    float s;   // sum(exp(x - m))
+    float m; // running max
+    float s; // sum(exp(x - m))
 
     // 数学单位元：log(0) = -inf
     __device__ __forceinline__ static LSEState identity() {
-        return { -INFINITY, 0.0f };
+        return {-INFINITY, 0.0f};
     }
 
     // prefix 更新逻辑
@@ -44,11 +40,10 @@ struct LSEState {
     }
 };
 
-
 template <typename T>
 __global__ void logcumsumexp_kernel(
-    T* __restrict__ y,
-    const T* __restrict__ x,
+    T *__restrict__ y,
+    const T *__restrict__ x,
 
     size_t outer_size,
     size_t axis_size,
@@ -63,11 +58,12 @@ __global__ void logcumsumexp_kernel(
     size_t y_outer_stride,
 
     bool exclusive,
-    bool reverse
-) {
+    bool reverse) {
     size_t tid = blockIdx.x * blockDim.x + threadIdx.x;
     size_t num_vec = outer_size * inner_size;
-    if (tid >= num_vec) return;
+    if (tid >= num_vec) {
+        return;
+    }
 
     // 计算当前的 outer (o) 和 inner (i) 索引
     size_t o = tid / inner_size;
@@ -104,20 +100,19 @@ __global__ void logcumsumexp_kernel(
     }
 }
 
-
 template <typename T>
 void launch_kernel(
-    void* y,
-    const void* x,
-    const LogCumSumExpInfo& info,
-    void* stream) {
+    void *y,
+    const void *x,
+    const LogCumSumExpInfo &info,
+    void *stream) {
 
-    auto x_ptr = reinterpret_cast<const T*>(x);
-    auto y_ptr = reinterpret_cast<T*>(y);
-    auto mc_stream = reinterpret_cast<mcStream_t>(stream);
+    auto x_ptr = reinterpret_cast<const T *>(x);
+    auto y_ptr = reinterpret_cast<T *>(y);
+    auto hc_stream = reinterpret_cast<hcStream_t>(stream);
 
     size_t outer = info.outer_size();
-    size_t axis  = info.axis_size();
+    size_t axis = info.axis_size();
     size_t inner = info.inner_size();
 
     size_t total = outer * inner;
@@ -125,7 +120,7 @@ void launch_kernel(
     size_t grid = (total + block - 1) / block;
 
     logcumsumexp_kernel<T>
-        <<<grid, block, 0, mc_stream>>>(
+        <<<grid, block, 0, hc_stream>>>(
             y_ptr,
             x_ptr,
             outer,
@@ -141,19 +136,20 @@ void launch_kernel(
             info._y_outer_stride,
 
             info.exclusive(),
-            info.reverse()
-        );
+            info.reverse());
 }
 
 struct Descriptor::Opaque {};
 
 Descriptor::~Descriptor() {
-    if (_opaque) delete _opaque;
+    if (_opaque) {
+        delete _opaque;
+    }
 }
 
 infiniStatus_t Descriptor::create(
     infiniopHandle_t handle_,
-    Descriptor** desc_ptr,
+    Descriptor **desc_ptr,
     infiniopTensorDescriptor_t y_desc,
     infiniopTensorDescriptor_t x_desc,
     int axis,
@@ -161,37 +157,35 @@ infiniStatus_t Descriptor::create(
     int reverse) {
 
     auto handle = reinterpret_cast<device::metax::Handle *>(handle_);
-    
-    auto info_result =
-        LogCumSumExpInfo::create(y_desc, x_desc, axis, exclusive, reverse);
-    if (!info_result) return info_result.status();
+
+    auto info_result = LogCumSumExpInfo::create(y_desc, x_desc, axis, exclusive, reverse);
+    if (!info_result) {
+        return info_result.status();
+    }
 
     *desc_ptr = new Descriptor(
         new Opaque(),
         info_result.take(),
         /*workspace*/ 0,
         handle->device,
-        handle->device_id
-    );
+        handle->device_id);
 
     return INFINI_STATUS_SUCCESS;
 }
 
 infiniStatus_t Descriptor::calculate(
-    void* workspace,
+    void *workspace,
     size_t workspace_size,
-    void* y,
-    const void* x,
-    void* stream) const {
+    void *y,
+    const void *x,
+    void *stream) const {
 
     switch (_info.dtype()) {
     case INFINI_DTYPE_F16:
         launch_kernel<__half>(y, x, _info, stream);
         break;
     case INFINI_DTYPE_BF16:
-#if defined(__MACA__) || defined(__MACACC__)
-        launch_kernel<__maca_bfloat16>(y, x, _info, stream);
-#endif
+        launch_kernel<cuda_bfloat16>(y, x, _info, stream);
         break;
     case INFINI_DTYPE_F32:
         launch_kernel<float>(y, x, _info, stream);

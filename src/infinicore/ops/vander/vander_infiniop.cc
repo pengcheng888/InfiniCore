@@ -38,9 +38,8 @@ void calculate(Tensor output, Tensor input, int64_t N, bool increasing) {
             output->desc(),
             input->desc(),
             static_cast<int>(N),
-            static_cast<int>(increasing)
-        ));
-        
+            static_cast<int>(increasing)));
+
         cache.put(seed, desc);
     } else {
         desc = *desc_opt;
@@ -57,8 +56,7 @@ void calculate(Tensor output, Tensor input, int64_t N, bool increasing) {
         workspace_size,
         output->data(),
         input->data(),
-        context::getStream()
-    ));
+        context::getStream()));
 }
 
 // 4. 注册算子实现

@@ -10,8 +10,8 @@ common::OpDispatcher<LogicalAnd::schema> &LogicalAnd::dispatcher() {
 
 void LogicalAnd::execute(Tensor output, Tensor input1, Tensor input2) {
     // --- 修正点：去掉第二个参数 true ---
-    infinicore::context::setDevice(input1->device()); 
-    
+    infinicore::context::setDevice(input1->device());
+
     auto device_type = context::getDevice().getType();
     auto func = dispatcher().lookup(device_type);
 
@@ -25,7 +25,7 @@ void LogicalAnd::execute(Tensor output, Tensor input1, Tensor input2) {
 Tensor logical_and(Tensor input1, Tensor input2) {
     Shape shape = input1->shape();
     auto output = Tensor::empty(shape, input1->dtype(), input1->device());
-    
+
     logical_and_(output, input1, input2);
     return output;
 }

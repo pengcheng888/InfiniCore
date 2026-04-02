@@ -16,17 +16,14 @@ void LogicalNot::execute(Tensor output, Tensor input) {
     auto func = dispatcher().lookup(device_type);
     if (func == nullptr) {
         throw std::runtime_error(
-            "No LogicalNot implementation found for device type: " +
-            std::to_string(static_cast<int>(device_type))
-        );
+            "No LogicalNot implementation found for device type: " + std::to_string(static_cast<int>(device_type)));
     }
 
     func(output, input);
 }
 
 Tensor logical_not(Tensor input) {
-    auto output =
-        Tensor::empty(input->shape(), input->dtype(), input->device());
+    auto output = Tensor::empty(input->shape(), input->dtype(), input->device());
     logical_not_(output, input);
     return output;
 }

@@ -1,8 +1,8 @@
+#include "../../../devices/moore/moore_handle.h"
 #include "vander_moore.h"
 #include "vander_moore_kernel.h"
-#include "../../../devices/moore/moore_handle.h"
-#include <cstdint>
 #include <algorithm>
+#include <cstdint>
 
 namespace op::vander::moore {
 
@@ -11,32 +11,31 @@ namespace op::vander::moore {
 // ==================================================================
 template <typename T>
 void launch_kernel(
-    void *output, 
-    const void *input, 
-    const VanderInfo& info,
+    void *output,
+    const void *input,
+    const VanderInfo &info,
     void *stream) {
 
     // 1. 准备指针
     auto in_ptr = reinterpret_cast<const T *>(input);
     auto out_ptr = reinterpret_cast<T *>(output);
-    
+
     auto musa_stream = reinterpret_cast<musaStream_t>(stream);
-    
+
     // 2. 准备参数
     size_t rows = info.rows();
     size_t cols = info.cols();
     bool increasing = info.increasing();
-    
+
     // 计算总元素数量以确定 Grid Size
     size_t total_elements = rows * cols;
     size_t block_size = 256;
     size_t grid_size = (total_elements + block_size - 1) / block_size;
-    
+
     // 调用 Moore Kernel
     op::vander::moore::vander_kernel<T>
         <<<grid_size, block_size, 0, musa_stream>>>(
-            out_ptr, in_ptr, rows, cols, increasing
-        );
+            out_ptr, in_ptr, rows, cols, increasing);
 }
 
 // ==================================================================
@@ -44,43 +43,46 @@ void launch_kernel(
 // ==================================================================
 struct Descriptor::Opaque {};
 
-Descriptor::~Descriptor() { 
-    if (_opaque) delete _opaque; 
+Descriptor::~Descriptor() {
+    if (_opaque) {
+        delete _opaque;
+    }
 }
 
 infiniStatus_t Descriptor::create(
-    infiniopHandle_t handle_, 
+    infiniopHandle_t handle_,
     Descriptor **desc_ptr,
-    infiniopTensorDescriptor_t out_desc, 
-    infiniopTensorDescriptor_t input_desc, 
-    int N, 
+    infiniopTensorDescriptor_t out_desc,
+    infiniopTensorDescriptor_t input_desc,
+    int N,
     int increasing) {
 
     auto handle = reinterpret_cast<device::moore::Handle *>(handle_);
 
     // 1. 创建并校验 Info
     auto info_result = VanderInfo::create(out_desc, input_desc, N, increasing);
-    if (!info_result) return info_result.status();
+    if (!info_result) {
+        return info_result.status();
+    }
 
     // 2. 创建 Descriptor
     size_t workspace_size = 0;
 
     *desc_ptr = new Descriptor(
-        new Opaque(), 
-        info_result.take(), 
-        workspace_size, 
-        handle->device, 
-        handle->device_id
-    );
-    
+        new Opaque(),
+        info_result.take(),
+        workspace_size,
+        handle->device,
+        handle->device_id);
+
     return INFINI_STATUS_SUCCESS;
 }
 
 infiniStatus_t Descriptor::calculate(
-    void *workspace, 
-    size_t workspace_size, 
+    void *workspace,
+    size_t workspace_size,
     void *output,
-    const void *input, 
+    const void *input,
     void *stream) const {
 
     auto dtype = _info.dtype();

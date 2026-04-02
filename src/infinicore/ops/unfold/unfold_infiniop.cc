@@ -2,9 +2,9 @@
 #include "infinicore/common/hash.hpp"
 #include "infinicore/ops/common/cache.hpp"
 #include "infinicore/ops/unfold.hpp"
+#include <algorithm>
 #include <infiniop.h>
 #include <vector>
-#include <algorithm>
 
 namespace infinicore::op::unfold_impl::infiniop {
 
@@ -18,12 +18,12 @@ thread_local common::OpCache<size_t, infiniopUnfoldDescriptor_t> caches(
         }
     });
 
-void calculate(Tensor output, Tensor input, 
-               const std::vector<int64_t>& kernel_sizes, 
-               const std::vector<int64_t>& dilations, 
-               const std::vector<int64_t>& paddings, 
-               const std::vector<int64_t>& strides) {
-    
+void calculate(Tensor output, Tensor input,
+               const std::vector<int64_t> &kernel_sizes,
+               const std::vector<int64_t> &dilations,
+               const std::vector<int64_t> &paddings,
+               const std::vector<int64_t> &strides) {
+
     // 1. 计算 Hash Key (修复点：手动拆解，避开 hash.hpp 的递归 bug 和 vector 不支持问题)
     size_t seed = 0;
 
@@ -32,10 +32,18 @@ void calculate(Tensor output, Tensor input,
     hash_combine(seed, input);
 
     // Vector 类型必须手动遍历 (hash.hpp 不支持 vector 直接 hash)
-    for (auto v : kernel_sizes) hash_combine(seed, v);
-    for (auto v : dilations)    hash_combine(seed, v);
-    for (auto v : paddings)     hash_combine(seed, v);
-    for (auto v : strides)      hash_combine(seed, v);
+    for (auto v : kernel_sizes) {
+        hash_combine(seed, v);
+    }
+    for (auto v : dilations) {
+        hash_combine(seed, v);
+    }
+    for (auto v : paddings) {
+        hash_combine(seed, v);
+    }
+    for (auto v : strides) {
+        hash_combine(seed, v);
+    }
 
     auto device_type = context::getDevice().getType();
     auto device_index = context::getDevice().getIndex();
@@ -47,11 +55,11 @@ void calculate(Tensor output, Tensor input,
 
     if (!desc_opt) {
         // 2. 创建描述符
-        
+
         // 辅助函数：将 int64_t vector 转换为 int vector 以匹配 C API 的 int* 签名
-        auto to_int_vec = [](const std::vector<int64_t>& src) {
+        auto to_int_vec = [](const std::vector<int64_t> &src) {
             std::vector<int> dst(src.size());
-            std::transform(src.begin(), src.end(), dst.begin(), 
+            std::transform(src.begin(), src.end(), dst.begin(),
                            [](int64_t val) { return static_cast<int>(val); });
             return dst;
         };
@@ -69,9 +77,8 @@ void calculate(Tensor output, Tensor input,
             k_int.data(),
             s_int.data(),
             p_int.data(),
-            d_int.data()
-        ));
-        
+            d_int.data()));
+
         cache.put(seed, desc);
     } else {
         desc = *desc_opt;
@@ -88,8 +95,7 @@ void calculate(Tensor output, Tensor input,
         workspace_size,
         output->data(),
         input->data(),
-        context::getStream()
-    ));
+        context::getStream()));
 }
 
 // 4. 注册算子实现

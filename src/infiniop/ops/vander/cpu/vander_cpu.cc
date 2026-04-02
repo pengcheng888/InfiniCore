@@ -2,8 +2,8 @@
 #include "../../../devices/cpu/common_cpu.h"
 #include <algorithm>
 #include <cmath>
-#include <omp.h>
 #include <cstdint>
+#include <omp.h>
 
 #include "../../../../utils/custom_types.h"
 
@@ -27,7 +27,7 @@ infiniStatus_t Descriptor::create(
     int increasing) {
 
     auto handle = reinterpret_cast<device::cpu::Handle *>(handle_);
-    
+
     // 调用 Info::create 进行校验和元数据构建
     auto result = VanderInfo::create(out_desc, input_desc, N, increasing);
     CHECK_RESULT(result);
@@ -36,9 +36,8 @@ infiniStatus_t Descriptor::create(
         new Opaque(),
         result.take(),
         0, // CPU 实现通常不需要额外的 workspace
-        handle->device, 
-        handle->device_id
-    );
+        handle->device,
+        handle->device_id);
 
     return INFINI_STATUS_SUCCESS;
 }
@@ -56,15 +55,15 @@ void calculate_cpu_impl(
     auto out_ptr = reinterpret_cast<T *>(output);
     auto in_ptr = reinterpret_cast<const T *>(input);
 
-    // 对每一行（输入向量的每个元素）进行并行计算
-    #pragma omp parallel for schedule(static)
-    for (size_t i = 0; i < rows; ++i) {
+// 对每一行（输入向量的每个元素）进行并行计算
+#pragma omp parallel for schedule(static)
+    for (ptrdiff_t i = 0; i < (ptrdiff_t)rows; ++i) {
         // 将输入转换为 float/double 进行高精度计算，避免 fp16/bf16 累乘精度损失
         float x = utils::cast<float>(in_ptr[i]);
-        
+
         // 优化：使用累乘法替代 pow 函数
         // x^0 = 1.0
-        float val = 1.0f; 
+        float val = 1.0f;
 
         if (increasing) {
             // 顺序：x^0, x^1, x^2 ...

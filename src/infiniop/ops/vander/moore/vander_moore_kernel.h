@@ -1,11 +1,11 @@
 #ifndef __VANDER_MOORE_KERNEL_H__
 #define __VANDER_MOORE_KERNEL_H__
 
-#include <musa_runtime.h>
-#include <musa_fp16.h>
-#include <musa_bf16.h>
 #include <cmath>
 #include <cstdio>
+#include <musa_bf16.h>
+#include <musa_fp16.h>
+#include <musa_runtime.h>
 #include <type_traits>
 
 namespace op::vander::moore {
@@ -15,12 +15,12 @@ namespace op::vander::moore {
 // ==================================================================
 template <typename T>
 __global__ void vander_kernel(
-    T * __restrict__ output,        // [rows, cols]
-    const T * __restrict__ input,   // [rows]
+    T *__restrict__ output,      // [rows, cols]
+    const T *__restrict__ input, // [rows]
     size_t rows,
     size_t cols,
     bool increasing) {
-    
+
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
     size_t total_elements = rows * cols;
 
@@ -41,7 +41,7 @@ __global__ void vander_kernel(
         }
 
         // 2. 计算幂
-        float power = increasing ? static_cast<float>(col) 
+        float power = increasing ? static_cast<float>(col)
                                  : static_cast<float>(cols - 1 - col);
         float res = powf(x, power);
 

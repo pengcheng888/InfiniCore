@@ -1,8 +1,8 @@
+#include "../../../devices/moore/moore_handle.h"
 #include "unfold_moore.h"
 #include "unfold_moore_kernel.h"
-#include "../../../devices/moore/moore_handle.h"
-#include <cstdint>
 #include <algorithm>
+#include <cstdint>
 
 namespace op::unfold::moore {
 
@@ -11,9 +11,9 @@ namespace op::unfold::moore {
 // ==================================================================
 template <typename T>
 void launch_kernel(
-    void *output, 
-    const void *input, 
-    const UnfoldInfo& info,
+    void *output,
+    const void *input,
+    const UnfoldInfo &info,
     void *stream) {
 
     // 1. 准备指针
@@ -31,10 +31,10 @@ void launch_kernel(
     int C = info._C_in;
     int H = info._input_spatial_shape[0];
     int W = info._input_spatial_shape[1];
-    
+
     int out_h = info._output_spatial_shape[0];
     int out_w = info._output_spatial_shape[1];
-    
+
     int k_h = info._kernel_sizes[0];
     int k_w = info._kernel_sizes[1];
     int pad_h = info._paddings[0];
@@ -46,7 +46,7 @@ void launch_kernel(
 
     // 3. 计算 Grid
     // 输出通道数 = C * kH * kW
-    size_t out_channels = info._C_out; 
+    size_t out_channels = info._C_out;
     size_t out_spatial = info._L;
     size_t total_elements = info._N * out_channels * out_spatial;
 
@@ -63,8 +63,7 @@ void launch_kernel(
             pad_h, pad_w,
             stride_h, stride_w,
             dil_h, dil_w,
-            total_elements
-        );
+            total_elements);
 }
 
 // ==================================================================
@@ -72,8 +71,10 @@ void launch_kernel(
 // ==================================================================
 struct Descriptor::Opaque {};
 
-Descriptor::~Descriptor() { 
-    if (_opaque) delete _opaque; 
+Descriptor::~Descriptor() {
+    if (_opaque) {
+        delete _opaque;
+    }
 }
 
 infiniStatus_t Descriptor::create(
@@ -91,8 +92,10 @@ infiniStatus_t Descriptor::create(
     // 1. 创建并校验 Info
     // 使用新的 infer 接口
     auto result = UnfoldInfo::infer(out_desc, input_desc, kernel_sizes, strides, paddings, dilations);
-    if (!result) return result.status();
-    
+    if (!result) {
+        return result.status();
+    }
+
     size_t workspace_size = 0;
 
     *desc_ptr = new Descriptor(
@@ -100,8 +103,7 @@ infiniStatus_t Descriptor::create(
         result.take(),
         workspace_size,
         handle->device,
-        handle->device_id
-    );
+        handle->device_id);
 
     return INFINI_STATUS_SUCCESS;
 }

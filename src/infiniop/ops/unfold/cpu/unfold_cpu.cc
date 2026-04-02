@@ -28,7 +28,7 @@ infiniStatus_t Descriptor::create(
     const int *dilations) {
 
     auto handle = reinterpret_cast<device::cpu::Handle *>(handle_);
-    
+
     // Call the static create method from UnfoldInfo
     auto result = UnfoldInfo::infer(out_desc, input_desc, kernel_sizes, strides, paddings, dilations);
     CHECK_RESULT(result);
@@ -37,9 +37,8 @@ infiniStatus_t Descriptor::create(
         new Opaque(),
         result.take(),
         0, // No workspace needed for CPU
-        handle->device, 
-        handle->device_id
-    );
+        handle->device,
+        handle->device_id);
 
     return INFINI_STATUS_SUCCESS;
 }
@@ -51,23 +50,19 @@ void calculate_cpu_impl(
     void *output,
     const void *input) {
 
-    // 1. Retrieve parameters from vectors
-    // Note: This implementation assumes 2D spatial dimensions (NCHW)
-    // If the vector size != 2, this logic needs adaptation.
-    if (info._kernel_sizes.size() < 2) return;
+    if (info._kernel_sizes.size() < 2) {
+        return;
+    }
 
     int64_t batch = info._N;
     int64_t in_c = info._C_in;
-    
-    // Spatial Input Dimensions
+
     int64_t in_h = info._input_spatial_shape[0];
     int64_t in_w = info._input_spatial_shape[1];
 
-    // Spatial Output Dimensions
     int64_t out_h = info._output_spatial_shape[0];
     int64_t out_w = info._output_spatial_shape[1];
 
-    // Kernel / Stride / Pad / Dilation
     int64_t k_h = info._kernel_sizes[0];
     int64_t k_w = info._kernel_sizes[1];
     int64_t stride_h = info._strides[0];
@@ -77,47 +72,43 @@ void calculate_cpu_impl(
     int64_t dil_h = info._dilations[0];
     int64_t dil_w = info._dilations[1];
 
-    // 2. Prepare pointers
     auto out_ptr = reinterpret_cast<T *>(output);
     auto in_ptr = reinterpret_cast<const T *>(input);
 
-    // 3. Helper variables
     int64_t L = info._L;
     int64_t out_c_dim = info._C_out;
 
-    // 4. Parallel Execution
-    // Collapsing Batch and Input Channel dimensions
-    #pragma omp parallel for collapse(2) schedule(static)
-    for (int64_t n = 0; n < batch; ++n) {
-        for (int64_t c = 0; c < in_c; ++c) {
-            
-            int64_t in_batch_offset = n * in_c * in_h * in_w;
-            int64_t out_batch_offset = n * out_c_dim * L;
+    int64_t total_nc = batch * in_c;
 
-            // Loop over kernel window (Unfolding to channel dimension)
-            for (int64_t kh = 0; kh < k_h; ++kh) {
-                for (int64_t kw = 0; kw < k_w; ++kw) {
-                    
-                    int64_t out_c_idx = c * k_h * k_w + kh * k_w + kw;
-                    
-                    // Loop over output spatial locations (Flattened L)
-                    for (int64_t oh = 0; oh < out_h; ++oh) {
-                        for (int64_t ow = 0; ow < out_w; ++ow) {
-                            
-                            // Mapping Logic
-                            int64_t h_in = oh * stride_h - pad_h + kh * dil_h;
-                            int64_t w_in = ow * stride_w - pad_w + kw * dil_w;
+#pragma omp parallel for schedule(static)
+    for (int64_t idx = 0; idx < total_nc; ++idx) {
 
-                            int64_t out_idx = out_batch_offset + out_c_idx * L + (oh * out_w + ow);
+        int64_t n = idx / in_c;
+        int64_t c = idx % in_c;
 
-                            // Boundary Check & Assignment
-                            if (h_in >= 0 && h_in < in_h && w_in >= 0 && w_in < in_w) {
-                                int64_t in_idx = in_batch_offset + c * in_h * in_w + h_in * in_w + w_in;
-                                out_ptr[out_idx] = in_ptr[in_idx];
-                            } else {
-                                // Padding with zero
-                                out_ptr[out_idx] = utils::cast<T>(0.0f);
-                            }
+        int64_t in_batch_offset = n * in_c * in_h * in_w;
+        int64_t out_batch_offset = n * out_c_dim * L;
+
+        for (int64_t kh = 0; kh < k_h; ++kh) {
+            for (int64_t kw = 0; kw < k_w; ++kw) {
+
+                int64_t out_c_idx = c * k_h * k_w + kh * k_w + kw;
+
+                for (int64_t oh = 0; oh < out_h; ++oh) {
+                    for (int64_t ow = 0; ow < out_w; ++ow) {
+
+                        int64_t h_in = oh * stride_h - pad_h + kh * dil_h;
+                        int64_t w_in = ow * stride_w - pad_w + kw * dil_w;
+
+                        int64_t out_idx = out_batch_offset + out_c_idx * L + (oh * out_w + ow);
+
+                        if (h_in >= 0 && h_in < in_h && w_in >= 0 && w_in < in_w) {
+
+                            int64_t in_idx = in_batch_offset + c * in_h * in_w + h_in * in_w + w_in;
+
+                            out_ptr[out_idx] = in_ptr[in_idx];
+                        } else {
+                            out_ptr[out_idx] = utils::cast<T>(0.0f);
                         }
                     }
                 }

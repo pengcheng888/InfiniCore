@@ -13,7 +13,7 @@ common::OpDispatcher<LogCumSumExp::schema> &LogCumSumExp::dispatcher() {
 void LogCumSumExp::execute(Tensor y, Tensor x, int axis, bool exclusive, bool reverse) {
     // 确保输入输出张量在同一设备上
     INFINICORE_ASSERT_TENSORS_SAME_DEVICE(y, x);
-    
+
     // 切换到目标设备的上下文
     infinicore::context::setDevice(y->device());
     dispatcher().lookup(y->device().getType())(y, x, axis, exclusive, reverse);

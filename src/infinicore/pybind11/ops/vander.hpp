@@ -1,19 +1,20 @@
 #pragma once
 
-#include <pybind11/pybind11.h>
 #include "infinicore/ops/vander.hpp"
+#include <pybind11/pybind11.h>
 
 namespace py = pybind11;
 
 namespace infinicore::ops {
 
 inline void bind_vander(py::module &m) {
-    m.def("vander",
-        [](const Tensor& input, int64_t N, bool increasing) {
+    m.def(
+        "vander",
+        [](const Tensor &input, int64_t N, bool increasing) {
             return op::vander(input, N, increasing);
         },
         py::arg("input"),
-        py::arg("N") = 0, 
+        py::arg("N") = 0,
         py::arg("increasing") = false,
         R"doc(Generates a Vandermonde matrix.
 
@@ -26,8 +27,9 @@ inline void bind_vander(py::module &m) {
     // -------------------------------------------------------------------------
     // 2. 绑定 in-place 接口 (vander_)
     // -------------------------------------------------------------------------
-    m.def("vander_",
-        [](Tensor& output, const Tensor& input, int64_t N, bool increasing) {
+    m.def(
+        "vander_",
+        [](Tensor &output, const Tensor &input, int64_t N, bool increasing) {
             op::vander_(output, input, N, increasing);
         },
         py::arg("output"),

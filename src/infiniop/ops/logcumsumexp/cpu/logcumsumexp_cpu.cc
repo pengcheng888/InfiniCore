@@ -2,9 +2,9 @@
 #include "../../../devices/cpu/common_cpu.h"
 #include <algorithm>
 #include <cmath>
-#include <omp.h>
 #include <cstdint>
 #include <limits>
+#include <omp.h>
 
 #include "../../../../utils/custom_types.h"
 
@@ -29,7 +29,7 @@ infiniStatus_t Descriptor::create(
     int reverse) {
 
     auto handle = reinterpret_cast<device::cpu::Handle *>(handle_);
-    
+
     // 注意：这里复用了你之前修改过的 Info 类，它现在包含正确的 stride 信息
     auto result = LogCumSumExpInfo::create(y_desc, x_desc, axis, exclusive, reverse);
     CHECK_RESULT(result);
@@ -37,10 +37,9 @@ infiniStatus_t Descriptor::create(
     *desc_ptr = new Descriptor(
         new Opaque(),
         result.take(),
-        0, 
-        handle->device, 
-        handle->device_id
-    );
+        0,
+        handle->device,
+        handle->device_id);
 
     return INFINI_STATUS_SUCCESS;
 }
@@ -57,60 +56,59 @@ void calculate_cpu_impl(
     bool exclusive = info.exclusive();
     bool reverse = info.reverse();
 
-    // 获取 Info 中存储的物理 stride
     size_t x_outer_stride = info._x_outer_stride;
-    size_t x_axis_stride  = info._x_axis_stride;
+    size_t x_axis_stride = info._x_axis_stride;
     size_t x_inner_stride = info._x_inner_stride;
 
     size_t y_outer_stride = info._y_outer_stride;
-    size_t y_axis_stride  = info._y_axis_stride;
+    size_t y_axis_stride = info._y_axis_stride;
     size_t y_inner_stride = info._y_inner_stride;
 
     auto y_ptr = reinterpret_cast<T *>(y);
     auto x_ptr = reinterpret_cast<const T *>(x);
 
-    #pragma omp parallel for collapse(2) schedule(static)
-    for (size_t i = 0; i < outer_size; ++i) {
-        for (size_t j = 0; j < inner_size; ++j) {
-            
-            // [修复] 使用物理 Stride 计算起始偏移量，而不是逻辑 Shape
-            size_t x_base = i * x_outer_stride + j * x_inner_stride;
-            size_t y_base = i * y_outer_stride + j * y_inner_stride;
+    // Flatten outer+inner for OpenMP parallelism on Windows
+    size_t total_outer_inner = outer_size * inner_size;
 
-            double running_max = -std::numeric_limits<double>::infinity();
-            double running_sum_exp = 0.0;
+#pragma omp parallel for schedule(static)
+    for (ptrdiff_t idx = 0; idx < (ptrdiff_t)total_outer_inner; ++idx) {
+        // Recover original i and j
+        size_t i = idx / inner_size;
+        size_t j = idx % inner_size;
 
-            for (size_t k = 0; k < axis_size; ++k) {
-                // 处理 reverse 逻辑
-                size_t k_idx = reverse ? (axis_size - 1 - k) : k;
+        size_t x_base = i * x_outer_stride + j * x_inner_stride;
+        size_t y_base = i * y_outer_stride + j * y_inner_stride;
 
-                // [修复] 使用物理 axis stride
-                size_t x_offset = x_base + k_idx * x_axis_stride;
-                size_t y_offset = y_base + k_idx * y_axis_stride;
+        double running_max = -std::numeric_limits<double>::infinity();
+        double running_sum_exp = 0.0;
 
-                float val = utils::cast<float>(x_ptr[x_offset]);
-                
-                // 如果是 exclusive，先记录结果再更新状态
-                if (exclusive) {
-                    if (running_sum_exp == 0.0) {
-                        y_ptr[y_offset] = utils::cast<T>(-std::numeric_limits<float>::infinity());
-                    } else {
-                        y_ptr[y_offset] = utils::cast<T>(static_cast<float>(running_max + std::log(running_sum_exp)));
-                    }
-                }
+        for (size_t k = 0; k < axis_size; ++k) {
+            size_t k_idx = reverse ? (axis_size - 1 - k) : k;
 
-                // 更新数值稳定的累加状态
-                if (val > running_max) {
-                    running_sum_exp = running_sum_exp * std::exp(running_max - val) + 1.0;
-                    running_max = val;
+            size_t x_offset = x_base + k_idx * x_axis_stride;
+            size_t y_offset = y_base + k_idx * y_axis_stride;
+
+            float val = utils::cast<float>(x_ptr[x_offset]);
+
+            if (exclusive) {
+                if (running_sum_exp == 0.0) {
+                    y_ptr[y_offset] = utils::cast<T>(-std::numeric_limits<float>::infinity());
                 } else {
-                    running_sum_exp += std::exp(val - running_max);
+                    y_ptr[y_offset] = utils::cast<T>(
+                        static_cast<float>(running_max + std::log(running_sum_exp)));
                 }
+            }
 
-                // 如果不是 exclusive，更新状态后记录结果
-                if (!exclusive) {
-                    y_ptr[y_offset] = utils::cast<T>(static_cast<float>(running_max + std::log(running_sum_exp)));
-                }
+            if (val > running_max) {
+                running_sum_exp = running_sum_exp * std::exp(running_max - val) + 1.0;
+                running_max = val;
+            } else {
+                running_sum_exp += std::exp(val - running_max);
+            }
+
+            if (!exclusive) {
+                y_ptr[y_offset] = utils::cast<T>(
+                    static_cast<float>(running_max + std::log(running_sum_exp)));
             }
         }
     }

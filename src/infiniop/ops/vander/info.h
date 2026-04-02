@@ -11,12 +11,12 @@ class VanderInfo {
     VanderInfo() = default;
 
 public:
-    int _dtype;          // 数据类型
-    bool _increasing;    // 幂次顺序 (false: 递减, true: 递增)
-    
+    int _dtype;       // 数据类型
+    bool _increasing; // 幂次顺序 (false: 递减, true: 递增)
+
     // 形状信息缓存
-    size_t _rows;        // 输入向量长度 (N)
-    size_t _cols;        // 输出矩阵列数 (M)
+    size_t _rows; // 输入向量长度 (N)
+    size_t _cols; // 输出矩阵列数 (M)
 
     int dtype() const { return _dtype; }
     bool increasing() const { return _increasing; }
@@ -46,7 +46,7 @@ public:
         if (out_desc->ndim() != 2) {
             return INFINI_STATUS_BAD_TENSOR_SHAPE;
         }
-        
+
         if (out_desc->shape()[0] != rows) {
             return INFINI_STATUS_BAD_TENSOR_SHAPE;
         }
@@ -58,10 +58,10 @@ public:
             return INFINI_STATUS_BAD_TENSOR_DTYPE;
         }
         return utils::Result<VanderInfo>(VanderInfo{
-            input_desc->dtype(),     // _dtype
+            input_desc->dtype(),           // _dtype
             static_cast<bool>(increasing), // _increasing
-            rows,                    // _rows
-            cols                     // _cols
+            rows,                          // _rows
+            cols                           // _cols
         });
     }
 };

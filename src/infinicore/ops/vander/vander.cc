@@ -18,12 +18,11 @@ Tensor vander(Tensor input, int64_t N, bool increasing) {
     int64_t input_size = input->shape()[0];
     int64_t cols = (N > 0) ? N : input_size;
     Shape output_shape = {
-        static_cast<size_t>(input_size), 
-        static_cast<size_t>(cols)
-    };
+        static_cast<size_t>(input_size),
+        static_cast<size_t>(cols)};
 
     auto output = Tensor::empty(output_shape, input->dtype(), input->device());
-    
+
     vander_(output, input, N, increasing);
     return output;
 }

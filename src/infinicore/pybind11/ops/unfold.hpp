@@ -1,8 +1,8 @@
 #pragma once
 
+#include "infinicore/ops/unfold.hpp"
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
-#include "infinicore/ops/unfold.hpp"
 
 namespace py = pybind11;
 
@@ -12,11 +12,12 @@ inline void bind_unfold(py::module &m) {
     // -------------------------------------------------------------------------
     // 1. 绑定函数式接口 (unfold)
     // -------------------------------------------------------------------------
-    m.def("unfold",
-        [](const Tensor& input, 
+    m.def(
+        "unfold",
+        [](const Tensor &input,
            std::vector<int64_t> kernel_sizes,
-           std::vector<int64_t> dilations, 
-           std::vector<int64_t> paddings, 
+           std::vector<int64_t> dilations,
+           std::vector<int64_t> paddings,
            std::vector<int64_t> strides) {
             return op::unfold(input, kernel_sizes, dilations, paddings, strides);
         },
@@ -38,12 +39,13 @@ inline void bind_unfold(py::module &m) {
     // -------------------------------------------------------------------------
     // 2. 绑定 in-place 接口 (unfold_)
     // -------------------------------------------------------------------------
-    m.def("unfold_",
-        [](Tensor& output, 
-           const Tensor& input, 
+    m.def(
+        "unfold_",
+        [](Tensor &output,
+           const Tensor &input,
            std::vector<int64_t> kernel_sizes,
-           std::vector<int64_t> dilations, 
-           std::vector<int64_t> paddings, 
+           std::vector<int64_t> dilations,
+           std::vector<int64_t> paddings,
            std::vector<int64_t> strides) {
             op::unfold_(output, input, kernel_sizes, dilations, paddings, strides);
         },
