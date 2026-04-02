@@ -2,8 +2,6 @@
 #define __SINH_MOORE_KERNEL_H__
 
 #include <cmath>
-#include <cuda_bf16.h>
-#include <cuda_fp16.h>
 #include <type_traits>
 
 namespace op::sinh::moore {
@@ -26,7 +24,7 @@ public:
         } else if constexpr (std::is_same_v<T, float>) {
             return sinhf(x);
         } else { // double
-            return sinh(x);
+            return ::sinh(x);
         }
     }
 } SinhOp;

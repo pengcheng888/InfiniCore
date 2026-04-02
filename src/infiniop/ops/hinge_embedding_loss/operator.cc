@@ -15,7 +15,7 @@
 #include "moore/hinge_embedding_loss_moore.h"
 #endif
 
-__C infiniStatus_t infiniopCreateHingeEmbeddingLossDescriptor(
+__INFINI_C infiniStatus_t infiniopCreateHingeEmbeddingLossDescriptor(
     infiniopHandle_t handle,
     infiniopHingeEmbeddingLossDescriptor_t *desc_ptr,
     infiniopTensorDescriptor_t y_desc,
@@ -24,15 +24,15 @@ __C infiniStatus_t infiniopCreateHingeEmbeddingLossDescriptor(
     double margin,
     int reduction) {
 
-#define CREATE(CASE, NAMESPACE)                                                                  \
-    case CASE:                                                                                   \
-        return op::hinge_embedding_loss::NAMESPACE::Descriptor::create(                         \
-            handle,                                                                              \
-            reinterpret_cast<op::hinge_embedding_loss::NAMESPACE::Descriptor **>(desc_ptr),    \
-            y_desc,                                                                              \
-            input_desc,                                                                          \
-            target_desc,                                                                         \
-            margin,                                                                              \
+#define CREATE(CASE, NAMESPACE)                                                             \
+    case CASE:                                                                              \
+        return op::hinge_embedding_loss::NAMESPACE::Descriptor::create(                     \
+            handle,                                                                         \
+            reinterpret_cast<op::hinge_embedding_loss::NAMESPACE::Descriptor **>(desc_ptr), \
+            y_desc,                                                                         \
+            input_desc,                                                                     \
+            target_desc,                                                                    \
+            margin,                                                                         \
             reduction)
 
     switch (handle->device) {
@@ -60,11 +60,11 @@ __C infiniStatus_t infiniopCreateHingeEmbeddingLossDescriptor(
 #undef CREATE
 }
 
-__C infiniStatus_t infiniopGetHingeEmbeddingLossWorkspaceSize(infiniopHingeEmbeddingLossDescriptor_t desc, size_t *size) {
+__INFINI_C infiniStatus_t infiniopGetHingeEmbeddingLossWorkspaceSize(infiniopHingeEmbeddingLossDescriptor_t desc, size_t *size) {
 
-#define GET(CASE, NAMESPACE)                                                                                      \
-    case CASE:                                                                                                    \
-        *size = reinterpret_cast<op::hinge_embedding_loss::NAMESPACE::Descriptor *>(desc)->workspaceSize();     \
+#define GET(CASE, NAMESPACE)                                                                                \
+    case CASE:                                                                                              \
+        *size = reinterpret_cast<op::hinge_embedding_loss::NAMESPACE::Descriptor *>(desc)->workspaceSize(); \
         return INFINI_STATUS_SUCCESS;
 
     switch (desc->device_type) {
@@ -91,7 +91,7 @@ __C infiniStatus_t infiniopGetHingeEmbeddingLossWorkspaceSize(infiniopHingeEmbed
     return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
 
-__C infiniStatus_t infiniopHingeEmbeddingLoss(
+__INFINI_C infiniStatus_t infiniopHingeEmbeddingLoss(
     infiniopHingeEmbeddingLossDescriptor_t desc,
     void *workspace,
     size_t workspace_size,
@@ -100,9 +100,9 @@ __C infiniStatus_t infiniopHingeEmbeddingLoss(
     const void *target,
     void *stream) {
 
-#define CALCULATE(CASE, NAMESPACE)                                                                  \
-    case CASE:                                                                                      \
-        return reinterpret_cast<const op::hinge_embedding_loss::NAMESPACE::Descriptor *>(desc)    \
+#define CALCULATE(CASE, NAMESPACE)                                                             \
+    case CASE:                                                                                 \
+        return reinterpret_cast<const op::hinge_embedding_loss::NAMESPACE::Descriptor *>(desc) \
             ->calculate(workspace, workspace_size, y, input, target, stream)
 
     switch (desc->device_type) {
@@ -130,12 +130,12 @@ __C infiniStatus_t infiniopHingeEmbeddingLoss(
 #undef CALCULATE
 }
 
-__C infiniStatus_t
+__INFINI_C infiniStatus_t
 infiniopDestroyHingeEmbeddingLossDescriptor(infiniopHingeEmbeddingLossDescriptor_t desc) {
 
-#define DELETE(CASE, NAMESPACE)                                                                      \
-    case CASE:                                                                                       \
-        delete reinterpret_cast<const op::hinge_embedding_loss::NAMESPACE::Descriptor *>(desc);   \
+#define DELETE(CASE, NAMESPACE)                                                                 \
+    case CASE:                                                                                  \
+        delete reinterpret_cast<const op::hinge_embedding_loss::NAMESPACE::Descriptor *>(desc); \
         return INFINI_STATUS_SUCCESS;
 
     switch (desc->device_type) {

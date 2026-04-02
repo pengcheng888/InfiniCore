@@ -38,4 +38,3 @@ void selu_(Tensor output, Tensor input) {
 }
 
 } // namespace infinicore::op
-

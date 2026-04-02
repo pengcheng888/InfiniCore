@@ -2,7 +2,6 @@
 #define __KRON_NVIDIA_H__
 
 #include "../../../operator.h"
-#include "../../../devices/nvidia/nvidia_common.cuh"
 #include <vector>
 
 namespace op::kron::nvidia {

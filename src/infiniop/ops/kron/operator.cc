@@ -15,7 +15,7 @@
 #include "moore/kron_moore.h"
 #endif
 
-__C infiniStatus_t infiniopCreateKronDescriptor(
+__INFINI_C infiniStatus_t infiniopCreateKronDescriptor(
     infiniopHandle_t handle,
     infiniopKronDescriptor_t *desc_ptr,
     infiniopTensorDescriptor_t y_desc,
@@ -56,10 +56,10 @@ __C infiniStatus_t infiniopCreateKronDescriptor(
 #undef CREATE
 }
 
-__C infiniStatus_t infiniopGetKronWorkspaceSize(infiniopKronDescriptor_t desc, size_t *size) {
+__INFINI_C infiniStatus_t infiniopGetKronWorkspaceSize(infiniopKronDescriptor_t desc, size_t *size) {
 
-#define GET(CASE, NAMESPACE)                                                                 \
-    case CASE:                                                                               \
+#define GET(CASE, NAMESPACE)                                                                \
+    case CASE:                                                                              \
         *size = reinterpret_cast<op::kron::NAMESPACE::Descriptor *>(desc)->workspaceSize(); \
         return INFINI_STATUS_SUCCESS;
 
@@ -87,7 +87,7 @@ __C infiniStatus_t infiniopGetKronWorkspaceSize(infiniopKronDescriptor_t desc, s
     return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
 
-__C infiniStatus_t infiniopKron(
+__INFINI_C infiniStatus_t infiniopKron(
     infiniopKronDescriptor_t desc,
     void *workspace,
     size_t workspace_size,
@@ -126,7 +126,7 @@ __C infiniStatus_t infiniopKron(
 #undef CALCULATE
 }
 
-__C infiniStatus_t
+__INFINI_C infiniStatus_t
 infiniopDestroyKronDescriptor(infiniopKronDescriptor_t desc) {
 
 #define DELETE(CASE, NAMESPACE)                                                 \

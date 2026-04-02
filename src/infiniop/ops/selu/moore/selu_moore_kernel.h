@@ -2,8 +2,6 @@
 #define __SELU_MOORE_KERNEL_H__
 
 #include <cmath>
-#include <cuda_bf16.h>
-#include <cuda_fp16.h>
 #include <type_traits>
 
 namespace op::selu::moore {

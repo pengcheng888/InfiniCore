@@ -38,4 +38,3 @@ void sinh_(Tensor output, Tensor input) {
 }
 
 } // namespace infinicore::op
-

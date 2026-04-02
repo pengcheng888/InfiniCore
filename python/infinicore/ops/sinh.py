@@ -10,4 +10,3 @@ def sinh(input: Tensor, *, out: Tensor | None = None) -> Tensor:
 
     _infinicore.sinh_(out._underlying, input._underlying)
     return out
-

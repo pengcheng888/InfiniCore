@@ -2,7 +2,6 @@
 #define __KRON_MOORE_H__
 
 #include "../../../operator.h"
-#include "../../../devices/moore/moore_common.h"
 #include <cstddef>
 #include <vector>
 

@@ -1,10 +1,9 @@
-#include "hinge_embedding_loss_nvidia.cuh"
-#include "../cuda/kernel.cuh"
 #include "../../../../utils.h"
-#include "../../../tensor.h"
 #include "../../../devices/nvidia/nvidia_kernel_common.cuh"
-#include <cuda_bf16.h>
-#include <cuda_fp16.h>
+#include "../../../handle.h"
+#include "../../../tensor.h"
+#include "../cuda/kernel.cuh"
+#include "hinge_embedding_loss_nvidia.cuh"
 
 namespace op::hinge_embedding_loss::nvidia {
 

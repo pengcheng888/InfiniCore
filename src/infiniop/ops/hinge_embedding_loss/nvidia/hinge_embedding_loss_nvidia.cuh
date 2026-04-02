@@ -2,7 +2,6 @@
 #define __HINGE_EMBEDDING_LOSS_NVIDIA_H__
 
 #include "../../../operator.h"
-#include "../../../devices/nvidia/nvidia_common.cuh"
 #include <vector>
 
 namespace op::hinge_embedding_loss::nvidia {

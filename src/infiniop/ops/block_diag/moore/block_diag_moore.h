@@ -2,7 +2,6 @@
 #define __BLOCK_DIAG_MOORE_H__
 
 #include "../../../operator.h"
-#include "../../../devices/moore/moore_common.h"
 #include <cstddef>
 #include <vector>
 
@@ -62,9 +61,7 @@ public:
         if (output_size == 0) {
             return 0;
         }
-        return 4 * num_inputs * sizeof(size_t) +
-               2 * num_inputs * sizeof(ptrdiff_t) +
-               num_inputs * sizeof(void *);
+        return 4 * num_inputs * sizeof(size_t) + 2 * num_inputs * sizeof(ptrdiff_t) + num_inputs * sizeof(void *);
     }
 
     infiniStatus_t calculate(

@@ -16,4 +16,3 @@ Tensor kron(Tensor a, Tensor b);
 void kron_(Tensor output, Tensor a, Tensor b);
 
 } // namespace infinicore::op
-

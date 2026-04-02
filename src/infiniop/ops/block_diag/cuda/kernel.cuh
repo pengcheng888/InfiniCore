@@ -1,5 +1,3 @@
-#pragma once
-#include <cuda_runtime.h>
 #include <cstddef>
 #include <type_traits>
 
@@ -24,14 +22,14 @@ __global__ void block_diag_kernel(
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
     size_t total = output_rows * output_cols;
 
-    if (idx >= total) return;
+    if (idx >= total) {
+        return;
+    }
 
     size_t out_row = idx / output_cols;
     size_t out_col = idx % output_cols;
 
-    const ptrdiff_t out_offset =
-        static_cast<ptrdiff_t>(out_row) * output_stride0 +
-        static_cast<ptrdiff_t>(out_col) * output_stride1;
+    const ptrdiff_t out_offset = static_cast<ptrdiff_t>(out_row) * output_stride0 + static_cast<ptrdiff_t>(out_col) * output_stride1;
 
     T value = T{};
 
@@ -42,14 +40,11 @@ __global__ void block_diag_kernel(
         size_t col_start = col_offsets[i];
         size_t col_end = col_start + input_cols[i];
 
-        if (out_row >= row_start && out_row < row_end &&
-            out_col >= col_start && out_col < col_end) {
+        if (out_row >= row_start && out_row < row_end && out_col >= col_start && out_col < col_end) {
             // This position belongs to input i
             size_t in_row = out_row - row_start;
             size_t in_col = out_col - col_start;
-            const ptrdiff_t in_offset =
-                static_cast<ptrdiff_t>(in_row) * input_stride0[i] +
-                static_cast<ptrdiff_t>(in_col) * input_stride1[i];
+            const ptrdiff_t in_offset = static_cast<ptrdiff_t>(in_row) * input_stride0[i] + static_cast<ptrdiff_t>(in_col) * input_stride1[i];
             value = inputs[i][in_offset];
             break;
         }

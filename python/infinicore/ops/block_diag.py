@@ -10,4 +10,3 @@ def block_diag(*tensors: Tensor) -> Tensor:
 
     underlying = [t._underlying for t in tensors]
     return Tensor(_infinicore.block_diag(underlying))
-

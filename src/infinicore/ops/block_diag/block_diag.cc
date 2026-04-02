@@ -61,4 +61,3 @@ void block_diag_(Tensor output, const std::vector<Tensor> &inputs) {
 }
 
 } // namespace infinicore::op
-

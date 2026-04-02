@@ -18,4 +18,3 @@ inline void bind_kron(py::module &m) {
 }
 
 } // namespace infinicore::ops
-

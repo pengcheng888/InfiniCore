@@ -2,7 +2,6 @@
 #define __KRON_METAX_H__
 
 #include "../../../operator.h"
-#include "../../../devices/metax/metax_common.h"
 #include <cstddef>
 #include <vector>
 

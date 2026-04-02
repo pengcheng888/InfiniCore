@@ -132,8 +132,7 @@ void hinge_embedding_loss_impl(
             sum += loss_value(in, t);
         }
         if (info.reduction == Reduction::MEAN) {
-            const Tcompute mean_val =
-                (n > 0) ? (sum / static_cast<Tcompute>(n)) : std::numeric_limits<Tcompute>::quiet_NaN();
+            const Tcompute mean_val = (n > 0) ? (sum / static_cast<Tcompute>(n)) : std::numeric_limits<Tcompute>::quiet_NaN();
             y[0] = utils::cast<T>(mean_val);
         } else {
             y[0] = utils::cast<T>(sum);
@@ -152,23 +151,23 @@ infiniStatus_t Descriptor::calculate(
     switch (_dtype) {
     case INFINI_DTYPE_F16:
         hinge_embedding_loss_impl<fp16_t>(_info, reinterpret_cast<fp16_t *>(y),
-                                         reinterpret_cast<const fp16_t *>(input),
-                                         reinterpret_cast<const fp16_t *>(target));
+                                          reinterpret_cast<const fp16_t *>(input),
+                                          reinterpret_cast<const fp16_t *>(target));
         break;
     case INFINI_DTYPE_BF16:
         hinge_embedding_loss_impl<bf16_t>(_info, reinterpret_cast<bf16_t *>(y),
-                                         reinterpret_cast<const bf16_t *>(input),
-                                         reinterpret_cast<const bf16_t *>(target));
+                                          reinterpret_cast<const bf16_t *>(input),
+                                          reinterpret_cast<const bf16_t *>(target));
         break;
     case INFINI_DTYPE_F32:
         hinge_embedding_loss_impl<float>(_info, reinterpret_cast<float *>(y),
-                                        reinterpret_cast<const float *>(input),
-                                        reinterpret_cast<const float *>(target));
+                                         reinterpret_cast<const float *>(input),
+                                         reinterpret_cast<const float *>(target));
         break;
     case INFINI_DTYPE_F64:
         hinge_embedding_loss_impl<double>(_info, reinterpret_cast<double *>(y),
-                                         reinterpret_cast<const double *>(input),
-                                         reinterpret_cast<const double *>(target));
+                                          reinterpret_cast<const double *>(input),
+                                          reinterpret_cast<const double *>(target));
         break;
     default:
         return INFINI_STATUS_BAD_TENSOR_DTYPE;

@@ -15,18 +15,18 @@
 #include "moore/selu_moore.h"
 #endif
 
-__C infiniStatus_t infiniopCreateSeluDescriptor(
+__INFINI_C infiniStatus_t infiniopCreateSeluDescriptor(
     infiniopHandle_t handle,
     infiniopSeluDescriptor_t *desc_ptr,
     infiniopTensorDescriptor_t y_desc,
     infiniopTensorDescriptor_t x_desc) {
 
-#define CREATE(CASE, NAMESPACE)                                              \
-    case CASE:                                                               \
-        return op::selu::NAMESPACE::Descriptor::create(                      \
-            handle,                                                          \
-            reinterpret_cast<op::selu::NAMESPACE::Descriptor **>(desc_ptr),  \
-            y_desc,                                                          \
+#define CREATE(CASE, NAMESPACE)                                             \
+    case CASE:                                                              \
+        return op::selu::NAMESPACE::Descriptor::create(                     \
+            handle,                                                         \
+            reinterpret_cast<op::selu::NAMESPACE::Descriptor **>(desc_ptr), \
+            y_desc,                                                         \
             {x_desc})
 
     switch (handle->device) {
@@ -54,10 +54,10 @@ __C infiniStatus_t infiniopCreateSeluDescriptor(
 #undef CREATE
 }
 
-__C infiniStatus_t infiniopGetSeluWorkspaceSize(infiniopSeluDescriptor_t desc, size_t *size) {
+__INFINI_C infiniStatus_t infiniopGetSeluWorkspaceSize(infiniopSeluDescriptor_t desc, size_t *size) {
 
-#define GET(CASE, NAMESPACE)                                                                 \
-    case CASE:                                                                               \
+#define GET(CASE, NAMESPACE)                                                                \
+    case CASE:                                                                              \
         *size = reinterpret_cast<op::selu::NAMESPACE::Descriptor *>(desc)->workspaceSize(); \
         return INFINI_STATUS_SUCCESS;
 
@@ -85,7 +85,7 @@ __C infiniStatus_t infiniopGetSeluWorkspaceSize(infiniopSeluDescriptor_t desc, s
     return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
 
-__C infiniStatus_t infiniopSelu(
+__INFINI_C infiniStatus_t infiniopSelu(
     infiniopSeluDescriptor_t desc,
     void *workspace,
     size_t workspace_size,
@@ -93,9 +93,9 @@ __C infiniStatus_t infiniopSelu(
     const void *x,
     void *stream) {
 
-#define CALCULATE(CASE, NAMESPACE)                                              \
-    case CASE:                                                                  \
-        return reinterpret_cast<const op::selu::NAMESPACE::Descriptor *>(desc)  \
+#define CALCULATE(CASE, NAMESPACE)                                             \
+    case CASE:                                                                 \
+        return reinterpret_cast<const op::selu::NAMESPACE::Descriptor *>(desc) \
             ->calculate(workspace, workspace_size, y, {x}, stream)
 
     switch (desc->device_type) {
@@ -123,11 +123,11 @@ __C infiniStatus_t infiniopSelu(
 #undef CALCULATE
 }
 
-__C infiniStatus_t
+__INFINI_C infiniStatus_t
 infiniopDestroySeluDescriptor(infiniopSeluDescriptor_t desc) {
 
-#define DELETE(CASE, NAMESPACE)                                                  \
-    case CASE:                                                                   \
+#define DELETE(CASE, NAMESPACE)                                                 \
+    case CASE:                                                                  \
         delete reinterpret_cast<const op::selu::NAMESPACE::Descriptor *>(desc); \
         return INFINI_STATUS_SUCCESS;
 

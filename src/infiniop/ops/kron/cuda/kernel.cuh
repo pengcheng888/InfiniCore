@@ -1,5 +1,3 @@
-#pragma once
-#include <cuda_runtime.h>
 #include <cstddef>
 #include <type_traits>
 
@@ -20,7 +18,9 @@ __global__ void kron_kernel(
     const ptrdiff_t *y_strides) {
 
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx >= total_output) return;
+    if (idx >= total_output) {
+        return;
+    }
 
     // Convert linear index to coordinates
     size_t temp = idx;

@@ -1,9 +1,10 @@
-#include "hinge_embedding_loss_metax.h"
-#include "../cuda/kernel.cuh"
 #include "../../../../utils.h"
+#include "../../../devices/metax/metax_common.h"
+#include "../../../devices/metax/metax_kernel_common.h"
 #include "../../../tensor.h"
-#include <cuda_bf16.h>
-#include <cuda_fp16.h>
+
+#include "../cuda/kernel.cuh"
+#include "hinge_embedding_loss_metax.h"
 #include <limits>
 
 namespace op::hinge_embedding_loss::metax {
@@ -34,13 +35,6 @@ infiniStatus_t Descriptor::create(
     }
 
     Reduction red = static_cast<Reduction>(reduction);
-    if (red != Reduction::NONE && (dtype == INFINI_DTYPE_F16 || dtype == INFINI_DTYPE_BF16)) {
-        return INFINI_STATUS_BAD_TENSOR_DTYPE;
-    }
-    if (!input_desc->isContiguous() || !target_desc->isContiguous() ||
-        (red == Reduction::NONE && !y_desc->isContiguous())) {
-        return INFINI_STATUS_BAD_TENSOR_STRIDES;
-    }
     std::vector<size_t> expected_y_shape;
     if (red == Reduction::NONE) {
         expected_y_shape = input_shape;
@@ -52,7 +46,23 @@ infiniStatus_t Descriptor::create(
         return INFINI_STATUS_BAD_TENSOR_SHAPE;
     }
 
-    *desc_ptr = new Descriptor(dtype, input_desc->numel(), margin, red,
+    const size_t ndim = input_desc->ndim();
+    auto input_strides = input_desc->strides();
+    auto target_strides = target_desc->strides();
+    std::vector<ptrdiff_t> output_strides;
+    if (red == Reduction::NONE) {
+        output_strides = y_desc->strides();
+    }
+
+    *desc_ptr = new Descriptor(dtype, ndim, input_desc->numel(),
+                               input_shape,
+                               std::move(input_strides),
+                               std::move(target_strides),
+                               std::move(output_strides),
+                               input_desc->isContiguous(),
+                               target_desc->isContiguous(),
+                               y_desc->isContiguous(),
+                               margin, red,
                                handle->device, handle->device_id);
     return INFINI_STATUS_SUCCESS;
 }
@@ -65,93 +75,108 @@ infiniStatus_t Descriptor::calculate(
     const void *target,
     void *stream) const {
 
-    auto hc_stream = reinterpret_cast<hcStream_t>(stream);
+    auto metax_stream = reinterpret_cast<hcStream_t>(stream);
     constexpr int BLOCK_SIZE = 256;
-    if (input_size == 0) {
-        if (reduction != Reduction::NONE) {
-            if (_dtype == INFINI_DTYPE_F32) {
-                float value = (reduction == Reduction::MEAN) ? std::numeric_limits<float>::quiet_NaN() : 0.0f;
-                CHECK_METAX(hcMemcpyAsync(y, &value, sizeof(value), hcMemcpyHostToDevice, hc_stream));
-            } else if (_dtype == INFINI_DTYPE_F64) {
-                double value = (reduction == Reduction::MEAN) ? std::numeric_limits<double>::quiet_NaN() : 0.0;
-                CHECK_METAX(hcMemcpyAsync(y, &value, sizeof(value), hcMemcpyHostToDevice, hc_stream));
-            }
-        }
-        return INFINI_STATUS_SUCCESS;
+    int num_blocks = static_cast<int>((input_size + BLOCK_SIZE - 1) / BLOCK_SIZE);
+    if (num_blocks < 1) {
+        num_blocks = 1;
     }
-    int num_blocks = (input_size + BLOCK_SIZE - 1) / BLOCK_SIZE;
+    if (num_blocks > 1024) {
+        num_blocks = 1024;
+    }
+
+    if (workspace_size < this->workspaceSize()) {
+        return INFINI_STATUS_INSUFFICIENT_WORKSPACE;
+    }
 
     if (reduction == Reduction::NONE) {
+        size_t *shape_d = nullptr;
+        ptrdiff_t *input_strides_d = nullptr;
+        ptrdiff_t *target_strides_d = nullptr;
+        ptrdiff_t *output_strides_d = nullptr;
+        if (ndim > 0) {
+            shape_d = reinterpret_cast<size_t *>(workspace);
+            input_strides_d = reinterpret_cast<ptrdiff_t *>(shape_d + ndim);
+            target_strides_d = input_strides_d + ndim;
+            output_strides_d = target_strides_d + ndim;
+
+            CHECK_METAX(hcMemcpyAsync(shape_d, shape.data(), ndim * sizeof(size_t), hcMemcpyHostToDevice, metax_stream));
+            CHECK_METAX(hcMemcpyAsync(input_strides_d, input_strides.data(), ndim * sizeof(ptrdiff_t), hcMemcpyHostToDevice, metax_stream));
+            CHECK_METAX(hcMemcpyAsync(target_strides_d, target_strides.data(), ndim * sizeof(ptrdiff_t), hcMemcpyHostToDevice, metax_stream));
+            CHECK_METAX(hcMemcpyAsync(output_strides_d, output_strides.data(), ndim * sizeof(ptrdiff_t), hcMemcpyHostToDevice, metax_stream));
+        }
+
+        // Element-wise loss
         switch (_dtype) {
         case INFINI_DTYPE_F16: {
             float margin_val = static_cast<float>(margin);
-            cuda::hinge_embedding_loss_none_kernel<half, float><<<num_blocks, BLOCK_SIZE, 0, hc_stream>>>(
+            cuda::hinge_embedding_loss_none_kernel<half, float><<<num_blocks, BLOCK_SIZE, 0, metax_stream>>>(
                 reinterpret_cast<half *>(y),
                 reinterpret_cast<const half *>(input),
                 reinterpret_cast<const half *>(target),
                 input_size,
-                /*ndim=*/0,
-                /*shape=*/nullptr,
-                /*output_strides=*/nullptr,
-                /*input_strides=*/nullptr,
-                /*target_strides=*/nullptr,
-                /*output_contiguous=*/true,
-                /*input_contiguous=*/true,
-                /*target_contiguous=*/true,
+                ndim,
+                shape_d,
+                output_strides_d,
+                input_strides_d,
+                target_strides_d,
+                output_contiguous,
+                input_contiguous,
+                target_contiguous,
                 margin_val);
             break;
         }
         case INFINI_DTYPE_BF16: {
             float margin_val = static_cast<float>(margin);
-            cuda::hinge_embedding_loss_none_kernel<cuda_bfloat16, float><<<num_blocks, BLOCK_SIZE, 0, hc_stream>>>(
+            cuda::hinge_embedding_loss_none_kernel<cuda_bfloat16, float><<<num_blocks, BLOCK_SIZE, 0, metax_stream>>>(
                 reinterpret_cast<cuda_bfloat16 *>(y),
                 reinterpret_cast<const cuda_bfloat16 *>(input),
                 reinterpret_cast<const cuda_bfloat16 *>(target),
                 input_size,
-                /*ndim=*/0,
-                /*shape=*/nullptr,
-                /*output_strides=*/nullptr,
-                /*input_strides=*/nullptr,
-                /*target_strides=*/nullptr,
-                /*output_contiguous=*/true,
-                /*input_contiguous=*/true,
-                /*target_contiguous=*/true,
+                ndim,
+                shape_d,
+                output_strides_d,
+                input_strides_d,
+                target_strides_d,
+                output_contiguous,
+                input_contiguous,
+                target_contiguous,
                 margin_val);
             break;
         }
         case INFINI_DTYPE_F32: {
             float margin_val = static_cast<float>(margin);
-            cuda::hinge_embedding_loss_none_kernel<float, float><<<num_blocks, BLOCK_SIZE, 0, hc_stream>>>(
+            cuda::hinge_embedding_loss_none_kernel<float, float><<<num_blocks, BLOCK_SIZE, 0, metax_stream>>>(
                 reinterpret_cast<float *>(y),
                 reinterpret_cast<const float *>(input),
                 reinterpret_cast<const float *>(target),
                 input_size,
-                /*ndim=*/0,
-                /*shape=*/nullptr,
-                /*output_strides=*/nullptr,
-                /*input_strides=*/nullptr,
-                /*target_strides=*/nullptr,
-                /*output_contiguous=*/true,
-                /*input_contiguous=*/true,
-                /*target_contiguous=*/true,
+                ndim,
+                shape_d,
+                output_strides_d,
+                input_strides_d,
+                target_strides_d,
+                output_contiguous,
+                input_contiguous,
+                target_contiguous,
                 margin_val);
             break;
         }
         case INFINI_DTYPE_F64: {
             double margin_val = margin;
-            cuda::hinge_embedding_loss_none_kernel<double, double><<<num_blocks, BLOCK_SIZE, 0, hc_stream>>>(
+            cuda::hinge_embedding_loss_none_kernel<double, double><<<num_blocks, BLOCK_SIZE, 0, metax_stream>>>(
                 reinterpret_cast<double *>(y),
                 reinterpret_cast<const double *>(input),
                 reinterpret_cast<const double *>(target),
                 input_size,
-                /*ndim=*/0,
-                /*shape=*/nullptr,
-                /*output_strides=*/nullptr,
-                /*input_strides=*/nullptr,
-                /*target_strides=*/nullptr,
-                /*output_contiguous=*/true,
-                /*input_contiguous=*/true,
-                /*target_contiguous=*/true,
+                ndim,
+                shape_d,
+                output_strides_d,
+                input_strides_d,
+                target_strides_d,
+                output_contiguous,
+                input_contiguous,
+                target_contiguous,
                 margin_val);
             break;
         }
@@ -159,51 +184,98 @@ infiniStatus_t Descriptor::calculate(
             return INFINI_STATUS_BAD_TENSOR_DTYPE;
         }
     } else {
-        // Sum or Mean reduction
+        char *base = reinterpret_cast<char *>(workspace);
+        char *meta = base + 8;
+        size_t *shape_d = reinterpret_cast<size_t *>(meta);
+        ptrdiff_t *input_strides_d = reinterpret_cast<ptrdiff_t *>(shape_d + ndim);
+        ptrdiff_t *target_strides_d = input_strides_d + ndim;
+
+        CHECK_METAX(hcMemcpyAsync(shape_d, shape.data(), ndim * sizeof(size_t), hcMemcpyHostToDevice, metax_stream));
+        CHECK_METAX(hcMemcpyAsync(input_strides_d, input_strides.data(), ndim * sizeof(ptrdiff_t), hcMemcpyHostToDevice, metax_stream));
+        CHECK_METAX(hcMemcpyAsync(target_strides_d, target_strides.data(), ndim * sizeof(ptrdiff_t), hcMemcpyHostToDevice, metax_stream));
+
         const bool mean = (reduction == Reduction::MEAN);
+
+        // Sum or Mean: reduce into workspace accumulator, then write scalar output.
         switch (_dtype) {
+        case INFINI_DTYPE_F16: {
+            float margin_val = static_cast<float>(margin);
+            float *accum = reinterpret_cast<float *>(base);
+            CHECK_METAX(hcMemsetAsync(accum, 0, sizeof(float), metax_stream));
+            cuda::hinge_embedding_loss_reduce_kernel<half, float, BLOCK_SIZE><<<num_blocks, BLOCK_SIZE, 0, metax_stream>>>(
+                accum,
+                reinterpret_cast<const half *>(input),
+                reinterpret_cast<const half *>(target),
+                input_size,
+                ndim,
+                shape_d,
+                input_strides_d,
+                target_strides_d,
+                input_contiguous,
+                target_contiguous,
+                margin_val);
+            cuda::hinge_embedding_loss_finalize_kernel<half, float><<<1, 1, 0, metax_stream>>>(
+                reinterpret_cast<half *>(y), accum, input_size, mean);
+            break;
+        }
+        case INFINI_DTYPE_BF16: {
+            float margin_val = static_cast<float>(margin);
+            float *accum = reinterpret_cast<float *>(base);
+            CHECK_METAX(hcMemsetAsync(accum, 0, sizeof(float), metax_stream));
+            cuda::hinge_embedding_loss_reduce_kernel<cuda_bfloat16, float, BLOCK_SIZE><<<num_blocks, BLOCK_SIZE, 0, metax_stream>>>(
+                accum,
+                reinterpret_cast<const cuda_bfloat16 *>(input),
+                reinterpret_cast<const cuda_bfloat16 *>(target),
+                input_size,
+                ndim,
+                shape_d,
+                input_strides_d,
+                target_strides_d,
+                input_contiguous,
+                target_contiguous,
+                margin_val);
+            cuda::hinge_embedding_loss_finalize_kernel<cuda_bfloat16, float><<<1, 1, 0, metax_stream>>>(
+                reinterpret_cast<cuda_bfloat16 *>(y), accum, input_size, mean);
+            break;
+        }
         case INFINI_DTYPE_F32: {
             float margin_val = static_cast<float>(margin);
-            CHECK_METAX(hcMemsetAsync(y, 0, sizeof(float), hc_stream));
-            cuda::hinge_embedding_loss_reduce_kernel<float, float, BLOCK_SIZE><<<num_blocks, BLOCK_SIZE, 0, hc_stream>>>(
-                reinterpret_cast<float *>(y),
+            float *accum = reinterpret_cast<float *>(base);
+            CHECK_METAX(hcMemsetAsync(accum, 0, sizeof(float), metax_stream));
+            cuda::hinge_embedding_loss_reduce_kernel<float, float, BLOCK_SIZE><<<num_blocks, BLOCK_SIZE, 0, metax_stream>>>(
+                accum,
                 reinterpret_cast<const float *>(input),
                 reinterpret_cast<const float *>(target),
                 input_size,
-                /*ndim=*/0,
-                /*shape=*/nullptr,
-                /*input_strides=*/nullptr,
-                /*target_strides=*/nullptr,
-                /*input_contiguous=*/true,
-                /*target_contiguous=*/true,
+                ndim,
+                shape_d,
+                input_strides_d,
+                target_strides_d,
+                input_contiguous,
+                target_contiguous,
                 margin_val);
-            cuda::hinge_embedding_loss_finalize_kernel<float, float><<<1, 1, 0, hc_stream>>>(
-                reinterpret_cast<float *>(y),
-                reinterpret_cast<const float *>(y),
-                input_size,
-                mean);
+            cuda::hinge_embedding_loss_finalize_kernel<float, float><<<1, 1, 0, metax_stream>>>(
+                reinterpret_cast<float *>(y), accum, input_size, mean);
             break;
         }
         case INFINI_DTYPE_F64: {
             double margin_val = margin;
-            CHECK_METAX(hcMemsetAsync(y, 0, sizeof(double), hc_stream));
-            cuda::hinge_embedding_loss_reduce_kernel<double, double, BLOCK_SIZE><<<num_blocks, BLOCK_SIZE, 0, hc_stream>>>(
-                reinterpret_cast<double *>(y),
+            double *accum = reinterpret_cast<double *>(base);
+            CHECK_METAX(hcMemsetAsync(accum, 0, sizeof(double), metax_stream));
+            cuda::hinge_embedding_loss_reduce_kernel<double, double, BLOCK_SIZE><<<num_blocks, BLOCK_SIZE, 0, metax_stream>>>(
+                accum,
                 reinterpret_cast<const double *>(input),
                 reinterpret_cast<const double *>(target),
                 input_size,
-                /*ndim=*/0,
-                /*shape=*/nullptr,
-                /*input_strides=*/nullptr,
-                /*target_strides=*/nullptr,
-                /*input_contiguous=*/true,
-                /*target_contiguous=*/true,
+                ndim,
+                shape_d,
+                input_strides_d,
+                target_strides_d,
+                input_contiguous,
+                target_contiguous,
                 margin_val);
-            cuda::hinge_embedding_loss_finalize_kernel<double, double><<<1, 1, 0, hc_stream>>>(
-                reinterpret_cast<double *>(y),
-                reinterpret_cast<const double *>(y),
-                input_size,
-                mean);
+            cuda::hinge_embedding_loss_finalize_kernel<double, double><<<1, 1, 0, metax_stream>>>(
+                reinterpret_cast<double *>(y), accum, input_size, mean);
             break;
         }
         default:

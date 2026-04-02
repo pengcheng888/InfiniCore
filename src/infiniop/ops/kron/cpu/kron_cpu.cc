@@ -124,23 +124,23 @@ infiniStatus_t Descriptor::calculate(
     switch (_dtype) {
     case INFINI_DTYPE_F16:
         kron_impl<fp16_t>(_info, reinterpret_cast<fp16_t *>(y),
-                         reinterpret_cast<const fp16_t *>(a),
-                         reinterpret_cast<const fp16_t *>(b));
+                          reinterpret_cast<const fp16_t *>(a),
+                          reinterpret_cast<const fp16_t *>(b));
         break;
     case INFINI_DTYPE_BF16:
         kron_impl<bf16_t>(_info, reinterpret_cast<bf16_t *>(y),
-                         reinterpret_cast<const bf16_t *>(a),
-                         reinterpret_cast<const bf16_t *>(b));
+                          reinterpret_cast<const bf16_t *>(a),
+                          reinterpret_cast<const bf16_t *>(b));
         break;
     case INFINI_DTYPE_F32:
         kron_impl<float>(_info, reinterpret_cast<float *>(y),
-                        reinterpret_cast<const float *>(a),
-                        reinterpret_cast<const float *>(b));
+                         reinterpret_cast<const float *>(a),
+                         reinterpret_cast<const float *>(b));
         break;
     case INFINI_DTYPE_F64:
         kron_impl<double>(_info, reinterpret_cast<double *>(y),
-                         reinterpret_cast<const double *>(a),
-                         reinterpret_cast<const double *>(b));
+                          reinterpret_cast<const double *>(a),
+                          reinterpret_cast<const double *>(b));
         break;
     default:
         return INFINI_STATUS_BAD_TENSOR_DTYPE;

@@ -28,4 +28,3 @@ def hinge_embedding_loss(
             reduction_enum,
         )
     )
-

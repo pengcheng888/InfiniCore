@@ -1,10 +1,9 @@
-#include "block_diag_nvidia.cuh"
-#include "../cuda/kernel.cuh"
 #include "../../../../utils.h"
-#include "../../../tensor.h"
 #include "../../../devices/nvidia/nvidia_kernel_common.cuh"
-#include <cuda_bf16.h>
-#include <cuda_fp16.h>
+#include "../../../handle.h"
+#include "../../../tensor.h"
+#include "../cuda/kernel.cuh"
+#include "block_diag_nvidia.cuh"
 
 namespace op::block_diag::nvidia {
 

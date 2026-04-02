@@ -76,4 +76,3 @@ static bool registered = []() {
 }();
 
 } // namespace infinicore::op::block_diag_impl::infiniop
-

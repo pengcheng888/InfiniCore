@@ -55,4 +55,3 @@ void hinge_embedding_loss_(
 }
 
 } // namespace infinicore::op
-

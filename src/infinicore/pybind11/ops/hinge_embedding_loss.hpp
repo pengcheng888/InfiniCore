@@ -20,4 +20,3 @@ inline void bind_hinge_embedding_loss(py::module &m) {
 }
 
 } // namespace infinicore::ops
-

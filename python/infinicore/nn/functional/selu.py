@@ -10,4 +10,3 @@ def selu(input: Tensor, *, out: Tensor | None = None) -> Tensor:
 
     _infinicore.selu_(out._underlying, input._underlying)
     return out
-

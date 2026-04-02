@@ -16,4 +16,3 @@ Tensor hinge_embedding_loss(Tensor input, Tensor target, double margin = 1.0, in
 void hinge_embedding_loss_(Tensor output, Tensor input, Tensor target, double margin, int reduction);
 
 } // namespace infinicore::op
-

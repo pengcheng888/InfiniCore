@@ -106,8 +106,7 @@ void block_diag_impl(
     // Initialize output to zero (stride-aware).
     for (size_t r = 0; r < out_rows; ++r) {
         for (size_t c = 0; c < out_cols; ++c) {
-            ptrdiff_t out_off =
-                static_cast<ptrdiff_t>(r) * out_s0 + static_cast<ptrdiff_t>(c) * out_s1;
+            ptrdiff_t out_off = static_cast<ptrdiff_t>(r) * out_s0 + static_cast<ptrdiff_t>(c) * out_s1;
             y[out_off] = utils::cast<T>(0.0f);
         }
     }
@@ -128,10 +127,8 @@ void block_diag_impl(
                 size_t out_row = row_offset + r;
                 size_t out_col = col_offset + c;
 
-                ptrdiff_t out_off =
-                    static_cast<ptrdiff_t>(out_row) * out_s0 + static_cast<ptrdiff_t>(out_col) * out_s1;
-                ptrdiff_t in_off =
-                    static_cast<ptrdiff_t>(r) * in_s0 + static_cast<ptrdiff_t>(c) * in_s1;
+                ptrdiff_t out_off = static_cast<ptrdiff_t>(out_row) * out_s0 + static_cast<ptrdiff_t>(out_col) * out_s1;
+                ptrdiff_t in_off = static_cast<ptrdiff_t>(r) * in_s0 + static_cast<ptrdiff_t>(c) * in_s1;
                 y[out_off] = input[in_off];
             }
         }

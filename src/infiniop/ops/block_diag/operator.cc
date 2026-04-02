@@ -15,20 +15,20 @@
 #include "moore/block_diag_moore.h"
 #endif
 
-__C infiniStatus_t infiniopCreateBlockDiagDescriptor(
+__INFINI_C infiniStatus_t infiniopCreateBlockDiagDescriptor(
     infiniopHandle_t handle,
     infiniopBlockDiagDescriptor_t *desc_ptr,
     infiniopTensorDescriptor_t y_desc,
     infiniopTensorDescriptor_t *input_descs,
     size_t num_inputs) {
 
-#define CREATE(CASE, NAMESPACE)                                                          \
-    case CASE:                                                                           \
-        return op::block_diag::NAMESPACE::Descriptor::create(                           \
-            handle,                                                                      \
-            reinterpret_cast<op::block_diag::NAMESPACE::Descriptor **>(desc_ptr),      \
-            y_desc,                                                                      \
-            input_descs,                                                                 \
+#define CREATE(CASE, NAMESPACE)                                                   \
+    case CASE:                                                                    \
+        return op::block_diag::NAMESPACE::Descriptor::create(                     \
+            handle,                                                               \
+            reinterpret_cast<op::block_diag::NAMESPACE::Descriptor **>(desc_ptr), \
+            y_desc,                                                               \
+            input_descs,                                                          \
             num_inputs)
 
     switch (handle->device) {
@@ -56,11 +56,11 @@ __C infiniStatus_t infiniopCreateBlockDiagDescriptor(
 #undef CREATE
 }
 
-__C infiniStatus_t infiniopGetBlockDiagWorkspaceSize(infiniopBlockDiagDescriptor_t desc, size_t *size) {
+__INFINI_C infiniStatus_t infiniopGetBlockDiagWorkspaceSize(infiniopBlockDiagDescriptor_t desc, size_t *size) {
 
-#define GET(CASE, NAMESPACE)                                                                          \
-    case CASE:                                                                                        \
-        *size = reinterpret_cast<op::block_diag::NAMESPACE::Descriptor *>(desc)->workspaceSize();   \
+#define GET(CASE, NAMESPACE)                                                                      \
+    case CASE:                                                                                    \
+        *size = reinterpret_cast<op::block_diag::NAMESPACE::Descriptor *>(desc)->workspaceSize(); \
         return INFINI_STATUS_SUCCESS;
 
     switch (desc->device_type) {
@@ -87,7 +87,7 @@ __C infiniStatus_t infiniopGetBlockDiagWorkspaceSize(infiniopBlockDiagDescriptor
     return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
 
-__C infiniStatus_t infiniopBlockDiag(
+__INFINI_C infiniStatus_t infiniopBlockDiag(
     infiniopBlockDiagDescriptor_t desc,
     void *workspace,
     size_t workspace_size,
@@ -95,9 +95,9 @@ __C infiniStatus_t infiniopBlockDiag(
     const void **inputs,
     void *stream) {
 
-#define CALCULATE(CASE, NAMESPACE)                                                          \
-    case CASE:                                                                              \
-        return reinterpret_cast<const op::block_diag::NAMESPACE::Descriptor *>(desc)      \
+#define CALCULATE(CASE, NAMESPACE)                                                   \
+    case CASE:                                                                       \
+        return reinterpret_cast<const op::block_diag::NAMESPACE::Descriptor *>(desc) \
             ->calculate(workspace, workspace_size, y, inputs, stream)
 
     switch (desc->device_type) {
@@ -125,12 +125,12 @@ __C infiniStatus_t infiniopBlockDiag(
 #undef CALCULATE
 }
 
-__C infiniStatus_t
+__INFINI_C infiniStatus_t
 infiniopDestroyBlockDiagDescriptor(infiniopBlockDiagDescriptor_t desc) {
 
-#define DELETE(CASE, NAMESPACE)                                                              \
-    case CASE:                                                                               \
-        delete reinterpret_cast<const op::block_diag::NAMESPACE::Descriptor *>(desc);      \
+#define DELETE(CASE, NAMESPACE)                                                       \
+    case CASE:                                                                        \
+        delete reinterpret_cast<const op::block_diag::NAMESPACE::Descriptor *>(desc); \
         return INFINI_STATUS_SUCCESS;
 
     switch (desc->device_type) {

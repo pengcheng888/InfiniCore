@@ -59,4 +59,3 @@ static bool registered = []() {
 }();
 
 } // namespace infinicore::op::hinge_embedding_loss_impl::infiniop
-

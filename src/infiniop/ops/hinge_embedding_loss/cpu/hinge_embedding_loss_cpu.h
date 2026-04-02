@@ -1,8 +1,8 @@
 #ifndef __HINGE_EMBEDDING_LOSS_CPU_H__
 #define __HINGE_EMBEDDING_LOSS_CPU_H__
 
-#include "../../../operator.h"
 #include "../../../devices/cpu/common_cpu.h"
+#include "../../../operator.h"
 #include <vector>
 
 namespace op::hinge_embedding_loss::cpu {

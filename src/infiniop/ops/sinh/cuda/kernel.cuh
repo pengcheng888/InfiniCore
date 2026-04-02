@@ -1,8 +1,4 @@
-#pragma once
 #include <cmath>
-#include <cuda_bf16.h>
-#include <cuda_fp16.h>
-#include <cuda_runtime.h>
 #include <type_traits>
 
 namespace op::cuda {
@@ -15,7 +11,7 @@ struct SinhOp {
         if constexpr (std::is_same_v<T, float>) {
             return sinhf(x);
         } else if constexpr (std::is_same_v<T, double>) {
-            return sinh(x);
+            return ::sinh(x);
         } else if constexpr (std::is_same_v<T, cuda_bfloat16>) {
             const float xf = __bfloat162float(x);
             return __float2bfloat16(sinhf(xf));

@@ -5,20 +5,20 @@
 
 typedef struct InfiniopDescriptor *infiniopSinhDescriptor_t;
 
-__C __export infiniStatus_t infiniopCreateSinhDescriptor(infiniopHandle_t handle,
-                                                         infiniopSinhDescriptor_t *desc_ptr,
-                                                         infiniopTensorDescriptor_t y,
-                                                         infiniopTensorDescriptor_t x);
+__INFINI_C __export infiniStatus_t infiniopCreateSinhDescriptor(infiniopHandle_t handle,
+                                                                infiniopSinhDescriptor_t *desc_ptr,
+                                                                infiniopTensorDescriptor_t y,
+                                                                infiniopTensorDescriptor_t x);
 
-__C __export infiniStatus_t infiniopGetSinhWorkspaceSize(infiniopSinhDescriptor_t desc, size_t *size);
+__INFINI_C __export infiniStatus_t infiniopGetSinhWorkspaceSize(infiniopSinhDescriptor_t desc, size_t *size);
 
-__C __export infiniStatus_t infiniopSinh(infiniopSinhDescriptor_t desc,
-                                         void *workspace,
-                                         size_t workspace_size,
-                                         void *y,
-                                         const void *x,
-                                         void *stream);
+__INFINI_C __export infiniStatus_t infiniopSinh(infiniopSinhDescriptor_t desc,
+                                                void *workspace,
+                                                size_t workspace_size,
+                                                void *y,
+                                                const void *x,
+                                                void *stream);
 
-__C __export infiniStatus_t infiniopDestroySinhDescriptor(infiniopSinhDescriptor_t desc);
+__INFINI_C __export infiniStatus_t infiniopDestroySinhDescriptor(infiniopSinhDescriptor_t desc);
 
 #endif

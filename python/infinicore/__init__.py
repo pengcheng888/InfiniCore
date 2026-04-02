@@ -64,6 +64,7 @@ from infinicore.ops.bilinear import bilinear
 from infinicore.ops.binary_cross_entropy_with_logits import (
     binary_cross_entropy_with_logits,
 )
+from infinicore.ops.block_diag import block_diag
 from infinicore.ops.broadcast_to import broadcast_to
 from infinicore.ops.cat import cat
 from infinicore.ops.cdist import cdist
@@ -79,9 +80,8 @@ from infinicore.ops.hypot import hypot
 from infinicore.ops.index_add import index_add
 from infinicore.ops.index_copy import index_copy
 from infinicore.ops.inner import inner
-from infinicore.ops.kthvalue import kthvalue
-from infinicore.ops.block_diag import block_diag
 from infinicore.ops.kron import kron
+from infinicore.ops.kthvalue import kthvalue
 from infinicore.ops.kv_caching import kv_caching
 from infinicore.ops.ldexp import ldexp
 from infinicore.ops.lerp import lerp

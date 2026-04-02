@@ -18,4 +18,3 @@ inline void bind_block_diag(py::module &m) {
 }
 
 } // namespace infinicore::ops
-

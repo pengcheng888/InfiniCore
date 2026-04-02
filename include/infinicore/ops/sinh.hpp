@@ -16,4 +16,3 @@ Tensor sinh(Tensor input);
 void sinh_(Tensor output, Tensor input);
 
 } // namespace infinicore::op
-

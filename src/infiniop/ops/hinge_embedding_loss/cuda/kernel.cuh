@@ -1,11 +1,6 @@
-#pragma once
-#include <cuda_runtime.h>
-#include <cuda_bf16.h>
-#include <cuda_fp16.h>
 #include <limits>
 #include <type_traits>
 
-#include "../../../devices/nvidia/nvidia_kernel_common.cuh"
 #include "../../../reduce/cuda/reduce.cuh"
 
 namespace op::cuda {
@@ -81,11 +76,13 @@ __global__ void hinge_embedding_loss_none_kernel(
     Tcompute margin_val) {
 
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx >= n) return;
+    if (idx >= n) {
+        return;
+    }
 
-    const size_t out_offset = output_contiguous ? idx : device::nvidia::indexToOffset(idx, ndim, shape, output_strides);
-    const size_t in_offset = input_contiguous ? idx : device::nvidia::indexToOffset(idx, ndim, shape, input_strides);
-    const size_t tgt_offset = target_contiguous ? idx : device::nvidia::indexToOffset(idx, ndim, shape, target_strides);
+    const size_t out_offset = output_contiguous ? idx : indexToOffset(idx, ndim, shape, output_strides);
+    const size_t in_offset = input_contiguous ? idx : indexToOffset(idx, ndim, shape, input_strides);
+    const size_t tgt_offset = target_contiguous ? idx : indexToOffset(idx, ndim, shape, target_strides);
 
     const Tcompute in_val = load_as<Tcompute>(input, in_offset);
     const Tcompute tgt_val = load_as<Tcompute>(target, tgt_offset);
@@ -111,8 +108,8 @@ __global__ void hinge_embedding_loss_reduce_kernel(
     Tcompute sum = 0;
 
     for (size_t i = tid; i < n; i += blockDim.x * gridDim.x) {
-        const size_t in_offset = input_contiguous ? i : device::nvidia::indexToOffset(i, ndim, shape, input_strides);
-        const size_t tgt_offset = target_contiguous ? i : device::nvidia::indexToOffset(i, ndim, shape, target_strides);
+        const size_t in_offset = input_contiguous ? i : indexToOffset(i, ndim, shape, input_strides);
+        const size_t tgt_offset = target_contiguous ? i : indexToOffset(i, ndim, shape, target_strides);
 
         const Tcompute in_val = load_as<Tcompute>(input, in_offset);
         const Tcompute tgt_val = load_as<Tcompute>(target, tgt_offset);
@@ -135,7 +132,9 @@ __global__ void hinge_embedding_loss_finalize_kernel(
     size_t n,
     bool mean) {
 
-    if (blockIdx.x != 0 || threadIdx.x != 0) return;
+    if (blockIdx.x != 0 || threadIdx.x != 0) {
+        return;
+    }
 
     Tcompute result = *accum;
     if (mean) {

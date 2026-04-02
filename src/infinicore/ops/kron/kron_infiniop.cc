@@ -57,4 +57,3 @@ static bool registered = []() {
 }();
 
 } // namespace infinicore::op::kron_impl::infiniop
-
