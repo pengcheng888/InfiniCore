@@ -24,6 +24,7 @@
 #include "ops/binary_cross_entropy_with_logits.hpp"
 #include "ops/broadcast_to.hpp"
 #include "ops/cat.hpp"
+#include "ops/block_diag.hpp"
 #include "ops/causal_softmax.hpp"
 #include "ops/cdist.hpp"
 #include "ops/cross_entropy.hpp"
@@ -44,12 +45,14 @@
 #include "ops/index_copy.hpp"
 #include "ops/inner.hpp"
 #include "ops/kthvalue.hpp"
+#include "ops/hinge_embedding_loss.hpp"
 #include "ops/kv_caching.hpp"
 #include "ops/ldexp.hpp"
 #include "ops/lerp.hpp"
 #include "ops/linear.hpp"
 #include "ops/linear_w8a8i8.hpp"
 #include "ops/masked_select.hpp"
+#include "ops/kron.hpp"
 #include "ops/matmul.hpp"
 #include "ops/mha_kvcache.hpp"
 #include "ops/mha_varlen.hpp"
@@ -70,6 +73,8 @@
 #include "ops/softplus.hpp"
 #include "ops/softsign.hpp"
 #include "ops/sum.hpp"
+#include "ops/selu.hpp"
+#include "ops/sinh.hpp"
 #include "ops/swiglu.hpp"
 #include "ops/take.hpp"
 #include "ops/tan.hpp"
@@ -102,8 +107,10 @@ inline void bind(py::module &m) {
     bind_asinh(m);
     bind_baddbmm(m);
     bind_bilinear(m);
+    bind_block_diag(m);
     bind_causal_softmax(m);
     bind_flash_attention(m);
+    bind_hinge_embedding_loss(m);
     bind_kv_caching(m);
     bind_fmod(m);
     bind_fmin(m);
@@ -113,6 +120,7 @@ inline void bind(py::module &m) {
     bind_random_sample(m);
     bind_masked_select(m);
     bind_matmul(m);
+    bind_kron(m);
     bind_mul(m);
     bind_mha_kvcache(m);
     bind_mha_varlen(m);
@@ -165,6 +173,8 @@ inline void bind(py::module &m) {
     bind_ldexp(m);
     bind_lerp(m);
     bind_triplet_margin_loss(m);
+    bind_selu(m);
+    bind_sinh(m);
 }
 
 } // namespace infinicore::ops

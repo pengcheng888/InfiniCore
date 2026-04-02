@@ -16,6 +16,8 @@ from .multi_margin_loss import multi_margin_loss
 from .random_sample import random_sample
 from .rms_norm import rms_norm
 from .rope import RopeAlgo, rope
+from .selu import selu
+from .hinge_embedding_loss import hinge_embedding_loss
 from .silu import silu
 from .silu_and_mul import silu_and_mul
 from .smooth_l1_loss import smooth_l1_loss
@@ -48,6 +50,8 @@ __all__ = [
     "rope",
     "RopeAlgo",
     "rope",
+    "selu",
+    "hinge_embedding_loss",
     "silu",
     "hardswish",
     "hardtanh",

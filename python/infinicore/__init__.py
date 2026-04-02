@@ -80,6 +80,8 @@ from infinicore.ops.index_add import index_add
 from infinicore.ops.index_copy import index_copy
 from infinicore.ops.inner import inner
 from infinicore.ops.kthvalue import kthvalue
+from infinicore.ops.block_diag import block_diag
+from infinicore.ops.kron import kron
 from infinicore.ops.kv_caching import kv_caching
 from infinicore.ops.ldexp import ldexp
 from infinicore.ops.lerp import lerp
@@ -95,6 +97,7 @@ from infinicore.ops.paged_caching import paged_caching
 from infinicore.ops.rearrange import rearrange
 from infinicore.ops.reciprocal import reciprocal
 from infinicore.ops.scatter import scatter
+from infinicore.ops.sinh import sinh
 from infinicore.ops.squeeze import squeeze
 from infinicore.ops.sum import sum
 from infinicore.ops.take import take
@@ -175,6 +178,8 @@ __all__ = [
     "addbmm",
     "floor",
     "attention",
+    "block_diag",
+    "kron",
     "kv_caching",
     "asinh",
     "baddbmm",
@@ -215,6 +220,7 @@ __all__ = [
     "index_copy",
     "index_add",
     "take",
+    "sinh",
     "ones",
     "broadcast_to",
     "strided_empty",
