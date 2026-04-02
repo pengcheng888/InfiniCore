@@ -13,6 +13,7 @@ from .huber_loss import huber_loss
 from .linear import linear
 from .linear_w8a8i8 import linear_w8a8i8
 from .multi_margin_loss import multi_margin_loss
+from .log_softmax import log_softmax
 from .random_sample import random_sample
 from .rms_norm import rms_norm
 from .rope import RopeAlgo, rope
@@ -24,7 +25,10 @@ from .softsign import softsign
 from .swiglu import swiglu
 from .tanhshrink import tanhshrink
 from .triplet_margin_loss import triplet_margin_loss
-from .upsample_bilinear import interpolate, upsample_bilinear
+from .upsample_bilinear import upsample_bilinear
+from .triplet_margin_with_distance_loss import triplet_margin_with_distance_loss
+from .upsample_nearest import upsample_nearest
+from .interpolate import interpolate
 
 __all__ = [
     "adaptive_max_pool1d",
@@ -40,10 +44,14 @@ __all__ = [
     "silu",
     "smooth_l1_loss",
     "swiglu",
+    "interpolate", 
     "linear",
     "triplet_margin_loss",
     "upsample_bilinear",
     "interpolate",
+    "log_softmax",
+    "upsample_nearest",
+    "triplet_margin_with_distance_loss",
     "embedding",
     "rope",
     "RopeAlgo",

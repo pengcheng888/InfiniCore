@@ -49,6 +49,9 @@
 #include "ops/lerp.hpp"
 #include "ops/linear.hpp"
 #include "ops/linear_w8a8i8.hpp"
+#include "ops/log_softmax.hpp"
+#include "ops/logaddexp.hpp"
+#include "ops/logaddexp2.hpp"
 #include "ops/masked_select.hpp"
 #include "ops/matmul.hpp"
 #include "ops/mha_kvcache.hpp"
@@ -76,7 +79,9 @@
 #include "ops/tanhshrink.hpp"
 #include "ops/topk.hpp"
 #include "ops/triplet_margin_loss.hpp"
+#include "ops/triplet_margin_with_distance_loss.hpp"
 #include "ops/upsample_bilinear.hpp"
+#include "ops/upsample_nearest.hpp"
 #include "ops/var.hpp"
 #include "ops/var_mean.hpp"
 
@@ -112,6 +117,9 @@ inline void bind(py::module &m) {
     bind_inner(m);
     bind_random_sample(m);
     bind_masked_select(m);
+    bind_log_softmax(m);
+    bind_logaddexp(m);
+    bind_logaddexp2(m);
     bind_matmul(m);
     bind_mul(m);
     bind_mha_kvcache(m);
@@ -146,6 +154,8 @@ inline void bind(py::module &m) {
     bind_softsign(m);
     bind_linear(m);
     bind_huber_loss(m);
+    bind_triplet_margin_with_distance_loss(m);
+    bind_upsample_nearest(m);
     bind_embedding(m);
     bind_linear_w8a8i8(m);
     bind_silu_and_mul(m);
