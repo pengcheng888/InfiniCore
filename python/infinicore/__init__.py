@@ -85,6 +85,9 @@ from infinicore.ops.ldexp import ldexp
 from infinicore.ops.lerp import lerp
 from infinicore.ops.logaddexp import logaddexp
 from infinicore.ops.logaddexp2 import logaddexp2
+from infinicore.ops.logcumsumexp import logcumsumexp
+from infinicore.ops.logical_and import logical_and
+from infinicore.ops.logical_not import logical_not
 from infinicore.ops.masked_select import masked_select
 from infinicore.ops.matmul import matmul
 from infinicore.ops.mha_kvcache import mha_kvcache
@@ -103,6 +106,7 @@ from infinicore.ops.take import take
 from infinicore.ops.tan import tan
 from infinicore.ops.topk import topk
 from infinicore.ops.unsqueeze import unsqueeze
+from infinicore.ops.vander import vander
 from infinicore.ops.var import var
 from infinicore.ops.var_mean import var_mean
 from infinicore.tensor import (
@@ -212,6 +216,10 @@ __all__ = [
     "float_power",
     "flipud",
     "scatter",
+    "logcumsumexp",
+    "logical_not",
+    "logical_and",
+    "vander",
     "paged_caching",
     "paged_attention",
     "paged_attention_prefill",

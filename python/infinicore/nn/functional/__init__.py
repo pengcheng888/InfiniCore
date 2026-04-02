@@ -27,8 +27,8 @@ from .swiglu import swiglu
 from .tanhshrink import tanhshrink
 from .triplet_margin_loss import triplet_margin_loss
 from .triplet_margin_with_distance_loss import triplet_margin_with_distance_loss
+from .unfold import unfold
 from .upsample_bilinear import upsample_bilinear
-from .upsample_nearest import upsample_nearest
 
 __all__ = [
     "adaptive_max_pool1d",
@@ -54,6 +54,7 @@ __all__ = [
     "triplet_margin_with_distance_loss",
     "embedding",
     "rope",
+    "unfold",
     "RopeAlgo",
     "rope",
     "silu",
