@@ -96,5 +96,8 @@
 #include "infiniop/ops/var.h"
 #include "infiniop/ops/var_mean.h"
 #include "infiniop/ops/zeros.h"
+#include "infiniop/ops/unfold.h"
+#include "infiniop/ops/vander.h"
+#include "infiniop/ops/logcumsumexp.h"
 #include "infiniop/tensor_descriptor.h"
 #endif // __INFINIOP_API_H__
