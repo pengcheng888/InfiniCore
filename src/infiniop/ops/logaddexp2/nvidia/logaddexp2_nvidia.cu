@@ -16,7 +16,7 @@ infiniStatus_t Descriptor::create(
     auto handle = reinterpret_cast<device::nvidia::Handle *>(handle_);
     auto dtype = out_desc->dtype();
     CHECK_DTYPE(dtype, INFINI_DTYPE_F16, INFINI_DTYPE_F32, INFINI_DTYPE_BF16, INFINI_DTYPE_F64);
-    
+
     // create CUDA elementwise descriptor
     CREATE_ELEMENTWISE_CUDA_DESCRIPTOR(handle, dtype, out_desc, input_desc_vec)
 

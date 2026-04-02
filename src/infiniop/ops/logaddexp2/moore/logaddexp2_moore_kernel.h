@@ -1,10 +1,10 @@
 #ifndef __LOGADDEXP2_MOORE_KERNEL_H__
 #define __LOGADDEXP2_MOORE_KERNEL_H__
 
-#include <musa_runtime.h>
-#include <musa_fp16.h>
-#include <musa_bf16.h>
 #include <cmath>
+#include <musa_bf16.h>
+#include <musa_fp16.h>
+#include <musa_runtime.h>
 
 namespace op::logaddexp2::moore {
 
@@ -29,7 +29,7 @@ __device__ __forceinline__ double logaddexp2_func(double a, double b) {
 typedef struct LogAddExp2Op {
 public:
     static constexpr size_t num_inputs = 2;
-    
+
     template <typename T>
     __device__ __forceinline__ T operator()(const T &a, const T &b) const {
         if constexpr (std::is_same_v<T, half2>) {
@@ -54,14 +54,14 @@ public:
 // ==================================================================
 template <typename T>
 __global__ void logaddexp2_kernel(
-    T *output, 
-    const T *a, 
-    const T *b, 
+    T *output,
+    const T *a,
+    const T *b,
     size_t n) {
-    
+
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
     size_t stride = blockDim.x * gridDim.x;
-    
+
     LogAddExp2Op op;
 
     for (size_t i = idx; i < n; i += stride) {

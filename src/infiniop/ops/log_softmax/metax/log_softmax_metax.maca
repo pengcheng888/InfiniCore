@@ -1,21 +1,19 @@
-#include "log_softmax_metax.h"
 #include "../../../devices/metax/metax_common.h"
+#include "../../../devices/metax/metax_kernel_common.h"
 #include "../../../devices/metax/metax_handle.h"
-#include <mcr/mc_runtime.h>
-#include <maca_fp16.h>
-#include <maca_bfloat16.h>
-#include <cmath>
-#include <limits>
-#include <cstdint>
+#include "log_softmax_metax.h"
 #include <algorithm>
+#include <cmath>
+#include <cstdint>
+#include <limits>
+
 
 namespace op::log_softmax::metax {
-
 
 __device__ __forceinline__ float to_float(float val) { return val; }
 __device__ __forceinline__ float to_float(double val) { return static_cast<float>(val); }
 __device__ __forceinline__ float to_float(__half val) { return __half2float(val); }
-__device__ __forceinline__ float to_float(__maca_bfloat16 val) { return __bfloat162float(val); }
+__device__ __forceinline__ float to_float(cuda_bfloat16 val) { return __bfloat162float(val); }
 
 template <typename T>
 __device__ __forceinline__ T warp_reduce_max(T val) {
@@ -45,12 +43,16 @@ __device__ __forceinline__ T block_reduce_max(T val) {
 
     val = warp_reduce_max(val);
 
-    if (lane == 0) shared[wid] = val;
+    if (lane == 0) {
+        shared[wid] = val;
+    }
     __syncthreads();
     val = (threadIdx.x < blockDim.x / 32) ? shared[lane] : -INFINITY;
-    
-    if (wid == 0) val = warp_reduce_max(val);
-    
+
+    if (wid == 0) {
+        val = warp_reduce_max(val);
+    }
+
     return val;
 }
 
@@ -62,13 +64,17 @@ __device__ __forceinline__ T block_reduce_sum(T val) {
 
     val = warp_reduce_sum(val);
 
-    if (lane == 0) shared[wid] = val;
+    if (lane == 0) {
+        shared[wid] = val;
+    }
     __syncthreads();
 
     val = (threadIdx.x < blockDim.x / 32) ? shared[lane] : 0.0f;
-    
-    if (wid == 0) val = warp_reduce_sum(val);
-    
+
+    if (wid == 0) {
+        val = warp_reduce_sum(val);
+    }
+
     return val;
 }
 
@@ -77,11 +83,10 @@ __device__ __forceinline__ T block_reduce_sum(T val) {
 // ==================================================================
 template <typename T>
 __global__ void log_softmax_kernel(
-    T * __restrict__ output,        // [Outer, Dim, Inner]
-    const T * __restrict__ input,   // [Outer, Dim, Inner]
+    T *__restrict__ output,      // [Outer, Dim, Inner]
+    const T *__restrict__ input, // [Outer, Dim, Inner]
     size_t dim_size,
-    size_t inner_size
-) {
+    size_t inner_size) {
     // 共享内存用于存储 Block Reduction 的结果广播
     __shared__ float s_max;
     __shared__ float s_sum;
@@ -105,10 +110,12 @@ __global__ void log_softmax_kernel(
             local_max = val;
         }
     }
-    
+
     // Block Reduction 得到全局 Max
     float global_max = block_reduce_max(local_max);
-    if (tid == 0) s_max = global_max;
+    if (tid == 0) {
+        s_max = global_max;
+    }
     __syncthreads();
     global_max = s_max; // 广播
     float local_sum = 0.0f;
@@ -119,7 +126,9 @@ __global__ void log_softmax_kernel(
 
     // Block Reduction 得到全局 Sum
     float global_sum = block_reduce_sum(local_sum);
-    if (tid == 0) s_sum = global_sum;
+    if (tid == 0) {
+        s_sum = global_sum;
+    }
     __syncthreads();
     global_sum = s_sum; // 广播
 
@@ -145,17 +154,17 @@ struct Descriptor::Opaque {};
 
 template <typename T>
 void launch_kernel(
-    void *output, 
-    const void *input, 
-    const LogSoftmaxInfo& info,
+    void *output,
+    const void *input,
+    const LogSoftmaxInfo &info,
     void *stream) {
 
     // 1. 准备指针
     auto in_ptr = reinterpret_cast<const T *>(input);
     auto out_ptr = reinterpret_cast<T *>(output);
-    
-    auto mc_stream = reinterpret_cast<mcStream_t>(stream);
-    
+
+    auto hc_stream = reinterpret_cast<hcStream_t>(stream);
+
     // 2. 准备形状参数
     size_t dim_size = info.dim_size();
     size_t outer_size = info.outer_size();
@@ -165,10 +174,10 @@ void launch_kernel(
     // Grid: 总切片数 (Outer * Inner)
     // 每个 Block 处理 1 个 Slice (Dim 维度)
     size_t total_slices = outer_size * inner_size;
-    
+
     // Block: 选择一个合理的 Block Size (例如 256)
     unsigned int threads_per_block = 256;
-    
+
     // 根据 dim_size 调整 block size
     if (dim_size < 256) {
         threads_per_block = 128;
@@ -182,28 +191,31 @@ void launch_kernel(
 
     // 4. 启动 Kernel
     log_softmax_kernel<T>
-        <<<total_slices, threads_per_block, 0, mc_stream>>>(
-            out_ptr, 
-            in_ptr, 
-            dim_size, 
-            inner_size
-        );
+        <<<total_slices, threads_per_block, 0, hc_stream>>>(
+            out_ptr,
+            in_ptr,
+            dim_size,
+            inner_size);
 }
 
-Descriptor::~Descriptor() { 
-    if (_opaque) delete _opaque; 
+Descriptor::~Descriptor() {
+    if (_opaque) {
+        delete _opaque;
+    }
 }
 
 infiniStatus_t Descriptor::create(
     infiniopHandle_t handle_, Descriptor **desc_ptr,
-    infiniopTensorDescriptor_t output_desc, 
-    infiniopTensorDescriptor_t input_desc, 
+    infiniopTensorDescriptor_t output_desc,
+    infiniopTensorDescriptor_t input_desc,
     int dim) {
 
     auto handle = reinterpret_cast<device::metax::Handle *>(handle_);
 
     auto info_result = LogSoftmaxInfo::create(output_desc, input_desc, dim);
-    if (!info_result) return info_result.status();
+    if (!info_result) {
+        return info_result.status();
+    }
     size_t workspace_size = 0;
 
     *desc_ptr = new Descriptor(new Opaque(), info_result.take(), workspace_size, handle->device, handle->device_id);
@@ -211,10 +223,10 @@ infiniStatus_t Descriptor::create(
 }
 
 infiniStatus_t Descriptor::calculate(
-    void *workspace, 
-    size_t workspace_size, 
-    void *output, 
-    const void *input, 
+    void *workspace,
+    size_t workspace_size,
+    void *output,
+    const void *input,
     void *stream) const {
 
     auto dtype = _info.dtype();
@@ -224,7 +236,7 @@ infiniStatus_t Descriptor::calculate(
         launch_kernel<__half>(output, input, _info, stream);
         break;
     case INFINI_DTYPE_BF16:
-        launch_kernel<__maca_bfloat16>(output, input, _info, stream);
+        launch_kernel<cuda_bfloat16>(output, input, _info, stream);
         break;
     case INFINI_DTYPE_F32:
         launch_kernel<float>(output, input, _info, stream);

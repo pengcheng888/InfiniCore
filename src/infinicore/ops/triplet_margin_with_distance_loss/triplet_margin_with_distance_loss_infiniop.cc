@@ -29,7 +29,7 @@ void calculate(Tensor output, Tensor anchor, Tensor positive, Tensor negative, d
 
     if (!desc_opt) {
         INFINICORE_CHECK_ERROR(infiniopCreateTripletMarginWithDistanceLossDescriptor(
-            context::getInfiniopHandle(anchor->device()), 
+            context::getInfiniopHandle(anchor->device()),
             &desc,
             output->desc(),
             anchor->desc(),
@@ -37,9 +37,8 @@ void calculate(Tensor output, Tensor anchor, Tensor positive, Tensor negative, d
             negative->desc(),
             static_cast<float>(margin),
             static_cast<int>(swap),
-            static_cast<int>(reduction)
-        ));
-        
+            static_cast<int>(reduction)));
+
         cache.put(seed, desc);
     } else {
         desc = *desc_opt;
@@ -49,15 +48,14 @@ void calculate(Tensor output, Tensor anchor, Tensor positive, Tensor negative, d
     std::shared_ptr<Memory> workspace = context::allocateMemory(workspace_size);
 
     INFINICORE_CHECK_ERROR(infiniopTripletMarginWithDistanceLoss(
-        desc, 
-        workspace->data(), 
+        desc,
+        workspace->data(),
         workspace_size,
-        output->data(), 
-        anchor->data(), 
-        positive->data(), 
-        negative->data(), 
-        context::getStream()
-    ));
+        output->data(),
+        anchor->data(),
+        positive->data(),
+        negative->data(),
+        context::getStream()));
 }
 
 static bool registered = []() {

@@ -1,15 +1,12 @@
-#include "upsample_nearest_metax.h"
 #include "../../../devices/metax/metax_common.h"
 #include "../../../devices/metax/metax_handle.h"
+#include "../../../devices/metax/metax_kernel_common.h"
+#include "upsample_nearest_metax.h"
 
-#include <mcr/mc_runtime.h>
-#include <maca_fp16.h>
-#include <maca_bfloat16.h>
-
-#include <cmath>
-#include <cstdio>
-#include <cstdint>
 #include <algorithm>
+#include <cmath>
+#include <cstdint>
+#include <cstdio>
 
 namespace op::upsample_nearest::metax {
 
@@ -29,16 +26,16 @@ __device__ __forceinline__ int get_nearest_index(
 
 template <typename T>
 __global__ void upsample_nearest_kernel(
-    T * __restrict__ output,        // [N, C, H_out, W_out]
-    const T * __restrict__ input,   // [N, C, H_in, W_in]
+    T *__restrict__ output,      // [N, C, H_out, W_out]
+    const T *__restrict__ input, // [N, C, H_in, W_in]
     size_t N,
     size_t C,
     size_t H_in,
     size_t W_in,
     size_t H_out,
     size_t W_out,
-    float scale_h,                  // 预计算的缩放比例 (in_size / out_size)
-    float scale_w) {                // 预计算的缩放比例 (in_size / out_size)
+    float scale_h,   // 预计算的缩放比例 (in_size / out_size)
+    float scale_w) { // 预计算的缩放比例 (in_size / out_size)
 
     // Grid-Stride Loop: 处理每一个输出元素
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -74,18 +71,18 @@ __global__ void upsample_nearest_kernel(
 
 template <typename T>
 void launch_kernel(
-    void *output, 
-    const void *input, 
-    const UpsampleNearestInfo& info,
+    void *output,
+    const void *input,
+    const UpsampleNearestInfo &info,
     void *stream) {
 
     // 1. Prepare Pointers
     auto in_ptr = reinterpret_cast<const T *>(input);
     auto out_ptr = reinterpret_cast<T *>(output);
-    
+
     // MACA stream conversion
-    auto mc_stream = reinterpret_cast<mcStream_t>(stream);
-    
+    auto hc_stream = reinterpret_cast<hcStream_t>(stream);
+
     // 2. Prepare Dimensions
     size_t N = info.n();
     size_t C = info.c();
@@ -104,18 +101,19 @@ void launch_kernel(
     size_t total_elements = N * C * H_out * W_out;
     size_t block_size = 256;
     size_t grid_size = (total_elements + block_size - 1) / block_size;
-    
+
     // Cap grid size to avoid launch failures on huge tensors
     // MetaX/CUDA grid limitation
-    if (grid_size > 65535) grid_size = 65535; 
+    if (grid_size > 65535) {
+        grid_size = 65535;
+    }
 
     upsample_nearest_kernel<T>
-        <<<grid_size, block_size, 0, mc_stream>>>(
-            out_ptr, 
-            in_ptr, 
-            N, C, H_in, W_in, H_out, W_out, 
-            scale_h, scale_w
-        );
+        <<<grid_size, block_size, 0, hc_stream>>>(
+            out_ptr,
+            in_ptr,
+            N, C, H_in, W_in, H_out, W_out,
+            scale_h, scale_w);
 }
 
 // ==================================================================
@@ -123,20 +121,24 @@ void launch_kernel(
 // ==================================================================
 struct Descriptor::Opaque {};
 
-Descriptor::~Descriptor() { 
-    if (_opaque) delete _opaque; 
+Descriptor::~Descriptor() {
+    if (_opaque) {
+        delete _opaque;
+    }
 }
 
 infiniStatus_t Descriptor::create(
-    infiniopHandle_t handle, 
+    infiniopHandle_t handle,
     Descriptor **desc_ptr,
-    infiniopTensorDescriptor_t out_desc, 
-    infiniopTensorDescriptor_t input_desc) { 
+    infiniopTensorDescriptor_t out_desc,
+    infiniopTensorDescriptor_t input_desc) {
 
     auto handle_ptr = reinterpret_cast<device::metax::Handle *>(handle);
     auto info_result = UpsampleNearestInfo::create(out_desc, input_desc);
-    if (!info_result) return info_result.status();
-    
+    if (!info_result) {
+        return info_result.status();
+    }
+
     // No extra workspace needed for this op
     size_t workspace_size = 0;
 
@@ -145,10 +147,10 @@ infiniStatus_t Descriptor::create(
 }
 
 infiniStatus_t Descriptor::calculate(
-    void *workspace, 
-    size_t workspace_size, 
+    void *workspace,
+    size_t workspace_size,
     void *output,
-    const void *input, 
+    const void *input,
     void *stream) const {
 
     auto dtype = _info.dtype();
@@ -163,8 +165,7 @@ infiniStatus_t Descriptor::calculate(
         launch_kernel<__half>(output, input, _info, stream);
         break;
     case INFINI_DTYPE_BF16:
-        // 使用 MACA 的 bfloat16 类型
-        launch_kernel<__maca_bfloat16>(output, input, _info, stream);
+        launch_kernel<cuda_bfloat16>(output, input, _info, stream);
         break;
     case INFINI_DTYPE_F32:
         launch_kernel<float>(output, input, _info, stream);

@@ -15,7 +15,7 @@ infiniStatus_t Descriptor::create(
     auto handle = reinterpret_cast<device::moore::Handle *>(handle_);
     auto dtype = out_desc->dtype();
     CHECK_DTYPE(dtype, INFINI_DTYPE_F16, INFINI_DTYPE_F32, INFINI_DTYPE_BF16, INFINI_DTYPE_F64);
-    
+
     CREATE_ELEMENTWISE_MOORE_DESCRIPTOR(handle, dtype, out_desc, input_desc_vec)
 
     return INFINI_STATUS_SUCCESS;

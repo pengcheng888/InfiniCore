@@ -27,9 +27,9 @@ public:
     size_t h_out() const { return _h_out; }
     size_t w_out() const { return _w_out; }
 
-    UpsampleNearestInfo(int dtype, 
-                        size_t n, size_t c, 
-                        size_t h_in, size_t w_in, 
+    UpsampleNearestInfo(int dtype,
+                        size_t n, size_t c,
+                        size_t h_in, size_t w_in,
                         size_t h_out, size_t w_out)
         : _dtype(dtype),
           _n(n), _c(c),
@@ -40,12 +40,13 @@ public:
         infiniopTensorDescriptor_t out_desc,
         infiniopTensorDescriptor_t input_desc) {
 
-        size_t ndim = input_desc->ndim(); 
+        size_t ndim = input_desc->ndim();
         // 允许 3D (N, C, W) 和 4D (N, C, H, W)
         if (ndim < 3 || ndim > 4) {
             // 如果为了兼容性，也可以保留 ndim=2 的逻辑，但通常 upsample 至少有 batch/channel
-            if (ndim != 2 && ndim != 3 && ndim != 4)
-                 return INFINI_STATUS_BAD_TENSOR_SHAPE;
+            if (ndim != 2 && ndim != 3 && ndim != 4) {
+                return INFINI_STATUS_BAD_TENSOR_SHAPE;
+            }
         }
         if (out_desc->ndim() != ndim) {
             return INFINI_STATUS_BAD_TENSOR_SHAPE;
@@ -65,13 +66,13 @@ public:
             n = input_desc->shape()[0];
             c = input_desc->shape()[1];
             w_in = input_desc->shape()[2];
-            
+
             // 检查输出维度一致性
             if (out_desc->shape()[0] != n || out_desc->shape()[1] != c) {
                 return INFINI_STATUS_BAD_TENSOR_SHAPE;
             }
             w_out = out_desc->shape()[2];
-            
+
             // H 固定为 1
             h_in = 1;
             h_out = 1;
@@ -90,8 +91,10 @@ public:
         } else {
             // Fallback for ndim=2 or others, previous logic
             // Assuming [H, W] or similar
-             for (size_t i = 0; i < ndim - 2; ++i) {
-                if (input_desc->shape()[i] != out_desc->shape()[i]) return INFINI_STATUS_BAD_TENSOR_SHAPE;
+            for (size_t i = 0; i < ndim - 2; ++i) {
+                if (input_desc->shape()[i] != out_desc->shape()[i]) {
+                    return INFINI_STATUS_BAD_TENSOR_SHAPE;
+                }
                 c *= input_desc->shape()[i];
             }
             h_in = input_desc->shape()[ndim - 2];
@@ -101,15 +104,14 @@ public:
         }
 
         if (h_in == 0 || w_in == 0 || h_out == 0 || w_out == 0) {
-             return INFINI_STATUS_BAD_TENSOR_SHAPE;
+            return INFINI_STATUS_BAD_TENSOR_SHAPE;
         }
 
         return utils::Result<UpsampleNearestInfo>(UpsampleNearestInfo{
             input_desc->dtype(),
             n, c,
             h_in, w_in,
-            h_out, w_out
-        });
+            h_out, w_out});
     }
 };
 

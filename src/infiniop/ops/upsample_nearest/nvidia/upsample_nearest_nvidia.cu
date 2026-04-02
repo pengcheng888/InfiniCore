@@ -1,8 +1,11 @@
-#include "upsample_nearest_nvidia.cuh"
-#include "../cuda/kernel.cuh"
+#include "../../../devices/nvidia/nvidia_common.cuh"
+#include "../../../devices/nvidia/nvidia_kernel_common.cuh"
 #include "../../../handle.h"
-#include <cstdint>
+
+#include "../cuda/kernel.cuh"
+#include "upsample_nearest_nvidia.cuh"
 #include <algorithm>
+#include <cstdint>
 
 namespace op::upsample_nearest::nvidia {
 
@@ -16,17 +19,17 @@ static inline bool is_aligned(const void *ptr, size_t alignment) {
 // ==================================================================
 template <typename T>
 void launch_kernel(
-    void *output, 
-    const void *input, 
-    const UpsampleNearestInfo& info,
+    void *output,
+    const void *input,
+    const UpsampleNearestInfo &info,
     void *stream) {
 
     // 1. Prepare Pointers
     auto in_ptr = reinterpret_cast<const T *>(input);
     auto out_ptr = reinterpret_cast<T *>(output);
-    
+
     auto cuda_stream = reinterpret_cast<cudaStream_t>(stream);
-    
+
     // 2. Prepare Dimensions
     size_t N = info.n();
     size_t C = info.c();
@@ -45,17 +48,18 @@ void launch_kernel(
     size_t total_elements = N * C * H_out * W_out;
     size_t block_size = 256;
     size_t grid_size = (total_elements + block_size - 1) / block_size;
-    
+
     // Cap grid size to avoid launch failures on huge tensors
-    if (grid_size > 65535) grid_size = 65535; 
+    if (grid_size > 65535) {
+        grid_size = 65535;
+    }
 
     op::upsample_nearest::cuda::upsample_nearest_kernel<T>
         <<<grid_size, block_size, 0, cuda_stream>>>(
-            out_ptr, 
-            in_ptr, 
-            N, C, H_in, W_in, H_out, W_out, 
-            scale_h, scale_w
-        );
+            out_ptr,
+            in_ptr,
+            N, C, H_in, W_in, H_out, W_out,
+            scale_h, scale_w);
 }
 
 // ==================================================================
@@ -63,19 +67,23 @@ void launch_kernel(
 // ==================================================================
 struct Descriptor::Opaque {};
 
-Descriptor::~Descriptor() { 
-    if (_opaque) delete _opaque; 
+Descriptor::~Descriptor() {
+    if (_opaque) {
+        delete _opaque;
+    }
 }
 
 infiniStatus_t Descriptor::create(
-    infiniopHandle_t handle, 
+    infiniopHandle_t handle,
     Descriptor **desc_ptr,
-    infiniopTensorDescriptor_t out_desc, 
-    infiniopTensorDescriptor_t input_desc) { 
+    infiniopTensorDescriptor_t out_desc,
+    infiniopTensorDescriptor_t input_desc) {
 
     auto info_result = UpsampleNearestInfo::create(out_desc, input_desc);
-    if (!info_result) return info_result.status();
-    
+    if (!info_result) {
+        return info_result.status();
+    }
+
     // No extra workspace needed for this op
     size_t workspace_size = 0;
 
@@ -84,10 +92,10 @@ infiniStatus_t Descriptor::create(
 }
 
 infiniStatus_t Descriptor::calculate(
-    void *workspace, 
-    size_t workspace_size, 
+    void *workspace,
+    size_t workspace_size,
     void *output,
-    const void *input, 
+    const void *input,
     void *stream) const {
 
     auto dtype = _info.dtype();
@@ -102,7 +110,7 @@ infiniStatus_t Descriptor::calculate(
         launch_kernel<half>(output, input, _info, stream);
         break;
     case INFINI_DTYPE_BF16:
-        launch_kernel<nv_bfloat16>(output, input, _info, stream);
+        launch_kernel<cuda_bfloat16>(output, input, _info, stream);
         break;
     case INFINI_DTYPE_F32:
         launch_kernel<float>(output, input, _info, stream);

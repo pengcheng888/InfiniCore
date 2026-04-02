@@ -1,11 +1,11 @@
 #include "log_softmax_cpu.h"
 #include "../../../devices/cpu/common_cpu.h"
 #include <algorithm>
-#include <vector>
 #include <cmath>
-#include <omp.h>
 #include <cstdint>
 #include <limits>
+#include <omp.h>
+#include <vector>
 
 #include "../../../../utils/custom_types.h"
 
@@ -28,17 +28,16 @@ infiniStatus_t Descriptor::create(
     int dim) {
 
     auto handle = reinterpret_cast<device::cpu::Handle *>(handle_);
-    
+
     auto result = LogSoftmaxInfo::create(output_desc, input_desc, dim);
     CHECK_RESULT(result);
 
     *desc_ptr = new Descriptor(
         new Opaque(),
         result.take(),
-        0, 
-        handle->device, 
-        handle->device_id
-    );
+        0,
+        handle->device,
+        handle->device_id);
 
     return INFINI_STATUS_SUCCESS;
 }
@@ -58,8 +57,8 @@ void calculate_cpu_impl(
 
     size_t total_tasks = outer_size * inner_size;
 
-    #pragma omp parallel for schedule(static)
-    for (size_t task_id = 0; task_id < total_tasks; ++task_id) {
+#pragma omp parallel for schedule(static)
+    for (ptrdiff_t task_id = 0; task_id < (ptrdiff_t)total_tasks; ++task_id) {
         // 解算当前任务对应的外部索引和内部索引
         size_t o = task_id / inner_size;
         size_t i = task_id % inner_size;
@@ -71,7 +70,7 @@ void calculate_cpu_impl(
         size_t stride = inner_size;
         std::vector<float> buffer(dim_size);
         float max_val = -std::numeric_limits<float>::infinity();
-        
+
         for (size_t d = 0; d < dim_size; ++d) {
             T val_t = in_ptr[base_offset + d * stride];
             float val = utils::cast<float>(val_t); // 处理 fp16/bf16

@@ -1,7 +1,7 @@
 #include "../../utils.hpp"
 #include "infinicore/common/hash.hpp"
-#include "infinicore/ops/logaddexp2.hpp"
 #include "infinicore/ops/common/cache.hpp"
+#include "infinicore/ops/logaddexp2.hpp"
 #include <infiniop.h>
 
 namespace infinicore::op::logaddexp2_impl::infiniop {

@@ -1,10 +1,10 @@
 #ifndef __UPSAMPLE_NEAREST_MOORE_KERNEL_H__
 #define __UPSAMPLE_NEAREST_MOORE_KERNEL_H__
-#include <musa_runtime.h>
-#include <musa_fp16.h>
-#include <musa_bf16.h>
 #include <cmath>
 #include <cstdio>
+#include <musa_bf16.h>
+#include <musa_fp16.h>
+#include <musa_runtime.h>
 
 namespace op::upsample_nearest::moore {
 __device__ __forceinline__ int get_nearest_index(
@@ -16,16 +16,16 @@ __device__ __forceinline__ int get_nearest_index(
 }
 template <typename T>
 __global__ void upsample_nearest_kernel(
-    T * __restrict__ output,        // [N, C, H_out, W_out]
-    const T * __restrict__ input,   // [N, C, H_in, W_in]
+    T *__restrict__ output,      // [N, C, H_out, W_out]
+    const T *__restrict__ input, // [N, C, H_in, W_in]
     size_t N,
     size_t C,
     size_t H_in,
     size_t W_in,
     size_t H_out,
     size_t W_out,
-    float scale_h,                  // 预计算的缩放比例 (in_size / out_size)
-    float scale_w) {                // 预计算的缩放比例 (in_size / out_size)
+    float scale_h,   // 预计算的缩放比例 (in_size / out_size)
+    float scale_w) { // 预计算的缩放比例 (in_size / out_size)
 
     // Grid-Stride Loop: 处理每一个输出元素
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;

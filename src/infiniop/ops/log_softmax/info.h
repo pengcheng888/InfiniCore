@@ -12,7 +12,7 @@ class LogSoftmaxInfo {
 public:
     int _dtype;
     int _dim;
-    
+
     size_t _dim_size;
     size_t _outer_size;
     size_t _inner_size;
@@ -32,8 +32,8 @@ public:
         infiniopTensorDescriptor_t input_desc,
         int dim) {
 
-        int ndim = input_desc->ndim();
-        
+        int ndim = int(input_desc->ndim());
+
         if (dim < 0) {
             dim += ndim;
         }
@@ -47,7 +47,7 @@ public:
         for (int i = 0; i < dim; ++i) {
             outer_size *= input_desc->shape()[i];
         }
-        
+
         size_t inner_size = 1;
         for (int i = dim + 1; i < ndim; ++i) {
             inner_size *= input_desc->shape()[i];
@@ -74,8 +74,7 @@ public:
             dim,
             dim_size,
             outer_size,
-            inner_size
-        });
+            inner_size});
     }
 };
 

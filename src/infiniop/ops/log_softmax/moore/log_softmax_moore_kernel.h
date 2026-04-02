@@ -1,12 +1,12 @@
 #ifndef __LOG_SOFTMAX_MOORE_H__
 #define __LOG_SOFTMAX_MOORE_H__
 
-#include <musa_runtime.h>
-#include <musa_fp16.h>
-#include <musa_bf16.h>
 #include <cmath>
-#include <limits>
 #include <cstdint>
+#include <limits>
+#include <musa_bf16.h>
+#include <musa_fp16.h>
+#include <musa_runtime.h>
 
 namespace op::log_softmax::moore {
 template <typename T>
@@ -38,12 +38,16 @@ __device__ __forceinline__ T block_reduce_max(T val) {
 
     val = warp_reduce_max(val);
 
-    if (lane == 0) shared[wid] = val;
+    if (lane == 0) {
+        shared[wid] = val;
+    }
     __syncthreads();
     val = (threadIdx.x < blockDim.x / 32) ? shared[lane] : -INFINITY;
-    
-    if (wid == 0) val = warp_reduce_max(val);
-    
+
+    if (wid == 0) {
+        val = warp_reduce_max(val);
+    }
+
     return val;
 }
 
@@ -55,22 +59,25 @@ __device__ __forceinline__ T block_reduce_sum(T val) {
 
     val = warp_reduce_sum(val);
 
-    if (lane == 0) shared[wid] = val;
+    if (lane == 0) {
+        shared[wid] = val;
+    }
     __syncthreads();
 
     val = (threadIdx.x < blockDim.x / 32) ? shared[lane] : 0.0f;
-    
-    if (wid == 0) val = warp_reduce_sum(val);
-    
+
+    if (wid == 0) {
+        val = warp_reduce_sum(val);
+    }
+
     return val;
 }
 template <typename T>
 __global__ void log_softmax_kernel(
-    T * __restrict__ output,        // [Outer, Dim, Inner]
-    const T * __restrict__ input,   // [Outer, Dim, Inner]
+    T *__restrict__ output,      // [Outer, Dim, Inner]
+    const T *__restrict__ input, // [Outer, Dim, Inner]
     size_t dim_size,
-    size_t inner_size
-) {
+    size_t inner_size) {
     // 共享内存用于存储 Block Reduction 的结果广播
     __shared__ float s_max;
     __shared__ float s_sum;
@@ -91,14 +98,16 @@ __global__ void log_softmax_kernel(
             local_max = val;
         }
     }
-    
+
     // Block Reduction 得到全局 Max
     float global_max = block_reduce_max(local_max);
     // 线程 0 将结果写入共享内存
-    if (tid == 0) s_max = global_max;
+    if (tid == 0) {
+        s_max = global_max;
+    }
     __syncthreads();
     // 广播到所有线程
-    global_max = s_max; 
+    global_max = s_max;
 
     // ============================================================
     // Pass 2: Calculate Sum of Exponentials
@@ -112,7 +121,9 @@ __global__ void log_softmax_kernel(
 
     // Block Reduction 得到全局 Sum
     float global_sum = block_reduce_sum(local_sum);
-    if (tid == 0) s_sum = global_sum;
+    if (tid == 0) {
+        s_sum = global_sum;
+    }
     __syncthreads();
     global_sum = s_sum; // 广播
     float log_sum_exp = logf(global_sum) + global_max;

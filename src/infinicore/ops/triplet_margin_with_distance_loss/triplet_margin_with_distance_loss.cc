@@ -15,18 +15,18 @@ void TripletMarginWithDistanceLoss::execute(Tensor output, Tensor anchor, Tensor
 // 3. 函数式接口
 Tensor triplet_margin_with_distance_loss(Tensor anchor, Tensor positive, Tensor negative, double margin, bool swap, int64_t reduction) {
     Shape out_shape;
-    
+
     // 推断输出形状
     if (reduction == 0) {
         // Reduction::None -> 输出形状取决于输入的广播结果
         out_shape = anchor->shape();
     } else {
         // Reduction::Mean 或 Reduction::Sum -> 输出为标量
-        out_shape = {}; 
+        out_shape = {};
     }
 
     auto output = Tensor::empty(out_shape, anchor->dtype(), anchor->device());
-    
+
     triplet_margin_with_distance_loss_(output, anchor, positive, negative, margin, swap, reduction);
     return output;
 }

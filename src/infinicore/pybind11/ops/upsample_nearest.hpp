@@ -1,8 +1,8 @@
 #pragma once
 
+#include "infinicore/ops/upsample_nearest.hpp"
 #include <pybind11/pybind11.h>
-#include <pybind11/stl.h> 
-#include "infinicore/ops/upsample_nearest.hpp" 
+#include <pybind11/stl.h>
 
 namespace py = pybind11;
 

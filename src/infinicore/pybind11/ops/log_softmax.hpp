@@ -1,7 +1,7 @@
 #pragma once
 
+#include "infinicore/ops/log_softmax.hpp"
 #include <pybind11/pybind11.h>
-#include "infinicore/ops/log_softmax.hpp" 
 
 namespace py = pybind11;
 

@@ -83,8 +83,7 @@ public:
             margin,
             swap,
             reduction,
-            num_elements
-        });
+            num_elements});
     }
 };
 

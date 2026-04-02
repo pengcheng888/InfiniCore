@@ -1,12 +1,12 @@
 #include "triplet_margin_with_distance_loss_cpu.h"
 #include "../../../devices/cpu/common_cpu.h"
 #include <algorithm>
-#include <vector>
 #include <cmath>
-#include <omp.h>
 #include <cstdint>
 #include <limits>
 #include <numeric>
+#include <omp.h>
+#include <vector>
 
 #include "../../../../utils/custom_types.h"
 
@@ -36,7 +36,7 @@ infiniStatus_t Descriptor::create(
     int reduction) {
 
     auto handle = reinterpret_cast<device::cpu::Handle *>(handle_);
-    
+
     auto result = TripletMarginWithDistanceLossInfo::create(
         output_desc, anchor_desc, positive_desc, negative_desc, margin, swap, reduction);
     CHECK_RESULT(result);
@@ -54,17 +54,16 @@ infiniStatus_t Descriptor::create(
     *desc_ptr = new Descriptor(
         opaque,
         result.take(),
-        0, 
-        handle->device, 
-        handle->device_id
-    );
+        0,
+        handle->device,
+        handle->device_id);
 
     return INFINI_STATUS_SUCCESS;
 }
 
 // 辅助函数：计算两个向量的欧氏距离
 template <typename T>
-inline float compute_pairwise_distance(const T* x, const T* y, size_t len, float eps = 1e-6f) {
+inline float compute_pairwise_distance(const T *x, const T *y, size_t len, float eps = 1e-6f) {
     float sum_sq = 0.0f;
     for (size_t i = 0; i < len; ++i) {
         float diff = utils::cast<float>(x[i]) - utils::cast<float>(y[i]);
@@ -95,13 +94,13 @@ void calculate_cpu_impl(
 
     float total_loss = 0.0f;
 
-    #pragma omp parallel for schedule(static) reduction(+:total_loss)
-    for (size_t i = 0; i < batch_size; ++i) {
+#pragma omp parallel for schedule(static) reduction(+ : total_loss)
+    for (ptrdiff_t i = 0; i < (ptrdiff_t)batch_size; ++i) {
         size_t offset = i * feature_dim;
 
-        const T* curr_a = a_ptr + offset;
-        const T* curr_p = p_ptr + offset;
-        const T* curr_n = n_ptr + offset;
+        const T *curr_a = a_ptr + offset;
+        const T *curr_p = p_ptr + offset;
+        const T *curr_n = n_ptr + offset;
 
         float dist_pos = compute_pairwise_distance(curr_a, curr_p, feature_dim);
         float dist_neg = compute_pairwise_distance(curr_a, curr_n, feature_dim);

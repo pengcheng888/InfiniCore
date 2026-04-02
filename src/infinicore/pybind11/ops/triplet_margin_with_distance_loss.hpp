@@ -1,7 +1,7 @@
 #pragma once
 
-#include <pybind11/pybind11.h>
 #include "infinicore/ops/triplet_margin_with_distance_loss.hpp"
+#include <pybind11/pybind11.h>
 
 namespace py = pybind11;
 
@@ -15,7 +15,7 @@ inline void bind_triplet_margin_with_distance_loss(py::module &m) {
           py::arg("negative"),
           py::arg("margin") = 1.0,
           py::arg("swap") = false,
-          py::arg("reduction") = 1, 
+          py::arg("reduction") = 1,
           R"doc(Computes the triplet margin loss with distance.
 
     Args:

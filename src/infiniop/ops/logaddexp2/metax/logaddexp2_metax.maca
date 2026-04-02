@@ -1,7 +1,5 @@
 #include "../../../elementwise/metax/elementwise_metax.h"
-#include "logaddexp2_metax.h" 
-#include <maca_fp16.h>
-#include <maca_bfloat16.h>
+#include "logaddexp2_metax.h"
 #include <cmath>
 
 namespace op::logaddexp2::metax {
@@ -25,7 +23,7 @@ __device__ __forceinline__ double logaddexp2_func(double a, double b) {
 struct LogAddExp2Op {
 public:
     static constexpr size_t num_inputs = 2;
-    
+
     template <typename T>
     __device__ __forceinline__ T operator()(const T &a, const T &b) const {
         if constexpr (std::is_same_v<T, half2>) {
@@ -35,7 +33,7 @@ public:
             res.x = logaddexp2_func(fa.x, fb.x);
             res.y = logaddexp2_func(fa.y, fb.y);
             return __float22half2_rn(res);
-        } else if constexpr (std::is_same_v<T, half> || std::is_same_v<T, maca_bfloat16>) {
+        } else if constexpr (std::is_same_v<T, half> || std::is_same_v<T, cuda_bfloat16>) {
             return static_cast<T>(logaddexp2_func(static_cast<float>(a), static_cast<float>(b)));
         } else if constexpr (std::is_same_v<T, float>) {
             return logaddexp2_func(a, b);
@@ -60,7 +58,7 @@ infiniStatus_t Descriptor::create(
     auto handle = reinterpret_cast<device::metax::Handle *>(handle_);
     auto dtype = out_desc->dtype();
     CHECK_DTYPE(dtype, INFINI_DTYPE_F16, INFINI_DTYPE_F32, INFINI_DTYPE_BF16, INFINI_DTYPE_F64);
-    
+
     CREATE_ELEMENTWISE_METAX_DESCRIPTOR(handle, dtype, out_desc, input_desc_vec)
 
     return INFINI_STATUS_SUCCESS;
@@ -81,7 +79,7 @@ infiniStatus_t Descriptor::calculate(
     case INFINI_DTYPE_F16:
         return _device_info->calculate<256, LogAddExp2Op, half>(_info, workspace, output, inputs, stream);
     case INFINI_DTYPE_BF16:
-        return _device_info->calculate<256, LogAddExp2Op, maca_bfloat16>(_info, workspace, output, inputs, stream);
+        return _device_info->calculate<256, LogAddExp2Op, cuda_bfloat16>(_info, workspace, output, inputs, stream);
     case INFINI_DTYPE_F32:
         return _device_info->calculate<256, LogAddExp2Op, float>(_info, workspace, output, inputs, stream);
     case INFINI_DTYPE_F64:

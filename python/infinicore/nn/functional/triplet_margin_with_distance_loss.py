@@ -1,6 +1,8 @@
-from typing import Optional, Union
+from typing import Optional
+
 from infinicore.lib import _infinicore
 from infinicore.tensor import Tensor
+
 
 def triplet_margin_with_distance_loss(
     anchor: Tensor,
@@ -10,7 +12,7 @@ def triplet_margin_with_distance_loss(
     margin: float = 1.0,
     swap: bool = False,
     reduction: str = "mean",
-    out: Optional[Tensor] = None
+    out: Optional[Tensor] = None,
 ) -> Tensor:
     r"""Calculates the triplet margin loss for a given triplet of tensors.
     The loss is defined as: L(a, p, n) = max(d(a, p) - d(a, n) + margin, 0)
@@ -26,13 +28,13 @@ def triplet_margin_with_distance_loss(
     reduction_map = {"none": 0, "mean": 1, "sum": 2}
     if reduction not in reduction_map:
         raise ValueError(f"Invalid reduction mode: {reduction}")
-    
+
     reduction_val = reduction_map[reduction]
 
     if out is not None:
         if not isinstance(out, Tensor):
             raise ValueError("out must be a Tensor")
-        
+
         _infinicore.triplet_margin_with_distance_loss_(
             out._underlying,
             anchor._underlying,
@@ -40,7 +42,7 @@ def triplet_margin_with_distance_loss(
             negative._underlying,
             margin,
             swap,
-            reduction_val
+            reduction_val,
         )
         return out
 
@@ -50,7 +52,7 @@ def triplet_margin_with_distance_loss(
         negative._underlying,
         margin,
         swap,
-        reduction_val
+        reduction_val,
     )
 
     return Tensor(ret)

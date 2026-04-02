@@ -1,9 +1,6 @@
 #ifndef __LOGADDEXP_CUDA_H__
 #define __LOGADDEXP_CUDA_H__
 
-#include <cuda_runtime.h>
-#include <cuda_fp16.h>
-#include <cuda_bf16.h>
 #include <cmath>
 
 namespace op::logaddexp::cuda {
@@ -21,7 +18,7 @@ __device__ __forceinline__ double logaddexp_func(double a, double b) {
 typedef struct LogAddExpOp {
 public:
     static constexpr size_t num_inputs = 2;
-    
+
     template <typename T>
     __device__ __forceinline__ T operator()(const T &a, const T &b) const {
         if constexpr (std::is_same_v<T, half2>) {

@@ -15,7 +15,7 @@ void LogSoftmax::execute(Tensor output, Tensor input, int64_t dim) {
 // 3. 函数式接口
 Tensor log_softmax(Tensor input, int64_t dim) {
     int64_t ndim = input->shape().size();
-    
+
     // 处理负数维度
     if (dim < 0) {
         dim += ndim;

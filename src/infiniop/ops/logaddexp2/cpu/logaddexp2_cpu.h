@@ -2,8 +2,8 @@
 #define __LOGADDEXP2_CPU_H__
 
 #include "../../../elementwise/cpu/elementwise_cpu.h"
-#include <cmath>
 #include <algorithm>
+#include <cmath>
 
 ELEMENTWISE_DESCRIPTOR(logaddexp2, cpu)
 
@@ -12,7 +12,7 @@ namespace op::logaddexp2::cpu {
 typedef struct LogAddExp2Op {
 public:
     static constexpr size_t num_inputs = 2;
-    
+
     template <typename T>
     T operator()(const T &a, const T &b) const {
         if (a > b) {

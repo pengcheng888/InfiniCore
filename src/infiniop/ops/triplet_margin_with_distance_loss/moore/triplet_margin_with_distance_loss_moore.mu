@@ -1,11 +1,11 @@
-#include "triplet_margin_with_distance_loss_moore.h"
-#include"triplet_margin_with_distance_loss_moore_kernel.h"
 #include "../../../handle.h"
-#include <musa_runtime.h>
-#include <musa_fp16.h>
-#include <musa_bf16.h>
-#include <cstdint>
+#include "triplet_margin_with_distance_loss_moore.h"
+#include "triplet_margin_with_distance_loss_moore_kernel.h"
 #include <algorithm>
+#include <cstdint>
+#include <musa_bf16.h>
+#include <musa_fp16.h>
+#include <musa_runtime.h>
 
 namespace op::triplet_margin_with_distance_loss::moore {
 
@@ -16,13 +16,13 @@ struct Descriptor::Opaque {
 
 template <typename T>
 void launch_kernel(
-    void *output, 
-    void *workspace,      // Workspace pointer (float*)
-    const void *anchor, 
-    const void *positive, 
-    const void *negative, 
-    const TripletMarginWithDistanceLossInfo& info,
-    size_t batch_size, 
+    void *output,
+    void *workspace, // Workspace pointer (float*)
+    const void *anchor,
+    const void *positive,
+    const void *negative,
+    const TripletMarginWithDistanceLossInfo &info,
+    size_t batch_size,
     size_t feature_dim,
     void *stream) {
 
@@ -31,20 +31,26 @@ void launch_kernel(
     auto anchor_ptr = reinterpret_cast<const T *>(anchor);
     auto pos_ptr = reinterpret_cast<const T *>(positive);
     auto neg_ptr = reinterpret_cast<const T *>(negative);
-    
+
     // MUSA 流转换
     auto musa_stream = reinterpret_cast<musaStream_t>(stream);
-    
+
     float margin = info.margin();
     int swap = info.swap();
     int reduction = info.reduction(); // 0:None, 1:Mean, 2:Sum
 
     size_t grid_size = batch_size;
-    
+
     unsigned int threads_per_block = 256;
-    if (feature_dim < 256) threads_per_block = 128;
-    if (feature_dim < 128) threads_per_block = 64;
-    if (feature_dim < 64)  threads_per_block = 32;
+    if (feature_dim < 256) {
+        threads_per_block = 128;
+    }
+    if (feature_dim < 128) {
+        threads_per_block = 64;
+    }
+    if (feature_dim < 64) {
+        threads_per_block = 32;
+    }
 
     // 1. 初始化 Accumulator
     if (reduction != 0) {
@@ -56,39 +62,39 @@ void launch_kernel(
     // 假设 Kernel 定义在 op::triplet_margin_with_distance_loss::moore 命名空间下
     op::triplet_margin_with_distance_loss::moore::triplet_margin_loss_kernel<T>
         <<<grid_size, threads_per_block, 0, musa_stream>>>(
-            out_ptr, 
+            out_ptr,
             ws_ptr, // 传递 workspace
-            anchor_ptr, 
-            pos_ptr, 
-            neg_ptr, 
-            feature_dim, 
-            margin, 
+            anchor_ptr,
+            pos_ptr,
+            neg_ptr,
+            feature_dim,
+            margin,
             swap,
             reduction,
-            batch_size
-        );
+            batch_size);
 
     // 3. 后处理: Cast & Mean
     if (reduction != 0) {
         op::triplet_margin_with_distance_loss::moore::cast_and_scale_kernel<T>
             <<<1, 1, 0, musa_stream>>>(
-                out_ptr, 
-                ws_ptr, 
+                out_ptr,
+                ws_ptr,
                 batch_size,
-                reduction
-            );
+                reduction);
     }
 }
 
-Descriptor::~Descriptor() { 
-    if (_opaque) delete _opaque; 
+Descriptor::~Descriptor() {
+    if (_opaque) {
+        delete _opaque;
+    }
 }
 
 infiniStatus_t Descriptor::create(
     infiniopHandle_t handle, Descriptor **desc_ptr,
-    infiniopTensorDescriptor_t output_desc, 
-    infiniopTensorDescriptor_t anchor_desc, 
-    infiniopTensorDescriptor_t positive_desc, 
+    infiniopTensorDescriptor_t output_desc,
+    infiniopTensorDescriptor_t anchor_desc,
+    infiniopTensorDescriptor_t positive_desc,
     infiniopTensorDescriptor_t negative_desc,
     float margin,
     int swap,
@@ -96,7 +102,9 @@ infiniStatus_t Descriptor::create(
 
     auto info_result = TripletMarginWithDistanceLossInfo::create(
         output_desc, anchor_desc, positive_desc, negative_desc, margin, swap, reduction);
-    if (!info_result) return info_result.status();
+    if (!info_result) {
+        return info_result.status();
+    }
 
     int ndim = anchor_desc->ndim();
     size_t feature_dim = (ndim > 0) ? anchor_desc->shape()[ndim - 1] : 1;
@@ -114,12 +122,12 @@ infiniStatus_t Descriptor::create(
 }
 
 infiniStatus_t Descriptor::calculate(
-    void *workspace, 
-    size_t workspace_size, 
-    void *output, 
-    const void *anchor, 
-    const void *positive, 
-    const void *negative, 
+    void *workspace,
+    size_t workspace_size,
+    void *output,
+    const void *anchor,
+    const void *positive,
+    const void *negative,
     void *stream) const {
 
     auto dtype = _info.dtype();

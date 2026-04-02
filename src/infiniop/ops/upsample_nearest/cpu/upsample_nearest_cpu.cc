@@ -2,8 +2,8 @@
 #include "../../../devices/cpu/common_cpu.h"
 #include <algorithm>
 #include <cmath>
-#include <vector>
 #include <omp.h>
+#include <vector>
 
 #include "../../../../utils/custom_types.h"
 
@@ -25,7 +25,7 @@ infiniStatus_t Descriptor::create(
     infiniopTensorDescriptor_t input_desc) {
 
     auto handle = reinterpret_cast<device::cpu::Handle *>(handle_);
-    
+
     // 创建 Info 对象
     auto result = UpsampleNearestInfo::create(output_desc, input_desc);
     CHECK_RESULT(result);
@@ -33,10 +33,9 @@ infiniStatus_t Descriptor::create(
     *desc_ptr = new Descriptor(
         new Opaque(),
         result.take(),
-        0, 
-        handle->device, 
-        handle->device_id
-    );
+        0,
+        handle->device,
+        handle->device_id);
 
     return INFINI_STATUS_SUCCESS;
 }
@@ -44,11 +43,11 @@ infiniStatus_t Descriptor::create(
 // 辅助函数：预计算维度的索引
 // Nearest 插值只需要知道输出坐标对应的输入整数坐标
 std::vector<int64_t> pre_compute_indices(
-    size_t out_size, 
+    size_t out_size,
     size_t in_size) {
-    
+
     std::vector<int64_t> indices(out_size);
-    
+
     // 计算缩放因子
     float scale = static_cast<float>(in_size) / out_size;
 
@@ -56,7 +55,7 @@ std::vector<int64_t> pre_compute_indices(
         // Nearest 逻辑：通常向下取整
         // src_idx = floor(dst_idx * scale)
         int64_t idx = static_cast<int64_t>(std::floor(i * scale));
-        
+
         // 防止越界 (虽理论上不应发生，但为了稳健性)
         if (idx >= static_cast<int64_t>(in_size)) {
             idx = in_size - 1;
@@ -89,24 +88,24 @@ void calculate_cpu_impl(
 
     size_t n_c = N * C; // 合并 Batch 和 Channel 维度进行并行
 
-    #pragma omp parallel for schedule(static)
-    for (size_t nc = 0; nc < n_c; ++nc) {
+#pragma omp parallel for schedule(static)
+    for (ptrdiff_t nc = 0; nc < (ptrdiff_t)n_c; ++nc) {
         // 当前 channel 的输入输出起始指针
-        const T* src_base = in_ptr + nc * in_h * in_w;
-        T* dst_base = out_ptr + nc * out_h * out_w;
+        const T *src_base = in_ptr + nc * in_h * in_w;
+        T *dst_base = out_ptr + nc * out_h * out_w;
 
         for (size_t h = 0; h < out_h; ++h) {
             // 获取当前输出行对应的输入行索引
             int64_t src_h = h_indices[h];
             // 缓存该行的输入指针
-            const T* src_row = src_base + src_h * in_w;
+            const T *src_row = src_base + src_h * in_w;
             // 缓存该行的输出指针
-            T* dst_row = dst_base + h * out_w;
+            T *dst_row = dst_base + h * out_w;
 
             for (size_t w = 0; w < out_w; ++w) {
                 // 获取当前输出列对应的输入列索引
                 int64_t src_w = w_indices[w];
-                
+
                 // 直接赋值
                 dst_row[w] = src_row[src_w];
             }

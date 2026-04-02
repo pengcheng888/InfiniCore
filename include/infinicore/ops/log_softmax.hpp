@@ -9,7 +9,7 @@ class LogSoftmax {
 public:
     // Schema signature: output(out), input, dim
     using schema = void (*)(Tensor, Tensor, int64_t);
-    
+
     static void execute(Tensor output, Tensor input, int64_t dim);
     static common::OpDispatcher<schema> &dispatcher();
 };

@@ -30,13 +30,12 @@ void calculate(Tensor output, Tensor input, int64_t dim) {
     if (!desc_opt) {
         // 3. 创建描述符
         INFINICORE_CHECK_ERROR(infiniopCreateLogSoftmaxDescriptor(
-            context::getInfiniopHandle(input->device()), 
+            context::getInfiniopHandle(input->device()),
             &desc,
             output->desc(),
             input->desc(),
-            static_cast<int>(dim)
-        ));
-        
+            static_cast<int>(dim)));
+
         cache.put(seed, desc);
     } else {
         desc = *desc_opt;
@@ -48,13 +47,12 @@ void calculate(Tensor output, Tensor input, int64_t dim) {
     std::shared_ptr<Memory> workspace = context::allocateMemory(workspace_size);
 
     INFINICORE_CHECK_ERROR(infiniopLogSoftmax(
-        desc, 
-        workspace->data(), 
+        desc,
+        workspace->data(),
         workspace_size,
-        output->data(), 
-        input->data(), 
-        context::getStream()
-    ));
+        output->data(),
+        input->data(),
+        context::getStream()));
 }
 
 static bool registered = []() {

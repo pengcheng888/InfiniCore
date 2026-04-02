@@ -1,5 +1,5 @@
-#include "infinicore/ops/logaddexp2.hpp"
 #include "../../utils.hpp"
+#include "infinicore/ops/logaddexp2.hpp"
 
 namespace infinicore::op {
 
