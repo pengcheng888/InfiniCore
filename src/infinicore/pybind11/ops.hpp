@@ -22,6 +22,7 @@
 #include "ops/baddbmm.hpp"
 #include "ops/bilinear.hpp"
 #include "ops/binary_cross_entropy_with_logits.hpp"
+#include "ops/broadcast_to.hpp"
 #include "ops/cat.hpp"
 #include "ops/causal_softmax.hpp"
 #include "ops/cdist.hpp"
@@ -37,6 +38,7 @@
 #include "ops/fmod.hpp"
 #include "ops/hardswish.hpp"
 #include "ops/hardtanh.hpp"
+#include "ops/huber_loss.hpp"
 #include "ops/hypot.hpp"
 #include "ops/index_add.hpp"
 #include "ops/index_copy.hpp"
@@ -65,6 +67,8 @@
 #include "ops/silu.hpp"
 #include "ops/silu_and_mul.hpp"
 #include "ops/smooth_l1_loss.hpp"
+#include "ops/softplus.hpp"
+#include "ops/softsign.hpp"
 #include "ops/sum.hpp"
 #include "ops/swiglu.hpp"
 #include "ops/take.hpp"
@@ -107,7 +111,6 @@ inline void bind(py::module &m) {
     bind_causal_softmax(m);
     bind_inner(m);
     bind_random_sample(m);
-    bind_linear(m);
     bind_masked_select(m);
     bind_matmul(m);
     bind_mul(m);
@@ -138,6 +141,11 @@ inline void bind(py::module &m) {
     bind_flipud(m);
     bind_multi_margin_loss(m);
     bind_scatter(m);
+    bind_broadcast_to(m);
+    bind_softplus(m);
+    bind_softsign(m);
+    bind_linear(m);
+    bind_huber_loss(m);
     bind_embedding(m);
     bind_linear_w8a8i8(m);
     bind_silu_and_mul(m);

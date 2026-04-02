@@ -10,7 +10,8 @@ infiniStatus_t Descriptor::create(
     infiniopHandle_t handle_,
     Descriptor **desc_ptr,
     infiniopTensorDescriptor_t out_desc,
-    std::vector<infiniopTensorDescriptor_t> input_desc_vec) {
+    std::vector<infiniopTensorDescriptor_t> input_desc_vec,
+    float beta, float threshold) {
 
     auto handle = reinterpret_cast<device::kunlun::Handle *>(handle_);
     auto dtype = out_desc->dtype();
@@ -24,7 +25,17 @@ infiniStatus_t Descriptor::create(
     CHECK_SAME_SHAPE(y_shape, x_shape);
 
     // create KUNLUN elementwise descriptor
-    CREATE_ELEMENTWISE_KUNLUN_DESCRIPTOR(handle, dtype, out_desc, input_desc_vec)
+    auto info_result = op::elementwise::ElementwiseInfo::create(out_desc, input_desc_vec);
+    if (!info_result) {
+        return info_result.status();
+    };
+    auto info = info_result.take();
+    auto workspace_size = info.getMetaMemSize() + info.getInputSize() * sizeof(void *);
+    auto device_impl_result = op::elementwise::kunlun::DeviceImpl::create(handle->internal());
+    if (!device_impl_result) {
+        return device_impl_result.status();
+    };
+    *desc_ptr = new Descriptor(dtype, std::move(info), std::move(device_impl_result.take()), workspace_size, handle->device, handle->device_id, beta, threshold);
 
     return INFINI_STATUS_SUCCESS;
 }
@@ -42,11 +53,11 @@ infiniStatus_t Descriptor::calculate(
 
     switch (_dtype) {
     case INFINI_DTYPE_F16:
-        return _device_info->calculate<8, kunlun::SoftplusOp, half>(_info, workspace, output, inputs, stream);
+        return _device_info->calculate<8, kunlun::SoftplusOp, half, float, float>(_info, workspace, output, inputs, stream, _beta, _threshold);
     case INFINI_DTYPE_BF16:
-        return _device_info->calculate<8, kunlun::SoftplusOp, bfloat16_t>(_info, workspace, output, inputs, stream);
+        return _device_info->calculate<8, kunlun::SoftplusOp, bfloat16_t, float, float>(_info, workspace, output, inputs, stream, _beta, _threshold);
     case INFINI_DTYPE_F32:
-        return _device_info->calculate<8, kunlun::SoftplusOp, float>(_info, workspace, output, inputs, stream);
+        return _device_info->calculate<8, kunlun::SoftplusOp, float, float, float>(_info, workspace, output, inputs, stream, _beta, _threshold);
     default:
         return INFINI_STATUS_BAD_TENSOR_DTYPE;
     }

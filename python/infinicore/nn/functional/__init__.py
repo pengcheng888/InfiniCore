@@ -9,6 +9,7 @@ from .embedding import embedding
 from .flash_attention import flash_attention
 from .hardswish import hardswish
 from .hardtanh import hardtanh
+from .huber_loss import huber_loss
 from .linear import linear
 from .linear_w8a8i8 import linear_w8a8i8
 from .multi_margin_loss import multi_margin_loss
@@ -18,6 +19,8 @@ from .rope import RopeAlgo, rope
 from .silu import silu
 from .silu_and_mul import silu_and_mul
 from .smooth_l1_loss import smooth_l1_loss
+from .softplus import softplus
+from .softsign import softsign
 from .swiglu import swiglu
 from .tanhshrink import tanhshrink
 from .triplet_margin_loss import triplet_margin_loss
@@ -55,4 +58,7 @@ __all__ = [
     "adaptive_avg_pool3d",
     "tanhshrink",
     "multi_margin_loss",
+    "softplus",
+    "softsign",
+    "huber_loss",
 ]
