@@ -83,6 +83,8 @@ from infinicore.ops.kthvalue import kthvalue
 from infinicore.ops.kv_caching import kv_caching
 from infinicore.ops.ldexp import ldexp
 from infinicore.ops.lerp import lerp
+from infinicore.ops.logaddexp import logaddexp
+from infinicore.ops.logaddexp2 import logaddexp2
 from infinicore.ops.masked_select import masked_select
 from infinicore.ops.matmul import matmul
 from infinicore.ops.mha_kvcache import mha_kvcache
@@ -183,6 +185,8 @@ __all__ = [
     "cat",
     "inner",
     "masked_select",
+    "logaddexp",
+    "logaddexp2",
     "matmul",
     "equal",
     "mul",

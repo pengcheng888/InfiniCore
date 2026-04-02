@@ -72,36 +72,3 @@ def upsample_bilinear(
     return Tensor(
         _infinicore.upsample_bilinear(input._underlying, output_size, align_corners)
     )
-
-
-def interpolate(
-    input: Tensor,
-    size: Optional[Union[int, Sequence[int]]] = None,
-    scale_factor: Optional[Union[float, Sequence[float]]] = None,
-    mode: str = "nearest",
-    align_corners: Optional[bool] = None,
-    recompute_scale_factor: Optional[bool] = None,
-) -> Tensor:
-    r"""
-    Down/up samples the input to either the given :attr:`size` or the given
-    :attr:`scale_factor`
-
-    Args:
-        input (Tensor): the input tensor
-        size (int or Tuple[int] or Tuple[int, int]): output spatial size.
-        scale_factor (float or Tuple[float]): multiplier for spatial size.
-        mode (str): algorithm used for upsampling:
-            'nearest' | 'linear' | 'bilinear' | 'bicubic' | 'trilinear' | 'area'
-        align_corners (bool, optional): Geometrically, we consider the pixels of the
-            input and output as squares rather than points.
-    """
-
-    # 分发逻辑
-    if mode == "bilinear":
-        # bilinear 模式下，align_corners 默认为 False (与 PyTorch 行为保持一致)
-        if align_corners is None:
-            align_corners = False
-        return upsample_bilinear(input, size, scale_factor, align_corners)
-    raise NotImplementedError(
-        f"Interpolation mode '{mode}' is not currently supported."
-    )

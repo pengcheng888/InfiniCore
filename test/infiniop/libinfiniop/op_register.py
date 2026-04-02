@@ -450,6 +450,7 @@ def logsoftmax_(lib):
         POINTER(infiniopOperatorDescriptor_t),
         infiniopTensorDescriptor_t,
         infiniopTensorDescriptor_t,
+        c_int32,
     ]
 
     lib.infiniopGetLogSoftmaxWorkspaceSize.restype = c_int32
