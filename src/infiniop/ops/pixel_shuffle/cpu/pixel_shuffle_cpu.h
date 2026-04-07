@@ -1,8 +1,8 @@
 #ifndef __PIXEL_SHUFFLE_CPU_H__
 #define __PIXEL_SHUFFLE_CPU_H__
 
-#include "../../../operator.h"
 #include "../../../devices/cpu/common_cpu.h"
+#include "../../../operator.h"
 #include <vector>
 
 namespace op::pixel_shuffle::cpu {

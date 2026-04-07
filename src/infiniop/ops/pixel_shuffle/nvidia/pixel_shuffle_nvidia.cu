@@ -1,8 +1,8 @@
-#include "pixel_shuffle_nvidia.cuh"
+#include "../../../devices/nvidia/nvidia_common.cuh"
+#include "../../../devices/nvidia/nvidia_kernel_common.cuh"
+#include "../../../tensor.h"
 #include "../cuda/kernel.cuh"
-#include "../../../utils.h"
-#include <cuda_bf16.h>
-#include <cuda_fp16.h>
+#include "pixel_shuffle_nvidia.cuh"
 #include <array>
 
 namespace op::pixel_shuffle::nvidia {

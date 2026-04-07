@@ -1753,3 +1753,165 @@ def silu_and_mul(lib):
     lib.infiniopDestroySiluAndMulDescriptor.argtypes = [
         infiniopOperatorDescriptor_t,
     ]
+
+
+@OpRegister.operator
+def erf(lib):
+    lib.infiniopCreateErfDescriptor.restype = c_int32
+    lib.infiniopCreateErfDescriptor.argtypes = [
+        infiniopHandle_t,
+        POINTER(infiniopOperatorDescriptor_t),
+        infiniopTensorDescriptor_t,
+        infiniopTensorDescriptor_t,
+    ]
+
+    lib.infiniopGetErfWorkspaceSize.restype = c_int32
+    lib.infiniopGetErfWorkspaceSize.argtypes = [
+        infiniopOperatorDescriptor_t,
+        POINTER(c_size_t),
+    ]
+
+    lib.infiniopErf.restype = c_int32
+    lib.infiniopErf.argtypes = [
+        infiniopOperatorDescriptor_t,
+        c_void_p,
+        c_size_t,
+        c_void_p,
+        c_void_p,
+        c_void_p,
+    ]
+
+    lib.infiniopDestroyErfDescriptor.restype = c_int32
+    lib.infiniopDestroyErfDescriptor.argtypes = [
+        infiniopOperatorDescriptor_t,
+    ]
+
+
+@OpRegister.operator
+def erfc(lib):
+    lib.infiniopCreateErfcDescriptor.restype = c_int32
+    lib.infiniopCreateErfcDescriptor.argtypes = [
+        infiniopHandle_t,
+        POINTER(infiniopOperatorDescriptor_t),
+        infiniopTensorDescriptor_t,
+        infiniopTensorDescriptor_t,
+    ]
+
+    lib.infiniopGetErfcWorkspaceSize.restype = c_int32
+    lib.infiniopGetErfcWorkspaceSize.argtypes = [
+        infiniopOperatorDescriptor_t,
+        POINTER(c_size_t),
+    ]
+
+    lib.infiniopErfc.restype = c_int32
+    lib.infiniopErfc.argtypes = [
+        infiniopOperatorDescriptor_t,
+        c_void_p,
+        c_size_t,
+        c_void_p,
+        c_void_p,
+        c_void_p,
+    ]
+
+    lib.infiniopDestroyErfcDescriptor.restype = c_int32
+    lib.infiniopDestroyErfcDescriptor.argtypes = [
+        infiniopOperatorDescriptor_t,
+    ]
+
+
+@OpRegister.operator
+def erfinv(lib):
+    lib.infiniopCreateErfinvDescriptor.restype = c_int32
+    lib.infiniopCreateErfinvDescriptor.argtypes = [
+        infiniopHandle_t,
+        POINTER(infiniopOperatorDescriptor_t),
+        infiniopTensorDescriptor_t,
+        infiniopTensorDescriptor_t,
+    ]
+
+    lib.infiniopGetErfinvWorkspaceSize.restype = c_int32
+    lib.infiniopGetErfinvWorkspaceSize.argtypes = [
+        infiniopOperatorDescriptor_t,
+        POINTER(c_size_t),
+    ]
+
+    lib.infiniopErfinv.restype = c_int32
+    lib.infiniopErfinv.argtypes = [
+        infiniopOperatorDescriptor_t,
+        c_void_p,
+        c_size_t,
+        c_void_p,
+        c_void_p,
+        c_void_p,
+    ]
+
+    lib.infiniopDestroyErfinvDescriptor.restype = c_int32
+    lib.infiniopDestroyErfinvDescriptor.argtypes = [
+        infiniopOperatorDescriptor_t,
+    ]
+
+
+@OpRegister.operator
+def matrix_power(lib):
+    lib.infiniopCreateMatrixPowerDescriptor.restype = c_int32
+    lib.infiniopCreateMatrixPowerDescriptor.argtypes = [
+        infiniopHandle_t,
+        POINTER(infiniopOperatorDescriptor_t),
+        infiniopTensorDescriptor_t,
+        infiniopTensorDescriptor_t,
+        c_int32,
+    ]
+
+    lib.infiniopGetMatrixPowerWorkspaceSize.restype = c_int32
+    lib.infiniopGetMatrixPowerWorkspaceSize.argtypes = [
+        infiniopOperatorDescriptor_t,
+        POINTER(c_size_t),
+    ]
+
+    lib.infiniopMatrixPower.restype = c_int32
+    lib.infiniopMatrixPower.argtypes = [
+        infiniopOperatorDescriptor_t,
+        c_void_p,
+        c_size_t,
+        c_void_p,
+        c_void_p,
+        c_void_p,
+    ]
+
+    lib.infiniopDestroyMatrixPowerDescriptor.restype = c_int32
+    lib.infiniopDestroyMatrixPowerDescriptor.argtypes = [
+        infiniopOperatorDescriptor_t,
+    ]
+
+
+@OpRegister.operator
+def pixel_shuffle(lib):
+    lib.infiniopCreatePixelShuffleDescriptor.restype = c_int32
+    lib.infiniopCreatePixelShuffleDescriptor.argtypes = [
+        infiniopHandle_t,
+        POINTER(infiniopOperatorDescriptor_t),
+        infiniopTensorDescriptor_t,
+        infiniopTensorDescriptor_t,
+        c_int32,
+    ]
+
+    lib.infiniopGetPixelShuffleWorkspaceSize.restype = c_int32
+    lib.infiniopGetPixelShuffleWorkspaceSize.argtypes = [
+        infiniopOperatorDescriptor_t,
+        POINTER(c_size_t),
+    ]
+
+    lib.infiniopPixelShuffle.restype = c_int32
+    lib.infiniopPixelShuffle.argtypes = [
+        infiniopOperatorDescriptor_t,
+        c_void_p,
+        c_size_t,
+        c_void_p,
+        c_void_p,
+        c_void_p,
+    ]
+
+    lib.infiniopDestroyPixelShuffleDescriptor.restype = c_int32
+    lib.infiniopDestroyPixelShuffleDescriptor.argtypes = [
+        infiniopOperatorDescriptor_t,
+    ]

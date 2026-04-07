@@ -2,7 +2,6 @@
 #define __PIXEL_SHUFFLE_MOORE_H__
 
 #include "../../../operator.h"
-#include "../../../devices/moore/moore_common.h"
 
 namespace op::pixel_shuffle::moore {
 

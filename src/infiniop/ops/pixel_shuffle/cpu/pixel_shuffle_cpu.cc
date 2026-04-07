@@ -1,5 +1,5 @@
 #include "pixel_shuffle_cpu.h"
-#include "../../../utils.h"
+#include "../../../tensor.h"
 
 namespace op::pixel_shuffle::cpu {
 

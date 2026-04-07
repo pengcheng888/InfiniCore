@@ -15,7 +15,7 @@
 #include "moore/erfinv_moore.h"
 #endif
 
-__C __export infiniStatus_t infiniopCreateErfinvDescriptor(
+__INFINI_C __export infiniStatus_t infiniopCreateErfinvDescriptor(
     infiniopHandle_t handle,
     infiniopErfinvDescriptor_t *desc_ptr,
     infiniopTensorDescriptor_t y_desc,
@@ -23,7 +23,7 @@ __C __export infiniStatus_t infiniopCreateErfinvDescriptor(
 
 #define CREATE(CASE, NAMESPACE)                                               \
     case CASE:                                                                \
-        return op::erfinv::NAMESPACE::Descriptor::create(                    \
+        return op::erfinv::NAMESPACE::Descriptor::create(                     \
             handle,                                                           \
             reinterpret_cast<op::erfinv::NAMESPACE::Descriptor **>(desc_ptr), \
             y_desc,                                                           \
@@ -54,10 +54,10 @@ __C __export infiniStatus_t infiniopCreateErfinvDescriptor(
 #undef CREATE
 }
 
-__C __export infiniStatus_t infiniopGetErfinvWorkspaceSize(infiniopErfinvDescriptor_t desc, size_t *size) {
+__INFINI_C __export infiniStatus_t infiniopGetErfinvWorkspaceSize(infiniopErfinvDescriptor_t desc, size_t *size) {
 
-#define GET(CASE, NAMESPACE)                                                                   \
-    case CASE:                                                                                 \
+#define GET(CASE, NAMESPACE)                                                                  \
+    case CASE:                                                                                \
         *size = reinterpret_cast<op::erfinv::NAMESPACE::Descriptor *>(desc)->workspaceSize(); \
         return INFINI_STATUS_SUCCESS;
 
@@ -85,7 +85,7 @@ __C __export infiniStatus_t infiniopGetErfinvWorkspaceSize(infiniopErfinvDescrip
     return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
 
-__C __export infiniStatus_t infiniopErfinv(
+__INFINI_C __export infiniStatus_t infiniopErfinv(
     infiniopErfinvDescriptor_t desc,
     void *workspace,
     size_t workspace_size,
@@ -123,7 +123,7 @@ __C __export infiniStatus_t infiniopErfinv(
 #undef CALCULATE
 }
 
-__C __export infiniStatus_t
+__INFINI_C __export infiniStatus_t
 infiniopDestroyErfinvDescriptor(infiniopErfinvDescriptor_t desc) {
 
 #define DELETE(CASE, NAMESPACE)                                                   \

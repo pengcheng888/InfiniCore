@@ -1,9 +1,7 @@
-#include "matrix_power_nvidia.cuh"
-#include "../../../utils.h"
 #include "../../../devices/nvidia/nvidia_handle.cuh"
 #include "../../../devices/nvidia/nvidia_kernel_common.cuh"
-#include <cuda_runtime.h>
-#include <cublas_v2.h>
+#include "../../../tensor.h"
+#include "matrix_power_nvidia.cuh"
 #include <limits>
 #include <utility>
 

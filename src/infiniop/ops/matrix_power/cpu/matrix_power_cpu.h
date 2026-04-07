@@ -1,15 +1,15 @@
 #ifndef __MATRIX_POWER_CPU_H__
 #define __MATRIX_POWER_CPU_H__
 
-#include "../../../operator.h"
 #include "../../../devices/cpu/common_cpu.h"
+#include "../../../operator.h"
 #include <vector>
 
 namespace op::matrix_power::cpu {
 
 struct MatrixPowerInfo {
-    size_t matrix_size;  // N x N matrix
-    size_t n;            // Power
+    size_t matrix_size; // N x N matrix
+    size_t n;           // Power
     size_t input_size;
     size_t output_size;
 

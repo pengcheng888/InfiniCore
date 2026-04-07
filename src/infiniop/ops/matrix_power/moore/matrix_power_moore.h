@@ -2,7 +2,6 @@
 #define __MATRIX_POWER_MOORE_H__
 
 #include "../../../operator.h"
-#include "../../../devices/moore/moore_common.h"
 
 namespace op::matrix_power::moore {
 

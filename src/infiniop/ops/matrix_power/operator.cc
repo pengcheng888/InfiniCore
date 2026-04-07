@@ -15,20 +15,20 @@
 #include "moore/matrix_power_moore.h"
 #endif
 
-__C __export infiniStatus_t infiniopCreateMatrixPowerDescriptor(
+__INFINI_C __export infiniStatus_t infiniopCreateMatrixPowerDescriptor(
     infiniopHandle_t handle,
     infiniopMatrixPowerDescriptor_t *desc_ptr,
     infiniopTensorDescriptor_t y_desc,
     infiniopTensorDescriptor_t x_desc,
     int n) {
 
-#define CREATE(CASE, NAMESPACE)                                                              \
-    case CASE:                                                                               \
-        return op::matrix_power::NAMESPACE::Descriptor::create(                              \
-            handle,                                                                          \
-            reinterpret_cast<op::matrix_power::NAMESPACE::Descriptor **>(desc_ptr),         \
-            y_desc,                                                                          \
-            x_desc,                                                                          \
+#define CREATE(CASE, NAMESPACE)                                                     \
+    case CASE:                                                                      \
+        return op::matrix_power::NAMESPACE::Descriptor::create(                     \
+            handle,                                                                 \
+            reinterpret_cast<op::matrix_power::NAMESPACE::Descriptor **>(desc_ptr), \
+            y_desc,                                                                 \
+            x_desc,                                                                 \
             n)
 
     switch (handle->device) {
@@ -56,11 +56,11 @@ __C __export infiniStatus_t infiniopCreateMatrixPowerDescriptor(
 #undef CREATE
 }
 
-__C __export infiniStatus_t infiniopGetMatrixPowerWorkspaceSize(infiniopMatrixPowerDescriptor_t desc, size_t *size) {
+__INFINI_C __export infiniStatus_t infiniopGetMatrixPowerWorkspaceSize(infiniopMatrixPowerDescriptor_t desc, size_t *size) {
 
-#define GET(CASE, NAMESPACE)                                                                              \
-    case CASE:                                                                                            \
-        *size = reinterpret_cast<op::matrix_power::NAMESPACE::Descriptor *>(desc)->workspaceSize();     \
+#define GET(CASE, NAMESPACE)                                                                        \
+    case CASE:                                                                                      \
+        *size = reinterpret_cast<op::matrix_power::NAMESPACE::Descriptor *>(desc)->workspaceSize(); \
         return INFINI_STATUS_SUCCESS;
 
     switch (desc->device_type) {
@@ -87,7 +87,7 @@ __C __export infiniStatus_t infiniopGetMatrixPowerWorkspaceSize(infiniopMatrixPo
     return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
 
-__C __export infiniStatus_t infiniopMatrixPower(
+__INFINI_C __export infiniStatus_t infiniopMatrixPower(
     infiniopMatrixPowerDescriptor_t desc,
     void *workspace,
     size_t workspace_size,
@@ -95,9 +95,9 @@ __C __export infiniStatus_t infiniopMatrixPower(
     const void *x,
     void *stream) {
 
-#define CALCULATE(CASE, NAMESPACE)                                                              \
-    case CASE:                                                                                  \
-        return reinterpret_cast<const op::matrix_power::NAMESPACE::Descriptor *>(desc)         \
+#define CALCULATE(CASE, NAMESPACE)                                                     \
+    case CASE:                                                                         \
+        return reinterpret_cast<const op::matrix_power::NAMESPACE::Descriptor *>(desc) \
             ->calculate(workspace, workspace_size, y, x, stream)
 
     switch (desc->device_type) {
@@ -125,12 +125,12 @@ __C __export infiniStatus_t infiniopMatrixPower(
 #undef CALCULATE
 }
 
-__C __export infiniStatus_t
+__INFINI_C __export infiniStatus_t
 infiniopDestroyMatrixPowerDescriptor(infiniopMatrixPowerDescriptor_t desc) {
 
-#define DELETE(CASE, NAMESPACE)                                                                  \
-    case CASE:                                                                                   \
-        delete reinterpret_cast<const op::matrix_power::NAMESPACE::Descriptor *>(desc);        \
+#define DELETE(CASE, NAMESPACE)                                                         \
+    case CASE:                                                                          \
+        delete reinterpret_cast<const op::matrix_power::NAMESPACE::Descriptor *>(desc); \
         return INFINI_STATUS_SUCCESS;
 
     switch (desc->device_type) {

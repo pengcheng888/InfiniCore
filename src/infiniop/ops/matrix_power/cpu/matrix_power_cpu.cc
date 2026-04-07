@@ -1,7 +1,7 @@
 #include "matrix_power_cpu.h"
-#include "../../../utils.h"
-#include <cstring>
+#include "../../../tensor.h"
 #include <algorithm>
+#include <cstring>
 
 namespace op::matrix_power::cpu {
 

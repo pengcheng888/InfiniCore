@@ -15,18 +15,18 @@
 #include "moore/erfc_moore.h"
 #endif
 
-__C __export infiniStatus_t infiniopCreateErfcDescriptor(
+__INFINI_C __export infiniStatus_t infiniopCreateErfcDescriptor(
     infiniopHandle_t handle,
     infiniopErfcDescriptor_t *desc_ptr,
     infiniopTensorDescriptor_t y_desc,
     infiniopTensorDescriptor_t x_desc) {
 
-#define CREATE(CASE, NAMESPACE)                                              \
-    case CASE:                                                               \
+#define CREATE(CASE, NAMESPACE)                                             \
+    case CASE:                                                              \
         return op::erfc::NAMESPACE::Descriptor::create(                     \
-            handle,                                                          \
+            handle,                                                         \
             reinterpret_cast<op::erfc::NAMESPACE::Descriptor **>(desc_ptr), \
-            y_desc,                                                          \
+            y_desc,                                                         \
             {x_desc})
 
     switch (handle->device) {
@@ -54,10 +54,10 @@ __C __export infiniStatus_t infiniopCreateErfcDescriptor(
 #undef CREATE
 }
 
-__C __export infiniStatus_t infiniopGetErfcWorkspaceSize(infiniopErfcDescriptor_t desc, size_t *size) {
+__INFINI_C __export infiniStatus_t infiniopGetErfcWorkspaceSize(infiniopErfcDescriptor_t desc, size_t *size) {
 
-#define GET(CASE, NAMESPACE)                                                                 \
-    case CASE:                                                                               \
+#define GET(CASE, NAMESPACE)                                                                \
+    case CASE:                                                                              \
         *size = reinterpret_cast<op::erfc::NAMESPACE::Descriptor *>(desc)->workspaceSize(); \
         return INFINI_STATUS_SUCCESS;
 
@@ -85,7 +85,7 @@ __C __export infiniStatus_t infiniopGetErfcWorkspaceSize(infiniopErfcDescriptor_
     return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
 
-__C __export infiniStatus_t infiniopErfc(
+__INFINI_C __export infiniStatus_t infiniopErfc(
     infiniopErfcDescriptor_t desc,
     void *workspace,
     size_t workspace_size,
@@ -93,9 +93,9 @@ __C __export infiniStatus_t infiniopErfc(
     const void *x,
     void *stream) {
 
-#define CALCULATE(CASE, NAMESPACE)                                              \
-    case CASE:                                                                  \
-        return reinterpret_cast<const op::erfc::NAMESPACE::Descriptor *>(desc)  \
+#define CALCULATE(CASE, NAMESPACE)                                             \
+    case CASE:                                                                 \
+        return reinterpret_cast<const op::erfc::NAMESPACE::Descriptor *>(desc) \
             ->calculate(workspace, workspace_size, y, {x}, stream)
 
     switch (desc->device_type) {
@@ -123,11 +123,11 @@ __C __export infiniStatus_t infiniopErfc(
 #undef CALCULATE
 }
 
-__C __export infiniStatus_t
+__INFINI_C __export infiniStatus_t
 infiniopDestroyErfcDescriptor(infiniopErfcDescriptor_t desc) {
 
-#define DELETE(CASE, NAMESPACE)                                                  \
-    case CASE:                                                                   \
+#define DELETE(CASE, NAMESPACE)                                                 \
+    case CASE:                                                                  \
         delete reinterpret_cast<const op::erfc::NAMESPACE::Descriptor *>(desc); \
         return INFINI_STATUS_SUCCESS;
 

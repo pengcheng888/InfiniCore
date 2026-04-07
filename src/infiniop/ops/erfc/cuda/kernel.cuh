@@ -1,8 +1,5 @@
 #pragma once
 #include <cmath>
-#include <cuda_bf16.h>
-#include <cuda_fp16.h>
-#include <cuda_runtime.h>
 #include <type_traits>
 
 namespace op::cuda {
@@ -15,7 +12,7 @@ struct ErfcOp {
         if constexpr (std::is_same_v<T, float>) {
             return erfcf(x);
         } else if constexpr (std::is_same_v<T, double>) {
-            return erfc(x);
+            return ::erfc(x);
         } else {
             // For F16/BF16: promote to float, compute, then cast back
             float xf;

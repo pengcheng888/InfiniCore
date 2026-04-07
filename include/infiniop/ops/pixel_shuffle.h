@@ -5,21 +5,21 @@
 
 typedef struct InfiniopDescriptor *infiniopPixelShuffleDescriptor_t;
 
-__C __export infiniStatus_t infiniopCreatePixelShuffleDescriptor(infiniopHandle_t handle,
-                                                                 infiniopPixelShuffleDescriptor_t *desc_ptr,
-                                                                 infiniopTensorDescriptor_t y,
-                                                                 infiniopTensorDescriptor_t x,
-                                                                 int upscale_factor);
+__INFINI_C __export infiniStatus_t infiniopCreatePixelShuffleDescriptor(infiniopHandle_t handle,
+                                                                        infiniopPixelShuffleDescriptor_t *desc_ptr,
+                                                                        infiniopTensorDescriptor_t y,
+                                                                        infiniopTensorDescriptor_t x,
+                                                                        int upscale_factor);
 
-__C __export infiniStatus_t infiniopGetPixelShuffleWorkspaceSize(infiniopPixelShuffleDescriptor_t desc, size_t *size);
+__INFINI_C __export infiniStatus_t infiniopGetPixelShuffleWorkspaceSize(infiniopPixelShuffleDescriptor_t desc, size_t *size);
 
-__C __export infiniStatus_t infiniopPixelShuffle(infiniopPixelShuffleDescriptor_t desc,
-                                                 void *workspace,
-                                                 size_t workspace_size,
-                                                 void *y,
-                                                 const void *x,
-                                                 void *stream);
+__INFINI_C __export infiniStatus_t infiniopPixelShuffle(infiniopPixelShuffleDescriptor_t desc,
+                                                        void *workspace,
+                                                        size_t workspace_size,
+                                                        void *y,
+                                                        const void *x,
+                                                        void *stream);
 
-__C __export infiniStatus_t infiniopDestroyPixelShuffleDescriptor(infiniopPixelShuffleDescriptor_t desc);
+__INFINI_C __export infiniStatus_t infiniopDestroyPixelShuffleDescriptor(infiniopPixelShuffleDescriptor_t desc);
 
 #endif

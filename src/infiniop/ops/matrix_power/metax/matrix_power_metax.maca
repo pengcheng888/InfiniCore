@@ -1,9 +1,9 @@
-#include "matrix_power_metax.h"
-#include "../../../utils.h"
+#include "../../../devices/metax/metax_common.h"
 #include "../../../devices/metax/metax_kernel_common.h"
-#include <cuda_runtime.h>
-#include <vector>
+#include "../../../tensor.h"
+#include "matrix_power_metax.h"
 #include <cstring>
+#include <vector>
 
 namespace op::matrix_power::metax {
 

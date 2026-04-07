@@ -1,9 +1,9 @@
-#include "matrix_power_moore.h"
-#include "../../../utils.h"
+#include "../../../devices/moore/moore_common.h"
 #include "../../../devices/moore/moore_kernel_common.h"
-#include <cuda_runtime.h>
-#include <vector>
+#include "../../../tensor.h"
+#include "matrix_power_moore.h"
 #include <cstring>
+#include <vector>
 
 namespace op::matrix_power::moore {
 

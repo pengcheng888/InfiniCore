@@ -1,6 +1,5 @@
 #pragma once
 #include <cstddef>
-#include <cuda_runtime.h>
 #include <type_traits>
 
 namespace op::cuda {
@@ -18,7 +17,9 @@ __global__ void pixel_shuffle_kernel(
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
     size_t total = batch * out_channels * height * width;
 
-    if (idx >= total) return;
+    if (idx >= total) {
+        return;
+    }
 
     size_t n = idx / (out_channels * height * width);
     size_t rem = idx % (out_channels * height * width);
@@ -61,7 +62,9 @@ __global__ void pixel_shuffle_kernel_strided(
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x;
     size_t total = batch * out_channels * out_height * out_width;
 
-    if (idx >= total) return;
+    if (idx >= total) {
+        return;
+    }
 
     const size_t spatial = out_height * out_width;
     const size_t chw = out_channels * spatial;
@@ -80,14 +83,8 @@ __global__ void pixel_shuffle_kernel_strided(
     const size_t j = ow % upscale;
     const size_t in_c = c * upscale * upscale + i * upscale + j;
 
-    const ptrdiff_t in_offset = static_cast<ptrdiff_t>(n) * x_stride0 +
-                                static_cast<ptrdiff_t>(in_c) * x_stride1 +
-                                static_cast<ptrdiff_t>(ih) * x_stride2 +
-                                static_cast<ptrdiff_t>(iw) * x_stride3;
-    const ptrdiff_t out_offset = static_cast<ptrdiff_t>(n) * y_stride0 +
-                                 static_cast<ptrdiff_t>(c) * y_stride1 +
-                                 static_cast<ptrdiff_t>(oh) * y_stride2 +
-                                 static_cast<ptrdiff_t>(ow) * y_stride3;
+    const ptrdiff_t in_offset = static_cast<ptrdiff_t>(n) * x_stride0 + static_cast<ptrdiff_t>(in_c) * x_stride1 + static_cast<ptrdiff_t>(ih) * x_stride2 + static_cast<ptrdiff_t>(iw) * x_stride3;
+    const ptrdiff_t out_offset = static_cast<ptrdiff_t>(n) * y_stride0 + static_cast<ptrdiff_t>(c) * y_stride1 + static_cast<ptrdiff_t>(oh) * y_stride2 + static_cast<ptrdiff_t>(ow) * y_stride3;
 
     output[out_offset] = input[in_offset];
 }

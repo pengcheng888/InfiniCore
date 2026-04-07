@@ -15,20 +15,20 @@
 #include "moore/pixel_shuffle_moore.h"
 #endif
 
-__C __export infiniStatus_t infiniopCreatePixelShuffleDescriptor(
+__INFINI_C __export infiniStatus_t infiniopCreatePixelShuffleDescriptor(
     infiniopHandle_t handle,
     infiniopPixelShuffleDescriptor_t *desc_ptr,
     infiniopTensorDescriptor_t y_desc,
     infiniopTensorDescriptor_t x_desc,
     int upscale_factor) {
 
-#define CREATE(CASE, NAMESPACE)                                                          \
-    case CASE:                                                                           \
-        return op::pixel_shuffle::NAMESPACE::Descriptor::create(                        \
-            handle,                                                                      \
-            reinterpret_cast<op::pixel_shuffle::NAMESPACE::Descriptor **>(desc_ptr),   \
-            y_desc,                                                                      \
-            x_desc,                                                                      \
+#define CREATE(CASE, NAMESPACE)                                                      \
+    case CASE:                                                                       \
+        return op::pixel_shuffle::NAMESPACE::Descriptor::create(                     \
+            handle,                                                                  \
+            reinterpret_cast<op::pixel_shuffle::NAMESPACE::Descriptor **>(desc_ptr), \
+            y_desc,                                                                  \
+            x_desc,                                                                  \
             upscale_factor)
 
     switch (handle->device) {
@@ -56,10 +56,10 @@ __C __export infiniStatus_t infiniopCreatePixelShuffleDescriptor(
 #undef CREATE
 }
 
-__C __export infiniStatus_t infiniopGetPixelShuffleWorkspaceSize(infiniopPixelShuffleDescriptor_t desc, size_t *size) {
+__INFINI_C __export infiniStatus_t infiniopGetPixelShuffleWorkspaceSize(infiniopPixelShuffleDescriptor_t desc, size_t *size) {
 
-#define GET(CASE, NAMESPACE)                                                                          \
-    case CASE:                                                                                        \
+#define GET(CASE, NAMESPACE)                                                                         \
+    case CASE:                                                                                       \
         *size = reinterpret_cast<op::pixel_shuffle::NAMESPACE::Descriptor *>(desc)->workspaceSize(); \
         return INFINI_STATUS_SUCCESS;
 
@@ -87,7 +87,7 @@ __C __export infiniStatus_t infiniopGetPixelShuffleWorkspaceSize(infiniopPixelSh
     return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
 
-__C __export infiniStatus_t infiniopPixelShuffle(
+__INFINI_C __export infiniStatus_t infiniopPixelShuffle(
     infiniopPixelShuffleDescriptor_t desc,
     void *workspace,
     size_t workspace_size,
@@ -95,9 +95,9 @@ __C __export infiniStatus_t infiniopPixelShuffle(
     const void *x,
     void *stream) {
 
-#define CALCULATE(CASE, NAMESPACE)                                                          \
-    case CASE:                                                                              \
-        return reinterpret_cast<const op::pixel_shuffle::NAMESPACE::Descriptor *>(desc)   \
+#define CALCULATE(CASE, NAMESPACE)                                                      \
+    case CASE:                                                                          \
+        return reinterpret_cast<const op::pixel_shuffle::NAMESPACE::Descriptor *>(desc) \
             ->calculate(workspace, workspace_size, y, x, stream)
 
     switch (desc->device_type) {
@@ -125,12 +125,12 @@ __C __export infiniStatus_t infiniopPixelShuffle(
 #undef CALCULATE
 }
 
-__C __export infiniStatus_t
+__INFINI_C __export infiniStatus_t
 infiniopDestroyPixelShuffleDescriptor(infiniopPixelShuffleDescriptor_t desc) {
 
-#define DELETE(CASE, NAMESPACE)                                                              \
-    case CASE:                                                                               \
-        delete reinterpret_cast<const op::pixel_shuffle::NAMESPACE::Descriptor *>(desc);   \
+#define DELETE(CASE, NAMESPACE)                                                          \
+    case CASE:                                                                           \
+        delete reinterpret_cast<const op::pixel_shuffle::NAMESPACE::Descriptor *>(desc); \
         return INFINI_STATUS_SUCCESS;
 
     switch (desc->device_type) {

@@ -2,7 +2,6 @@
 #define __MATRIX_POWER_METAX_H__
 
 #include "../../../operator.h"
-#include "../../../devices/metax/metax_common.h"
 
 namespace op::matrix_power::metax {
 

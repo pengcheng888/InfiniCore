@@ -2,7 +2,7 @@
 
 #include "../../../elementwise/moore/elementwise_moore.h"
 
-#include "erfc_moore_kernel.h"
+#include "../cuda/kernel.cuh"
 
 namespace op::erfc::moore {
 
@@ -43,13 +43,13 @@ infiniStatus_t Descriptor::calculate(
 
     switch (_dtype) {
     case INFINI_DTYPE_BF16:
-        return _device_info->calculate<256, moore::ErfcOp, cuda_bfloat16>(_info, workspace, output, inputs, stream);
+        return _device_info->calculate<256, cuda::ErfcOp, cuda_bfloat16>(_info, workspace, output, inputs, stream);
     case INFINI_DTYPE_F16:
-        return _device_info->calculate<256, moore::ErfcOp, half>(_info, workspace, output, inputs, stream);
+        return _device_info->calculate<256, cuda::ErfcOp, half>(_info, workspace, output, inputs, stream);
     case INFINI_DTYPE_F32:
-        return _device_info->calculate<256, moore::ErfcOp, float>(_info, workspace, output, inputs, stream);
+        return _device_info->calculate<256, cuda::ErfcOp, float>(_info, workspace, output, inputs, stream);
     case INFINI_DTYPE_F64:
-        return _device_info->calculate<256, moore::ErfcOp, double>(_info, workspace, output, inputs, stream);
+        return _device_info->calculate<256, cuda::ErfcOp, double>(_info, workspace, output, inputs, stream);
     default:
         return INFINI_STATUS_BAD_TENSOR_DTYPE;
     }

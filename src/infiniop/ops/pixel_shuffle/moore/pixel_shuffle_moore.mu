@@ -1,9 +1,8 @@
-#include "pixel_shuffle_moore.h"
-#include "../cuda/kernel.cuh"
-#include "../../../utils.h"
+#include "../../../devices/moore/moore_common.h"
 #include "../../../devices/moore/moore_kernel_common.h"
-#include <cuda_bf16.h>
-#include <cuda_fp16.h>
+#include "../../../tensor.h"
+#include "../cuda/kernel.cuh"
+#include "pixel_shuffle_moore.h"
 
 namespace op::pixel_shuffle::moore {
 

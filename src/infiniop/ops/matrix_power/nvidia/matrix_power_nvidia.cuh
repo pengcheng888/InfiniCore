@@ -2,7 +2,6 @@
 #define __MATRIX_POWER_NVIDIA_H__
 
 #include "../../../operator.h"
-#include "../../../devices/nvidia/nvidia_common.cuh"
 #include <cstddef>
 
 namespace op::matrix_power::nvidia {

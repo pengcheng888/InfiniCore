@@ -2,7 +2,6 @@
 #define __PIXEL_SHUFFLE_NVIDIA_H__
 
 #include "../../../operator.h"
-#include "../../../devices/nvidia/nvidia_common.cuh"
 #include <array>
 #include <cstddef>
 
