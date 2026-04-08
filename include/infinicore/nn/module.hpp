@@ -3,10 +3,10 @@
 #include "../tensor.hpp"
 #include "parameter.hpp"
 
+#include <spdlog/spdlog.h>
 #include <type_traits>
 #include <unordered_map>
 #include <vector>
-#include <spdlog/spdlog.h>
 
 namespace infinicore::nn {
 class Module {
