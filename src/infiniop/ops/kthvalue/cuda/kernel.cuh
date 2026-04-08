@@ -115,7 +115,7 @@ __global__ void kthvalue_kernel(
     for (unsigned int size = 2; size <= power_of_2_dim; size <<= 1) {
         // Bitonic Merge
         // dir: 升序或降序交替，构造双调序列
-        bool dir = (tid & (size / 2)) == 0;
+        // bool dir = (tid & (size / 2)) == 0;
 
         // 这里的逻辑稍微复杂，为了简单和稳定，我们使用全升序排序逻辑
         // 标准 Bitonic Sort 代码如下：
