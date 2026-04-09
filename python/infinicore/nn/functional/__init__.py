@@ -16,6 +16,7 @@ from .linear import linear
 from .linear_w8a8i8 import linear_w8a8i8
 from .log_softmax import log_softmax
 from .multi_margin_loss import multi_margin_loss
+from .pad import pad
 from .random_sample import random_sample
 from .rms_norm import rms_norm
 from .rope import RopeAlgo, rope
@@ -61,6 +62,7 @@ __all__ = [
     "rope",
     "selu",
     "hinge_embedding_loss",
+    "pad",
     "silu",
     "hardswish",
     "hardtanh",

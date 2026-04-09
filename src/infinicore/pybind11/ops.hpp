@@ -28,6 +28,9 @@
 #include "ops/causal_softmax.hpp"
 #include "ops/cdist.hpp"
 #include "ops/cross_entropy.hpp"
+#include "ops/diff.hpp"
+#include "ops/digamma.hpp"
+#include "ops/dist.hpp"
 #include "ops/embedding.hpp"
 #include "ops/equal.hpp"
 #include "ops/flash_attention.hpp"
@@ -56,6 +59,7 @@
 #include "ops/logaddexp.hpp"
 #include "ops/logaddexp2.hpp"
 #include "ops/logcumsumexp.hpp"
+#include "ops/logdet.hpp"
 #include "ops/logical_and.hpp"
 #include "ops/logical_not.hpp"
 #include "ops/masked_select.hpp"
@@ -64,6 +68,7 @@
 #include "ops/mha_varlen.hpp"
 #include "ops/mul.hpp"
 #include "ops/multi_margin_loss.hpp"
+#include "ops/pad.hpp"
 #include "ops/paged_attention.hpp"
 #include "ops/paged_attention_prefill.hpp"
 #include "ops/paged_caching.hpp"
@@ -119,6 +124,9 @@ inline void bind(py::module &m) {
     bind_bilinear(m);
     bind_block_diag(m);
     bind_causal_softmax(m);
+    bind_diff(m);
+    bind_digamma(m);
+    bind_dist(m);
     bind_flash_attention(m);
     bind_hinge_embedding_loss(m);
     bind_kv_caching(m);
@@ -132,6 +140,8 @@ inline void bind(py::module &m) {
     bind_log_softmax(m);
     bind_logaddexp(m);
     bind_logaddexp2(m);
+    bind_linear(m);
+    bind_logdet(m);
     bind_matmul(m);
     bind_kron(m);
     bind_mul(m);
@@ -142,6 +152,7 @@ inline void bind(py::module &m) {
     bind_paged_attention(m);
     bind_paged_attention_prefill(m);
     bind_paged_caching(m);
+    bind_pad(m);
     bind_random_sample(m);
     bind_cross_entropy(m);
     bind_hypot(m);
