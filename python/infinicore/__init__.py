@@ -95,6 +95,10 @@ from infinicore.ops.matmul import matmul
 from infinicore.ops.mha_kvcache import mha_kvcache
 from infinicore.ops.mha_varlen import mha_varlen
 from infinicore.ops.mul import mul
+from infinicore.ops.diff import diff
+from infinicore.ops.digamma import digamma
+from infinicore.ops.dist import dist
+from infinicore.ops.logdet import logdet
 from infinicore.ops.narrow import narrow
 from infinicore.ops.paged_attention import paged_attention
 from infinicore.ops.paged_attention_prefill import paged_attention_prefill
@@ -177,7 +181,6 @@ __all__ = [
     "add",
     "addr",
     "add_rms_norm",
-    "add_rms_norm_",
     "argwhere",
     "asin",
     "acos",
@@ -199,6 +202,10 @@ __all__ = [
     "matmul",
     "equal",
     "mul",
+    "diff",
+    "digamma",
+    "dist",
+    "logdet",
     "narrow",
     "ldexp",
     "lerp",
