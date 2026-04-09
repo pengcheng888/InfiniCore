@@ -17,7 +17,10 @@ from .linear_w8a8i8 import linear_w8a8i8
 from .log_softmax import log_softmax
 from .multi_margin_loss import multi_margin_loss
 from .pad import pad
+from .gaussian_nll_loss import gaussian_nll_loss
+from .prelu import prelu
 from .random_sample import random_sample
+from .relu6 import relu6
 from .rms_norm import rms_norm
 from .rope import RopeAlgo, rope
 from .selu import selu
@@ -38,11 +41,15 @@ __all__ = [
     "causal_softmax",
     "embedding",
     "flash_attention",
+    "gaussian_nll_loss",
+    "interpolate",
     "linear",
     "binary_cross_entropy_with_logits",
     "random_sample",
     "adaptive_avg_pool1d",
     "affine_grid",
+    "prelu",
+    "relu6",
     "rms_norm",
     "silu",
     "smooth_l1_loss",

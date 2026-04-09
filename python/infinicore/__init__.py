@@ -85,6 +85,7 @@ from infinicore.ops.index_copy import index_copy
 from infinicore.ops.inner import inner
 from infinicore.ops.kron import kron
 from infinicore.ops.kthvalue import kthvalue
+from infinicore.ops.bitwise_right_shift import bitwise_right_shift
 from infinicore.ops.kv_caching import kv_caching
 from infinicore.ops.ldexp import ldexp
 from infinicore.ops.lerp import lerp
@@ -189,6 +190,7 @@ __all__ = [
     "attention",
     "block_diag",
     "kron",
+    "bitwise_right_shift",
     "kv_caching",
     "asinh",
     "baddbmm",
@@ -263,3 +265,4 @@ with contextlib.suppress(ImportError, ModuleNotFoundError):
         getattr(ntops.torch, op_name).__globals__["torch"] = sys.modules[__name__]
 
     use_ntops = True
+
