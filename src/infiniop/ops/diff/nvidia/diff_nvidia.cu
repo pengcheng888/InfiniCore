@@ -1,4 +1,5 @@
 #include "../../../devices/nvidia/nvidia_kernel_common.cuh"
+#include "../../../handle.h"
 #include "../../../tensor.h"
 #include "diff_nvidia.cuh"
 #include <algorithm>
