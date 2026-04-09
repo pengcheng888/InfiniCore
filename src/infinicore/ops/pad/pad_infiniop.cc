@@ -60,4 +60,3 @@ void cleanup(void **planned_meta_ptr) {
 INFINICORE_GRAPH_OP_REGISTER_ALLDEVICE(Pad, &plan, &run, &cleanup);
 
 } // namespace infinicore::op::pad_impl::infiniop
-

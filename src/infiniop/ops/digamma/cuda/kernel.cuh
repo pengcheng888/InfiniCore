@@ -1,8 +1,5 @@
 #pragma once
 #include <cmath>
-#include <cuda_bf16.h>
-#include <cuda_fp16.h>
-#include <cuda_runtime.h>
 #include <type_traits>
 
 namespace op::cuda {
@@ -26,12 +23,7 @@ __device__ __forceinline__ T digamma_impl(T x) {
     const T inv = static_cast<T>(1) / x;
     const T inv2 = inv * inv;
 
-    const T series =
-        inv2 * (static_cast<T>(-1.0 / 12.0)
-                + inv2 * (static_cast<T>(1.0 / 120.0)
-                          + inv2 * (static_cast<T>(-1.0 / 252.0)
-                                    + inv2 * (static_cast<T>(1.0 / 240.0)
-                                              + inv2 * (static_cast<T>(-1.0 / 132.0))))));
+    const T series = inv2 * (static_cast<T>(-1.0 / 12.0) + inv2 * (static_cast<T>(1.0 / 120.0) + inv2 * (static_cast<T>(-1.0 / 252.0) + inv2 * (static_cast<T>(1.0 / 240.0) + inv2 * (static_cast<T>(-1.0 / 132.0))))));
 
     result += log(x) - static_cast<T>(0.5) * inv + series;
     return result;
@@ -46,7 +38,7 @@ public:
         if constexpr (std::is_same_v<T, half>) {
             float xf = __half2float(x);
             return __float2half(digamma_impl(xf));
-        } else if constexpr (std::is_same_v<T, nv_bfloat16>) {
+        } else if constexpr (std::is_same_v<T, cuda_bfloat16>) {
             float xf = __bfloat162float(x);
             return __float2bfloat16_rn(digamma_impl(xf));
         } else if constexpr (std::is_same_v<T, float>) {

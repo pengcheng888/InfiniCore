@@ -1,10 +1,8 @@
 #include "pad_nvidia.cuh"
 
-#include "../../../utils.h"
+#include "../../../devices/nvidia/nvidia_handle.cuh"
 #include "../../../devices/nvidia/nvidia_kernel_common.cuh"
-#include <cuda_bf16.h>
-#include <cuda_fp16.h>
-#include <cuda_runtime.h>
+#include "../../../tensor.h"
 
 #include <algorithm>
 #include <cstdint>
@@ -158,7 +156,7 @@ __device__ __forceinline__ half cast_pad_value<half>(double v) {
 }
 
 template <>
-__device__ __forceinline__ nv_bfloat16 cast_pad_value<nv_bfloat16>(double v) {
+__device__ __forceinline__ cuda_bfloat16 cast_pad_value<cuda_bfloat16>(double v) {
     return __float2bfloat16_rn(static_cast<float>(v));
 }
 
@@ -322,9 +320,9 @@ infiniStatus_t Descriptor::calculate(
             _output_numel);
         break;
     case INFINI_DTYPE_BF16:
-        pad_kernel<nv_bfloat16><<<grid, BLOCK, 0, cuda_stream>>>(
-            reinterpret_cast<nv_bfloat16 *>(y),
-            reinterpret_cast<const nv_bfloat16 *>(x),
+        pad_kernel<cuda_bfloat16><<<grid, BLOCK, 0, cuda_stream>>>(
+            reinterpret_cast<cuda_bfloat16 *>(y),
+            reinterpret_cast<const cuda_bfloat16 *>(x),
             _ndim,
             d_in_shape,
             d_out_shape,

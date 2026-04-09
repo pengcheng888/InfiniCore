@@ -12,4 +12,3 @@ Tensor logdet(const Tensor &x);
 void logdet_(Tensor y, const Tensor &x);
 
 } // namespace infinicore::op
-

@@ -2,8 +2,6 @@
 #define __DIFF_NVIDIA_H__
 
 #include "../../../operator.h"
-#include "../../../devices/nvidia/nvidia_common.cuh"
-#include "../../../utils.h"
 #include <cstddef>
 
 namespace op::diff::nvidia {

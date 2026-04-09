@@ -2,7 +2,7 @@
 
 #include "../../../elementwise/moore/elementwise_moore.h"
 
-#include "digamma_moore_kernel.h"
+#include "../cuda/kernel.cuh"
 
 namespace op::digamma::moore {
 
@@ -43,13 +43,13 @@ infiniStatus_t Descriptor::calculate(
 
     switch (_dtype) {
     case INFINI_DTYPE_BF16:
-        return _device_info->calculate<256, moore::DigammaOp, cuda_bfloat16>(_info, workspace, output, inputs, stream);
+        return _device_info->calculate<256, cuda::DigammaOp, cuda_bfloat16>(_info, workspace, output, inputs, stream);
     case INFINI_DTYPE_F16:
-        return _device_info->calculate<256, moore::DigammaOp, half>(_info, workspace, output, inputs, stream);
+        return _device_info->calculate<256, cuda::DigammaOp, half>(_info, workspace, output, inputs, stream);
     case INFINI_DTYPE_F32:
-        return _device_info->calculate<256, moore::DigammaOp, float>(_info, workspace, output, inputs, stream);
+        return _device_info->calculate<256, cuda::DigammaOp, float>(_info, workspace, output, inputs, stream);
     case INFINI_DTYPE_F64:
-        return _device_info->calculate<256, moore::DigammaOp, double>(_info, workspace, output, inputs, stream);
+        return _device_info->calculate<256, cuda::DigammaOp, double>(_info, workspace, output, inputs, stream);
     default:
         return INFINI_STATUS_BAD_TENSOR_DTYPE;
     }

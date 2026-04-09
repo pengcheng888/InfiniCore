@@ -69,6 +69,9 @@ from infinicore.ops.broadcast_to import broadcast_to
 from infinicore.ops.cat import cat
 from infinicore.ops.cdist import cdist
 from infinicore.ops.cross_entropy import cross_entropy
+from infinicore.ops.diff import diff
+from infinicore.ops.digamma import digamma
+from infinicore.ops.dist import dist
 from infinicore.ops.equal import equal
 from infinicore.ops.flipud import flipud
 from infinicore.ops.float_power import float_power
@@ -88,6 +91,7 @@ from infinicore.ops.lerp import lerp
 from infinicore.ops.logaddexp import logaddexp
 from infinicore.ops.logaddexp2 import logaddexp2
 from infinicore.ops.logcumsumexp import logcumsumexp
+from infinicore.ops.logdet import logdet
 from infinicore.ops.logical_and import logical_and
 from infinicore.ops.logical_not import logical_not
 from infinicore.ops.masked_select import masked_select
@@ -95,10 +99,6 @@ from infinicore.ops.matmul import matmul
 from infinicore.ops.mha_kvcache import mha_kvcache
 from infinicore.ops.mha_varlen import mha_varlen
 from infinicore.ops.mul import mul
-from infinicore.ops.diff import diff
-from infinicore.ops.digamma import digamma
-from infinicore.ops.dist import dist
-from infinicore.ops.logdet import logdet
 from infinicore.ops.narrow import narrow
 from infinicore.ops.paged_attention import paged_attention
 from infinicore.ops.paged_attention_prefill import paged_attention_prefill

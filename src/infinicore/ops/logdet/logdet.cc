@@ -26,4 +26,3 @@ void logdet_(Tensor y, const Tensor &x) {
 }
 
 } // namespace infinicore::op
-

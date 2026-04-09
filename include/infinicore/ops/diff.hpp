@@ -12,4 +12,3 @@ Tensor diff(const Tensor &x, int n = 1, int dim = -1);
 void diff_(Tensor y, const Tensor &x, int n = 1, int dim = -1);
 
 } // namespace infinicore::op
-

@@ -2,7 +2,6 @@
 #define __PAD_NVIDIA_CUH__
 
 #include "../../../operator.h"
-#include "../../../devices/nvidia/nvidia_common.cuh"
 
 #include <vector>
 
@@ -80,4 +79,3 @@ public:
 } // namespace op::pad::nvidia
 
 #endif // __PAD_NVIDIA_CUH__
-

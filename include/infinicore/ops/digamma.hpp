@@ -12,4 +12,3 @@ Tensor digamma(const Tensor &x);
 void digamma_(Tensor y, const Tensor &x);
 
 } // namespace infinicore::op
-

@@ -15,7 +15,7 @@
 #include "moore/dist_moore.h"
 #endif
 
-__C infiniStatus_t infiniopCreateDistDescriptor(
+__INFINI_C infiniStatus_t infiniopCreateDistDescriptor(
     infiniopHandle_t handle,
     infiniopDistDescriptor_t *desc_ptr,
     infiniopTensorDescriptor_t y_desc,
@@ -58,10 +58,10 @@ __C infiniStatus_t infiniopCreateDistDescriptor(
 #undef CREATE
 }
 
-__C infiniStatus_t infiniopGetDistWorkspaceSize(infiniopDistDescriptor_t desc, size_t *size) {
+__INFINI_C infiniStatus_t infiniopGetDistWorkspaceSize(infiniopDistDescriptor_t desc, size_t *size) {
 
-#define GET(CASE, NAMESPACE)                                                                 \
-    case CASE:                                                                               \
+#define GET(CASE, NAMESPACE)                                                                \
+    case CASE:                                                                              \
         *size = reinterpret_cast<op::dist::NAMESPACE::Descriptor *>(desc)->workspaceSize(); \
         return INFINI_STATUS_SUCCESS;
 
@@ -89,7 +89,7 @@ __C infiniStatus_t infiniopGetDistWorkspaceSize(infiniopDistDescriptor_t desc, s
     return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
 
-__C infiniStatus_t infiniopDist(
+__INFINI_C infiniStatus_t infiniopDist(
     infiniopDistDescriptor_t desc,
     void *workspace,
     size_t workspace_size,
@@ -128,7 +128,7 @@ __C infiniStatus_t infiniopDist(
 #undef CALCULATE
 }
 
-__C infiniStatus_t
+__INFINI_C infiniStatus_t
 infiniopDestroyDistDescriptor(infiniopDistDescriptor_t desc) {
 
 #define DELETE(CASE, NAMESPACE)                                                 \

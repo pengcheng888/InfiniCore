@@ -1,5 +1,5 @@
 #include "logdet_cpu.h"
-#include "../../../utils.h"
+#include "../../../tensor.h"
 #include <cmath>
 #include <cstring>
 #include <limits>

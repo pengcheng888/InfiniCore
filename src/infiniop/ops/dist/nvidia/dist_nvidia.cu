@@ -1,13 +1,10 @@
-#include "dist_nvidia.cuh"
-#include "../../../utils.h"
 #include "../../../devices/nvidia/nvidia_kernel_common.cuh"
-#include <cuda_bf16.h>
-#include <cuda_fp16.h>
-#include <cub/block/block_reduce.cuh>
-#include <cuda_runtime.h>
-#include <cstdint>
-#include <type_traits>
+#include "../../../tensor.h"
+#include "dist_nvidia.cuh"
 #include <cmath>
+#include <cstdint>
+#include <cub/block/block_reduce.cuh>
+#include <type_traits>
 
 namespace op::dist::nvidia {
 
@@ -33,7 +30,7 @@ __device__ __forceinline__ float to_f32<half>(half v) {
 }
 
 template <>
-__device__ __forceinline__ float to_f32<nv_bfloat16>(nv_bfloat16 v) {
+__device__ __forceinline__ float to_f32<cuda_bfloat16>(cuda_bfloat16 v) {
     return __bfloat162float(v);
 }
 
@@ -48,7 +45,7 @@ __device__ __forceinline__ half cast_out<half, float>(float v) {
 }
 
 template <>
-__device__ __forceinline__ nv_bfloat16 cast_out<nv_bfloat16, float>(float v) {
+__device__ __forceinline__ cuda_bfloat16 cast_out<cuda_bfloat16, float>(float v) {
     return __float2bfloat16_rn(v);
 }
 
@@ -263,9 +260,9 @@ infiniStatus_t Descriptor::calculate(
         break;
     }
     case INFINI_DTYPE_BF16: {
-        dist_strided_out_kernel<BLOCK_SIZE, nv_bfloat16, float><<<1, BLOCK_SIZE, 0, cuda_stream>>>(
-            reinterpret_cast<nv_bfloat16 *>(y),
-            reinterpret_cast<const nv_bfloat16 *>(x1), reinterpret_cast<const nv_bfloat16 *>(x2),
+        dist_strided_out_kernel<BLOCK_SIZE, cuda_bfloat16, float><<<1, BLOCK_SIZE, 0, cuda_stream>>>(
+            reinterpret_cast<cuda_bfloat16 *>(y),
+            reinterpret_cast<const cuda_bfloat16 *>(x1), reinterpret_cast<const cuda_bfloat16 *>(x2),
             _input_size, _p, indexing);
         break;
     }

@@ -54,4 +54,3 @@ void pad_(Tensor y, const Tensor &x, const std::vector<int> &pad, const std::str
 }
 
 } // namespace infinicore::op
-

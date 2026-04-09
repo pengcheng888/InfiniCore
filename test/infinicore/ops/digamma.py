@@ -100,9 +100,8 @@ class OpTest(BaseOperatorTest):
     def torch_operator(self, *args, **kwargs):
         return torch.digamma(*args, **kwargs)
 
-    # def infinicore_operator(self, *args, **kwargs):
-    #     """InfiniCore implementation (operator not yet available)."""
-    #     return infinicore.digamma(*args, **kwargs)
+    def infinicore_operator(self, *args, **kwargs):
+        return infinicore.digamma(*args, **kwargs)
 
 
 def main():

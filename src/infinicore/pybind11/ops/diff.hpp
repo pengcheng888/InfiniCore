@@ -26,4 +26,3 @@ inline void bind_diff(py::module &m) {
 }
 
 } // namespace infinicore::ops
-

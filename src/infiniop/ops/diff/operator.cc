@@ -15,7 +15,7 @@
 #include "moore/diff_moore.h"
 #endif
 
-__C infiniStatus_t infiniopCreateDiffDescriptor(
+__INFINI_C infiniStatus_t infiniopCreateDiffDescriptor(
     infiniopHandle_t handle,
     infiniopDiffDescriptor_t *desc_ptr,
     infiniopTensorDescriptor_t y_desc,
@@ -58,10 +58,10 @@ __C infiniStatus_t infiniopCreateDiffDescriptor(
 #undef CREATE
 }
 
-__C infiniStatus_t infiniopGetDiffWorkspaceSize(infiniopDiffDescriptor_t desc, size_t *size) {
+__INFINI_C infiniStatus_t infiniopGetDiffWorkspaceSize(infiniopDiffDescriptor_t desc, size_t *size) {
 
-#define GET(CASE, NAMESPACE)                                                                 \
-    case CASE:                                                                               \
+#define GET(CASE, NAMESPACE)                                                                \
+    case CASE:                                                                              \
         *size = reinterpret_cast<op::diff::NAMESPACE::Descriptor *>(desc)->workspaceSize(); \
         return INFINI_STATUS_SUCCESS;
 
@@ -89,7 +89,7 @@ __C infiniStatus_t infiniopGetDiffWorkspaceSize(infiniopDiffDescriptor_t desc, s
     return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
 
-__C infiniStatus_t infiniopDiff(
+__INFINI_C infiniStatus_t infiniopDiff(
     infiniopDiffDescriptor_t desc,
     void *workspace,
     size_t workspace_size,
@@ -127,7 +127,7 @@ __C infiniStatus_t infiniopDiff(
 #undef CALCULATE
 }
 
-__C infiniStatus_t
+__INFINI_C infiniStatus_t
 infiniopDestroyDiffDescriptor(infiniopDiffDescriptor_t desc) {
 
 #define DELETE(CASE, NAMESPACE)                                                 \

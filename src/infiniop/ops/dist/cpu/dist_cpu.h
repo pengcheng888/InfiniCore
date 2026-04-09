@@ -1,10 +1,10 @@
 #ifndef __DIST_CPU_H__
 #define __DIST_CPU_H__
 
-#include "../../../operator.h"
 #include "../../../devices/cpu/common_cpu.h"
-#include <vector>
+#include "../../../operator.h"
 #include <cmath>
+#include <vector>
 
 namespace op::dist::cpu {
 

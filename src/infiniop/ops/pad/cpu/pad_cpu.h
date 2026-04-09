@@ -1,10 +1,10 @@
 #ifndef __PAD_CPU_H__
 #define __PAD_CPU_H__
 
-#include "../../../operator.h"
 #include "../../../devices/cpu/common_cpu.h"
-#include <vector>
+#include "../../../operator.h"
 #include <string>
+#include <vector>
 
 namespace op::pad::cpu {
 
@@ -21,7 +21,7 @@ struct PadInfo {
     std::vector<ptrdiff_t> input_strides;
     std::vector<size_t> output_shape;
     std::vector<ptrdiff_t> output_strides;
-    std::vector<int> pads;  // [pad_left_dim0, pad_right_dim0, pad_left_dim1, pad_right_dim1, ...]
+    std::vector<int> pads; // [pad_left_dim0, pad_right_dim0, pad_left_dim1, pad_right_dim1, ...]
     PadMode mode;
     double value;
 

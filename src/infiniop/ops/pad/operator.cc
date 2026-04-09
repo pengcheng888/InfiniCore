@@ -8,14 +8,8 @@
 #if defined(ENABLE_NVIDIA_API) || defined(ENABLE_QY_API)
 #include "nvidia/pad_nvidia.cuh"
 #endif
-#ifdef ENABLE_METAX_API
-#include "metax/pad_metax.h"
-#endif
-#ifdef ENABLE_MOORE_API
-#include "moore/pad_moore.h"
-#endif
 
-__C infiniStatus_t infiniopCreatePadDescriptor(
+__INFINI_C infiniStatus_t infiniopCreatePadDescriptor(
     infiniopHandle_t handle,
     infiniopPadDescriptor_t *desc_ptr,
     infiniopTensorDescriptor_t y_desc,
@@ -25,16 +19,16 @@ __C infiniStatus_t infiniopCreatePadDescriptor(
     const char *mode,
     double value) {
 
-#define CREATE(CASE, NAMESPACE)                                             \
-    case CASE:                                                              \
-        return op::pad::NAMESPACE::Descriptor::create(                      \
-            handle,                                                         \
+#define CREATE(CASE, NAMESPACE)                                            \
+    case CASE:                                                             \
+        return op::pad::NAMESPACE::Descriptor::create(                     \
+            handle,                                                        \
             reinterpret_cast<op::pad::NAMESPACE::Descriptor **>(desc_ptr), \
-            y_desc,                                                         \
-            x_desc,                                                         \
-            pad,                                                            \
-            pad_size,                                                       \
-            mode,                                                           \
+            y_desc,                                                        \
+            x_desc,                                                        \
+            pad,                                                           \
+            pad_size,                                                      \
+            mode,                                                          \
             value)
 
     switch (handle->device) {
@@ -48,12 +42,6 @@ __C infiniStatus_t infiniopCreatePadDescriptor(
 #ifdef ENABLE_QY_API
         CREATE(INFINI_DEVICE_QY, nvidia);
 #endif
-#ifdef ENABLE_METAX_API
-        CREATE(INFINI_DEVICE_METAX, metax);
-#endif
-#ifdef ENABLE_MOORE_API
-        CREATE(INFINI_DEVICE_MOORE, moore);
-#endif
 
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
@@ -62,10 +50,10 @@ __C infiniStatus_t infiniopCreatePadDescriptor(
 #undef CREATE
 }
 
-__C infiniStatus_t infiniopGetPadWorkspaceSize(infiniopPadDescriptor_t desc, size_t *size) {
+__INFINI_C infiniStatus_t infiniopGetPadWorkspaceSize(infiniopPadDescriptor_t desc, size_t *size) {
 
-#define GET(CASE, NAMESPACE)                                                                 \
-    case CASE:                                                                               \
+#define GET(CASE, NAMESPACE)                                                               \
+    case CASE:                                                                             \
         *size = reinterpret_cast<op::pad::NAMESPACE::Descriptor *>(desc)->workspaceSize(); \
         return INFINI_STATUS_SUCCESS;
 
@@ -79,12 +67,6 @@ __C infiniStatus_t infiniopGetPadWorkspaceSize(infiniopPadDescriptor_t desc, siz
 #ifdef ENABLE_QY_API
         GET(INFINI_DEVICE_QY, nvidia)
 #endif
-#ifdef ENABLE_METAX_API
-        GET(INFINI_DEVICE_METAX, metax)
-#endif
-#ifdef ENABLE_MOORE_API
-        GET(INFINI_DEVICE_MOORE, moore)
-#endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
@@ -93,7 +75,7 @@ __C infiniStatus_t infiniopGetPadWorkspaceSize(infiniopPadDescriptor_t desc, siz
     return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
 
-__C infiniStatus_t infiniopPad(
+__INFINI_C infiniStatus_t infiniopPad(
     infiniopPadDescriptor_t desc,
     void *workspace,
     size_t workspace_size,
@@ -101,8 +83,8 @@ __C infiniStatus_t infiniopPad(
     const void *x,
     void *stream) {
 
-#define CALCULATE(CASE, NAMESPACE)                                             \
-    case CASE:                                                                 \
+#define CALCULATE(CASE, NAMESPACE)                                            \
+    case CASE:                                                                \
         return reinterpret_cast<const op::pad::NAMESPACE::Descriptor *>(desc) \
             ->calculate(workspace, workspace_size, y, x, stream)
 
@@ -117,12 +99,6 @@ __C infiniStatus_t infiniopPad(
 #ifdef ENABLE_QY_API
         CALCULATE(INFINI_DEVICE_QY, nvidia);
 #endif
-#ifdef ENABLE_METAX_API
-        CALCULATE(INFINI_DEVICE_METAX, metax);
-#endif
-#ifdef ENABLE_MOORE_API
-        CALCULATE(INFINI_DEVICE_MOORE, moore);
-#endif
 
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
@@ -131,11 +107,11 @@ __C infiniStatus_t infiniopPad(
 #undef CALCULATE
 }
 
-__C infiniStatus_t
+__INFINI_C infiniStatus_t
 infiniopDestroyPadDescriptor(infiniopPadDescriptor_t desc) {
 
-#define DELETE(CASE, NAMESPACE)                                                 \
-    case CASE:                                                                  \
+#define DELETE(CASE, NAMESPACE)                                                \
+    case CASE:                                                                 \
         delete reinterpret_cast<const op::pad::NAMESPACE::Descriptor *>(desc); \
         return INFINI_STATUS_SUCCESS;
 
@@ -149,12 +125,6 @@ infiniopDestroyPadDescriptor(infiniopPadDescriptor_t desc) {
 #endif
 #ifdef ENABLE_QY_API
         DELETE(INFINI_DEVICE_QY, nvidia);
-#endif
-#ifdef ENABLE_METAX_API
-        DELETE(INFINI_DEVICE_METAX, metax);
-#endif
-#ifdef ENABLE_MOORE_API
-        DELETE(INFINI_DEVICE_MOORE, moore);
 #endif
 
     default:

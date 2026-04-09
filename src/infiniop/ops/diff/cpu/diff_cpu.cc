@@ -1,5 +1,5 @@
 #include "diff_cpu.h"
-#include "../../../utils.h"
+#include "../../../tensor.h"
 #include <algorithm>
 #include <cmath>
 #include <cstring>

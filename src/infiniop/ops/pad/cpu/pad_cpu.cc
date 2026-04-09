@@ -1,9 +1,9 @@
 #include "pad_cpu.h"
-#include "../../../utils.h"
-#include <cstring>
+#include "../../../tensor.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <cstring>
 
 namespace op::pad::cpu {
 
@@ -20,7 +20,7 @@ PadMode parseMode(const char *mode_str) {
     } else if (std::strcmp(mode_str, "circular") == 0) {
         return PadMode::CIRCULAR;
     }
-    return PadMode::CONSTANT;  // Default
+    return PadMode::CONSTANT; // Default
 }
 
 utils::Result<PadInfo> PadInfo::create(

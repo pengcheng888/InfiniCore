@@ -28,4 +28,3 @@ void dist_(Tensor y, const Tensor &x1, const Tensor &x2, double p) {
 }
 
 } // namespace infinicore::op
-

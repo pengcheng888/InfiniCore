@@ -1,9 +1,13 @@
-#include "diff_moore.h"
+#include "../../../devices/moore/moore_common.h"
+#include "../../../devices/moore/moore_kernel_common.h"
+#include "../../../tensor.h"
+
 #include "../cuda/kernel.cuh"
-#include "../../../utils.h"
-#include <cuda_bf16.h>
-#include <cuda_fp16.h>
+#include "diff_moore.h"
 #include <algorithm>
+#include <cstdint>
+#include <numeric>
+#include <type_traits>
 
 namespace op::diff::moore {
 
@@ -47,6 +51,7 @@ infiniStatus_t Descriptor::create(
     }
 
     *desc_ptr = new Descriptor(dtype, ndim, dim, n, x_shape, y_shape,
+                               x_desc->strides(), y_desc->strides(),
                                x_desc->numel(), y_desc->numel(),
                                handle->device, handle->device_id);
     return INFINI_STATUS_SUCCESS;
@@ -59,80 +64,130 @@ infiniStatus_t Descriptor::calculate(
     const void *x,
     void *stream) const {
 
+    auto cuda_stream = reinterpret_cast<musaStream_t>(stream);
+
+    constexpr int BLOCK_SIZE = 256;
+
+    auto numel_of = [](const std::vector<size_t> &shape) -> size_t {
+        return std::accumulate(shape.begin(), shape.end(), static_cast<size_t>(1), std::multiplies<size_t>{});
+    };
+    auto contiguous_strides = [](const std::vector<size_t> &shape) -> std::vector<ptrdiff_t> {
+        std::vector<ptrdiff_t> strides(shape.size(), 1);
+        ptrdiff_t running = 1;
+        for (size_t d = shape.size(); d-- > 0;) {
+            strides[d] = running;
+            running *= static_cast<ptrdiff_t>(shape[d]);
+        }
+        return strides;
+    };
+    auto fill_indexing = [&](Diff1Indexing &indexing,
+                             const std::vector<size_t> &out_shape,
+                             const std::vector<ptrdiff_t> &in_strides,
+                             const std::vector<ptrdiff_t> &out_strides) -> infiniStatus_t {
+        indexing.ndim = static_cast<int>(_ndim);
+        indexing.dim = _dim;
+        if (indexing.ndim > Diff1Indexing::kMaxNdim) {
+            return INFINI_STATUS_BAD_TENSOR_SHAPE;
+        }
+        for (int d = 0; d < Diff1Indexing::kMaxNdim; ++d) {
+            indexing.out_shape[d] = 1;
+            indexing.in_strides[d] = 0;
+            indexing.out_strides[d] = 0;
+        }
+        for (size_t d = 0; d < _ndim; ++d) {
+            indexing.out_shape[d] = static_cast<int64_t>(out_shape[d]);
+            indexing.in_strides[d] = static_cast<int64_t>(in_strides[d]);
+            indexing.out_strides[d] = static_cast<int64_t>(out_strides[d]);
+        }
+        return INFINI_STATUS_SUCCESS;
+    };
+
+    auto launch_diff1 = [&](void *out_ptr,
+                            const void *in_ptr,
+                            const std::vector<size_t> &out_shape,
+                            const std::vector<ptrdiff_t> &in_strides,
+                            const std::vector<ptrdiff_t> &out_strides) -> infiniStatus_t {
+        const size_t out_numel = numel_of(out_shape);
+        const int blocks = static_cast<int>((out_numel + BLOCK_SIZE - 1) / BLOCK_SIZE);
+        Diff1Indexing indexing{};
+        auto st = fill_indexing(indexing, out_shape, in_strides, out_strides);
+        if (st != INFINI_STATUS_SUCCESS) {
+            return st;
+        }
+
+        switch (_dtype) {
+        case INFINI_DTYPE_F16:
+            cuda::diff1_strided_kernel<half><<<blocks, BLOCK_SIZE, 0, cuda_stream>>>(
+                reinterpret_cast<half *>(out_ptr), reinterpret_cast<const half *>(in_ptr), out_numel, indexing);
+            return INFINI_STATUS_SUCCESS;
+        case INFINI_DTYPE_BF16:
+            cuda::diff1_strided_kernel<cuda_bfloat16><<<blocks, BLOCK_SIZE, 0, cuda_stream>>>(
+                reinterpret_cast<cuda_bfloat16 *>(out_ptr), reinterpret_cast<const cuda_bfloat16 *>(in_ptr), out_numel, indexing);
+            return INFINI_STATUS_SUCCESS;
+        case INFINI_DTYPE_F32:
+            cuda::diff1_strided_kernel<float><<<blocks, BLOCK_SIZE, 0, cuda_stream>>>(
+                reinterpret_cast<float *>(out_ptr), reinterpret_cast<const float *>(in_ptr), out_numel, indexing);
+            return INFINI_STATUS_SUCCESS;
+        case INFINI_DTYPE_F64:
+            cuda::diff1_strided_kernel<double><<<blocks, BLOCK_SIZE, 0, cuda_stream>>>(
+                reinterpret_cast<double *>(out_ptr), reinterpret_cast<const double *>(in_ptr), out_numel, indexing);
+            return INFINI_STATUS_SUCCESS;
+        default:
+            return INFINI_STATUS_BAD_TENSOR_DTYPE;
+        }
+    };
+
+    if (_n == 1) {
+        return launch_diff1(y, x, _output_shape, _input_strides, _output_strides);
+    }
+
     if (workspace_size < this->workspaceSize()) {
         return INFINI_STATUS_INSUFFICIENT_WORKSPACE;
     }
 
-    auto musa_stream = reinterpret_cast<musaStream_t>(stream);
+    const size_t elem_size = infiniSizeOf(_dtype);
+    const size_t dim_size = _input_shape[static_cast<size_t>(_dim)];
+    const size_t outer = _input_size / dim_size;
+    const size_t max_intermediate = outer * (dim_size - 1);
 
-    size_t size_before = 1;
-    for (size_t i = 0; i < static_cast<size_t>(_dim); ++i) {
-        size_before *= _input_shape[i];
-    }
-    size_t dim_size = _input_shape[_dim];
-    size_t size_after = 1;
-    for (size_t i = static_cast<size_t>(_dim) + 1; i < _ndim; ++i) {
-        size_after *= _input_shape[i];
-    }
+    auto *ws = reinterpret_cast<uint8_t *>(workspace);
+    void *buf_a = ws;
+    void *buf_b = ws + max_intermediate * elem_size;
 
-    constexpr int BLOCK_SIZE = 256;
-    size_t total_output = _output_size;
-    int num_blocks = (total_output + BLOCK_SIZE - 1) / BLOCK_SIZE;
+    std::vector<size_t> current_shape = _input_shape;
+    std::vector<ptrdiff_t> current_in_strides = _input_strides;
 
-    void *temp_input = workspace;
-    void *temp_output = y;
+    std::vector<size_t> out_shape = current_shape;
+    out_shape[static_cast<size_t>(_dim)] -= 1;
+    std::vector<ptrdiff_t> out_strides = contiguous_strides(out_shape);
 
-    size_t input_bytes = _input_size * infiniopGetDtypeSize(_dtype);
-    CHECK_MOORE(musaMemcpyAsync(temp_input, x, input_bytes, musaMemcpyDeviceToDevice, musa_stream));
-
-    for (int order = 0; order < _n; ++order) {
-        size_t current_dim_size = dim_size - order;
-        size_t current_output_size = current_dim_size - 1;
-        size_t current_total_output = size_before * current_output_size * size_after;
-
-        int current_num_blocks = (current_total_output + BLOCK_SIZE - 1) / BLOCK_SIZE;
-
-        switch (_dtype) {
-        case INFINI_DTYPE_F16: {
-            cuda::diff_kernel<half><<<current_num_blocks, BLOCK_SIZE, 0, musa_stream>>>(
-                reinterpret_cast<half *>(temp_output),
-                reinterpret_cast<const half *>(temp_input),
-                size_before, current_dim_size, size_after, 1);
-            break;
-        }
-        case INFINI_DTYPE_BF16: {
-            cuda::diff_kernel<cuda_bfloat16><<<current_num_blocks, BLOCK_SIZE, 0, musa_stream>>>(
-                reinterpret_cast<cuda_bfloat16 *>(temp_output),
-                reinterpret_cast<const cuda_bfloat16 *>(temp_input),
-                size_before, current_dim_size, size_after, 1);
-            break;
-        }
-        case INFINI_DTYPE_F32: {
-            cuda::diff_kernel<float><<<current_num_blocks, BLOCK_SIZE, 0, musa_stream>>>(
-                reinterpret_cast<float *>(temp_output),
-                reinterpret_cast<const float *>(temp_input),
-                size_before, current_dim_size, size_after, 1);
-            break;
-        }
-        case INFINI_DTYPE_F64: {
-            cuda::diff_kernel<double><<<current_num_blocks, BLOCK_SIZE, 0, musa_stream>>>(
-                reinterpret_cast<double *>(temp_output),
-                reinterpret_cast<const double *>(temp_input),
-                size_before, current_dim_size, size_after, 1);
-            break;
-        }
-        default:
-            return INFINI_STATUS_BAD_TENSOR_DTYPE;
-        }
-
-        if (order < _n - 1) {
-            std::swap(temp_input, temp_output);
-            size_t current_output_bytes = current_total_output * infiniopGetDtypeSize(_dtype);
-            CHECK_MOORE(musaMemcpyAsync(temp_input, temp_output, current_output_bytes, musaMemcpyDeviceToDevice, musa_stream));
-        }
+    auto st = launch_diff1(buf_a, x, out_shape, current_in_strides, out_strides);
+    if (st != INFINI_STATUS_SUCCESS) {
+        return st;
     }
 
-    return INFINI_STATUS_SUCCESS;
+    current_shape = out_shape;
+    current_in_strides = out_strides;
+    bool a_is_input = true;
+
+    for (int stage = 1; stage < _n - 1; ++stage) {
+        out_shape = current_shape;
+        out_shape[static_cast<size_t>(_dim)] -= 1;
+        out_strides = contiguous_strides(out_shape);
+
+        void *in_buf = a_is_input ? buf_a : buf_b;
+        void *out_buf = a_is_input ? buf_b : buf_a;
+        st = launch_diff1(out_buf, in_buf, out_shape, current_in_strides, out_strides);
+        if (st != INFINI_STATUS_SUCCESS) {
+            return st;
+        }
+        current_shape = out_shape;
+        current_in_strides = out_strides;
+        a_is_input = !a_is_input;
+    }
+
+    void *in_buf = a_is_input ? buf_a : buf_b;
+    return launch_diff1(y, in_buf, _output_shape, current_in_strides, _output_strides);
 }
 
 } // namespace op::diff::moore

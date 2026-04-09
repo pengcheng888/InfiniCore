@@ -22,4 +22,3 @@ inline void bind_logdet(py::module &m) {
 }
 
 } // namespace infinicore::ops
-

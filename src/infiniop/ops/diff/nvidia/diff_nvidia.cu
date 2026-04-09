@@ -1,9 +1,6 @@
-#include "diff_nvidia.cuh"
-#include "../../../utils.h"
 #include "../../../devices/nvidia/nvidia_kernel_common.cuh"
-#include <cuda_bf16.h>
-#include <cuda_fp16.h>
-#include <cuda_runtime.h>
+#include "../../../tensor.h"
+#include "diff_nvidia.cuh"
 #include <algorithm>
 #include <cstdint>
 #include <numeric>
@@ -22,7 +19,7 @@ __device__ __forceinline__ half from_f32<half>(float v) {
 }
 
 template <>
-__device__ __forceinline__ nv_bfloat16 from_f32<nv_bfloat16>(float v) {
+__device__ __forceinline__ cuda_bfloat16 from_f32<cuda_bfloat16>(float v) {
     return __float2bfloat16_rn(v);
 }
 
@@ -80,7 +77,7 @@ __global__ void diff1_strided_kernel(
         if constexpr (std::is_same_v<T, half>) {
             a = __half2float(in[x_off1]);
             b = __half2float(in[x_off2]);
-        } else if constexpr (std::is_same_v<T, nv_bfloat16>) {
+        } else if constexpr (std::is_same_v<T, cuda_bfloat16>) {
             a = __bfloat162float(in[x_off1]);
             b = __bfloat162float(in[x_off2]);
         } else { // float
@@ -199,8 +196,8 @@ infiniStatus_t Descriptor::calculate(
                 reinterpret_cast<half *>(out_ptr), reinterpret_cast<const half *>(in_ptr), out_numel, indexing);
             return INFINI_STATUS_SUCCESS;
         case INFINI_DTYPE_BF16:
-            diff1_strided_kernel<nv_bfloat16><<<blocks, BLOCK_SIZE, 0, cuda_stream>>>(
-                reinterpret_cast<nv_bfloat16 *>(out_ptr), reinterpret_cast<const nv_bfloat16 *>(in_ptr), out_numel, indexing);
+            diff1_strided_kernel<cuda_bfloat16><<<blocks, BLOCK_SIZE, 0, cuda_stream>>>(
+                reinterpret_cast<cuda_bfloat16 *>(out_ptr), reinterpret_cast<const cuda_bfloat16 *>(in_ptr), out_numel, indexing);
             return INFINI_STATUS_SUCCESS;
         case INFINI_DTYPE_F32:
             diff1_strided_kernel<float><<<blocks, BLOCK_SIZE, 0, cuda_stream>>>(

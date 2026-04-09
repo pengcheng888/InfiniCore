@@ -1,15 +1,15 @@
 #ifndef __LOGDET_CPU_H__
 #define __LOGDET_CPU_H__
 
-#include "../../../operator.h"
 #include "../../../devices/cpu/common_cpu.h"
+#include "../../../operator.h"
 #include <cstddef>
 #include <vector>
 
 namespace op::logdet::cpu {
 
 struct LogdetInfo {
-    size_t matrix_size;  // N x N matrix
+    size_t matrix_size; // N x N matrix
     size_t input_size;
     std::vector<ptrdiff_t> input_strides;
 

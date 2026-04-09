@@ -1,7 +1,7 @@
 #include "dist_cpu.h"
-#include "../../../utils.h"
-#include <cmath>
+#include "../../../tensor.h"
 #include <algorithm>
+#include <cmath>
 
 namespace op::dist::cpu {
 
@@ -68,11 +68,11 @@ void dist_impl(
 
     for (size_t i = 0; i < info.input_size; ++i) {
         size_t idx1 = info.x1_strides.size() == 1 && info.x1_strides[0] == 1
-                         ? i
-                         : op::common_cpu::indexToOffset(i, info.ndim, info.shape.data(), info.x1_strides.data());
+                        ? i
+                        : op::common_cpu::indexToOffset(i, info.ndim, info.shape.data(), info.x1_strides.data());
         size_t idx2 = info.x2_strides.size() == 1 && info.x2_strides[0] == 1
-                         ? i
-                         : op::common_cpu::indexToOffset(i, info.ndim, info.shape.data(), info.x2_strides.data());
+                        ? i
+                        : op::common_cpu::indexToOffset(i, info.ndim, info.shape.data(), info.x2_strides.data());
 
         double diff = utils::cast<double>(x1[idx1]) - utils::cast<double>(x2[idx2]);
         double abs_diff = std::abs(diff);
@@ -112,26 +112,26 @@ infiniStatus_t Descriptor::calculate(
     switch (_dtype) {
     case INFINI_DTYPE_F16: {
         dist_impl<fp16_t>(_info, reinterpret_cast<fp16_t *>(y),
-                         reinterpret_cast<const fp16_t *>(x1),
-                         reinterpret_cast<const fp16_t *>(x2));
+                          reinterpret_cast<const fp16_t *>(x1),
+                          reinterpret_cast<const fp16_t *>(x2));
         break;
     }
     case INFINI_DTYPE_BF16: {
         dist_impl<bf16_t>(_info, reinterpret_cast<bf16_t *>(y),
-                         reinterpret_cast<const bf16_t *>(x1),
-                         reinterpret_cast<const bf16_t *>(x2));
+                          reinterpret_cast<const bf16_t *>(x1),
+                          reinterpret_cast<const bf16_t *>(x2));
         break;
     }
     case INFINI_DTYPE_F32: {
         dist_impl<float>(_info, reinterpret_cast<float *>(y),
-                        reinterpret_cast<const float *>(x1),
-                        reinterpret_cast<const float *>(x2));
+                         reinterpret_cast<const float *>(x1),
+                         reinterpret_cast<const float *>(x2));
         break;
     }
     case INFINI_DTYPE_F64: {
         dist_impl<double>(_info, reinterpret_cast<double *>(y),
-                         reinterpret_cast<const double *>(x1),
-                         reinterpret_cast<const double *>(x2));
+                          reinterpret_cast<const double *>(x1),
+                          reinterpret_cast<const double *>(x2));
         break;
     }
     default:

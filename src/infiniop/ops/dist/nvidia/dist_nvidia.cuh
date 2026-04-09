@@ -1,8 +1,8 @@
 #ifndef __DIST_NVIDIA_H__
 #define __DIST_NVIDIA_H__
 
-#include "../../../operator.h"
 #include "../../../devices/nvidia/nvidia_common.cuh"
+#include "../../../operator.h"
 #include <cstddef>
 #include <vector>
 

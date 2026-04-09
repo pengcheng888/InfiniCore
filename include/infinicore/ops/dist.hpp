@@ -12,4 +12,3 @@ Tensor dist(const Tensor &x1, const Tensor &x2, double p = 2.0);
 void dist_(Tensor y, const Tensor &x1, const Tensor &x2, double p = 2.0);
 
 } // namespace infinicore::op
-

@@ -32,12 +32,7 @@ T digamma_impl(T x) {
 
     // Asymptotic series:
     // psi(x) = log(x) - 1/(2x) - 1/(12 x^2) + 1/(120 x^4) - 1/(252 x^6) + 1/(240 x^8) - 1/(132 x^10) + ...
-    const T series =
-        inv2 * (static_cast<T>(-1.0 / 12.0)
-                + inv2 * (static_cast<T>(1.0 / 120.0)
-                          + inv2 * (static_cast<T>(-1.0 / 252.0)
-                                    + inv2 * (static_cast<T>(1.0 / 240.0)
-                                              + inv2 * (static_cast<T>(-1.0 / 132.0))))));
+    const T series = inv2 * (static_cast<T>(-1.0 / 12.0) + inv2 * (static_cast<T>(1.0 / 120.0) + inv2 * (static_cast<T>(-1.0 / 252.0) + inv2 * (static_cast<T>(1.0 / 240.0) + inv2 * (static_cast<T>(-1.0 / 132.0))))));
 
     result += std::log(x) - static_cast<T>(0.5) * inv + series;
     return result;

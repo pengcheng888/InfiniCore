@@ -1,7 +1,7 @@
-#include "logdet_nvidia.cuh"
-#include "../../../utils.h"
+#include "../../../devices/nvidia/nvidia_common.cuh"
 #include "../../../devices/nvidia/nvidia_kernel_common.cuh"
-#include <cuda_runtime.h>
+#include "../../../tensor.h"
+#include "logdet_nvidia.cuh"
 #include <cmath>
 #include <cstdint>
 #include <limits>

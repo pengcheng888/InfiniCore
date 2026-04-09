@@ -23,4 +23,3 @@ void pad_(Tensor y,
           double value = 0.0);
 
 } // namespace infinicore::op
-
