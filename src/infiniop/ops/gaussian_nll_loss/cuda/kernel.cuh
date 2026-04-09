@@ -1,9 +1,7 @@
 #pragma once
-#include <cuda_runtime.h>
-#include <type_traits>
-#include <cmath>
 #include "../../../reduce/cuda/reduce.cuh"
-#include "../../../devices/nvidia/nvidia_kernel_common.cuh"
+#include <cmath>
+#include <type_traits>
 
 namespace op::cuda {
 
@@ -47,11 +45,12 @@ __device__ __forceinline__ T gaussian_nll_from_compute(const Tcompute v, Gaussia
 }
 
 __device__ __forceinline__ size_t gaussian_nll_offset(size_t flat, const GaussianNllTensorMeta &meta) {
-    return device::nvidia::indexToOffset(
-        flat,
-        static_cast<size_t>(meta.ndim),
-        meta.shape,
-        meta.strides);
+    size_t res = 0;
+    for (size_t i = meta.ndim; i-- > 0;) {
+        res += (flat % meta.shape[i]) * meta.strides[i];
+        flat /= meta.shape[i];
+    }
+    return res;
 }
 
 template <typename T, typename Tcompute>

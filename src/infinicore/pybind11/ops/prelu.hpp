@@ -24,4 +24,3 @@ inline void bind_prelu(py::module &m) {
 }
 
 } // namespace infinicore::ops
-

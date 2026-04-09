@@ -25,4 +25,3 @@ void relu6_(Tensor out, const Tensor &input) {
 }
 
 } // namespace infinicore::op
-

@@ -22,4 +22,3 @@ inline void bind_relu6(py::module &m) {
 }
 
 } // namespace infinicore::ops
-

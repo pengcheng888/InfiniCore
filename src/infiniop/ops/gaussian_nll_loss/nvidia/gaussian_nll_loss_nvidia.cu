@@ -1,10 +1,8 @@
-#include "gaussian_nll_loss_nvidia.cuh"
-#include "../cuda/kernel.cuh"
-#include "../../../../utils.h"
-#include "../../../tensor.h"
+#include "../../../devices/nvidia/nvidia_common.cuh"
 #include "../../../devices/nvidia/nvidia_kernel_common.cuh"
-#include <cuda_bf16.h>
-#include <cuda_fp16.h>
+#include "../../../tensor.h"
+#include "../cuda/kernel.cuh"
+#include "gaussian_nll_loss_nvidia.cuh"
 
 namespace op::gaussian_nll_loss::nvidia {
 
@@ -112,10 +110,7 @@ infiniStatus_t Descriptor::calculate(
         op::cuda::GaussianNllTensorMeta tgt_meta{};
         op::cuda::GaussianNllTensorMeta var_meta{};
 
-        if (!build_meta(out_meta, ndim, shape, y_strides) ||
-            !build_meta(in_meta, ndim, shape, input_strides) ||
-            !build_meta(tgt_meta, ndim, shape, target_strides) ||
-            !build_meta(var_meta, ndim, shape, var_strides)) {
+        if (!build_meta(out_meta, ndim, shape, y_strides) || !build_meta(in_meta, ndim, shape, input_strides) || !build_meta(tgt_meta, ndim, shape, target_strides) || !build_meta(var_meta, ndim, shape, var_strides)) {
             return INFINI_STATUS_BAD_TENSOR_SHAPE;
         }
 
@@ -169,9 +164,7 @@ infiniStatus_t Descriptor::calculate(
         op::cuda::GaussianNllTensorMeta tgt_meta{};
         op::cuda::GaussianNllTensorMeta var_meta{};
 
-        if (!build_meta(in_meta, ndim, shape, input_strides) ||
-            !build_meta(tgt_meta, ndim, shape, target_strides) ||
-            !build_meta(var_meta, ndim, shape, var_strides)) {
+        if (!build_meta(in_meta, ndim, shape, input_strides) || !build_meta(tgt_meta, ndim, shape, target_strides) || !build_meta(var_meta, ndim, shape, var_strides)) {
             return INFINI_STATUS_BAD_TENSOR_SHAPE;
         }
 

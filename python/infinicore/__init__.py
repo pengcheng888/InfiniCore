@@ -64,6 +64,7 @@ from infinicore.ops.bilinear import bilinear
 from infinicore.ops.binary_cross_entropy_with_logits import (
     binary_cross_entropy_with_logits,
 )
+from infinicore.ops.bitwise_right_shift import bitwise_right_shift
 from infinicore.ops.block_diag import block_diag
 from infinicore.ops.broadcast_to import broadcast_to
 from infinicore.ops.cat import cat
@@ -85,7 +86,6 @@ from infinicore.ops.index_copy import index_copy
 from infinicore.ops.inner import inner
 from infinicore.ops.kron import kron
 from infinicore.ops.kthvalue import kthvalue
-from infinicore.ops.bitwise_right_shift import bitwise_right_shift
 from infinicore.ops.kv_caching import kv_caching
 from infinicore.ops.ldexp import ldexp
 from infinicore.ops.lerp import lerp
@@ -265,4 +265,3 @@ with contextlib.suppress(ImportError, ModuleNotFoundError):
         getattr(ntops.torch, op_name).__globals__["torch"] = sys.modules[__name__]
 
     use_ntops = True
-

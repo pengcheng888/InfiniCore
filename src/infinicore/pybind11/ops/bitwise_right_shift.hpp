@@ -24,4 +24,3 @@ inline void bind_bitwise_right_shift(py::module &m) {
 }
 
 } // namespace infinicore::ops
-

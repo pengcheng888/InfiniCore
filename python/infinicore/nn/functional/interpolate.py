@@ -1,13 +1,7 @@
-from typing import Optional, Sequence, Union
-
-from infinicore.tensor import Tensor
-
-from .upsample_bilinear import upsample_bilinear
-from .upsample_nearest import upsample_nearest
-
 from collections.abc import Iterable
 
 from infinicore.lib import _infinicore
+from infinicore.tensor import Tensor
 
 
 def _to_int64_list(value) -> list[int]:
@@ -23,9 +17,7 @@ def _to_double_list(value) -> list[float]:
         return [float(value)]
     if isinstance(value, Iterable):
         return [float(v) for v in value]
-    raise TypeError(
-        f"Expected float or iterable of floats, got {type(value).__name__}"
-    )
+    raise TypeError(f"Expected float or iterable of floats, got {type(value).__name__}")
 
 
 # def interpolate(
@@ -52,6 +44,7 @@ def _to_double_list(value) -> list[float]:
 #     raise NotImplementedError(
 #         f"Interpolation mode '{mode}' is not currently supported."
 #         )
+
 
 def interpolate(
     input: Tensor,
@@ -95,5 +88,7 @@ def interpolate(
     align_i = 0 if align_corners is None else int(bool(align_corners))
 
     return Tensor(
-        _infinicore.interpolate(input._underlying, str(mode), size_list, scale_list, align_i)
+        _infinicore.interpolate(
+            input._underlying, str(mode), size_list, scale_list, align_i
+        )
     )

@@ -1,7 +1,6 @@
 #pragma once
-#include <cuda_runtime.h>
-#include <type_traits>
 #include <cstdint>
+#include <type_traits>
 
 namespace op::bitwise_right_shift::cuda {
 

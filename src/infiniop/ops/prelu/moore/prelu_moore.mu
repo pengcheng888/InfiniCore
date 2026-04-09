@@ -2,7 +2,7 @@
 
 #include "../../../elementwise/moore/elementwise_moore.h"
 
-#include "prelu_moore_kernel.h"
+#include "../cuda/kernel.cuh"
 
 namespace op::prelu::moore {
 
@@ -42,14 +42,14 @@ infiniStatus_t Descriptor::calculate(
     }
 
     switch (_dtype) {
-    case INFINI_DTYPE_BF16:
-        return _device_info->calculate<256, moore::PreluOp, cuda_bfloat16, cuda_bfloat16, cuda_bfloat16>(_info, workspace, output, inputs, stream);
     case INFINI_DTYPE_F16:
-        return _device_info->calculate<256, moore::PreluOp, half, half, half>(_info, workspace, output, inputs, stream);
+        return _device_info->calculate<256, cuda::PreluOp, half>(_info, workspace, output, inputs, stream);
+    case INFINI_DTYPE_BF16:
+        return _device_info->calculate<256, cuda::PreluOp, cuda_bfloat16>(_info, workspace, output, inputs, stream);
     case INFINI_DTYPE_F32:
-        return _device_info->calculate<256, moore::PreluOp, float, float, float>(_info, workspace, output, inputs, stream);
+        return _device_info->calculate<256, cuda::PreluOp, float>(_info, workspace, output, inputs, stream);
     case INFINI_DTYPE_F64:
-        return _device_info->calculate<256, moore::PreluOp, double, double, double>(_info, workspace, output, inputs, stream);
+        return _device_info->calculate<256, cuda::PreluOp, double>(_info, workspace, output, inputs, stream);
     default:
         return INFINI_STATUS_BAD_TENSOR_DTYPE;
     }

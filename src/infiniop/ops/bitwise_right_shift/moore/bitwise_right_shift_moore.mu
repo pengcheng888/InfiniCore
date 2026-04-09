@@ -2,7 +2,7 @@
 
 #include "../../../elementwise/moore/elementwise_moore.h"
 
-#include "bitwise_right_shift_moore_kernel.h"
+#include "../cuda/kernel.cuh"
 
 namespace op::bitwise_right_shift::moore {
 
@@ -44,21 +44,21 @@ infiniStatus_t Descriptor::calculate(
 
     switch (_dtype) {
     case INFINI_DTYPE_I8:
-        return _device_info->calculate<256, moore::BitwiseRightShiftOp, int8_t, int8_t, int8_t>(_info, workspace, output, inputs, stream);
+        return _device_info->calculate<256, cuda::BitwiseRightShiftOp, int8_t>(_info, workspace, output, inputs, stream);
     case INFINI_DTYPE_I16:
-        return _device_info->calculate<256, moore::BitwiseRightShiftOp, int16_t, int16_t, int16_t>(_info, workspace, output, inputs, stream);
+        return _device_info->calculate<256, cuda::BitwiseRightShiftOp, int16_t>(_info, workspace, output, inputs, stream);
     case INFINI_DTYPE_I32:
-        return _device_info->calculate<256, moore::BitwiseRightShiftOp, int32_t, int32_t, int32_t>(_info, workspace, output, inputs, stream);
+        return _device_info->calculate<256, cuda::BitwiseRightShiftOp, int32_t>(_info, workspace, output, inputs, stream);
     case INFINI_DTYPE_I64:
-        return _device_info->calculate<256, moore::BitwiseRightShiftOp, int64_t, int64_t, int64_t>(_info, workspace, output, inputs, stream);
+        return _device_info->calculate<256, cuda::BitwiseRightShiftOp, int64_t>(_info, workspace, output, inputs, stream);
     case INFINI_DTYPE_U8:
-        return _device_info->calculate<256, moore::BitwiseRightShiftOp, uint8_t, uint8_t, uint8_t>(_info, workspace, output, inputs, stream);
+        return _device_info->calculate<256, cuda::BitwiseRightShiftOp, uint8_t>(_info, workspace, output, inputs, stream);
     case INFINI_DTYPE_U16:
-        return _device_info->calculate<256, moore::BitwiseRightShiftOp, uint16_t, uint16_t, uint16_t>(_info, workspace, output, inputs, stream);
+        return _device_info->calculate<256, cuda::BitwiseRightShiftOp, uint16_t>(_info, workspace, output, inputs, stream);
     case INFINI_DTYPE_U32:
-        return _device_info->calculate<256, moore::BitwiseRightShiftOp, uint32_t, uint32_t, uint32_t>(_info, workspace, output, inputs, stream);
+        return _device_info->calculate<256, cuda::BitwiseRightShiftOp, uint32_t>(_info, workspace, output, inputs, stream);
     case INFINI_DTYPE_U64:
-        return _device_info->calculate<256, moore::BitwiseRightShiftOp, uint64_t, uint64_t, uint64_t>(_info, workspace, output, inputs, stream);
+        return _device_info->calculate<256, cuda::BitwiseRightShiftOp, uint64_t>(_info, workspace, output, inputs, stream);
     default:
         return INFINI_STATUS_BAD_TENSOR_DTYPE;
     }

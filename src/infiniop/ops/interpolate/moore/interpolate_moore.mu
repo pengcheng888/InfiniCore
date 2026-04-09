@@ -1,8 +1,8 @@
-#include "interpolate_moore.h"
+#include "../../../devices/moore/moore_common.h"
+#include "../../../devices/moore/moore_kernel_common.h"
+#include "../../../tensor.h"
 #include "../cuda/kernel.cuh"
-#include "../../../../utils.h"
-#include <cuda_bf16.h>
-#include <cuda_fp16.h>
+#include "interpolate_moore.h"
 #include <cstring>
 
 namespace op::interpolate::moore {
@@ -27,17 +27,28 @@ static bool try_parse_mode(const char *mode_str, InterpolateMode &mode) {
     return false;
 }
 
-static double compute_scale(size_t in_size, size_t out_size, int align_corners) {
-    if (out_size == 0) {
-        return 0.0;
-    }
-    if (align_corners) {
-        return (out_size > 1) ? (static_cast<double>(in_size) - 1.0) / (static_cast<double>(out_size) - 1.0) : 0.0;
-    }
-    return static_cast<double>(in_size) / static_cast<double>(out_size);
-}
-
 Descriptor::~Descriptor() = default;
+
+static bool build_meta(
+    op::interpolate::cuda::TensorMeta &meta,
+    const std::vector<size_t> &shape,
+    const std::vector<ptrdiff_t> &strides) {
+
+    const size_t ndim = shape.size();
+    if (ndim > static_cast<size_t>(op::interpolate::cuda::kInterpolateMaxDims)) {
+        return false;
+    }
+    if (strides.size() != ndim) {
+        return false;
+    }
+
+    meta.ndim = static_cast<int>(ndim);
+    for (size_t i = 0; i < static_cast<size_t>(op::interpolate::cuda::kInterpolateMaxDims); ++i) {
+        meta.shape[i] = (i < ndim) ? shape[i] : 1;
+        meta.strides[i] = (i < ndim) ? strides[i] : 0;
+    }
+    return true;
+}
 
 infiniStatus_t Descriptor::create(
     infiniopHandle_t handle,
@@ -80,12 +91,16 @@ infiniStatus_t Descriptor::create(
         }
     }
 
+    if (y_desc->dtype() != dtype) {
+        return INFINI_STATUS_BAD_TENSOR_DTYPE;
+    }
+
     InterpolateMode parsed_mode{};
     if (!try_parse_mode(mode, parsed_mode)) {
         return INFINI_STATUS_BAD_PARAM;
     }
 
-    *desc_ptr = new Descriptor(dtype, ndim, x_shape, y_shape, parsed_mode, align_corners,
+    *desc_ptr = new Descriptor(dtype, ndim, x_shape, y_shape, x_desc->strides(), y_desc->strides(), parsed_mode, align_corners,
                                x_desc->numel(), y_desc->numel(),
                                handle->device, handle->device_id);
     return INFINI_STATUS_SUCCESS;
@@ -98,49 +113,138 @@ infiniStatus_t Descriptor::calculate(
     const void *x,
     void *stream) const {
 
-    auto musa_stream = reinterpret_cast<musaStream_t>(stream);
+    auto cuda_stream = reinterpret_cast<musaStream_t>(stream);
     constexpr int BLOCK_SIZE = 256;
-    int num_blocks = (output_size + BLOCK_SIZE - 1) / BLOCK_SIZE;
+    const int num_blocks = static_cast<int>((output_size + BLOCK_SIZE - 1) / BLOCK_SIZE);
 
-    size_t batch = input_shape[0];
-    size_t channels = input_shape[1];
+    op::interpolate::cuda::TensorMeta in_meta{};
+    op::interpolate::cuda::TensorMeta out_meta{};
+    if (!build_meta(in_meta, input_shape, input_strides) || !build_meta(out_meta, output_shape, output_strides)) {
+        return INFINI_STATUS_BAD_TENSOR_SHAPE;
+    }
 
-    if (mode == InterpolateMode::BILINEAR && ndim == 2) {
-        size_t in_h = input_shape[2];
-        size_t in_w = input_shape[3];
-        size_t out_h = output_shape[2];
-        size_t out_w = output_shape[3];
-        double scale_h = compute_scale(in_h, out_h, align_corners);
-        double scale_w = compute_scale(in_w, out_w, align_corners);
-
+    if (mode == InterpolateMode::NEAREST) {
+        if (ndim != 2) {
+            return INFINI_STATUS_NOT_IMPLEMENTED;
+        }
         switch (_dtype) {
         case INFINI_DTYPE_F16:
-            cuda::interpolate_bilinear_2d_kernel<half><<<num_blocks, BLOCK_SIZE, 0, musa_stream>>>(
-                reinterpret_cast<half *>(y),
-                reinterpret_cast<const half *>(x),
-                batch, channels, in_h, in_w, out_h, out_w, scale_h, scale_w, align_corners);
+            op::interpolate::cuda::nearest_2d_kernel<half><<<num_blocks, BLOCK_SIZE, 0, cuda_stream>>>(
+                reinterpret_cast<half *>(y), reinterpret_cast<const half *>(x), out_meta, in_meta);
             break;
         case INFINI_DTYPE_BF16:
-            cuda::interpolate_bilinear_2d_kernel<cuda_bfloat16><<<num_blocks, BLOCK_SIZE, 0, musa_stream>>>(
-                reinterpret_cast<cuda_bfloat16 *>(y),
-                reinterpret_cast<const cuda_bfloat16 *>(x),
-                batch, channels, in_h, in_w, out_h, out_w, scale_h, scale_w, align_corners);
+            op::interpolate::cuda::nearest_2d_kernel<cuda_bfloat16><<<num_blocks, BLOCK_SIZE, 0, cuda_stream>>>(
+                reinterpret_cast<cuda_bfloat16 *>(y), reinterpret_cast<const cuda_bfloat16 *>(x), out_meta, in_meta);
             break;
         case INFINI_DTYPE_F32:
-            cuda::interpolate_bilinear_2d_kernel<float><<<num_blocks, BLOCK_SIZE, 0, musa_stream>>>(
-                reinterpret_cast<float *>(y),
-                reinterpret_cast<const float *>(x),
-                batch, channels, in_h, in_w, out_h, out_w, scale_h, scale_w, align_corners);
+            op::interpolate::cuda::nearest_2d_kernel<float><<<num_blocks, BLOCK_SIZE, 0, cuda_stream>>>(
+                reinterpret_cast<float *>(y), reinterpret_cast<const float *>(x), out_meta, in_meta);
             break;
         case INFINI_DTYPE_F64:
-            cuda::interpolate_bilinear_2d_kernel<double><<<num_blocks, BLOCK_SIZE, 0, musa_stream>>>(
-                reinterpret_cast<double *>(y),
-                reinterpret_cast<const double *>(x),
-                batch, channels, in_h, in_w, out_h, out_w, scale_h, scale_w, align_corners);
+            op::interpolate::cuda::nearest_2d_kernel<double><<<num_blocks, BLOCK_SIZE, 0, cuda_stream>>>(
+                reinterpret_cast<double *>(y), reinterpret_cast<const double *>(x), out_meta, in_meta);
             break;
         default:
             return INFINI_STATUS_BAD_TENSOR_DTYPE;
         }
+    } else if (mode == InterpolateMode::LINEAR) {
+        if (ndim != 1) {
+            return INFINI_STATUS_BAD_TENSOR_SHAPE;
+        }
+        switch (_dtype) {
+        case INFINI_DTYPE_F16:
+            op::interpolate::cuda::linear_1d_kernel<half, float><<<num_blocks, BLOCK_SIZE, 0, cuda_stream>>>(
+                reinterpret_cast<half *>(y), reinterpret_cast<const half *>(x), out_meta, in_meta, align_corners);
+            break;
+        case INFINI_DTYPE_BF16:
+            op::interpolate::cuda::linear_1d_kernel<cuda_bfloat16, float><<<num_blocks, BLOCK_SIZE, 0, cuda_stream>>>(
+                reinterpret_cast<cuda_bfloat16 *>(y), reinterpret_cast<const cuda_bfloat16 *>(x), out_meta, in_meta, align_corners);
+            break;
+        case INFINI_DTYPE_F32:
+            op::interpolate::cuda::linear_1d_kernel<float, float><<<num_blocks, BLOCK_SIZE, 0, cuda_stream>>>(
+                reinterpret_cast<float *>(y), reinterpret_cast<const float *>(x), out_meta, in_meta, align_corners);
+            break;
+        case INFINI_DTYPE_F64:
+            op::interpolate::cuda::linear_1d_kernel<double, double><<<num_blocks, BLOCK_SIZE, 0, cuda_stream>>>(
+                reinterpret_cast<double *>(y), reinterpret_cast<const double *>(x), out_meta, in_meta, align_corners);
+            break;
+        default:
+            return INFINI_STATUS_BAD_TENSOR_DTYPE;
+        }
+    } else if (mode == InterpolateMode::BILINEAR) {
+        if (ndim != 2) {
+            return INFINI_STATUS_BAD_TENSOR_SHAPE;
+        }
+        switch (_dtype) {
+        case INFINI_DTYPE_F16:
+            op::interpolate::cuda::bilinear_2d_kernel<half, float><<<num_blocks, BLOCK_SIZE, 0, cuda_stream>>>(
+                reinterpret_cast<half *>(y), reinterpret_cast<const half *>(x), out_meta, in_meta, align_corners);
+            break;
+        case INFINI_DTYPE_BF16:
+            op::interpolate::cuda::bilinear_2d_kernel<cuda_bfloat16, float><<<num_blocks, BLOCK_SIZE, 0, cuda_stream>>>(
+                reinterpret_cast<cuda_bfloat16 *>(y), reinterpret_cast<const cuda_bfloat16 *>(x), out_meta, in_meta, align_corners);
+            break;
+        case INFINI_DTYPE_F32:
+            op::interpolate::cuda::bilinear_2d_kernel<float, float><<<num_blocks, BLOCK_SIZE, 0, cuda_stream>>>(
+                reinterpret_cast<float *>(y), reinterpret_cast<const float *>(x), out_meta, in_meta, align_corners);
+            break;
+        case INFINI_DTYPE_F64:
+            op::interpolate::cuda::bilinear_2d_kernel<double, double><<<num_blocks, BLOCK_SIZE, 0, cuda_stream>>>(
+                reinterpret_cast<double *>(y), reinterpret_cast<const double *>(x), out_meta, in_meta, align_corners);
+            break;
+        default:
+            return INFINI_STATUS_BAD_TENSOR_DTYPE;
+        }
+    } else if (mode == InterpolateMode::TRILINEAR) {
+        if (ndim != 3) {
+            return INFINI_STATUS_BAD_TENSOR_SHAPE;
+        }
+        switch (_dtype) {
+        case INFINI_DTYPE_F16:
+            op::interpolate::cuda::trilinear_3d_kernel<half, float><<<num_blocks, BLOCK_SIZE, 0, cuda_stream>>>(
+                reinterpret_cast<half *>(y), reinterpret_cast<const half *>(x), out_meta, in_meta, align_corners);
+            break;
+        case INFINI_DTYPE_BF16:
+            op::interpolate::cuda::trilinear_3d_kernel<cuda_bfloat16, float><<<num_blocks, BLOCK_SIZE, 0, cuda_stream>>>(
+                reinterpret_cast<cuda_bfloat16 *>(y), reinterpret_cast<const cuda_bfloat16 *>(x), out_meta, in_meta, align_corners);
+            break;
+        case INFINI_DTYPE_F32:
+            op::interpolate::cuda::trilinear_3d_kernel<float, float><<<num_blocks, BLOCK_SIZE, 0, cuda_stream>>>(
+                reinterpret_cast<float *>(y), reinterpret_cast<const float *>(x), out_meta, in_meta, align_corners);
+            break;
+        case INFINI_DTYPE_F64:
+            op::interpolate::cuda::trilinear_3d_kernel<double, double><<<num_blocks, BLOCK_SIZE, 0, cuda_stream>>>(
+                reinterpret_cast<double *>(y), reinterpret_cast<const double *>(x), out_meta, in_meta, align_corners);
+            break;
+        default:
+            return INFINI_STATUS_BAD_TENSOR_DTYPE;
+        }
+    } else if (mode == InterpolateMode::AREA) {
+        if (ndim != 2) {
+            return INFINI_STATUS_NOT_IMPLEMENTED;
+        }
+        switch (_dtype) {
+        case INFINI_DTYPE_F16:
+            op::interpolate::cuda::area_2d_kernel<half, float><<<num_blocks, BLOCK_SIZE, 0, cuda_stream>>>(
+                reinterpret_cast<half *>(y), reinterpret_cast<const half *>(x), out_meta, in_meta);
+            break;
+        case INFINI_DTYPE_BF16:
+            op::interpolate::cuda::area_2d_kernel<cuda_bfloat16, float><<<num_blocks, BLOCK_SIZE, 0, cuda_stream>>>(
+                reinterpret_cast<cuda_bfloat16 *>(y), reinterpret_cast<const cuda_bfloat16 *>(x), out_meta, in_meta);
+            break;
+        case INFINI_DTYPE_F32:
+            op::interpolate::cuda::area_2d_kernel<float, float><<<num_blocks, BLOCK_SIZE, 0, cuda_stream>>>(
+                reinterpret_cast<float *>(y), reinterpret_cast<const float *>(x), out_meta, in_meta);
+            break;
+        case INFINI_DTYPE_F64:
+            op::interpolate::cuda::area_2d_kernel<double, double><<<num_blocks, BLOCK_SIZE, 0, cuda_stream>>>(
+                reinterpret_cast<double *>(y), reinterpret_cast<const double *>(x), out_meta, in_meta);
+            break;
+        default:
+            return INFINI_STATUS_BAD_TENSOR_DTYPE;
+        }
+    } else {
+        return INFINI_STATUS_NOT_IMPLEMENTED;
     }
 
     return INFINI_STATUS_SUCCESS;

@@ -25,4 +25,3 @@ void bitwise_right_shift_(Tensor out, const Tensor &input, const Tensor &other) 
 }
 
 } // namespace infinicore::op
-

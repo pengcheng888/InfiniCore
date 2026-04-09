@@ -3,9 +3,8 @@
 
 #include "../../../operator.h"
 #include "../../../tensor.h"
-#include "../../../devices/cpu/common_cpu.h"
-#include <vector>
 #include <string>
+#include <vector>
 
 namespace op::interpolate::cpu {
 
@@ -21,6 +20,8 @@ struct InterpolateInfo {
     size_t ndim;
     std::vector<size_t> input_shape;
     std::vector<size_t> output_shape;
+    std::vector<ptrdiff_t> input_strides;
+    std::vector<ptrdiff_t> output_strides;
     InterpolateMode mode;
     int align_corners;
     size_t input_size;

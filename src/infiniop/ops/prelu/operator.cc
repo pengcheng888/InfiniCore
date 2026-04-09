@@ -15,19 +15,19 @@
 #include "moore/prelu_moore.h"
 #endif
 
-__C infiniStatus_t infiniopCreatePreluDescriptor(
+__INFINI_C infiniStatus_t infiniopCreatePreluDescriptor(
     infiniopHandle_t handle,
     infiniopPreluDescriptor_t *desc_ptr,
     infiniopTensorDescriptor_t y_desc,
     infiniopTensorDescriptor_t x_desc,
     infiniopTensorDescriptor_t weight_desc) {
 
-#define CREATE(CASE, NAMESPACE)                                                  \
-    case CASE:                                                                   \
-        return op::prelu::NAMESPACE::Descriptor::create(                         \
-            handle,                                                              \
-            reinterpret_cast<op::prelu::NAMESPACE::Descriptor **>(desc_ptr),    \
-            y_desc,                                                              \
+#define CREATE(CASE, NAMESPACE)                                              \
+    case CASE:                                                               \
+        return op::prelu::NAMESPACE::Descriptor::create(                     \
+            handle,                                                          \
+            reinterpret_cast<op::prelu::NAMESPACE::Descriptor **>(desc_ptr), \
+            y_desc,                                                          \
             {x_desc, weight_desc})
 
     switch (handle->device) {
@@ -55,11 +55,11 @@ __C infiniStatus_t infiniopCreatePreluDescriptor(
 #undef CREATE
 }
 
-__C infiniStatus_t infiniopGetPreluWorkspaceSize(infiniopPreluDescriptor_t desc, size_t *size) {
+__INFINI_C infiniStatus_t infiniopGetPreluWorkspaceSize(infiniopPreluDescriptor_t desc, size_t *size) {
 
-#define GET(CASE, NAMESPACE)                                                                      \
-    case CASE:                                                                                    \
-        *size = reinterpret_cast<op::prelu::NAMESPACE::Descriptor *>(desc)->workspaceSize();     \
+#define GET(CASE, NAMESPACE)                                                                 \
+    case CASE:                                                                               \
+        *size = reinterpret_cast<op::prelu::NAMESPACE::Descriptor *>(desc)->workspaceSize(); \
         return INFINI_STATUS_SUCCESS;
 
     switch (desc->device_type) {
@@ -86,7 +86,7 @@ __C infiniStatus_t infiniopGetPreluWorkspaceSize(infiniopPreluDescriptor_t desc,
     return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
 
-__C infiniStatus_t infiniopPrelu(
+__INFINI_C infiniStatus_t infiniopPrelu(
     infiniopPreluDescriptor_t desc,
     void *workspace,
     size_t workspace_size,
@@ -95,9 +95,9 @@ __C infiniStatus_t infiniopPrelu(
     const void *weight,
     void *stream) {
 
-#define CALCULATE(CASE, NAMESPACE)                                                  \
-    case CASE:                                                                      \
-        return reinterpret_cast<const op::prelu::NAMESPACE::Descriptor *>(desc)     \
+#define CALCULATE(CASE, NAMESPACE)                                              \
+    case CASE:                                                                  \
+        return reinterpret_cast<const op::prelu::NAMESPACE::Descriptor *>(desc) \
             ->calculate(workspace, workspace_size, y, {x, weight}, stream)
 
     switch (desc->device_type) {
@@ -125,12 +125,12 @@ __C infiniStatus_t infiniopPrelu(
 #undef CALCULATE
 }
 
-__C infiniStatus_t
+__INFINI_C infiniStatus_t
 infiniopDestroyPreluDescriptor(infiniopPreluDescriptor_t desc) {
 
-#define DELETE(CASE, NAMESPACE)                                                      \
-    case CASE:                                                                       \
-        delete reinterpret_cast<const op::prelu::NAMESPACE::Descriptor *>(desc);   \
+#define DELETE(CASE, NAMESPACE)                                                  \
+    case CASE:                                                                   \
+        delete reinterpret_cast<const op::prelu::NAMESPACE::Descriptor *>(desc); \
         return INFINI_STATUS_SUCCESS;
 
     switch (desc->device_type) {

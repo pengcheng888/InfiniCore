@@ -15,7 +15,7 @@
 #include "moore/gaussian_nll_loss_moore.h"
 #endif
 
-__C infiniStatus_t infiniopCreateGaussianNllLossDescriptor(
+__INFINI_C infiniStatus_t infiniopCreateGaussianNllLossDescriptor(
     infiniopHandle_t handle,
     infiniopGaussianNllLossDescriptor_t *desc_ptr,
     infiniopTensorDescriptor_t y_desc,
@@ -26,17 +26,17 @@ __C infiniStatus_t infiniopCreateGaussianNllLossDescriptor(
     double eps,
     int reduction) {
 
-#define CREATE(CASE, NAMESPACE)                                                                      \
-    case CASE:                                                                                       \
-        return op::gaussian_nll_loss::NAMESPACE::Descriptor::create(                                \
-            handle,                                                                                  \
-            reinterpret_cast<op::gaussian_nll_loss::NAMESPACE::Descriptor **>(desc_ptr),            \
-            y_desc,                                                                                  \
-            input_desc,                                                                              \
-            target_desc,                                                                             \
-            var_desc,                                                                                \
-            full,                                                                                    \
-            eps,                                                                                     \
+#define CREATE(CASE, NAMESPACE)                                                          \
+    case CASE:                                                                           \
+        return op::gaussian_nll_loss::NAMESPACE::Descriptor::create(                     \
+            handle,                                                                      \
+            reinterpret_cast<op::gaussian_nll_loss::NAMESPACE::Descriptor **>(desc_ptr), \
+            y_desc,                                                                      \
+            input_desc,                                                                  \
+            target_desc,                                                                 \
+            var_desc,                                                                    \
+            full,                                                                        \
+            eps,                                                                         \
             reduction)
 
     switch (handle->device) {
@@ -64,11 +64,11 @@ __C infiniStatus_t infiniopCreateGaussianNllLossDescriptor(
 #undef CREATE
 }
 
-__C infiniStatus_t infiniopGetGaussianNllLossWorkspaceSize(infiniopGaussianNllLossDescriptor_t desc, size_t *size) {
+__INFINI_C infiniStatus_t infiniopGetGaussianNllLossWorkspaceSize(infiniopGaussianNllLossDescriptor_t desc, size_t *size) {
 
-#define GET(CASE, NAMESPACE)                                                                                      \
-    case CASE:                                                                                                    \
-        *size = reinterpret_cast<op::gaussian_nll_loss::NAMESPACE::Descriptor *>(desc)->workspaceSize();        \
+#define GET(CASE, NAMESPACE)                                                                             \
+    case CASE:                                                                                           \
+        *size = reinterpret_cast<op::gaussian_nll_loss::NAMESPACE::Descriptor *>(desc)->workspaceSize(); \
         return INFINI_STATUS_SUCCESS;
 
     switch (desc->device_type) {
@@ -95,7 +95,7 @@ __C infiniStatus_t infiniopGetGaussianNllLossWorkspaceSize(infiniopGaussianNllLo
     return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
 
-__C infiniStatus_t infiniopGaussianNllLoss(
+__INFINI_C infiniStatus_t infiniopGaussianNllLoss(
     infiniopGaussianNllLossDescriptor_t desc,
     void *workspace,
     size_t workspace_size,
@@ -105,9 +105,9 @@ __C infiniStatus_t infiniopGaussianNllLoss(
     const void *var,
     void *stream) {
 
-#define CALCULATE(CASE, NAMESPACE)                                                                      \
-    case CASE:                                                                                          \
-        return reinterpret_cast<const op::gaussian_nll_loss::NAMESPACE::Descriptor *>(desc)            \
+#define CALCULATE(CASE, NAMESPACE)                                                          \
+    case CASE:                                                                              \
+        return reinterpret_cast<const op::gaussian_nll_loss::NAMESPACE::Descriptor *>(desc) \
             ->calculate(workspace, workspace_size, y, input, target, var, stream)
 
     switch (desc->device_type) {
@@ -135,12 +135,12 @@ __C infiniStatus_t infiniopGaussianNllLoss(
 #undef CALCULATE
 }
 
-__C infiniStatus_t
+__INFINI_C infiniStatus_t
 infiniopDestroyGaussianNllLossDescriptor(infiniopGaussianNllLossDescriptor_t desc) {
 
-#define DELETE(CASE, NAMESPACE)                                                                          \
-    case CASE:                                                                                           \
-        delete reinterpret_cast<const op::gaussian_nll_loss::NAMESPACE::Descriptor *>(desc);           \
+#define DELETE(CASE, NAMESPACE)                                                              \
+    case CASE:                                                                               \
+        delete reinterpret_cast<const op::gaussian_nll_loss::NAMESPACE::Descriptor *>(desc); \
         return INFINI_STATUS_SUCCESS;
 
     switch (desc->device_type) {

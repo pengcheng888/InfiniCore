@@ -1,9 +1,8 @@
-#include "interpolate_nvidia.cuh"
-#include "../cuda/kernel.cuh"
-#include "../../../../utils.h"
+#include "../../../devices/nvidia/nvidia_common.cuh"
+#include "../../../devices/nvidia/nvidia_kernel_common.cuh"
 #include "../../../tensor.h"
-#include <cuda_bf16.h>
-#include <cuda_fp16.h>
+#include "../cuda/kernel.cuh"
+#include "interpolate_nvidia.cuh"
 #include <cstring>
 
 namespace op::interpolate::nvidia {
@@ -134,8 +133,8 @@ infiniStatus_t Descriptor::calculate(
                 reinterpret_cast<half *>(y), reinterpret_cast<const half *>(x), out_meta, in_meta);
             break;
         case INFINI_DTYPE_BF16:
-            op::interpolate::cuda::nearest_2d_kernel<nv_bfloat16><<<num_blocks, BLOCK_SIZE, 0, cuda_stream>>>(
-                reinterpret_cast<nv_bfloat16 *>(y), reinterpret_cast<const nv_bfloat16 *>(x), out_meta, in_meta);
+            op::interpolate::cuda::nearest_2d_kernel<cuda_bfloat16><<<num_blocks, BLOCK_SIZE, 0, cuda_stream>>>(
+                reinterpret_cast<cuda_bfloat16 *>(y), reinterpret_cast<const cuda_bfloat16 *>(x), out_meta, in_meta);
             break;
         case INFINI_DTYPE_F32:
             op::interpolate::cuda::nearest_2d_kernel<float><<<num_blocks, BLOCK_SIZE, 0, cuda_stream>>>(
@@ -158,8 +157,8 @@ infiniStatus_t Descriptor::calculate(
                 reinterpret_cast<half *>(y), reinterpret_cast<const half *>(x), out_meta, in_meta, align_corners);
             break;
         case INFINI_DTYPE_BF16:
-            op::interpolate::cuda::linear_1d_kernel<nv_bfloat16, float><<<num_blocks, BLOCK_SIZE, 0, cuda_stream>>>(
-                reinterpret_cast<nv_bfloat16 *>(y), reinterpret_cast<const nv_bfloat16 *>(x), out_meta, in_meta, align_corners);
+            op::interpolate::cuda::linear_1d_kernel<cuda_bfloat16, float><<<num_blocks, BLOCK_SIZE, 0, cuda_stream>>>(
+                reinterpret_cast<cuda_bfloat16 *>(y), reinterpret_cast<const cuda_bfloat16 *>(x), out_meta, in_meta, align_corners);
             break;
         case INFINI_DTYPE_F32:
             op::interpolate::cuda::linear_1d_kernel<float, float><<<num_blocks, BLOCK_SIZE, 0, cuda_stream>>>(
@@ -182,8 +181,8 @@ infiniStatus_t Descriptor::calculate(
                 reinterpret_cast<half *>(y), reinterpret_cast<const half *>(x), out_meta, in_meta, align_corners);
             break;
         case INFINI_DTYPE_BF16:
-            op::interpolate::cuda::bilinear_2d_kernel<nv_bfloat16, float><<<num_blocks, BLOCK_SIZE, 0, cuda_stream>>>(
-                reinterpret_cast<nv_bfloat16 *>(y), reinterpret_cast<const nv_bfloat16 *>(x), out_meta, in_meta, align_corners);
+            op::interpolate::cuda::bilinear_2d_kernel<cuda_bfloat16, float><<<num_blocks, BLOCK_SIZE, 0, cuda_stream>>>(
+                reinterpret_cast<cuda_bfloat16 *>(y), reinterpret_cast<const cuda_bfloat16 *>(x), out_meta, in_meta, align_corners);
             break;
         case INFINI_DTYPE_F32:
             op::interpolate::cuda::bilinear_2d_kernel<float, float><<<num_blocks, BLOCK_SIZE, 0, cuda_stream>>>(
@@ -206,8 +205,8 @@ infiniStatus_t Descriptor::calculate(
                 reinterpret_cast<half *>(y), reinterpret_cast<const half *>(x), out_meta, in_meta, align_corners);
             break;
         case INFINI_DTYPE_BF16:
-            op::interpolate::cuda::trilinear_3d_kernel<nv_bfloat16, float><<<num_blocks, BLOCK_SIZE, 0, cuda_stream>>>(
-                reinterpret_cast<nv_bfloat16 *>(y), reinterpret_cast<const nv_bfloat16 *>(x), out_meta, in_meta, align_corners);
+            op::interpolate::cuda::trilinear_3d_kernel<cuda_bfloat16, float><<<num_blocks, BLOCK_SIZE, 0, cuda_stream>>>(
+                reinterpret_cast<cuda_bfloat16 *>(y), reinterpret_cast<const cuda_bfloat16 *>(x), out_meta, in_meta, align_corners);
             break;
         case INFINI_DTYPE_F32:
             op::interpolate::cuda::trilinear_3d_kernel<float, float><<<num_blocks, BLOCK_SIZE, 0, cuda_stream>>>(
@@ -230,8 +229,8 @@ infiniStatus_t Descriptor::calculate(
                 reinterpret_cast<half *>(y), reinterpret_cast<const half *>(x), out_meta, in_meta);
             break;
         case INFINI_DTYPE_BF16:
-            op::interpolate::cuda::area_2d_kernel<nv_bfloat16, float><<<num_blocks, BLOCK_SIZE, 0, cuda_stream>>>(
-                reinterpret_cast<nv_bfloat16 *>(y), reinterpret_cast<const nv_bfloat16 *>(x), out_meta, in_meta);
+            op::interpolate::cuda::area_2d_kernel<cuda_bfloat16, float><<<num_blocks, BLOCK_SIZE, 0, cuda_stream>>>(
+                reinterpret_cast<cuda_bfloat16 *>(y), reinterpret_cast<const cuda_bfloat16 *>(x), out_meta, in_meta);
             break;
         case INFINI_DTYPE_F32:
             op::interpolate::cuda::area_2d_kernel<float, float><<<num_blocks, BLOCK_SIZE, 0, cuda_stream>>>(

@@ -7,6 +7,7 @@ from .binary_cross_entropy_with_logits import binary_cross_entropy_with_logits
 from .causal_softmax import causal_softmax
 from .embedding import embedding
 from .flash_attention import flash_attention
+from .gaussian_nll_loss import gaussian_nll_loss
 from .hardswish import hardswish
 from .hardtanh import hardtanh
 from .hinge_embedding_loss import hinge_embedding_loss
@@ -17,7 +18,6 @@ from .linear_w8a8i8 import linear_w8a8i8
 from .log_softmax import log_softmax
 from .multi_margin_loss import multi_margin_loss
 from .pad import pad
-from .gaussian_nll_loss import gaussian_nll_loss
 from .prelu import prelu
 from .random_sample import random_sample
 from .relu6 import relu6

@@ -1,9 +1,9 @@
 #ifndef __GAUSSIAN_NLL_LOSS_CPU_H__
 #define __GAUSSIAN_NLL_LOSS_CPU_H__
 
+#include "../../../devices/cpu/common_cpu.h"
 #include "../../../operator.h"
 #include "../../../tensor.h"
-#include "../../../devices/cpu/common_cpu.h"
 #include <vector>
 
 namespace op::gaussian_nll_loss::cpu {

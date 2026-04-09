@@ -15,7 +15,7 @@
 #include "moore/interpolate_moore.h"
 #endif
 
-__C infiniStatus_t infiniopCreateInterpolateDescriptor(
+__INFINI_C infiniStatus_t infiniopCreateInterpolateDescriptor(
     infiniopHandle_t handle,
     infiniopInterpolateDescriptor_t *desc_ptr,
     infiniopTensorDescriptor_t y_desc,
@@ -25,16 +25,16 @@ __C infiniStatus_t infiniopCreateInterpolateDescriptor(
     void *scale_factor,
     int align_corners) {
 
-#define CREATE(CASE, NAMESPACE)                                                              \
-    case CASE:                                                                               \
-        return op::interpolate::NAMESPACE::Descriptor::create(                               \
-            handle,                                                                          \
-            reinterpret_cast<op::interpolate::NAMESPACE::Descriptor **>(desc_ptr),          \
-            y_desc,                                                                          \
-            x_desc,                                                                          \
-            mode,                                                                            \
-            size,                                                                            \
-            scale_factor,                                                                    \
+#define CREATE(CASE, NAMESPACE)                                                    \
+    case CASE:                                                                     \
+        return op::interpolate::NAMESPACE::Descriptor::create(                     \
+            handle,                                                                \
+            reinterpret_cast<op::interpolate::NAMESPACE::Descriptor **>(desc_ptr), \
+            y_desc,                                                                \
+            x_desc,                                                                \
+            mode,                                                                  \
+            size,                                                                  \
+            scale_factor,                                                          \
             align_corners)
 
     switch (handle->device) {
@@ -62,11 +62,11 @@ __C infiniStatus_t infiniopCreateInterpolateDescriptor(
 #undef CREATE
 }
 
-__C infiniStatus_t infiniopGetInterpolateWorkspaceSize(infiniopInterpolateDescriptor_t desc, size_t *size) {
+__INFINI_C infiniStatus_t infiniopGetInterpolateWorkspaceSize(infiniopInterpolateDescriptor_t desc, size_t *size) {
 
-#define GET(CASE, NAMESPACE)                                                                              \
-    case CASE:                                                                                            \
-        *size = reinterpret_cast<op::interpolate::NAMESPACE::Descriptor *>(desc)->workspaceSize();     \
+#define GET(CASE, NAMESPACE)                                                                       \
+    case CASE:                                                                                     \
+        *size = reinterpret_cast<op::interpolate::NAMESPACE::Descriptor *>(desc)->workspaceSize(); \
         return INFINI_STATUS_SUCCESS;
 
     switch (desc->device_type) {
@@ -93,7 +93,7 @@ __C infiniStatus_t infiniopGetInterpolateWorkspaceSize(infiniopInterpolateDescri
     return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
 }
 
-__C infiniStatus_t infiniopInterpolate(
+__INFINI_C infiniStatus_t infiniopInterpolate(
     infiniopInterpolateDescriptor_t desc,
     void *workspace,
     size_t workspace_size,
@@ -101,9 +101,9 @@ __C infiniStatus_t infiniopInterpolate(
     const void *x,
     void *stream) {
 
-#define CALCULATE(CASE, NAMESPACE)                                                              \
-    case CASE:                                                                                  \
-        return reinterpret_cast<const op::interpolate::NAMESPACE::Descriptor *>(desc)          \
+#define CALCULATE(CASE, NAMESPACE)                                                    \
+    case CASE:                                                                        \
+        return reinterpret_cast<const op::interpolate::NAMESPACE::Descriptor *>(desc) \
             ->calculate(workspace, workspace_size, y, x, stream)
 
     switch (desc->device_type) {
@@ -131,12 +131,12 @@ __C infiniStatus_t infiniopInterpolate(
 #undef CALCULATE
 }
 
-__C infiniStatus_t
+__INFINI_C infiniStatus_t
 infiniopDestroyInterpolateDescriptor(infiniopInterpolateDescriptor_t desc) {
 
-#define DELETE(CASE, NAMESPACE)                                                                  \
-    case CASE:                                                                                   \
-        delete reinterpret_cast<const op::interpolate::NAMESPACE::Descriptor *>(desc);        \
+#define DELETE(CASE, NAMESPACE)                                                        \
+    case CASE:                                                                         \
+        delete reinterpret_cast<const op::interpolate::NAMESPACE::Descriptor *>(desc); \
         return INFINI_STATUS_SUCCESS;
 
     switch (desc->device_type) {

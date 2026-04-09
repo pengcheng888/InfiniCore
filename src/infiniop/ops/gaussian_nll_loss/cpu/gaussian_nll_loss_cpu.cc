@@ -127,27 +127,27 @@ infiniStatus_t Descriptor::calculate(
     switch (_dtype) {
     case INFINI_DTYPE_F16:
         gaussian_nll_loss_impl<fp16_t>(_info, reinterpret_cast<fp16_t *>(y),
-                                      reinterpret_cast<const fp16_t *>(input),
-                                      reinterpret_cast<const fp16_t *>(target),
-                                      reinterpret_cast<const fp16_t *>(var));
+                                       reinterpret_cast<const fp16_t *>(input),
+                                       reinterpret_cast<const fp16_t *>(target),
+                                       reinterpret_cast<const fp16_t *>(var));
         break;
     case INFINI_DTYPE_BF16:
         gaussian_nll_loss_impl<bf16_t>(_info, reinterpret_cast<bf16_t *>(y),
-                                      reinterpret_cast<const bf16_t *>(input),
-                                      reinterpret_cast<const bf16_t *>(target),
-                                      reinterpret_cast<const bf16_t *>(var));
+                                       reinterpret_cast<const bf16_t *>(input),
+                                       reinterpret_cast<const bf16_t *>(target),
+                                       reinterpret_cast<const bf16_t *>(var));
         break;
     case INFINI_DTYPE_F32:
         gaussian_nll_loss_impl<float>(_info, reinterpret_cast<float *>(y),
-                                     reinterpret_cast<const float *>(input),
-                                     reinterpret_cast<const float *>(target),
-                                     reinterpret_cast<const float *>(var));
+                                      reinterpret_cast<const float *>(input),
+                                      reinterpret_cast<const float *>(target),
+                                      reinterpret_cast<const float *>(var));
         break;
     case INFINI_DTYPE_F64:
         gaussian_nll_loss_impl<double>(_info, reinterpret_cast<double *>(y),
-                                      reinterpret_cast<const double *>(input),
-                                      reinterpret_cast<const double *>(target),
-                                      reinterpret_cast<const double *>(var));
+                                       reinterpret_cast<const double *>(input),
+                                       reinterpret_cast<const double *>(target),
+                                       reinterpret_cast<const double *>(var));
         break;
     default:
         return INFINI_STATUS_BAD_TENSOR_DTYPE;

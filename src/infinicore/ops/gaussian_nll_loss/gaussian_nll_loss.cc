@@ -49,4 +49,3 @@ void gaussian_nll_loss_(Tensor out,
 }
 
 } // namespace infinicore::op
-

@@ -25,4 +25,3 @@ void prelu_(Tensor out, const Tensor &input, const Tensor &weight) {
 }
 
 } // namespace infinicore::op
-

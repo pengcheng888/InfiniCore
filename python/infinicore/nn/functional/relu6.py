@@ -12,4 +12,3 @@ def relu6(input: Tensor, inplace: bool = False, *, out: Tensor | None = None) ->
 
     _infinicore.relu6_(out._underlying, input._underlying)
     return out
-

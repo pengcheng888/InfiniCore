@@ -1,9 +1,6 @@
 #pragma once
-#include <cuda_bf16.h>
-#include <cuda_fp16.h>
-#include <cuda_runtime.h>
-#include <type_traits>
 #include <cmath>
+#include <type_traits>
 
 namespace op::interpolate::cuda {
 
@@ -24,7 +21,7 @@ __device__ __forceinline__ Tcompute to_compute(const half v) {
 }
 
 template <typename Tcompute>
-__device__ __forceinline__ Tcompute to_compute(const nv_bfloat16 v) {
+__device__ __forceinline__ Tcompute to_compute(const cuda_bfloat16 v) {
     return static_cast<Tcompute>(__bfloat162float(v));
 }
 
@@ -37,7 +34,7 @@ __device__ __forceinline__ half from_compute(const float v, TypeTag<half>) {
     return __float2half_rn(v);
 }
 
-__device__ __forceinline__ nv_bfloat16 from_compute(const float v, TypeTag<nv_bfloat16>) {
+__device__ __forceinline__ cuda_bfloat16 from_compute(const float v, TypeTag<cuda_bfloat16>) {
     return __float2bfloat16_rn(v);
 }
 
@@ -105,10 +102,8 @@ __global__ void nearest_2d_kernel(
     const size_t ih = (ih_raw < in_h) ? ih_raw : (in_h - 1);
     const size_t iw = (iw_raw < in_w) ? iw_raw : (in_w - 1);
 
-    const size_t in_off =
-        n * in_meta.strides[0] + c * in_meta.strides[1] + ih * in_meta.strides[2] + iw * in_meta.strides[3];
-    const size_t out_off =
-        n * out_meta.strides[0] + c * out_meta.strides[1] + oh * out_meta.strides[2] + ow * out_meta.strides[3];
+    const size_t in_off = n * in_meta.strides[0] + c * in_meta.strides[1] + ih * in_meta.strides[2] + iw * in_meta.strides[3];
+    const size_t out_off = n * out_meta.strides[0] + c * out_meta.strides[1] + oh * out_meta.strides[2] + ow * out_meta.strides[3];
 
     output[out_off] = input[in_off];
 }
@@ -213,13 +208,9 @@ __global__ void bilinear_2d_kernel(
     const double w11 = wy * wx;
 
     const Tcompute out = static_cast<Tcompute>(
-        w00 * static_cast<double>(v00) +
-        w01 * static_cast<double>(v01) +
-        w10 * static_cast<double>(v10) +
-        w11 * static_cast<double>(v11));
+        w00 * static_cast<double>(v00) + w01 * static_cast<double>(v01) + w10 * static_cast<double>(v10) + w11 * static_cast<double>(v11));
 
-    const size_t out_off =
-        n * out_meta.strides[0] + c * out_meta.strides[1] + oh * out_meta.strides[2] + ow * out_meta.strides[3];
+    const size_t out_off = n * out_meta.strides[0] + c * out_meta.strides[1] + oh * out_meta.strides[2] + ow * out_meta.strides[3];
     output[out_off] = from_compute(out, TypeTag<T>{});
 }
 
@@ -304,17 +295,9 @@ __global__ void trilinear_3d_kernel(
     const double w111 = td * th * tw;
 
     const Tcompute out = static_cast<Tcompute>(
-        w000 * static_cast<double>(v000) +
-        w001 * static_cast<double>(v001) +
-        w010 * static_cast<double>(v010) +
-        w011 * static_cast<double>(v011) +
-        w100 * static_cast<double>(v100) +
-        w101 * static_cast<double>(v101) +
-        w110 * static_cast<double>(v110) +
-        w111 * static_cast<double>(v111));
+        w000 * static_cast<double>(v000) + w001 * static_cast<double>(v001) + w010 * static_cast<double>(v010) + w011 * static_cast<double>(v011) + w100 * static_cast<double>(v100) + w101 * static_cast<double>(v101) + w110 * static_cast<double>(v110) + w111 * static_cast<double>(v111));
 
-    const size_t out_off = n * out_meta.strides[0] + c * out_meta.strides[1] +
-                           od * out_meta.strides[2] + oh * out_meta.strides[3] + ow * out_meta.strides[4];
+    const size_t out_off = n * out_meta.strides[0] + c * out_meta.strides[1] + od * out_meta.strides[2] + oh * out_meta.strides[3] + ow * out_meta.strides[4];
     output[out_off] = from_compute(out, TypeTag<T>{});
 }
 
@@ -445,13 +428,9 @@ __global__ void interpolate_bilinear_2d_kernel(
     const double w11 = wy * wx;
 
     const Tcompute out = static_cast<Tcompute>(
-        w00 * static_cast<double>(v00) +
-        w01 * static_cast<double>(v01) +
-        w10 * static_cast<double>(v10) +
-        w11 * static_cast<double>(v11));
+        w00 * static_cast<double>(v00) + w01 * static_cast<double>(v01) + w10 * static_cast<double>(v10) + w11 * static_cast<double>(v11));
 
-    output[((n * channels + c) * out_h + oh) * out_w + ow] =
-        op::interpolate::cuda::from_compute(out, op::interpolate::cuda::TypeTag<T>{});
+    output[((n * channels + c) * out_h + oh) * out_w + ow] = op::interpolate::cuda::from_compute(out, op::interpolate::cuda::TypeTag<T>{});
 }
 
 } // namespace op::cuda

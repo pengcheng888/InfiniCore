@@ -1,12 +1,7 @@
 #pragma once
-#include <cmath>
-#include <cuda_bf16.h>
-#include <cuda_fp16.h>
-#include <cuda_runtime.h>
-#include <type_traits>
 #include <algorithm>
-
-#include "../../../devices/nvidia/nvidia_kernel_common.cuh"
+#include <cmath>
+#include <type_traits>
 
 namespace op::relu6::cuda {
 
