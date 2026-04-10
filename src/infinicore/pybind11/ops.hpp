@@ -22,6 +22,7 @@
 #include "ops/baddbmm.hpp"
 #include "ops/bilinear.hpp"
 #include "ops/binary_cross_entropy_with_logits.hpp"
+#include "ops/bitwise_right_shift.hpp"
 #include "ops/block_diag.hpp"
 #include "ops/broadcast_to.hpp"
 #include "ops/cat.hpp"
@@ -40,6 +41,7 @@
 #include "ops/floor_divide.hpp"
 #include "ops/fmin.hpp"
 #include "ops/fmod.hpp"
+#include "ops/gaussian_nll_loss.hpp"
 #include "ops/hardswish.hpp"
 #include "ops/hardtanh.hpp"
 #include "ops/hinge_embedding_loss.hpp"
@@ -48,6 +50,7 @@
 #include "ops/index_add.hpp"
 #include "ops/index_copy.hpp"
 #include "ops/inner.hpp"
+#include "ops/interpolate.hpp"
 #include "ops/kron.hpp"
 #include "ops/kthvalue.hpp"
 #include "ops/kv_caching.hpp"
@@ -72,9 +75,11 @@
 #include "ops/paged_attention.hpp"
 #include "ops/paged_attention_prefill.hpp"
 #include "ops/paged_caching.hpp"
+#include "ops/prelu.hpp"
 #include "ops/random_sample.hpp"
 #include "ops/rearrange.hpp"
 #include "ops/reciprocal.hpp"
+#include "ops/relu6.hpp"
 #include "ops/rms_norm.hpp"
 #include "ops/rope.hpp"
 #include "ops/scatter.hpp"
@@ -123,6 +128,7 @@ inline void bind(py::module &m) {
     bind_baddbmm(m);
     bind_bilinear(m);
     bind_block_diag(m);
+    bind_bitwise_right_shift(m);
     bind_causal_softmax(m);
     bind_diff(m);
     bind_digamma(m);
@@ -149,10 +155,13 @@ inline void bind(py::module &m) {
     bind_mha_varlen(m);
     bind_hardswish(m);
     bind_hardtanh(m);
+    bind_gaussian_nll_loss(m);
+    bind_interpolate(m);
     bind_paged_attention(m);
     bind_paged_attention_prefill(m);
     bind_paged_caching(m);
     bind_pad(m);
+    bind_prelu(m);
     bind_random_sample(m);
     bind_cross_entropy(m);
     bind_hypot(m);
@@ -161,6 +170,7 @@ inline void bind(py::module &m) {
     bind_index_add(m);
     bind_smooth_l1_loss(m);
     bind_rearrange(m);
+    bind_relu6(m);
     bind_rms_norm(m);
     bind_avg_pool1d(m);
     bind_silu(m);
