@@ -128,6 +128,7 @@ infiniStatus_t calculate_layer_norm(
     size_t ptrdiff_array_size = 4 * ndim * sizeof(ptrdiff_t);
     size_t *shape_cuda = reinterpret_cast<size_t *>(workspace_ptr + ptrdiff_array_size);
 
+    /// @todo: h2d copy breaks cuda graph, need to optimize this part in the future
     CHECK_CUDA(cudaMemcpyAsync(input_strides_cuda, info.input_strides.data(), sizeof(ptrdiff_t) * ndim, cudaMemcpyHostToDevice, stream));
     CHECK_CUDA(cudaMemcpyAsync(output_strides_cuda, info.output_strides.data(), sizeof(ptrdiff_t) * ndim, cudaMemcpyHostToDevice, stream));
     CHECK_CUDA(cudaMemcpyAsync(input_standardization_strides_cuda, info.input_standardization_strides.data(), sizeof(ptrdiff_t) * (ndim - 1), cudaMemcpyHostToDevice, stream));
@@ -244,7 +245,7 @@ infiniStatus_t Descriptor::calculate(
         else if (_info.dtype == INFINI_DTYPE_F32)                   \
             return CALCULATE_LAYER_NORM(BLOCK_SIZE, float);         \
         else if (_info.dtype == INFINI_DTYPE_BF16)                  \
-            return CALCULATE_LAYER_NORM(BLOCK_SIZE, __nv_bfloat16); \
+            return CALCULATE_LAYER_NORM(BLOCK_SIZE, cuda_bfloat16); \
         else                                                        \
             return INFINI_STATUS_BAD_TENSOR_DTYPE;                  \
     }
