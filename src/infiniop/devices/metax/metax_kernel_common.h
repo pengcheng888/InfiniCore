@@ -5,7 +5,9 @@
 #include <maca_bfloat16.h>
 #include <maca_fp16.h>
 #include <maca_fp8.h>
+#include <mccub/block/block_reduce.cuh>
 #else
+#include <hccub/block/block_reduce.cuh>
 #include <hpcc_bfloat16.h>
 #include <hpcc_fp16.h>
 #include <hpcc_fp8.h>

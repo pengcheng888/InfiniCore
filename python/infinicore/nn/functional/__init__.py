@@ -13,6 +13,7 @@ from .hardtanh import hardtanh
 from .hinge_embedding_loss import hinge_embedding_loss
 from .huber_loss import huber_loss
 from .interpolate import interpolate
+from .layer_norm import layer_norm
 from .linear import linear
 from .linear_w8a8i8 import linear_w8a8i8
 from .log_softmax import log_softmax
@@ -83,4 +84,5 @@ __all__ = [
     "softplus",
     "softsign",
     "huber_loss",
+    "layer_norm",
 ]

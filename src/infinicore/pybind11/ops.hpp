@@ -54,6 +54,7 @@
 #include "ops/kron.hpp"
 #include "ops/kthvalue.hpp"
 #include "ops/kv_caching.hpp"
+#include "ops/layer_norm.hpp"
 #include "ops/ldexp.hpp"
 #include "ops/lerp.hpp"
 #include "ops/linear.hpp"
@@ -216,6 +217,7 @@ inline void bind(py::module &m) {
     bind_triplet_margin_loss(m);
     bind_selu(m);
     bind_sinh(m);
+    bind_layer_norm(m);
 }
 
 } // namespace infinicore::ops
