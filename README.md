@@ -156,7 +156,7 @@ python scripts/install.py [XMAKE_CONFIG_FLAGS]
      xmake f --ascend-npu=true -cv
      ```
 
-##### 试验功能 -- 使用flash attention库中的算子
+##### 试验功能 -- 使用英伟达平台 flash attention 库中的算子
 
   ```shell
 
@@ -175,6 +175,17 @@ python scripts/install.py [XMAKE_CONFIG_FLAGS]
 
   # flash attenion库会伴随infinicore_cpp_api一同编译安装
 
+  ```
+
+##### 试验功能 -- 使用摩尔线程开源 mate 提供的 flash attention 能力
+  ```shell
+  #该功能依赖摩尔线程开源项目 mate（https://github.com/MooreThreads/mate） v0.1.3 版本，默认不随仓库递归拉取。
+  
+  #若需启用摩尔线程开源项目 mate 提供的 flash attention 能力，请手动初始化对应子模块：
+  git -c submodule.third_party/mate.update=checkout submodule update --init --recursive third_party/mate
+
+  #随后参考 mate v0.1.3 README 进行编译，之后在 xmake 配置环节额外打开 --aten 开关和 --flash-attn 使用 mate 提供的 flash attention 能力，可参考：
+  xmake f --moore-gpu=y --aten=y --flash-attn=y -cv
   ```
 
 2. 编译安装
