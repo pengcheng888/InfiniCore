@@ -49,10 +49,10 @@ def parse_test_cases():
 
 
 class OpTest(BaseOperatorTest):
-    """Tan operator test with simplified implementation"""
+    """zeros operator test with simplified implementation"""
 
     def __init__(self):
-        super().__init__("Tan")
+        super().__init__("Zeros")
 
     def get_test_cases(self):
         return parse_test_cases()
