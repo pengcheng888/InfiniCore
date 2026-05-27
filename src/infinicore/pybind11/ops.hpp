@@ -74,6 +74,7 @@
 #include "ops/logical_not.hpp"
 #include "ops/masked_select.hpp"
 #include "ops/matmul.hpp"
+#include "ops/mha.hpp"
 #include "ops/mha_kvcache.hpp"
 #include "ops/mha_varlen.hpp"
 #include "ops/mul.hpp"
@@ -175,6 +176,7 @@ inline void bind(py::module &m) {
     bind_nrm2(m);
     bind_mha_kvcache(m);
     bind_mha_varlen(m);
+    bind_mha(m);
     bind_hardswish(m);
     bind_hardtanh(m);
     bind_gaussian_nll_loss(m);

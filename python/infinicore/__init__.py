@@ -104,6 +104,7 @@ from infinicore.ops.logical_and import logical_and
 from infinicore.ops.logical_not import logical_not
 from infinicore.ops.masked_select import masked_select
 from infinicore.ops.matmul import matmul
+from infinicore.ops.mha import mha
 from infinicore.ops.mha_kvcache import mha_kvcache
 from infinicore.ops.mha_varlen import mha_varlen
 from infinicore.ops.mul import mul
@@ -246,6 +247,7 @@ __all__ = [
     "from_torch",
     "mha_kvcache",
     "mha_varlen",
+    "mha",
     "fmin",
     "floor_divide",
     "float_power",
