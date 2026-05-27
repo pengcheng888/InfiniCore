@@ -39,7 +39,8 @@ void *plan(Tensor out,
 
 namespace {
 
-#ifdef ENABLE_FLASH_ATTN
+// Only support nv for now
+#if defined(ENABLE_FLASH_ATTN) && defined(ENABLE_NVIDIA_API)
 // MetaX/hpcc pip `flash_attn_2_cuda` exports `mha_fwd` at global scope (no namespace),
 // while NVIDIA `flash-attn-nvidia.so` uses `flash::mha_fwd`.
 #if defined(ENABLE_METAX_API)
@@ -52,7 +53,8 @@ namespace {
 } // namespace
 
 void run(void *planned_meta) {
-#ifdef ENABLE_FLASH_ATTN
+// Only support nv for now
+#if defined(ENABLE_FLASH_ATTN) && defined(ENABLE_NVIDIA_API)
     c10::cuda::CUDAStreamGuard guard(infinicore::adaptor::get_cuda_stream());
     auto *p = reinterpret_cast<PlannedMeta *>(planned_meta);
 
