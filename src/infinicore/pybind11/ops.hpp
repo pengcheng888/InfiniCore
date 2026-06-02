@@ -98,6 +98,7 @@
 #include "ops/scal.hpp"
 #include "ops/scatter.hpp"
 #include "ops/selu.hpp"
+#include "ops/sigmoid.hpp"
 #include "ops/silu.hpp"
 #include "ops/silu_and_mul.hpp"
 #include "ops/sinh.hpp"
@@ -197,6 +198,7 @@ inline void bind(py::module &m) {
     bind_relu6(m);
     bind_rms_norm(m);
     bind_avg_pool1d(m);
+    bind_sigmoid(m);
     bind_silu(m);
     bind_swiglu(m);
     bind_tan(m);
