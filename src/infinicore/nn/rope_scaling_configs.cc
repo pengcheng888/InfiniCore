@@ -4,6 +4,12 @@
 
 namespace infinicore::nn {
 
+namespace {
+// Define a portable PI constant to avoid relying on the non-standard M_PI macro
+// which is missing on MSVC (Windows) by default.
+constexpr float kPi = 3.14159265358979323846f;
+} // anonymous namespace
+
 // LongRopeScalingConfig Implementation
 LongRopeScalingConfig::LongRopeScalingConfig(
     std::vector<float> short_factor,
@@ -27,7 +33,6 @@ float LongRopeScalingConfig::get_magnitude_scale(size_t pos, size_t dim_idx, flo
     return factor_;
 }
 
-// TODO(rubik) llama3 implement here
 // Llama3RopeScalingConfig Implementation
 Llama3RopeScalingConfig::Llama3RopeScalingConfig(
     float factor,
@@ -40,7 +45,31 @@ Llama3RopeScalingConfig::Llama3RopeScalingConfig(
       original_max_position_embeddings_(original_max_position_embeddings) {}
 
 float Llama3RopeScalingConfig::get_freq_scale(size_t pos, size_t dim_idx, float base_inv_freq) const {
-    return 1.0f;
+    // Calculate the wavelength corresponding to the current inverse frequency
+    float wavelen = 2.0f * static_cast<float>(kPi) / base_inv_freq;
+
+    // Compute the wavelength thresholds that separate high, mid, and low frequencies
+    float low_freq_wavelen = static_cast<float>(original_max_position_embeddings_) / low_freq_factor_;
+    float high_freq_wavelen = static_cast<float>(original_max_position_embeddings_) / high_freq_factor_;
+
+    float scale = 1.0f;
+
+    if (wavelen < low_freq_wavelen) {
+        // High-frequency band: short wavelengths retain the original scale
+        scale = 1.0f;
+    } else if (wavelen > high_freq_wavelen) {
+        // Low-frequency band: long wavelengths are directly scaled by the factor
+        scale = factor_;
+    } else {
+        // Mid-frequency band: apply smooth linear interpolation between 1.0 and factor_
+        float smooth = (static_cast<float>(original_max_position_embeddings_) / wavelen - low_freq_factor_) / (high_freq_factor_ - low_freq_factor_);
+        scale = 1.0f - smooth + smooth * factor_;
+    }
+
+    // The framework applies the scale multiplicatively (inv_freq = base_inv_freq * return_value).
+    // Since the Llama3 logic divides the frequency (inv_freq = base_inv_freq / scale),
+    // we return the inverse of the computed scale.
+    return 1.0f / scale;
 }
 
 } // namespace infinicore::nn
