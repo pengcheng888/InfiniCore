@@ -109,7 +109,6 @@ __aicore__ inline void RoPEKernel<T, U>::init(GM_ADDR y,
     // pipe.InitBuffer(_tmp_odd_buf2, _tile_len / 2 * sizeof(T));
     // pipe.InitBuffer(_tmp_even_buf1, _tile_len / 2 * sizeof(T));
     // pipe.InitBuffer(_tmp_even_buf2, _tile_len / 2 * sizeof(T));
-    
 
     if constexpr (std::is_same<T, bfloat16_t>::value) {
         pipe.InitBuffer(_tmp_float_input, _copy_len * sizeof(float));
@@ -122,8 +121,7 @@ __aicore__ inline void RoPEKernel<T, U>::init(GM_ADDR y,
         pipe.InitBuffer(_tmp_odd_buf2, _tile_len / 2 * sizeof(float));
         pipe.InitBuffer(_tmp_even_buf1, _tile_len / 2 * sizeof(float));
         pipe.InitBuffer(_tmp_even_buf2, _tile_len / 2 * sizeof(float));
-    }
-    else{
+    } else {
         pipe.InitBuffer(_tmp_odd_buf, _tile_len / 2 * sizeof(T));
         pipe.InitBuffer(_tmp_even_buf, _tile_len / 2 * sizeof(T));
         pipe.InitBuffer(_tmp_odd_buf1, _tile_len / 2 * sizeof(T));
@@ -138,10 +136,10 @@ __aicore__ inline void RoPEKernel<T, U>::copyIn(size_t i) {
     LocalTensor<T> input_ub = _in_que.AllocTensor<T>();
     LocalTensor<T> sin_ub = _sin_que.AllocTensor<T>();
     LocalTensor<T> cos_ub = _cos_que.AllocTensor<T>();
-    
+
     size_t batch_idx = _block_idx / _nhead;
     size_t head_idx = _block_idx % _nhead;
-    
+
     auto idx = batch_idx * _st_xbatch + i * _st_xnt + head_idx * _st_xnh;
     DataCopy(input_ub, _x_gm[idx], _copy_len);
     auto pos_idx = _p_gm(i);
@@ -280,7 +278,6 @@ __aicore__ inline void RoPEKernel<T, U>::compute(size_t i) {
             output_ub(j * 2 + 1) = tmp_even1(j);
         }
         // DumpTensor(output_ub, 12, _tile_len);
-
     }
 
     _out_que.EnQue<T>(output_ub);
@@ -427,8 +424,7 @@ __aicore__ inline void RoPEKernelNeox<T, U>::init(GM_ADDR y,
         pipe.InitBuffer(_tmp_result2, _half_len * sizeof(float));
         pipe.InitBuffer(_tmp_result3, _half_len * sizeof(float));
         pipe.InitBuffer(_tmp_result4, _half_len * sizeof(float));
-    }
-    else{
+    } else {
         pipe.InitBuffer(_tmp_first_half, _half_len * sizeof(T));
         pipe.InitBuffer(_tmp_second_half, _half_len * sizeof(T));
         pipe.InitBuffer(_tmp_result1, _half_len * sizeof(T));
@@ -443,10 +439,10 @@ __aicore__ inline void RoPEKernelNeox<T, U>::copyIn(size_t i) {
     LocalTensor<T> input_ub = _in_que.AllocTensor<T>();
     LocalTensor<T> sin_ub = _sin_que.AllocTensor<T>();
     LocalTensor<T> cos_ub = _cos_que.AllocTensor<T>();
-    
+
     size_t batch_idx = _block_idx / _nhead;
     size_t head_idx = _block_idx % _nhead;
-    
+
     auto idx = batch_idx * _st_xbatch + i * _st_xnt + head_idx * _st_xnh;
     DataCopy(input_ub, _x_gm[idx], _copy_len);
     auto pos_idx = _p_gm(i);
@@ -561,7 +557,7 @@ __aicore__ inline void RoPEKernelNeox<T, U>::process(size_t seq_len) {
 
 // ==================== Kernel Launch Macros ====================
 
-#define ROPE_KERNEL_INIT_ARGS y, x, pos, sin, cos, dhead, nhead, batch, \
+#define ROPE_KERNEL_INIT_ARGS y, x, pos, sin, cos, dhead, nhead, batch,        \
                               y_stride_seqlen, y_stride_nhead, y_stride_batch, \
                               x_stride_seqlen, x_stride_nhead, x_stride_batch
 
@@ -618,20 +614,20 @@ DEFINE_ROPE_KERNEL(rope_kernel_bf16, bfloat16_t)
 
 // ==================== GPT_NEOX Kernel Launch ====================
 
-#define ROPE_NEOX_KERNEL_INIT_ARGS y, x, pos, sin, cos, dhead, nhead, batch, \
-                              y_stride_seqlen, y_stride_nhead, y_stride_batch, \
-                              x_stride_seqlen, x_stride_nhead, x_stride_batch
+#define ROPE_NEOX_KERNEL_INIT_ARGS y, x, pos, sin, cos, dhead, nhead, batch,        \
+                                   y_stride_seqlen, y_stride_nhead, y_stride_batch, \
+                                   x_stride_seqlen, x_stride_nhead, x_stride_batch
 
 #define CASE_NEOX_POSTYPE(POS_TYPE_ENUM, TYPE, POS_T) \
-    case POS_TYPE_ENUM: {                        \
-        RoPEKernelNeox<TYPE, POS_T> op;              \
+    case POS_TYPE_ENUM: {                             \
+        RoPEKernelNeox<TYPE, POS_T> op;               \
         op.init(ROPE_NEOX_KERNEL_INIT_ARGS);          \
-        op.process(seq_len);                     \
-        break;                                   \
+        op.process(seq_len);                          \
+        break;                                        \
     }
 
 #define ROPE_NEOX_KERNEL(TYPE, POSTYPE)                     \
-    switch (POSTYPE) {                                 \
+    switch (POSTYPE) {                                      \
         CASE_NEOX_POSTYPE(INFINI_DTYPE_I8, TYPE, int8_t)    \
         CASE_NEOX_POSTYPE(INFINI_DTYPE_I16, TYPE, int16_t)  \
         CASE_NEOX_POSTYPE(INFINI_DTYPE_I32, TYPE, int32_t)  \
@@ -640,11 +636,11 @@ DEFINE_ROPE_KERNEL(rope_kernel_bf16, bfloat16_t)
         CASE_NEOX_POSTYPE(INFINI_DTYPE_U16, TYPE, uint16_t) \
         CASE_NEOX_POSTYPE(INFINI_DTYPE_U32, TYPE, uint32_t) \
         CASE_NEOX_POSTYPE(INFINI_DTYPE_U64, TYPE, uint64_t) \
-    default:                                           \
-        break;                                         \
+    default:                                                \
+        break;                                              \
     }
 
-#define DEFINE_ROPE_NEOX_KERNEL(KERNEL_NAME, TYPE)                         \
+#define DEFINE_ROPE_NEOX_KERNEL(KERNEL_NAME, TYPE)                    \
     __global__ __aicore__ void KERNEL_NAME(GM_ADDR y,                 \
                                            GM_ADDR x,                 \
                                            GM_ADDR pos,               \
@@ -661,7 +657,7 @@ DEFINE_ROPE_KERNEL(rope_kernel_bf16, bfloat16_t)
                                            ptrdiff_t x_stride_nhead,  \
                                            ptrdiff_t x_stride_batch,  \
                                            int32_t pos_type) {        \
-        ROPE_NEOX_KERNEL(TYPE, pos_type)                                   \
+        ROPE_NEOX_KERNEL(TYPE, pos_type)                              \
     }
 
 DEFINE_ROPE_NEOX_KERNEL(rope_kernel_neox_float, float)
@@ -695,20 +691,20 @@ extern "C" infiniStatus_t rope_kernel_launch(
     ptrdiff_t x_stride_batch,
     void *stream) {
 
-#define LAUNCH_ROPE_KERNEL(DTYPE_ENUM, KERNEL_NAME)                  \
-    case DTYPE_ENUM:                                                 \
+#define LAUNCH_ROPE_KERNEL(DTYPE_ENUM, KERNEL_NAME)                          \
+    case DTYPE_ENUM:                                                         \
         KERNEL_NAME<<<batch * nhead, nullptr, stream>>>(y, x, pos, sin, cos, \
-                                                seq_len,             \
-                                                dhead,               \
-                                                nhead,               \
-                                                batch,               \
-                                                y_stride_seqlen,     \
-                                                y_stride_nhead,      \
-                                                y_stride_batch,      \
-                                                x_stride_seqlen,     \
-                                                x_stride_nhead,      \
-                                                x_stride_batch,     \
-                                                pos_type);           \
+                                                        seq_len,             \
+                                                        dhead,               \
+                                                        nhead,               \
+                                                        batch,               \
+                                                        y_stride_seqlen,     \
+                                                        y_stride_nhead,      \
+                                                        y_stride_batch,      \
+                                                        x_stride_seqlen,     \
+                                                        x_stride_nhead,      \
+                                                        x_stride_batch,      \
+                                                        pos_type);           \
         return INFINI_STATUS_SUCCESS;
 
     switch (dtype) {
@@ -740,20 +736,20 @@ extern "C" infiniStatus_t rope_kernel_neox_launch(
     ptrdiff_t x_stride_batch,
     void *stream) {
 
-#define LAUNCH_ROPE_NEOX_KERNEL(DTYPE_ENUM, KERNEL_NAME)                  \
-    case DTYPE_ENUM:                                                 \
+#define LAUNCH_ROPE_NEOX_KERNEL(DTYPE_ENUM, KERNEL_NAME)                     \
+    case DTYPE_ENUM:                                                         \
         KERNEL_NAME<<<batch * nhead, nullptr, stream>>>(y, x, pos, sin, cos, \
-                                                seq_len,             \
-                                                dhead,               \
-                                                nhead,               \
-                                                batch,               \
-                                                y_stride_seqlen,     \
-                                                y_stride_nhead,      \
-                                                y_stride_batch,      \
-                                                x_stride_seqlen,     \
-                                                x_stride_nhead,      \
-                                                x_stride_batch,     \
-                                                pos_type);           \
+                                                        seq_len,             \
+                                                        dhead,               \
+                                                        nhead,               \
+                                                        batch,               \
+                                                        y_stride_seqlen,     \
+                                                        y_stride_nhead,      \
+                                                        y_stride_batch,      \
+                                                        x_stride_seqlen,     \
+                                                        x_stride_nhead,      \
+                                                        x_stride_batch,      \
+                                                        pos_type);           \
         return INFINI_STATUS_SUCCESS;
 
     switch (dtype) {
