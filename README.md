@@ -164,11 +164,11 @@ python scripts/install.py [XMAKE_CONFIG_FLAGS]
       ## flash-attention commit: 10846960ca0793b993446f6dbaf696479c127a9d
       ## cutlass commit: 087c84df83d254b5fb295a7a408f1a1d554085cf
 
-  # 设置cutlass路径的环境变量CUTLASS_ROOT(部分环境可选)
-      export CUTLASS_ROOT=<path-to>/InfiniCore/third_party/cutlass
+  # 设置cutlass路径的环境变量CUTLASS_HOME(部分环境可选)
+      export CUTLASS_HOME=<path-to>/InfiniCore/third_party/cutlass
 
   # xmake配置环节额外打开 --aten 开关，并设置 --flash-attn 库位置，例(cuda路径部分环境可使用默认)：
-      xmake f --nv-gpu=y --ccl=y --cuda=$CUDA_HOME --aten=y --flash-attn=<path-to>/InfiniCore/third_party/flash-attention -cv
+      xmake f --nv-gpu=y --ccl=y --aten=y [--graph=y] [--cuda=$CUDA_HOME] --flash-attn=<path-to>/InfiniCore/third_party/flash-attention -cv
 
   # 设置额外的环境变量
       export CPLUS_INCLUDE_PATH=$CUDA_HOME/include:$CPLUS_INCLUDE_PATH
