@@ -2,6 +2,10 @@
 #include "../../handle.h"
 #include "infiniop/ops/embedding.h"
 
+#ifdef ENABLE_CAMBRICON_API
+#include "bang/embedding_bang.h"
+#endif
+
 #ifdef ENABLE_CPU_API
 #include "cpu/embedding_cpu.h"
 #endif
@@ -57,6 +61,9 @@ __INFINI_C infiniStatus_t infiniopCreateEmbeddingDescriptor(
 #ifdef ENABLE_MOORE_API
         CREATE(INFINI_DEVICE_MOORE, moore);
 #endif
+#ifdef ENABLE_CAMBRICON_API
+        CREATE(INFINI_DEVICE_CAMBRICON, bang);
+#endif
 
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
@@ -103,6 +110,9 @@ __INFINI_C infiniStatus_t infiniopEmbedding(
 #ifdef ENABLE_MOORE_API
         CALCULATE(INFINI_DEVICE_MOORE, moore);
 #endif
+#ifdef ENABLE_CAMBRICON_API
+        CALCULATE(INFINI_DEVICE_CAMBRICON, bang);
+#endif
 
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
@@ -142,6 +152,9 @@ __INFINI_C infiniStatus_t infiniopDestroyEmbeddingDescriptor(infiniopEmbeddingDe
 #endif
 #ifdef ENABLE_MOORE_API
         DESTROY(INFINI_DEVICE_MOORE, moore);
+#endif
+#ifdef ENABLE_CAMBRICON_API
+        DESTROY(INFINI_DEVICE_CAMBRICON, bang);
 #endif
 
     default:
