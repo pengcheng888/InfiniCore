@@ -14,6 +14,9 @@
 #ifdef ENABLE_MOORE_API
 #include "moore/zeros_moore.h"
 #endif
+#ifdef ENABLE_CAMBRICON_API
+#include "bang/zeros_bang.h"
+#endif
 
 __INFINI_C infiniStatus_t infiniopCreateZerosDescriptor(
     infiniopHandle_t handle,
@@ -52,6 +55,9 @@ __INFINI_C infiniStatus_t infiniopCreateZerosDescriptor(
 #ifdef ENABLE_MOORE_API
         CREATE(INFINI_DEVICE_MOORE, moore);
 #endif
+#ifdef ENABLE_CAMBRICON_API
+        CREATE(INFINI_DEVICE_CAMBRICON, bang);
+#endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
@@ -87,6 +93,9 @@ __INFINI_C infiniStatus_t infiniopGetZerosWorkspaceSize(infiniopZerosDescriptor_
 #endif
 #ifdef ENABLE_MOORE_API
         GET(INFINI_DEVICE_MOORE, moore);
+#endif
+#ifdef ENABLE_CAMBRICON_API
+        GET(INFINI_DEVICE_CAMBRICON, bang);
 #endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
@@ -132,6 +141,9 @@ __INFINI_C infiniStatus_t infiniopZeros(
 #ifdef ENABLE_MOORE_API
         CALCULATE(INFINI_DEVICE_MOORE, moore);
 #endif
+#ifdef ENABLE_CAMBRICON_API
+        CALCULATE(INFINI_DEVICE_CAMBRICON, bang);
+#endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
@@ -169,6 +181,9 @@ infiniopDestroyZerosDescriptor(infiniopZerosDescriptor_t desc) {
 #endif
 #ifdef ENABLE_MOORE_API
         DELETE(INFINI_DEVICE_MOORE, moore);
+#endif
+#ifdef ENABLE_CAMBRICON_API
+        DELETE(INFINI_DEVICE_CAMBRICON, bang);
 #endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
