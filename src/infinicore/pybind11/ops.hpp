@@ -34,6 +34,7 @@
 #include "ops/cat.hpp"
 #include "ops/causal_softmax.hpp"
 #include "ops/cdist.hpp"
+#include "ops/conv2d.hpp"
 #include "ops/cross_entropy.hpp"
 #include "ops/diff.hpp"
 #include "ops/digamma.hpp"
@@ -189,6 +190,7 @@ inline void bind(py::module &m) {
     bind_prelu(m);
     bind_random_sample(m);
     bind_cross_entropy(m);
+    bind_conv2d(m);
     bind_hypot(m);
     bind_take(m);
     bind_index_copy(m);
