@@ -74,8 +74,7 @@ infiniStatus_t Descriptor::create(
     std::vector<int64_t> temp_strides = {
         static_cast<int64_t>(info.seq_len * info.total_seq_len),
         static_cast<int64_t>(info.total_seq_len),
-        1
-    };
+        1};
     auto temp = new aclnnTensorDescriptor(toAclDataType(info.dtype), shape, temp_strides, temp_addr);
 
     // Initialize the value tensor with -∞
