@@ -1,0 +1,123 @@
+#include "../../../devices/bang/common_bang.h"
+#include "zeros_bang.h"
+
+#include <algorithm>
+
+__nram__ char zeros_nram_buffer[NRAM_MAX_SIZE];
+
+__mlu_global__ void zerosKernel(uint8_t *__restrict__ output, size_t total_bytes) {
+    if (total_bytes == 0) {
+        return;
+    }
+
+    uint8_t *cache = reinterpret_cast<uint8_t *>((reinterpret_cast<size_t>(zeros_nram_buffer) + ALIGN_SIZE - 1) & ~(ALIGN_SIZE - 1));
+    size_t max_chunk = NRAM_MAX_SIZE - ALIGN_SIZE;
+
+    for (size_t start = taskId * max_chunk; start < total_bytes; start += taskDim * max_chunk) {
+        size_t current = std::min(max_chunk, total_bytes - start);
+        __bang_write_value(cache, current, static_cast<uint8_t>(0));
+        __memcpy(output + start, cache, current, NRAM2GDRAM);
+    }
+}
+
+static infiniStatus_t launchZeros(
+    int core_per_cluster,
+    int cluster_count,
+    cnrtQueue_t queue,
+    void *output,
+    size_t total_bytes) {
+    cnrtDim3_t kernel_dim;
+    kernel_dim.x = core_per_cluster;
+    kernel_dim.y = cluster_count;
+    kernel_dim.z = 1;
+
+    cnrtFunctionType_t func_type = total_bytes > 1024 * 1024 ? cnrtFuncTypeUnion1 : cnrtFuncTypeBlock;
+    zerosKernel<<<kernel_dim, func_type, queue>>>(reinterpret_cast<uint8_t *>(output), total_bytes);
+    CNRT_CHECK(cnrtQueueSync(queue));
+    return INFINI_STATUS_SUCCESS;
+}
+
+namespace op::zeros::bang {
+
+struct Descriptor::Opaque {
+    std::shared_ptr<device::bang::Handle::Internal> internal;
+};
+
+Descriptor::~Descriptor() {
+    delete _opaque;
+}
+
+static size_t storageSpanBytes(infiniopTensorDescriptor_t desc) {
+    if (desc->numel() == 0) {
+        return 0;
+    }
+
+    auto shape = desc->shape();
+    auto byte_strides = desc->getByteStrides();
+    size_t max_offset = 0;
+    for (size_t i = 0; i < shape.size(); ++i) {
+        max_offset += (shape[i] - 1) * static_cast<size_t>(byte_strides[i]);
+    }
+    return max_offset + infiniSizeOf(desc->dtype());
+}
+
+infiniStatus_t Descriptor::create(
+    infiniopHandle_t handle,
+    Descriptor **desc_ptr,
+    infiniopTensorDescriptor_t output_desc,
+    std::vector<infiniopTensorDescriptor_t> input_descs) {
+    CHECK_OR_RETURN(!input_descs.empty(), INFINI_STATUS_BAD_PARAM);
+    auto input_desc = input_descs.at(0);
+
+    auto dtype = output_desc->dtype();
+    CHECK_DTYPE(dtype,
+                INFINI_DTYPE_BYTE,
+                INFINI_DTYPE_BOOL,
+                INFINI_DTYPE_I8,
+                INFINI_DTYPE_I16,
+                INFINI_DTYPE_I32,
+                INFINI_DTYPE_I64,
+                INFINI_DTYPE_U8,
+                INFINI_DTYPE_U16,
+                INFINI_DTYPE_U32,
+                INFINI_DTYPE_U64,
+                INFINI_DTYPE_F16,
+                INFINI_DTYPE_F32,
+                INFINI_DTYPE_F64,
+                INFINI_DTYPE_BF16);
+
+    CHECK_SAME_SHAPE(output_desc->shape(), input_desc->shape());
+    CHECK_OR_RETURN(!output_desc->hasBroadcastDim(), INFINI_STATUS_BAD_TENSOR_STRIDES);
+    for (auto stride : output_desc->strides()) {
+        CHECK_OR_RETURN(stride >= 0, INFINI_STATUS_BAD_TENSOR_STRIDES);
+    }
+
+    auto handle_bang = reinterpret_cast<device::bang::Handle *>(handle);
+    *desc_ptr = new Descriptor(
+        storageSpanBytes(output_desc),
+        new Opaque{handle_bang->internal()},
+        handle->device,
+        handle->device_id);
+    return INFINI_STATUS_SUCCESS;
+}
+
+infiniStatus_t Descriptor::calculate(
+    void *workspace,
+    size_t workspace_size,
+    void *output,
+    std::vector<const void *> inputs,
+    void *stream) const {
+    (void)workspace;
+    (void)workspace_size;
+    (void)inputs;
+    if (_storage_size == 0) {
+        return INFINI_STATUS_SUCCESS;
+    }
+
+    auto queue = reinterpret_cast<cnrtQueue_t>(stream);
+    int core_per_cluster = _opaque->internal->getCorePerCluster();
+    int cluster_count = _opaque->internal->getClusterCount();
+    return launchZeros(core_per_cluster, cluster_count, queue, output, _storage_size);
+}
+
+} // namespace op::zeros::bang
