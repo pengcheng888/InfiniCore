@@ -14,6 +14,9 @@
 #ifdef ENABLE_MOORE_API
 #include "moore/paged_caching_moore.h"
 #endif
+#ifdef ENABLE_ASCEND_API
+#include "ascend/paged_caching_ascend.h"
+#endif
 
 __INFINI_C infiniStatus_t infiniopCreatePagedCachingDescriptor(
     infiniopHandle_t handle,
@@ -53,6 +56,9 @@ __INFINI_C infiniStatus_t infiniopCreatePagedCachingDescriptor(
 #ifdef ENABLE_QY_API
         CREATE(INFINI_DEVICE_QY, nvidia)
 #endif
+#ifdef ENABLE_ASCEND_API
+        CREATE(INFINI_DEVICE_ASCEND, ascend)
+#endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
@@ -88,6 +94,9 @@ __INFINI_C infiniStatus_t infiniopGetPagedCachingWorkspaceSize(
 #endif
 #ifdef ENABLE_QY_API
         GET(INFINI_DEVICE_QY, nvidia)
+#endif
+#ifdef ENABLE_ASCEND_API
+        GET(INFINI_DEVICE_ASCEND, ascend)
 #endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
@@ -129,6 +138,9 @@ __INFINI_C infiniStatus_t infiniopPagedCaching(
 #ifdef ENABLE_QY_API
         CALCULATE(INFINI_DEVICE_QY, nvidia)
 #endif
+#ifdef ENABLE_ASCEND_API
+        CALCULATE(INFINI_DEVICE_ASCEND, ascend)
+#endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
@@ -163,6 +175,9 @@ __INFINI_C infiniStatus_t infiniopDestroyPagedCachingDescriptor(
 #endif
 #ifdef ENABLE_QY_API
         DESTROY(INFINI_DEVICE_QY, nvidia)
+#endif
+#ifdef ENABLE_ASCEND_API
+        DESTROY(INFINI_DEVICE_ASCEND, ascend)
 #endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
