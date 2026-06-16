@@ -14,6 +14,9 @@
 #ifdef ENABLE_CAMBRICON_API
 #include "bang/paged_attention_bang.h"
 #endif
+#ifdef ENABLE_ASCEND_API
+#include "ascend/paged_attention_ascend.h"
+#endif
 
 __INFINI_C infiniStatus_t infiniopCreatePagedAttentionDescriptor(
     infiniopHandle_t handle,
@@ -55,6 +58,9 @@ __INFINI_C infiniStatus_t infiniopCreatePagedAttentionDescriptor(
 #ifdef ENABLE_ILUVATAR_API
         CREATE(INFINI_DEVICE_ILUVATAR, nvidia)
 #endif
+#ifdef ENABLE_ASCEND_API
+        CREATE(INFINI_DEVICE_ASCEND, ascend)
+#endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
@@ -87,6 +93,9 @@ __INFINI_C infiniStatus_t infiniopGetPagedAttentionWorkspaceSize(
 #endif
 #ifdef ENABLE_ILUVATAR_API
         GET(INFINI_DEVICE_ILUVATAR, nvidia)
+#endif
+#ifdef ENABLE_ASCEND_API
+        GET(INFINI_DEVICE_ASCEND, ascend)
 #endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
@@ -125,6 +134,9 @@ __INFINI_C infiniStatus_t infiniopPagedAttention(
 #ifdef ENABLE_ILUVATAR_API
         CALCULATE(INFINI_DEVICE_ILUVATAR, nvidia)
 #endif
+#ifdef ENABLE_ASCEND_API
+        CALCULATE(INFINI_DEVICE_ASCEND, ascend)
+#endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
@@ -156,6 +168,9 @@ __INFINI_C infiniStatus_t infiniopDestroyPagedAttentionDescriptor(
 #endif
 #ifdef ENABLE_ILUVATAR_API
         DESTROY(INFINI_DEVICE_ILUVATAR, nvidia)
+#endif
+#ifdef ENABLE_ASCEND_API
+        DESTROY(INFINI_DEVICE_ASCEND, ascend)
 #endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
