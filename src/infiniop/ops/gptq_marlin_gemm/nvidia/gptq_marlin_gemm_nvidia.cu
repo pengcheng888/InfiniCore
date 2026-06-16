@@ -742,8 +742,12 @@ void marlin_mm(
                 num_bits);
         }
 
-        host::RuntimeDeviceCheck(
-            cudaFuncSetAttribute(kernel, cudaFuncAttributeMaxDynamicSharedMemorySize, max_shared_mem_new));
+        cudaStreamCaptureStatus capture_status = cudaStreamCaptureStatusNone;
+        host::RuntimeDeviceCheck(cudaStreamIsCapturing(stream, &capture_status));
+        if (capture_status == cudaStreamCaptureStatusNone) {
+            host::RuntimeDeviceCheck(
+                cudaFuncSetAttribute(kernel, cudaFuncAttributeMaxDynamicSharedMemorySize, max_shared_mem_new));
+        }
 
         bool part_use_atomic_add = use_atomic_add && div_ceil(prob_m_split, 64) * prob_n <= 2048;
 
@@ -890,6 +894,7 @@ void gptq_marlin_gemm(const void *a,
         device::marlin::min_thread_n);
 
     int device_id = 0;
+    RuntimeDeviceCheck(cudaGetDevice(&device_id));
     int sms = -1;
     RuntimeDeviceCheck(cudaDeviceGetAttribute(&sms, cudaDevAttrMultiProcessorCount, device_id));
     // RuntimeCheck(workspace.size(0) >= sms, "workspace.size(0) = ", workspace.size(0), " is below min_workspace_size = ", sms);
@@ -988,14 +993,6 @@ infiniStatus_t gptq_marlin_gemm_kernel(void *c,
     const size_t workspace_elems = (size_t)sms * max_blocks_per_sm;
     const size_t workspace_bytes = workspace_elems * sizeof(int);
 
-    // ===================== 2. 计算总内存大小 =====================
-    const size_t total_bytes = c_tmp_bytes + a_tmp_bytes + workspace_bytes;
-
-    // ===================== 3. 单次 cudaMalloc 分配 =====================
-    if (total_bytes > 0) {
-        cudaMemset(total_buffer, 0, total_bytes);
-    }
-
     // ===================== 4. 手动切分指针（核心！） =====================
     uint8_t *ptr = reinterpret_cast<uint8_t *>(total_buffer);
 
@@ -1083,7 +1080,10 @@ infiniStatus_t Descriptor::create(
     max_m_block = min(max_m_block, 64);
     const size_t c_elems = (size_t)sms * max_m_block * _MAX_THREAD_N;
     size_t c_tmp_bytes = c_elems * sizeof(float);
-    size_t a_tmp_bytes = (size_t)a_desc->dim(0) * a_desc->dim(1) * infiniSizeOf(a_desc->dtype());
+    size_t a_tmp_bytes = 0;
+    if (g_idx_desc->numel() > 0 && perm_desc->numel() > 0) {
+        a_tmp_bytes = (size_t)a_desc->dim(0) * a_desc->dim(1) * infiniSizeOf(a_desc->dtype());
+    }
     const size_t workspace_elems = (size_t)sms * max_blocks_per_sm;
     const size_t workspace_bytes = workspace_elems * sizeof(int);
     size_t workspace_size = c_tmp_bytes + a_tmp_bytes + workspace_bytes;
