@@ -6,7 +6,7 @@
 #ifdef ENABLE_CPU_API
 #include "cpu/lerp_cpu.h"
 #endif
-#if defined(ENABLE_NVIDIA_API) || defined(ENABLE_ILUVATAR_API) || defined(ENABLE_QY_API) || defined(ENABLE_HYGON_API)
+#if defined(ENABLE_NVIDIA_API) || defined(ENABLE_ILUVATAR_API) || defined(ENABLE_QY_API) || defined(ENABLE_ALI_API) || defined(ENABLE_HYGON_API)
 #include "nvidia/lerp_nvidia.cuh"
 #endif
 
@@ -62,6 +62,9 @@ __INFINI_C infiniStatus_t infiniopCreateLerpDescriptor(
 #ifdef ENABLE_MOORE_API
         CREATE(INFINI_DEVICE_MOORE, moore);
 #endif
+#ifdef ENABLE_ALI_API
+        CREATE(INFINI_DEVICE_ALI, nvidia);
+#endif
 #ifdef ENABLE_HYGON_API
         CREATE(INFINI_DEVICE_HYGON, nvidia);
 #endif
@@ -99,6 +102,9 @@ __INFINI_C infiniStatus_t infiniopGetLerpWorkspaceSize(infiniopLerpDescriptor_t 
 #endif
 #ifdef ENABLE_MOORE_API
         GET(INFINI_DEVICE_MOORE, moore);
+#endif
+#ifdef ENABLE_ALI_API
+        GET(INFINI_DEVICE_ALI, nvidia);
 #endif
 #ifdef ENABLE_HYGON_API
         GET(INFINI_DEVICE_HYGON, nvidia);
@@ -146,6 +152,9 @@ __INFINI_C infiniStatus_t infiniopLerp(
 #ifdef ENABLE_MOORE_API
         CALCULATE(INFINI_DEVICE_MOORE, moore);
 #endif
+#ifdef ENABLE_ALI_API
+        CALCULATE(INFINI_DEVICE_ALI, nvidia);
+#endif
 #ifdef ENABLE_HYGON_API
         CALCULATE(INFINI_DEVICE_HYGON, nvidia);
 #endif
@@ -183,6 +192,9 @@ __INFINI_C infiniStatus_t infiniopDestroyLerpDescriptor(infiniopLerpDescriptor_t
 #endif
 #ifdef ENABLE_MOORE_API
         DELETE(INFINI_DEVICE_MOORE, moore);
+#endif
+#ifdef ENABLE_ALI_API
+        DELETE(INFINI_DEVICE_ALI, nvidia);
 #endif
 #ifdef ENABLE_HYGON_API
         DELETE(INFINI_DEVICE_HYGON, nvidia);
