@@ -53,6 +53,7 @@
 #include "ops/rotg.hpp"
 #include "ops/rotm.hpp"
 #include "ops/rotmg.hpp"
+#include "ops/rwkv5_wkv.hpp"
 #include "ops/scal.hpp"
 #include "ops/sigmoid.hpp"
 #include "ops/silu.hpp"

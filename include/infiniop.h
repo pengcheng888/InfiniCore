@@ -108,6 +108,7 @@
 #include "infiniop/ops/rotm.h"
 #include "infiniop/ops/rotmg.h"
 #include "infiniop/ops/scal.h"
+#include "infiniop/ops/rwkv5_wkv.h"
 #include "infiniop/ops/scatter.h"
 #include "infiniop/ops/selu.h"
 #include "infiniop/ops/sigmoid.h"
