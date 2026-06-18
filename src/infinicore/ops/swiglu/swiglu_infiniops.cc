@@ -1,9 +1,11 @@
-#include "infinicore/ops/add.hpp"
+#include "infinicore/ops/swiglu.hpp"
 
 #ifdef ENABLE_INFINIOPS_API
 #include "../infiniops_impl.hpp"
 
-namespace infinicore::op::add_impl::infiniops {
+#include "base/swiglu.h"
+
+namespace infinicore::op::swiglu_impl::infiniops {
 namespace {
 
 using TensorMeta = ::infinicore::op::infiniops::TensorMeta;
@@ -35,7 +37,7 @@ void run(void *planned_meta) {
     handle.set_stream(context::getStream());
     infini::ops::Config config;
 
-    infini::ops::Add::Call(
+    infini::ops::Swiglu::Call(
         handle,
         config,
         planned->a.tensor(planned->a_tensor),
@@ -49,11 +51,11 @@ void cleanup(void **planned_meta_ptr) {
 }
 
 static bool registered = []() {
-    Add::plan_dispatcher().registerDevice(Device::Type::NVIDIA, &plan);
-    Add::run_dispatcher().registerDevice(Device::Type::NVIDIA, &run);
-    Add::cleanup_dispatcher().registerDevice(Device::Type::NVIDIA, &cleanup);
+    SwiGLU::plan_dispatcher().registerDevice(Device::Type::NVIDIA, &plan);
+    SwiGLU::run_dispatcher().registerDevice(Device::Type::NVIDIA, &run);
+    SwiGLU::cleanup_dispatcher().registerDevice(Device::Type::NVIDIA, &cleanup);
     return true;
 }();
 
-} // namespace infinicore::op::add_impl::infiniops
+} // namespace infinicore::op::swiglu_impl::infiniops
 #endif

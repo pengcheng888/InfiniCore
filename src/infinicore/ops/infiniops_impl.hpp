@@ -5,7 +5,10 @@
 
 #include <stdexcept>
 
-#include "infini/operator_call_instantiations.h"
+#include "config.h"
+#include "data_type.h"
+#include "handle.h"
+#include "infini/ops.h"
 #include "tensor.h"
 
 namespace infinicore::op::infiniops {
@@ -60,8 +63,7 @@ struct TensorMeta {
           device(toInfiniOpsDevice(tensor->device())) {}
 
     infini::ops::Tensor tensor(const void *data) const {
-        return infini::ops::Tensor(
-            const_cast<void *>(data), shape, dtype, device, strides);
+        return infini::ops::Tensor(const_cast<void *>(data), shape, dtype, device, strides);
     }
 
     infini::ops::Tensor tensor(const Tensor &tensor) const {
