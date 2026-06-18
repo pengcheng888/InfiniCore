@@ -160,9 +160,17 @@ python scripts/install.py [XMAKE_CONFIG_FLAGS]
 
   ```shell
 
-  # 在third_party目录拉取cutlass和flash attn库的源码(不需要--recursive)
+  # 该功能依赖 flash-attention 和 cutlass，默认不随仓库递归拉取。
+  # 对应子模块固定为以下提交：
       ## flash-attention commit: 10846960ca0793b993446f6dbaf696479c127a9d
       ## cutlass commit: 087c84df83d254b5fb295a7a408f1a1d554085cf
+
+  # 若需启用英伟达平台 flash attention 能力，请手动初始化对应子模块：
+      git -c submodule.third_party/flash-attention.update=checkout \
+          -c submodule.third_party/cutlass.update=checkout \
+          submodule update --init third_party/flash-attention third_party/cutlass
+
+  # 上述命令只初始化这两个顶层子模块，并会切换到仓库记录的固定提交。
 
   # 设置cutlass路径的环境变量CUTLASS_HOME(部分环境可选)
       export CUTLASS_HOME=<path-to>/InfiniCore/third_party/cutlass
@@ -173,7 +181,7 @@ python scripts/install.py [XMAKE_CONFIG_FLAGS]
   # 设置额外的环境变量
       export CPLUS_INCLUDE_PATH=$CUDA_HOME/include:$CPLUS_INCLUDE_PATH
 
-  # flash attenion库会伴随infinicore_cpp_api一同编译安装
+  # flash attention库会伴随infinicore_cpp_api一同编译安装
 
   ```
 
