@@ -48,6 +48,7 @@
 #include "ops/floor_divide.hpp"
 #include "ops/fmin.hpp"
 #include "ops/fmod.hpp"
+#include "ops/fused_gated_delta_net_gating.hpp"
 #include "ops/gaussian_nll_loss.hpp"
 #include "ops/hardswish.hpp"
 #include "ops/hardtanh.hpp"
@@ -161,6 +162,7 @@ inline void bind(py::module &m) {
     bind_hinge_embedding_loss(m);
     bind_kv_caching(m);
     bind_fmod(m);
+    bind_fused_gated_delta_net_gating(m);
     bind_fmin(m);
     bind_cat(m);
     bind_causal_softmax(m);
