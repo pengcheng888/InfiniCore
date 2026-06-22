@@ -11,6 +11,9 @@
 #ifdef ENABLE_METAX_API
 #include "metax/topksoftmax_metax.cuh"
 #endif
+#ifdef ENABLE_MOORE_API
+#include "moore/topksoftmax_moore.cuh"
+#endif
 
 __INFINI_C infiniStatus_t infiniopCreateTopksoftmaxDescriptor(infiniopHandle_t handle,
                                                               infiniopTopksoftmaxDescriptor_t *desc_ptr,
@@ -33,6 +36,9 @@ __INFINI_C infiniStatus_t infiniopCreateTopksoftmaxDescriptor(infiniopHandle_t h
 #endif
 #ifdef ENABLE_METAX_API
         CREATE(INFINI_DEVICE_METAX, metax);
+#endif
+#ifdef ENABLE_MOORE_API
+        CREATE(INFINI_DEVICE_MOORE, moore);
 #endif
 #ifdef ENABLE_ALI_API
         CREATE(INFINI_DEVICE_ALI, nvidia);
@@ -69,6 +75,9 @@ __INFINI_C infiniStatus_t infiniopGetTopksoftmaxWorkspaceSize(infiniopTopksoftma
 #endif
 #ifdef ENABLE_METAX_API
         GET(INFINI_DEVICE_METAX, metax);
+#endif
+#ifdef ENABLE_MOORE_API
+        GET(INFINI_DEVICE_MOORE, moore);
 #endif
 #ifdef ENABLE_ALI_API
         GET(INFINI_DEVICE_ALI, nvidia);
@@ -111,6 +120,9 @@ __INFINI_C infiniStatus_t infiniopTopksoftmax(infiniopTopksoftmaxDescriptor_t de
 #ifdef ENABLE_METAX_API
         CALCULATE(INFINI_DEVICE_METAX, metax);
 #endif
+#ifdef ENABLE_MOORE_API
+        CALCULATE(INFINI_DEVICE_MOORE, moore);
+#endif
 #ifdef ENABLE_ALI_API
         CALCULATE(INFINI_DEVICE_ALI, nvidia);
 #endif
@@ -146,6 +158,9 @@ __INFINI_C infiniStatus_t infiniopDestroyTopksoftmaxDescriptor(infiniopTopksoftm
 #endif
 #ifdef ENABLE_METAX_API
         DESTROY(INFINI_DEVICE_METAX, metax);
+#endif
+#ifdef ENABLE_MOORE_API
+        DESTROY(INFINI_DEVICE_MOORE, moore);
 #endif
 #ifdef ENABLE_ALI_API
         DESTROY(INFINI_DEVICE_ALI, nvidia);
