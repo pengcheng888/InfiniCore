@@ -134,6 +134,48 @@ def addcmul_(lib):
 
 
 @OpRegister.operator
+def fused_gated_delta_net_gating_(lib):
+    lib.infiniopCreateFusedGatedDeltaNetGatingDescriptor.restype = c_int32
+    lib.infiniopCreateFusedGatedDeltaNetGatingDescriptor.argtypes = [
+        infiniopHandle_t,
+        POINTER(infiniopOperatorDescriptor_t),
+        infiniopTensorDescriptor_t,
+        infiniopTensorDescriptor_t,
+        infiniopTensorDescriptor_t,
+        infiniopTensorDescriptor_t,
+        infiniopTensorDescriptor_t,
+        infiniopTensorDescriptor_t,
+        c_float,
+        c_float,
+    ]
+
+    lib.infiniopGetFusedGatedDeltaNetGatingWorkspaceSize.restype = c_int32
+    lib.infiniopGetFusedGatedDeltaNetGatingWorkspaceSize.argtypes = [
+        infiniopOperatorDescriptor_t,
+        POINTER(c_size_t),
+    ]
+
+    lib.infiniopFusedGatedDeltaNetGating.restype = c_int32
+    lib.infiniopFusedGatedDeltaNetGating.argtypes = [
+        infiniopOperatorDescriptor_t,
+        c_void_p,
+        c_size_t,
+        c_void_p,
+        c_void_p,
+        c_void_p,
+        c_void_p,
+        c_void_p,
+        c_void_p,
+        c_void_p,
+    ]
+
+    lib.infiniopDestroyFusedGatedDeltaNetGatingDescriptor.restype = c_int32
+    lib.infiniopDestroyFusedGatedDeltaNetGatingDescriptor.argtypes = [
+        infiniopOperatorDescriptor_t,
+    ]
+
+
+@OpRegister.operator
 def cdist_(lib):
     # 1. 创建描述符接口
     # 接口通常接收 handle, 输出 desc, 两个输入 desc, 以及范数 p

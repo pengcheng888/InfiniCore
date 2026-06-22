@@ -9,6 +9,7 @@ from .binary_cross_entropy_with_logits import binary_cross_entropy_with_logits
 from .causal_softmax import causal_softmax
 from .embedding import embedding
 from .flash_attention import flash_attention
+from .fused_gated_delta_net_gating import fused_gated_delta_net_gating
 from .gaussian_nll_loss import gaussian_nll_loss
 from .hardswish import hardswish
 from .hardtanh import hardtanh
@@ -46,6 +47,7 @@ __all__ = [
     "causal_softmax",
     "embedding",
     "flash_attention",
+    "fused_gated_delta_net_gating",
     "gaussian_nll_loss",
     "interpolate",
     "linear",
