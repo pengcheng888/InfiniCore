@@ -3,6 +3,7 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
+import infinicore
 import torch
 import torch.nn.functional as F
 from framework import (
@@ -14,8 +15,6 @@ from framework import (
     is_broadcast,
 )
 from infinicore.lib import _infinicore
-
-import infinicore
 
 # (input_shape, input_strides, topk, norm) — norm is 0/1 for C++ binding (infiniop bool).
 # Strides None only: kernel path matches contiguous layouts as in test/infiniop/topksoftmax.py.
@@ -50,8 +49,7 @@ def parse_test_cases():
         for dtype in _TENSOR_DTYPES:
             tol = _TOLERANCE_MAP.get(dtype, {"atol": 1e-3, "rtol": 1e-3})
             base = (
-                torch.arange(0, shape[0] * shape[1], dtype=torch.float32)
-                .reshape(shape)
+                torch.arange(0, shape[0] * shape[1], dtype=torch.float32).reshape(shape)
                 * 0.5
             )
             input_spec = TensorSpec.from_tensor(
