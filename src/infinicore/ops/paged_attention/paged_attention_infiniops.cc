@@ -5,15 +5,27 @@
 
 #include "base/paged_attention_infinilm.h"
 
+#include <cstddef>
 #include <optional>
 
 namespace infinicore::op::paged_attention_impl::infiniops {
 namespace {
 using TensorMeta = ::infinicore::op::infiniops::TensorMeta;
+
+constexpr std::size_t kMaxPagedAttentionSplits = 8;
+
+std::size_t WorkspaceSizeInBytes(const Tensor &q) {
+    return kMaxPagedAttentionSplits
+         * static_cast<std::size_t>(q->size(0))
+         * static_cast<std::size_t>(q->size(1))
+         * static_cast<std::size_t>(q->size(2) + 2)
+         * sizeof(float);
+}
+
 struct PlannedMeta {
     TensorMeta out, q, k_cache, v_cache, block_tables, cache_lens;
     std::optional<TensorMeta> alibi_slopes;
-    graph::GraphTensor out_tensor, q_tensor, k_cache_tensor, v_cache_tensor, block_tables_tensor, cache_lens_tensor;
+    graph::GraphTensor workspace, out_tensor, q_tensor, k_cache_tensor, v_cache_tensor, block_tables_tensor, cache_lens_tensor;
     std::optional<graph::GraphTensor> alibi_slopes_tensor;
     float scale;
 };
@@ -35,6 +47,7 @@ void *plan(Tensor out,
     return new PlannedMeta{
         TensorMeta(out), TensorMeta(q), TensorMeta(k_cache), TensorMeta(v_cache), TensorMeta(block_tables), TensorMeta(cache_lens),
         alibi_slopes ? std::optional<TensorMeta>{TensorMeta(*alibi_slopes)} : std::nullopt,
+        graph::GraphTensor(Tensor::empty({WorkspaceSizeInBytes(q)}, DataType::U8, out->device())),
         graph::GraphTensor(out), graph::GraphTensor(q), graph::GraphTensor(k_cache), graph::GraphTensor(v_cache), graph::GraphTensor(block_tables), graph::GraphTensor(cache_lens),
         alibi_slopes ? std::optional<graph::GraphTensor>{graph::GraphTensor(*alibi_slopes)} : std::nullopt,
         scale};
@@ -44,6 +57,8 @@ void run(void *planned_meta) {
     auto planned = reinterpret_cast<PlannedMeta *>(planned_meta);
     infini::ops::Handle handle;
     handle.set_stream(context::getStream());
+    handle.set_workspace(planned->workspace->data());
+    handle.set_workspace_size_in_bytes(planned->workspace->numel());
     infini::ops::Config config;
     infini::ops::PagedAttentionInfinilm::Call(
         handle,
