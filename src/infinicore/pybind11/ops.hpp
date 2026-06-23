@@ -32,6 +32,7 @@
 #include "ops/block_diag.hpp"
 #include "ops/broadcast_to.hpp"
 #include "ops/cat.hpp"
+#include "ops/causal_conv1d.hpp"
 #include "ops/causal_softmax.hpp"
 #include "ops/cdist.hpp"
 #include "ops/conv2d.hpp"
@@ -153,6 +154,7 @@ inline void bind(py::module &m) {
     bind_blas_dot(m);
     bind_block_diag(m);
     bind_bitwise_right_shift(m);
+    bind_causal_conv1d(m);
     bind_causal_softmax(m);
     bind_diff(m);
     bind_digamma(m);
