@@ -18,6 +18,7 @@
 #include "ops/blas_amin.hpp"
 #include "ops/blas_copy.hpp"
 #include "ops/blas_dot.hpp"
+#include "ops/causal_conv1d.hpp"
 #include "ops/causal_softmax.hpp"
 #include "ops/cdist.hpp"
 #include "ops/conv2d.hpp"

@@ -30,6 +30,7 @@
 #include "infiniop/ops/block_diag.h"
 #include "infiniop/ops/broadcast_to.h"
 #include "infiniop/ops/causal_softmax.h"
+#include "infiniop/ops/causal_conv1d.h"
 #include "infiniop/ops/cdist.h"
 #include "infiniop/ops/clip.h"
 #include "infiniop/ops/conv.h"
