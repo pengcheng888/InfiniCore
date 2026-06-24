@@ -296,6 +296,25 @@ local function get_standalone_infinirt_root()
     return nil
 end
 
+local function get_infiniops_cuda_architectures()
+    local arch_opt = get_config("cuda_arch")
+    if not arch_opt or arch_opt == "" then
+        return nil
+    end
+
+    local cmake_archs = {}
+    for _, arch in ipairs(arch_opt:gsub(";", ","):split(",")) do
+        local cmake_arch = arch:trim():match("^sm_(%d+a?)$")
+        if cmake_arch then
+            table.insert(cmake_archs, cmake_arch)
+        end
+    end
+    if #cmake_archs == 0 then
+        return nil
+    end
+    return table.concat(cmake_archs, ";")
+end
+
 local infiniops_external_built = false
 
 local function build_infiniops_external(xmake_os)
@@ -317,6 +336,10 @@ local function build_infiniops_external(xmake_os)
     local infiniops_ops = os.getenv("INFINI_OPS_OPS")
     if infiniops_ops and #infiniops_ops > 0 then
         table.insert(cmake_config_args, "-DINFINI_OPS_OPS=" .. infiniops_ops)
+    end
+    local cmake_cuda_architectures = get_infiniops_cuda_architectures()
+    if cmake_cuda_architectures and cmake_cuda_architectures ~= "" then
+        table.insert(cmake_config_args, "-DCMAKE_CUDA_ARCHITECTURES=" .. cmake_cuda_architectures)
     end
     if infinirt_root and infinirt_root ~= "" then
         table.insert(cmake_config_args, "-DINFINI_RT_ROOT=" .. infinirt_root)
