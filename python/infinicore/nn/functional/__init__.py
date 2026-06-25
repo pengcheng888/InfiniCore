@@ -21,6 +21,7 @@ from .layer_norm import layer_norm
 from .linear import linear
 from .linear_w8a8i8 import linear_w8a8i8
 from .log_softmax import log_softmax
+from .mamba_selective_scan import mamba_selective_scan
 from .multi_margin_loss import multi_margin_loss
 from .pad import pad
 from .prelu import prelu
@@ -70,6 +71,7 @@ __all__ = [
     "upsample_bilinear",
     "interpolate",
     "log_softmax",
+    "mamba_selective_scan",
     "upsample_nearest",
     "triplet_margin_with_distance_loss",
     "embedding",

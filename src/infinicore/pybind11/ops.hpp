@@ -75,6 +75,7 @@
 #include "ops/logdet.hpp"
 #include "ops/logical_and.hpp"
 #include "ops/logical_not.hpp"
+#include "ops/mamba_selective_scan.hpp"
 #include "ops/masked_select.hpp"
 #include "ops/matmul.hpp"
 #include "ops/mha.hpp"
@@ -178,6 +179,7 @@ inline void bind(py::module &m) {
     bind_linear(m);
     bind_logdet(m);
     bind_matmul(m);
+    bind_mamba_selective_scan(m);
     bind_kron(m);
     bind_mul(m);
     bind_nrm2(m);
