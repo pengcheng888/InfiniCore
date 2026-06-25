@@ -11,7 +11,7 @@ namespace {
 using TensorMeta = ::infinicore::op::infiniops::TensorMeta;
 
 void calculate(Tensor output, Tensor input) {
-    INFINICORE_ASSERT(output->device().getType() == Device::Type::NVIDIA);
+    INFINICORE_ASSERT(::infinicore::op::infiniops::isSupportedDevice(output->device().getType()));
     INFINICORE_ASSERT_TENSORS_SAME_DEVICE(output, input);
 
     infini::ops::Handle handle;
@@ -30,7 +30,7 @@ void calculate(Tensor output, Tensor input) {
 } // namespace
 
 static bool registered = []() {
-    Silu::dispatcher().registerDevice(Device::Type::NVIDIA, &calculate);
+    ::infinicore::op::infiniops::registerSupportedDevices(Silu::dispatcher(), &calculate);
     return true;
 }();
 

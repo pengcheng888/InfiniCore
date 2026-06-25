@@ -18,7 +18,7 @@ struct PlannedMeta {
 } // namespace
 
 void *plan(Tensor out, const Tensor &input, const Tensor &weight) {
-    INFINICORE_ASSERT(out->device().getType() == Device::Type::NVIDIA);
+    INFINICORE_ASSERT(::infinicore::op::infiniops::isSupportedDevice(out->device().getType()));
     INFINICORE_ASSERT_TENSORS_SAME_DEVICE(out, input, weight);
 
     return new PlannedMeta{
@@ -51,9 +51,9 @@ void cleanup(void **planned_meta_ptr) {
 }
 
 static bool registered = []() {
-    Embedding::plan_dispatcher().registerDevice(Device::Type::NVIDIA, &plan);
-    Embedding::run_dispatcher().registerDevice(Device::Type::NVIDIA, &run);
-    Embedding::cleanup_dispatcher().registerDevice(Device::Type::NVIDIA, &cleanup);
+    ::infinicore::op::infiniops::registerSupportedDevices(Embedding::plan_dispatcher(), &plan);
+    ::infinicore::op::infiniops::registerSupportedDevices(Embedding::run_dispatcher(), &run);
+    ::infinicore::op::infiniops::registerSupportedDevices(Embedding::cleanup_dispatcher(), &cleanup);
     return true;
 }();
 

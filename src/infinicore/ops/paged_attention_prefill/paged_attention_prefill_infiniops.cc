@@ -21,7 +21,7 @@ void calculate(Tensor out,
                Tensor cum_seqlens_q,
                std::optional<Tensor> alibi_slopes,
                float scale) {
-    INFINICORE_ASSERT(out->device().getType() == Device::Type::NVIDIA);
+    INFINICORE_ASSERT(::infinicore::op::infiniops::isSupportedDevice(out->device().getType()));
     INFINICORE_ASSERT_TENSORS_SAME_DEVICE(out, q, k_cache, v_cache, block_tables, kv_lens, cum_seqlens_q);
     if (alibi_slopes) {
         INFINICORE_ASSERT_TENSORS_SAME_DEVICE(out, *alibi_slopes);
@@ -60,7 +60,7 @@ void calculate(Tensor out,
 } // namespace
 
 static bool registered = []() {
-    PagedAttentionPrefill::dispatcher().registerDevice(Device::Type::NVIDIA, &calculate);
+    ::infinicore::op::infiniops::registerSupportedDevices(PagedAttentionPrefill::dispatcher(), &calculate);
     return true;
 }();
 
