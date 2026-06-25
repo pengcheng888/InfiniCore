@@ -35,6 +35,7 @@
 #include "ops/causal_conv1d.hpp"
 #include "ops/causal_softmax.hpp"
 #include "ops/cdist.hpp"
+#include "ops/chunk_gated_delta_rule.hpp"
 #include "ops/conv2d.hpp"
 #include "ops/cross_entropy.hpp"
 #include "ops/diff.hpp"
@@ -91,6 +92,7 @@
 #include "ops/random_sample.hpp"
 #include "ops/rearrange.hpp"
 #include "ops/reciprocal.hpp"
+#include "ops/recurrent_gated_delta_rule.hpp"
 #include "ops/relu6.hpp"
 #include "ops/rms_norm.hpp"
 #include "ops/rope.hpp"
@@ -247,7 +249,9 @@ inline void bind(py::module &m) {
     bind_addcmul(m);
     bind_cdist(m);
     bind_binary_cross_entropy_with_logits(m);
+    bind_chunk_gated_delta_rule(m);
     bind_reciprocal(m);
+    bind_recurrent_gated_delta_rule(m);
     bind_upsample_bilinear(m);
     bind_kthvalue(m);
     bind_ldexp(m);
