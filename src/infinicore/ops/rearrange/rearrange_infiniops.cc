@@ -15,7 +15,7 @@ struct PlannedMeta {
 } // namespace
 
 void *plan(Tensor y, const Tensor &x) {
-    INFINICORE_ASSERT(y->device().getType() == Device::Type::NVIDIA);
+    INFINICORE_ASSERT(::infinicore::op::infiniops::isSupportedDevice(y->device().getType()));
     INFINICORE_ASSERT_TENSORS_SAME_DEVICE(y, x);
     return new PlannedMeta{TensorMeta(y), TensorMeta(x), graph::GraphTensor(y), graph::GraphTensor(x)};
 }

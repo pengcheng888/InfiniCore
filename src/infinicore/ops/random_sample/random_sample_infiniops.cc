@@ -11,7 +11,7 @@ namespace {
 using TensorMeta = ::infinicore::op::infiniops::TensorMeta;
 
 void calculate(Tensor indices, Tensor logits, float random_val, float topp, int topk, float temperature) {
-    INFINICORE_ASSERT(indices->device().getType() == Device::Type::NVIDIA);
+    INFINICORE_ASSERT(::infinicore::op::infiniops::isSupportedDevice(indices->device().getType()));
     INFINICORE_ASSERT_TENSORS_SAME_DEVICE(indices, logits);
 
     infini::ops::Handle handle;
@@ -34,7 +34,7 @@ void calculate(Tensor indices, Tensor logits, float random_val, float topp, int 
 } // namespace
 
 static bool registered = []() {
-    RandomSample::dispatcher().registerDevice(Device::Type::NVIDIA, &calculate);
+    ::infinicore::op::infiniops::registerSupportedDevices(RandomSample::dispatcher(), &calculate);
     return true;
 }();
 
