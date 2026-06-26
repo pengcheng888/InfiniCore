@@ -2918,3 +2918,95 @@ def chunk_gated_delta_rule_(lib):
     lib.infiniopDestroyChunkGatedDeltaRuleDescriptor.argtypes = [
         infiniopOperatorDescriptor_t
     ]
+
+
+@OpRegister.operator
+def nsa_compress_paged_cache_(lib):
+    lib.infiniopCreateNsaCompressPagedCacheDescriptor.restype = c_int32
+    lib.infiniopCreateNsaCompressPagedCacheDescriptor.argtypes = [
+        infiniopHandle_t,
+        POINTER(infiniopOperatorDescriptor_t),
+        infiniopTensorDescriptor_t,
+        infiniopTensorDescriptor_t,
+        infiniopTensorDescriptor_t,
+        infiniopTensorDescriptor_t,
+        infiniopTensorDescriptor_t,
+        infiniopTensorDescriptor_t,
+        c_int32,
+        c_int32,
+    ]
+
+    lib.infiniopGetNsaCompressPagedCacheWorkspaceSize.restype = c_int32
+    lib.infiniopGetNsaCompressPagedCacheWorkspaceSize.argtypes = [
+        infiniopOperatorDescriptor_t,
+        POINTER(c_size_t),
+    ]
+
+    lib.infiniopNsaCompressPagedCache.restype = c_int32
+    lib.infiniopNsaCompressPagedCache.argtypes = [
+        infiniopOperatorDescriptor_t,
+        c_void_p,
+        c_size_t,
+        c_void_p,
+        c_void_p,
+        c_void_p,
+        c_void_p,
+        c_void_p,
+        c_void_p,
+        c_void_p,
+    ]
+
+    lib.infiniopDestroyNsaCompressPagedCacheDescriptor.restype = c_int32
+    lib.infiniopDestroyNsaCompressPagedCacheDescriptor.argtypes = [
+        infiniopOperatorDescriptor_t,
+    ]
+
+
+@OpRegister.operator
+def nsa_paged_attention_(lib):
+    lib.infiniopCreateNsaPagedAttentionDescriptor.restype = c_int32
+    lib.infiniopCreateNsaPagedAttentionDescriptor.argtypes = [
+        infiniopHandle_t,
+        POINTER(infiniopOperatorDescriptor_t),
+        infiniopTensorDescriptor_t,
+        infiniopTensorDescriptor_t,
+        infiniopTensorDescriptor_t,
+        infiniopTensorDescriptor_t,
+        infiniopTensorDescriptor_t,
+        infiniopTensorDescriptor_t,
+        infiniopTensorDescriptor_t,
+        infiniopTensorDescriptor_t,
+        infiniopTensorDescriptor_t,
+        c_float,
+        c_int32,
+        c_int32,
+        c_int32,
+    ]
+
+    lib.infiniopGetNsaPagedAttentionWorkspaceSize.restype = c_int32
+    lib.infiniopGetNsaPagedAttentionWorkspaceSize.argtypes = [
+        infiniopOperatorDescriptor_t,
+        POINTER(c_size_t),
+    ]
+
+    lib.infiniopNsaPagedAttention.restype = c_int32
+    lib.infiniopNsaPagedAttention.argtypes = [
+        infiniopOperatorDescriptor_t,
+        c_void_p,
+        c_size_t,
+        c_void_p,
+        c_void_p,
+        c_void_p,
+        c_void_p,
+        c_void_p,
+        c_void_p,
+        c_void_p,
+        c_void_p,
+        c_void_p,
+        c_void_p,
+    ]
+
+    lib.infiniopDestroyNsaPagedAttentionDescriptor.restype = c_int32
+    lib.infiniopDestroyNsaPagedAttentionDescriptor.argtypes = [
+        infiniopOperatorDescriptor_t,
+    ]
