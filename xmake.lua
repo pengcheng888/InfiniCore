@@ -193,6 +193,13 @@ option("hygon-dcu")
     set_description("Whether to compile implementations for Hygon DCU")
 option_end()
 
+option("hygon-arch")
+    -- gfx906, gfx936
+    set_default(nil)
+    set_showmenu(true)
+    set_description("Set Hygon DCU architecture, e.g. gfx936. If unset, defaults to gfx936 for BW1000 DCU.")
+option_end()
+
 if has_config("hygon-dcu") then
     add_defines("ENABLE_HYGON_API")
     includes("xmake/hygon.lua")
@@ -241,7 +248,7 @@ if has_config("aten") then
         add_defines("_GLIBCXX_USE_CXX11_ABI=0")
     end
     if get_config("flash-attn") and get_config("flash-attn") ~= ""
-       and (has_config("nv-gpu") or has_config("metax-gpu") or has_config("qy-gpu")) then
+       and (has_config("nv-gpu") or has_config("metax-gpu") or has_config("qy-gpu") or has_config("hygon-dcu")) then
         add_defines("ENABLE_FLASH_ATTN")
     end
 end
@@ -703,6 +710,9 @@ target("infinicore_cpp_api")
         if has_config("qy-gpu") then
             add_deps("flash-attn-qy")
         end
+        if has_config("hygon-dcu") then
+            add_deps("flash-attn-hygon")
+        end
     end
 
     -- Flash pip `.so` link flags: `before_link` runs in an xmake sandbox that cannot see helpers
@@ -815,6 +825,17 @@ target("infinicore_cpp_api")
                     "-Wl,-rpath," .. pylib,
                     { force = true }
                 )
+            elseif has_config("hygon-dcu") then
+                target:add(
+                    "links",
+                    "torch",
+                    "torch_cpu",
+                    "torch_python",
+                    "c10",
+                    "torch_hip",
+                    "c10_hip",
+                    { public = true }
+                )
             else
                 target:add(
                     "links",
@@ -857,6 +878,17 @@ target("infinicore_cpp_api")
     add_files("src/infinicore/nn/*.cc")
     add_files("src/infinicore/ops/*/*.cc")
     add_files("src/infinicore/ops/*/*/*.cc")
+    -- Platform-private Hygon sources are guarded and only kept in Hygon builds.
+    if has_config("hygon-dcu") and get_config("flash-attn") and get_config("flash-attn") ~= "" then
+        -- Hygon links against a prebuilt flash-attn extension with a different ABI.
+        -- Keep the platform-specific implementation under each op's hygon/ folder.
+        add_files("src/infinicore/adaptor/flash_attn/hygon/*.cc")
+        remove_files("src/infinicore/ops/multi_head_attention/mha_flashattn.cc")
+        remove_files("src/infinicore/ops/multi_head_attention_varlen/mha_varlen_flashattn.cc")
+        remove_files("src/infinicore/ops/mha_kvcache/mha_kvcache_flashattn.cc")
+    else
+        remove_files("src/infinicore/ops/*/hygon/*.cc")
+    end
     if has_config("infiniops") and not has_config("nv-gpu") then
         remove_files("src/infinicore/ops/paged_attention/paged_attention_infiniops.cc")
         remove_files("src/infinicore/ops/paged_attention_prefill/paged_attention_prefill_infiniops.cc")

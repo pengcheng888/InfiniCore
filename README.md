@@ -196,6 +196,30 @@ python scripts/install.py [XMAKE_CONFIG_FLAGS]
   xmake f --moore-gpu=y --aten=y --flash-attn=y -cv
   ```
 
+
+##### 试验功能 -- 使用海光 DCU 平台预编译 flash-attn 能力
+
+  ```shell
+  # 海光 DCU 不在 InfiniCore 内现场编译 flash-attn，而是链接 Python 环境中已经安装好的 flash-attn 运行库。
+  # 因此 --flash-attn 需要指向 flash-attn 的 Python 安装根目录，通常是当前 Python 的 site-packages/dist-packages 目录。
+  # 该目录下需要能找到以下两个文件：
+  #   1. flash_attn_2_cuda*.so
+  #   2. flash_attn/lib/libflash_attention.so
+  # 例如：
+  #   /usr/local/lib/python3.10/dist-packages/flash_attn_2_cuda.cpython-310-x86_64-linux-gnu.so
+  #   /usr/local/lib/python3.10/dist-packages/flash_attn/lib/libflash_attention.so
+
+  # 若 flash_attn_2_cuda*.so 不在 --flash-attn 指定目录下，可通过 FLASH_ATTN_2_CUDA_SO 显式指定。
+  export FLASH_ATTN_2_CUDA_SO=/usr/local/lib/python3.10/dist-packages/flash_attn_2_cuda.cpython-310-x86_64-linux-gnu.so
+
+  # xmake 配置环节需要同时打开海光 DCU、ATen 和 flash-attn：
+  xmake f --hygon-dcu=y --aten=y --flash-attn=/usr/local/lib/python3.10/dist-packages -cv
+
+  # 编译 Python/C++ 封装：
+  xmake build _infinicore
+  xmake install _infinicore
+  ```
+
 ##### 试验功能 -- 编译marlin相关算子
 
   ```shell
