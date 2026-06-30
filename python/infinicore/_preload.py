@@ -167,6 +167,10 @@ def _should_preload_device(device_type: str) -> bool:
     for env_var in env_vars:
         if os.getenv(env_var):
             return True
+    if device_type == "HYGON":
+        dtk_root = os.getenv("DTK_ROOT") or "/opt/dtk"
+        if os.path.isdir(dtk_root):
+            return True
     return False
 
 
@@ -181,6 +185,7 @@ def preload_device(device_type: str) -> None:
         preload_hpcc()
     elif device_type == "HYGON":
         preload_torch_hip()
+        preload_flash_attn()
     # Add other device preload functions here as needed:
     # elif device_type == "ASCEND":
     #     preload_ascend()
@@ -194,17 +199,9 @@ def preload() -> None:
     This function detects available device types and preloads their runtime libraries
     if the environment indicates they are needed.
     """
-    # Always try torch HIP preload first (best-effort, no-op if torch/HIP is absent).
-    try:
-        preload_torch_hip()
-    except Exception:
-        pass
-    try:
-        preload_flash_attn()
-    except Exception:
-        pass
-
-    # Device types that may require preload
+    # Device types that may require preload. Keep Hygon-only preloads gated by
+    # Hygon environment markers so other CUDA-compatible platforms do not load
+    # unrelated torch/flash-attn libraries during package import.
     device_types = [
         "METAX",  # HPCC/METAX
         "HYGON",
