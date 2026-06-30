@@ -515,11 +515,22 @@ target("infiniop")
 
     local public_cuda_root = get_config("cuda") or os.getenv("CUDA_HOME") or os.getenv("CUDA_PATH")
     if public_cuda_root and public_cuda_root ~= "" then
-        add_includedirs(path.join(public_cuda_root, "include"))
-        add_linkdirs(
+        for _, include_dir in ipairs({
+            path.join(public_cuda_root, "include"),
+            path.join(public_cuda_root, "targets", "x86_64-linux", "include"),
+        }) do
+            if os.isdir(include_dir) then
+                add_includedirs(include_dir)
+            end
+        end
+        for _, link_dir in ipairs({
             path.join(public_cuda_root, "lib64"),
-            path.join(public_cuda_root, "targets", "x86_64-linux", "lib")
-        )
+            path.join(public_cuda_root, "targets", "x86_64-linux", "lib"),
+        }) do
+            if os.isdir(link_dir) then
+                add_linkdirs(link_dir)
+            end
+        end
     elseif has_config("nv-gpu") then
         add_includedirs(path.join("/usr/local/cuda", "include"))
     end
