@@ -1,16 +1,65 @@
 local dtk_root = os.getenv("DTK_ROOT") or "/opt/dtk"
+
+local function hygon_cuda_roots()
+    return {
+        path.join(dtk_root, "cuda"),
+        path.join(dtk_root, "cuda", "cuda"),
+        path.join(dtk_root, "cuda", "cuda-12"),
+        path.join(dtk_root, "cuda", "cuda-11"),
+    }
+end
+
+local function resolve_hygon_cuda_tool(tool)
+    for _, cuda_root in ipairs(hygon_cuda_roots()) do
+        local tool_path = path.join(cuda_root, "bin", tool)
+        if os.isfile(tool_path) then
+            return tool_path
+        end
+    end
+    return tool
+end
+
+local function add_hygon_dtk_paths(attrs)
+    attrs = attrs or {}
+    if not os.isdir(dtk_root) then
+        return
+    end
+
+    local include_dirs = {
+        path.join(dtk_root, "include"),
+        path.join(dtk_root, "cuda", "include"),
+    }
+    local link_dirs = {
+        path.join(dtk_root, "lib"),
+        path.join(dtk_root, "cuda", "lib64"),
+    }
+
+    for _, cuda_root in ipairs(hygon_cuda_roots()) do
+        table.insert(include_dirs, path.join(cuda_root, "include"))
+        table.insert(include_dirs, path.join(cuda_root, "targets", "x86_64-linux", "include"))
+        table.insert(include_dirs, path.join(cuda_root, "extras", "clang_internal_header"))
+        table.insert(link_dirs, path.join(cuda_root, "lib64"))
+        table.insert(link_dirs, path.join(cuda_root, "targets", "x86_64-linux", "lib"))
+    end
+
+    for _, include_dir in ipairs(include_dirs) do
+        if os.isdir(include_dir) then
+            add_includedirs(include_dir, attrs)
+        end
+    end
+    for _, link_dir in ipairs(link_dirs) do
+        if os.isdir(link_dir) then
+            add_linkdirs(link_dir, attrs)
+        end
+    end
+end
+
 toolchain("hygon.toolchain")
     set_toolset("cc"  , "clang"  )
     set_toolset("cxx" , "clang++")
-    -- 使用DTK中的CUDA编译器
-    local nvcc_path = path.join(dtk_root, "cuda", "bin", "nvcc")
-    if os.isfile(nvcc_path) then
-        set_toolset("cu"  , nvcc_path)
-        set_toolset("culd", nvcc_path)
-    else
-        set_toolset("cu"  , "nvcc")
-        set_toolset("culd", "nvcc")
-    end
+    local nvcc_path = resolve_hygon_cuda_tool("nvcc")
+    set_toolset("cu"  , nvcc_path)
+    set_toolset("culd", nvcc_path)
     set_toolset("cu-ccbin", "$(env CXX)", "$(env CC)")
 toolchain_end()
 
@@ -63,15 +112,7 @@ target("infiniop-hygon")
     -- 海光DCU使用DTK中的CUDA库
     add_links("cudart", "cublas", "curand", "cublasLt", "cudnn")
     
-    -- 添加DTK路径支持
-    local dtk_root = os.getenv("DTK_ROOT") or "/opt/dtk"
-    if os.isdir(dtk_root) then
-        add_includedirs(path.join(dtk_root, "include"))
-        add_includedirs(path.join(dtk_root, "cuda", "include"))
-        add_includedirs(path.join(dtk_root, "cuda", "cuda-11", "extras", "clang_internal_header"))
-        add_linkdirs(path.join(dtk_root, "lib"))
-        add_linkdirs(path.join(dtk_root, "cuda", "lib64"))
-    end
+    add_hygon_dtk_paths()
 
     set_warnings("all", "error")
     add_cuflags("-Wno-error=unused-private-field")
@@ -122,15 +163,7 @@ target("infinirt-hygon")
 
     add_links("cudart", "curand")
     
-    -- 添加DTK路径支持
-    local dtk_root = os.getenv("DTK_ROOT") or "/opt/dtk"
-    if os.isdir(dtk_root) then
-        add_includedirs(path.join(dtk_root, "include"))
-        add_includedirs(path.join(dtk_root, "cuda", "include"))
-        add_includedirs(path.join(dtk_root, "cuda", "cuda-11", "extras", "clang_internal_header"))
-        add_linkdirs(path.join(dtk_root, "lib"))
-        add_linkdirs(path.join(dtk_root, "cuda", "lib64"))
-    end
+    add_hygon_dtk_paths()
 
     set_warnings("all", "error")
     add_cuflags("-Wno-return-type", {force = true})  -- 抑制return语句警告
@@ -163,15 +196,7 @@ target("infiniccl-hygon")
 
         add_links("cudart", "curand")
         
-        -- 添加DTK路径支持
-        local dtk_root = os.getenv("DTK_ROOT") or "/opt/dtk"
-        if os.isdir(dtk_root) then
-            add_includedirs(path.join(dtk_root, "include"))
-            add_includedirs(path.join(dtk_root, "cuda", "include"))
-            add_includedirs(path.join(dtk_root, "cuda", "cuda-11", "extras", "clang_internal_header"))
-            add_linkdirs(path.join(dtk_root, "lib"))
-            add_linkdirs(path.join(dtk_root, "cuda", "lib64"))
-        end
+        add_hygon_dtk_paths()
 
         set_warnings("all", "error")
         add_cuflags("-Wno-return-type", {force = true})  -- 抑制return语句警告
@@ -260,21 +285,7 @@ target("infinicore_cpp_api")
         end
     end
 
-    local dtk_root_cppapi = os.getenv("DTK_ROOT") or "/opt/dtk"
-    if os.isdir(dtk_root_cppapi) then
-        add_includedirs(
-            path.join(dtk_root_cppapi, "include"),
-            path.join(dtk_root_cppapi, "cuda", "include"),
-            path.join(dtk_root_cppapi, "cuda", "cuda", "include"),
-            {public = true}
-        )
-        add_linkdirs(
-            path.join(dtk_root_cppapi, "lib"),
-            path.join(dtk_root_cppapi, "cuda", "lib64"),
-            path.join(dtk_root_cppapi, "cuda", "cuda", "lib64"),
-            {public = true}
-        )
-    end
+    add_hygon_dtk_paths({public = true})
 
     if FLASH_ATTN_ROOT and FLASH_ATTN_ROOT ~= "" then
         before_link(function (target)

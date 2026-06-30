@@ -517,6 +517,32 @@ target("infiniop")
         local cuda_root = os.getenv("CUDA_HOME") or os.getenv("CUDA_PATH") or get_config("cuda") or "/usr/local/cuda"
         add_includedirs(cuda_root .. "/include")
     end
+    if has_config("hygon-dcu") then
+        local dtk_root = os.getenv("DTK_ROOT") or "/opt/dtk"
+        add_includedirs(
+            path.join(dtk_root, "include"),
+            path.join(dtk_root, "cuda", "include"),
+            path.join(dtk_root, "cuda", "cuda", "include"),
+            path.join(dtk_root, "cuda", "cuda", "targets", "x86_64-linux", "include"),
+            path.join(dtk_root, "cuda", "cuda", "extras", "clang_internal_header"),
+            path.join(dtk_root, "cuda", "cuda-12", "include"),
+            path.join(dtk_root, "cuda", "cuda-12", "targets", "x86_64-linux", "include"),
+            path.join(dtk_root, "cuda", "cuda-12", "extras", "clang_internal_header"),
+            path.join(dtk_root, "cuda", "cuda-11", "include"),
+            path.join(dtk_root, "cuda", "cuda-11", "targets", "x86_64-linux", "include"),
+            path.join(dtk_root, "cuda", "cuda-11", "extras", "clang_internal_header")
+        )
+        add_linkdirs(
+            path.join(dtk_root, "lib"),
+            path.join(dtk_root, "cuda", "lib64"),
+            path.join(dtk_root, "cuda", "cuda", "lib64"),
+            path.join(dtk_root, "cuda", "cuda", "targets", "x86_64-linux", "lib"),
+            path.join(dtk_root, "cuda", "cuda-12", "lib64"),
+            path.join(dtk_root, "cuda", "cuda-12", "targets", "x86_64-linux", "lib"),
+            path.join(dtk_root, "cuda", "cuda-11", "lib64"),
+            path.join(dtk_root, "cuda", "cuda-11", "targets", "x86_64-linux", "lib")
+        )
+    end
 
     if has_config("cpu") then
         add_deps("infiniop-cpu")
