@@ -39,6 +39,40 @@ __device__ inline void storeFloat<__nv_bfloat16>(__nv_bfloat16 *ptr, float value
     *ptr = __float2bfloat16(value);
 }
 
+__device__ inline float blockReduceSum128(float value) {
+    constexpr unsigned kFullMask = 0xffffffffu;
+    const int lane = threadIdx.x & 31;
+    const int warp = threadIdx.x >> 5;
+
+#if !defined(ENABLE_ILUVATAR_API) && !defined(ENABLE_HYGON_API)
+#pragma unroll
+#endif
+    for (int offset = 16; offset > 0; offset >>= 1) {
+        value += __shfl_down_sync(kFullMask, value, offset);
+    }
+
+    __shared__ float warp_sums[4];
+    if (lane == 0) {
+        warp_sums[warp] = value;
+    }
+    __syncthreads();
+
+    float sum = threadIdx.x < 4 ? warp_sums[lane] : 0.0f;
+    if (warp == 0) {
+#if !defined(ENABLE_ILUVATAR_API) && !defined(ENABLE_HYGON_API)
+#pragma unroll
+#endif
+        for (int offset = 2; offset > 0; offset >>= 1) {
+            sum += __shfl_down_sync(kFullMask, sum, offset);
+        }
+    }
+    if (threadIdx.x == 0) {
+        warp_sums[0] = sum;
+    }
+    __syncthreads();
+    return warp_sums[0];
+}
+
 template <typename Tindex, typename Tdata, typename Tgate>
 __device__ void nsaPagedDecodeHd128Kernel(
     Tdata *out,
@@ -79,7 +113,6 @@ __device__ void nsaPagedDecodeHd128Kernel(
     ptrdiff_t gates_branch_stride,
     ptrdiff_t gates_head_stride) {
     constexpr int kHeadDim = 128;
-    __shared__ float scratch[kHeadDim];
 
     const size_t seq = static_cast<size_t>(blockIdx.x);
     const size_t head = static_cast<size_t>(blockIdx.y);
@@ -102,7 +135,7 @@ __device__ void nsaPagedDecodeHd128Kernel(
 #if !defined(ENABLE_ILUVATAR_API) && !defined(ENABLE_HYGON_API)
 #pragma unroll
 #endif
-    for (int i = 0; i < kMaxSelectBlocks; ++i) {
+    for (int i = 0; i < active_select_blocks; ++i) {
         top_scores[i] = -INFINITY;
         top_blocks[i] = -1;
     }
@@ -120,15 +153,7 @@ __device__ void nsaPagedDecodeHd128Kernel(
         const size_t base_k = cmp_block * k_cmp_block_stride + kv_head * k_cmp_head_stride;
         const size_t base_v = cmp_block * v_cmp_block_stride + kv_head * v_cmp_head_stride;
         const float kd = loadFloat(k_cmp + base_k + dim);
-        scratch[dim] = qd * kd;
-        __syncthreads();
-        for (int stride = 64; stride > 0; stride >>= 1) {
-            if (dim < stride) {
-                scratch[dim] += scratch[dim + stride];
-            }
-            __syncthreads();
-        }
-        const float score = scratch[0] * scale;
+        const float score = blockReduceSum128(qd * kd) * scale;
         if (score > top_scores[active_select_blocks - 1]) {
             int insert_pos = active_select_blocks - 1;
             while (insert_pos > 0 && score > top_scores[insert_pos - 1]) {
@@ -146,7 +171,6 @@ __device__ void nsaPagedDecodeHd128Kernel(
         comp_acc = comp_acc * alpha + beta * vd;
         comp_l = comp_l * alpha + beta;
         comp_m = new_m;
-        __syncthreads();
     }
     const float comp_out = comp_l > 0.0f ? comp_acc / comp_l : 0.0f;
 
@@ -173,15 +197,7 @@ __device__ void nsaPagedDecodeHd128Kernel(
             const size_t base_k = static_cast<size_t>(physical) * k_batch_stride + kv_head * k_head_stride + block_offset * k_row_stride;
             const size_t base_v = static_cast<size_t>(physical) * v_batch_stride + kv_head * v_head_stride + block_offset * v_row_stride;
             const float kd = loadFloat(k_cache + base_k + dim);
-            scratch[dim] = qd * kd;
-            __syncthreads();
-            for (int stride = 64; stride > 0; stride >>= 1) {
-                if (dim < stride) {
-                    scratch[dim] += scratch[dim + stride];
-                }
-                __syncthreads();
-            }
-            const float score = scratch[0] * scale;
+            const float score = blockReduceSum128(qd * kd) * scale;
             const float vd = loadFloat(v_cache + base_v + dim);
             const float new_m = fmaxf(sel_m, score);
             const float alpha = expf(sel_m - new_m);
@@ -189,7 +205,6 @@ __device__ void nsaPagedDecodeHd128Kernel(
             sel_acc = sel_acc * alpha + beta * vd;
             sel_l = sel_l * alpha + beta;
             sel_m = new_m;
-            __syncthreads();
         }
     }
     const float sel_out = sel_l > 0.0f ? sel_acc / sel_l : 0.0f;
@@ -208,15 +223,7 @@ __device__ void nsaPagedDecodeHd128Kernel(
         const size_t base_k = static_cast<size_t>(physical) * k_batch_stride + kv_head * k_head_stride + block_offset * k_row_stride;
         const size_t base_v = static_cast<size_t>(physical) * v_batch_stride + kv_head * v_head_stride + block_offset * v_row_stride;
         const float kd = loadFloat(k_cache + base_k + dim);
-        scratch[dim] = qd * kd;
-        __syncthreads();
-        for (int stride = 64; stride > 0; stride >>= 1) {
-            if (dim < stride) {
-                scratch[dim] += scratch[dim + stride];
-            }
-            __syncthreads();
-        }
-        const float score = scratch[0] * scale;
+        const float score = blockReduceSum128(qd * kd) * scale;
         const float vd = loadFloat(v_cache + base_v + dim);
         const float new_m = fmaxf(win_m, score);
         const float alpha = expf(win_m - new_m);
@@ -224,7 +231,6 @@ __device__ void nsaPagedDecodeHd128Kernel(
         win_acc = win_acc * alpha + beta * vd;
         win_l = win_l * alpha + beta;
         win_m = new_m;
-        __syncthreads();
     }
     const float win_out = win_l > 0.0f ? win_acc / win_l : 0.0f;
 
