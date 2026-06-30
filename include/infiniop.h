@@ -95,6 +95,7 @@
 #include "infiniop/ops/moe_sum.h"
 #include "infiniop/ops/moe_topk_sigmoid.h"
 #include "infiniop/ops/moe_topk_softmax.h"
+#include "infiniop/ops/mrope.h"
 #include "infiniop/ops/mul.h"
 #include "infiniop/ops/multi_margin_loss.h"
 #include "infiniop/ops/nrm2.h"

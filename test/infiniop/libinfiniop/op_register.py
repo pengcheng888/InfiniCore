@@ -909,6 +909,54 @@ def add_rms_norm_(lib):
 
 
 @OpRegister.operator
+def mrope_(lib):
+    lib.infiniopCreateMRoPEDescriptor.restype = c_int32
+    lib.infiniopCreateMRoPEDescriptor.argtypes = [
+        infiniopHandle_t,
+        POINTER(infiniopOperatorDescriptor_t),
+        infiniopTensorDescriptor_t,
+        infiniopTensorDescriptor_t,
+        infiniopTensorDescriptor_t,
+        infiniopTensorDescriptor_t,
+        infiniopTensorDescriptor_t,
+        infiniopTensorDescriptor_t,
+        infiniopTensorDescriptor_t,
+        c_int32,
+        c_int32,
+        c_int32,
+        c_int32,
+        c_int32,
+        c_bool,
+    ]
+
+    lib.infiniopGetMRoPEWorkspaceSize.restype = c_int32
+    lib.infiniopGetMRoPEWorkspaceSize.argtypes = [
+        infiniopOperatorDescriptor_t,
+        POINTER(c_size_t),
+    ]
+
+    lib.infiniopMRoPE.restype = c_int32
+    lib.infiniopMRoPE.argtypes = [
+        infiniopOperatorDescriptor_t,
+        c_void_p,
+        c_size_t,
+        c_void_p,
+        c_void_p,
+        c_void_p,
+        c_void_p,
+        c_void_p,
+        c_void_p,
+        c_void_p,
+        c_void_p,
+    ]
+
+    lib.infiniopDestroyMRoPEDescriptor.restype = c_int32
+    lib.infiniopDestroyMRoPEDescriptor.argtypes = [
+        infiniopOperatorDescriptor_t,
+    ]
+
+
+@OpRegister.operator
 def rope_(lib):
     lib.infiniopCreateRoPEDescriptor.restype = c_int32
     lib.infiniopCreateRoPEDescriptor.argtypes = [
