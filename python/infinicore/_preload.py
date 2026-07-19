@@ -99,6 +99,48 @@ def preload_torch_hip() -> None:
                 pass
 
 
+def preload_torch_cuda() -> None:
+    """
+    Best-effort preload of torch CUDA Python runtime libs with RTLD_GLOBAL.
+
+    ATen-enabled NVIDIA builds can need libtorch_python before torch has been
+    imported by the caller. Loading it by absolute path avoids relying on
+    transitive RUNPATH resolution during extension import.
+    """
+    spec = importlib.util.find_spec("torch")
+    if spec is None or not spec.origin:
+        return
+    torch_dir = os.path.dirname(spec.origin)
+    torch_libdir = os.path.join(torch_dir, "lib")
+    if not os.path.isdir(torch_libdir):
+        return
+
+    libs = [
+        "libtorch_global_deps.so",
+        "libc10.so",
+        "libc10_cuda.so",
+        "libtorch_cpu.so",
+        "libtorch_cuda.so",
+        "libtorch.so",
+        "libtorch_python.so",
+    ]
+    for lib in libs:
+        full = os.path.join(torch_libdir, lib)
+        if os.path.exists(full):
+            try:
+                ctypes.CDLL(full, mode=ctypes.RTLD_GLOBAL)
+            except OSError:
+                # Best-effort preload, continue on errors.
+                pass
+
+    # Importing sgl_kernel registers its torch custom-op schemas and loads the
+    # architecture-specific common_ops SO used by Qwen3 bridge operators.
+    try:
+        __import__("sgl_kernel")
+    except Exception:
+        pass
+
+
 def preload_flash_attn() -> None:
     """
     Best-effort preload of flash_attn_2_cuda extension with RTLD_GLOBAL.
@@ -158,6 +200,7 @@ def _should_preload_device(device_type: str) -> bool:
     device_env_map = {
         "METAX": ["HPCC_PATH", "INFINICORE_PRELOAD_HPCC"],  # HPCC/METAX
         "HYGON": ["DTK_ROOT", "INFINICORE_PRELOAD_TORCH_HIP"],
+        "NVIDIA": ["CUDA_HOME", "CUDA_PATH", "INFINICORE_PRELOAD_TORCH_CUDA"],
         # Add other device types here as needed:
         # "ASCEND": ["ASCEND_PATH"],
         # "CAMBRICON": ["NEUWARE_HOME"],
@@ -186,6 +229,8 @@ def preload_device(device_type: str) -> None:
     elif device_type == "HYGON":
         preload_torch_hip()
         preload_flash_attn()
+    elif device_type == "NVIDIA":
+        preload_torch_cuda()
     # Add other device preload functions here as needed:
     # elif device_type == "ASCEND":
     #     preload_ascend()
@@ -205,6 +250,7 @@ def preload() -> None:
     device_types = [
         "METAX",  # HPCC/METAX
         "HYGON",
+        "NVIDIA",
         # Add other device types here as they are implemented:
         # "ASCEND",
         # "CAMBRICON",

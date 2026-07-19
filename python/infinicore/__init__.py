@@ -120,6 +120,14 @@ from infinicore.ops.nrm2 import nrm2
 from infinicore.ops.paged_attention import paged_attention
 from infinicore.ops.paged_attention_prefill import paged_attention_prefill
 from infinicore.ops.paged_caching import paged_caching
+from infinicore.ops.qwen3_add_rms_norm import qwen3_add_rms_norm, qwen3_add_rms_norm_inplace
+from infinicore.ops.qwen3_fused_qk_norm_rope import qwen3_fused_qk_norm_rope, qwen3_fused_qk_norm_rope_
+from infinicore.ops.qwen3_mha_kvcache import qwen3_mha_kvcache
+from infinicore.ops.qwen3_mha_varlen import qwen3_mha_varlen
+from infinicore.ops.qwen3_rms_norm import qwen3_rms_norm
+from infinicore.ops.qwen3_rotary_embedding import qwen3_rotary_embedding, qwen3_rotary_embedding_
+from infinicore.ops.qwen3_silu_and_mul import qwen3_silu_and_mul
+from infinicore.ops.qwen3_store_kvcache import qwen3_store_kvcache, qwen3_store_kvcache_
 from infinicore.ops.rearrange import rearrange
 from infinicore.ops.reciprocal import reciprocal
 from infinicore.ops.rot import rot
@@ -277,6 +285,18 @@ __all__ = [
     "paged_caching",
     "paged_attention",
     "paged_attention_prefill",
+    "qwen3_add_rms_norm",
+    "qwen3_add_rms_norm_inplace",
+    "qwen3_fused_qk_norm_rope",
+    "qwen3_fused_qk_norm_rope_",
+    "qwen3_mha_kvcache",
+    "qwen3_mha_varlen",
+    "qwen3_rms_norm",
+    "qwen3_rotary_embedding",
+    "qwen3_rotary_embedding_",
+    "qwen3_silu_and_mul",
+    "qwen3_store_kvcache",
+    "qwen3_store_kvcache_",
     "hypot",
     "index_copy",
     "index_add",

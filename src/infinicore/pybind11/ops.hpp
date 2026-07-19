@@ -93,6 +93,14 @@
 #include "ops/paged_attention_prefill.hpp"
 #include "ops/paged_caching.hpp"
 #include "ops/prelu.hpp"
+#include "ops/qwen3_add_rms_norm.hpp"
+#include "ops/qwen3_fused_qk_norm_rope.hpp"
+#include "ops/qwen3_mha_kvcache.hpp"
+#include "ops/qwen3_mha_varlen.hpp"
+#include "ops/qwen3_rms_norm.hpp"
+#include "ops/qwen3_rotary_embedding.hpp"
+#include "ops/qwen3_silu_and_mul.hpp"
+#include "ops/qwen3_store_kvcache.hpp"
 #include "ops/random_sample.hpp"
 #include "ops/rearrange.hpp"
 #include "ops/reciprocal.hpp"
@@ -203,6 +211,14 @@ inline void bind(py::module &m) {
     bind_paged_caching(m);
     bind_pad(m);
     bind_prelu(m);
+    bind_qwen3_add_rms_norm(m);
+    bind_qwen3_fused_qk_norm_rope(m);
+    bind_qwen3_mha_kvcache(m);
+    bind_qwen3_mha_varlen(m);
+    bind_qwen3_rms_norm(m);
+    bind_qwen3_rotary_embedding(m);
+    bind_qwen3_silu_and_mul(m);
+    bind_qwen3_store_kvcache(m);
     bind_random_sample(m);
     bind_cross_entropy(m);
     bind_conv2d(m);

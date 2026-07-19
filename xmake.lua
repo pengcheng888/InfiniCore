@@ -1,6 +1,6 @@
 add_rules("mode.debug", "mode.release")
 add_requires("boost", {configs = {stacktrace = true}})
-add_requires("pybind11")
+add_requires("pybind11 2.13.6", {system = false})
 
 -- Define color codes
 local GREEN = '\27[0;32m'
@@ -714,6 +714,7 @@ target("infinicore_cpp_api")
     end
 
     add_linkdirs(INFINI_ROOT.."/lib")
+    add_rpathdirs(INFINI_ROOT.."/lib")
     add_links("infiniop", "infinirt", "infiniccl")
 
     if get_config("flash-attn") and get_config("flash-attn") ~= "" then
@@ -783,6 +784,18 @@ target("infinicore_cpp_api")
                 "linkdirs",
                 path.join(TORCH_DIR, "lib"),
                 { public = true }
+            )
+            target:add(
+                "rpathdirs",
+                path.join(TORCH_DIR, "lib"),
+                { public = true }
+            )
+            target:add(
+                "shflags",
+                "-Wl,--disable-new-dtags",
+                "-Wl,-rpath," .. INFINI_ROOT .. "/lib",
+                "-Wl,-rpath," .. path.join(TORCH_DIR, "lib"),
+                { force = true }
             )
 
             -- Moore mate: link torch_musa instead of torch_cuda/c10_cuda
@@ -945,7 +958,38 @@ target("_infinicore")
     add_includedirs(INFINI_ROOT.."/include", { public = true })
 
     add_linkdirs(INFINI_ROOT.."/lib")
+    add_rpathdirs(INFINI_ROOT.."/lib")
     add_links("infiniop", "infinirt", "infiniccl")
+
+    before_build(function (target)
+        if has_config("aten") then
+            local torch_dir = os.iorunv("python", {"-c", "import torch, os; print(os.path.dirname(torch.__file__))"}):trim()
+            target:add("linkdirs", path.join(torch_dir, "lib"), { public = true })
+            target:add("rpathdirs", path.join(torch_dir, "lib"), { public = true })
+            target:add(
+                "shflags",
+                "-Wl,--disable-new-dtags",
+                "-Wl,-rpath," .. INFINI_ROOT .. "/lib",
+                "-Wl,-rpath," .. path.join(torch_dir, "lib"),
+                { force = true }
+            )
+        end
+    end)
+
+    if has_config("nv-gpu") and has_config("aten") then
+        before_link(function (target)
+            local torch_dir = os.iorunv("python", {"-c", "import torch, os; print(os.path.dirname(torch.__file__))"}):trim()
+            local torch_lib = path.join(torch_dir, "lib")
+            target:add(
+                "shflags",
+                "-Wl,--no-as-needed",
+                "-L" .. torch_lib,
+                "-ltorch_python",
+                "-Wl,--as-needed",
+                { force = true }
+            )
+        end)
+    end
 
     add_files("src/infinicore/pybind11/**.cc")
 
