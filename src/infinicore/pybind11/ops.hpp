@@ -38,6 +38,38 @@
 #include "ops/chunk_gated_delta_rule.hpp"
 #include "ops/conv2d.hpp"
 #include "ops/cross_entropy.hpp"
+#include "ops/deepseek_v4_add_rms_norm.hpp"
+#include "ops/deepseek_v4_assign_extend_cache_locs.hpp"
+#include "ops/deepseek_v4_assign_req_to_token_pool.hpp"
+#include "ops/deepseek_v4_biased_topk.hpp"
+#include "ops/deepseek_v4_concat_and_cache_mla.hpp"
+#include "ops/deepseek_v4_create_chunked_prefix_cache_kv_indices.hpp"
+#include "ops/deepseek_v4_create_flashmla_kv_indices.hpp"
+#include "ops/deepseek_v4_dcu_cache_alloc.hpp"
+#include "ops/deepseek_v4_deep_gemm.hpp"
+#include "ops/deepseek_v4_dynamic_scaled_int8_quant.hpp"
+#include "ops/deepseek_v4_fast_topk.hpp"
+#include "ops/deepseek_v4_flashmla_cache.hpp"
+#include "ops/deepseek_v4_fused_qk_norm_rope.hpp"
+#include "ops/deepseek_v4_hash_topk.hpp"
+#include "ops/deepseek_v4_silu_and_mul_clamp.hpp"
+#include "ops/deepseek_v4_linear_bf16_fp32.hpp"
+#include "ops/deepseek_v4_mhc.hpp"
+#include "ops/deepseek_v4_moe_align_block_size.hpp"
+#include "ops/deepseek_v4_moe_marlin_w8a8.hpp"
+#include "ops/deepseek_v4_moe_topk_sigmoid.hpp"
+#include "ops/deepseek_v4_moe_topk_softmax.hpp"
+#include "ops/deepseek_v4_paged_mqa_logits.hpp"
+#include "ops/deepseek_v4_sparse_attn_indexer.hpp"
+#include "ops/deepseek_v4_rms_norm.hpp"
+#include "ops/deepseek_v4_rms_norm_dynamic_per_token_quant.hpp"
+#include "ops/deepseek_v4_rms_norm_per_block_quant.hpp"
+#include "ops/deepseek_v4_rotary_embedding.hpp"
+#include "ops/deepseek_v4_silu_and_mul.hpp"
+#include "ops/deepseek_v4_sglang_jit.hpp"
+#include "ops/deepseek_v4_static_scaled_int8_quant.hpp"
+#include "ops/deepseek_v4_transfer_kv.hpp"
+#include "ops/deepseek_v4_transfer_kv_mla.hpp"
 #include "ops/diff.hpp"
 #include "ops/digamma.hpp"
 #include "ops/dist.hpp"
@@ -219,6 +251,38 @@ inline void bind(py::module &m) {
     bind_qwen3_rotary_embedding(m);
     bind_qwen3_silu_and_mul(m);
     bind_qwen3_store_kvcache(m);
+    bind_deepseek_v4_add_rms_norm(m);
+    bind_deepseek_v4_assign_extend_cache_locs(m);
+    bind_deepseek_v4_assign_req_to_token_pool(m);
+    bind_deepseek_v4_biased_topk(m);
+    bind_deepseek_v4_concat_and_cache_mla(m);
+    bind_deepseek_v4_create_chunked_prefix_cache_kv_indices(m);
+    bind_deepseek_v4_create_flashmla_kv_indices(m);
+    bind_deepseek_v4_dcu_cache_alloc(m);
+    bind_deepseek_v4_deep_gemm(m);
+    bind_deepseek_v4_dynamic_scaled_int8_quant(m);
+    bind_deepseek_v4_fast_topk(m);
+    bind_deepseek_v4_flashmla_cache(m);
+    bind_deepseek_v4_fused_qk_norm_rope(m);
+    bind_deepseek_v4_hash_topk(m);
+    bind_deepseek_v4_silu_and_mul_clamp(m);
+    bind_deepseek_v4_linear_bf16_fp32(m);
+    bind_deepseek_v4_mhc(m);
+    bind_deepseek_v4_moe_align_block_size(m);
+    bind_deepseek_v4_moe_marlin_w8a8(m);
+    bind_deepseek_v4_moe_topk_sigmoid(m);
+    bind_deepseek_v4_moe_topk_softmax(m);
+    bind_deepseek_v4_paged_mqa_logits(m);
+    bind_deepseek_v4_sparse_attn_indexer(m);
+    bind_deepseek_v4_rms_norm(m);
+    bind_deepseek_v4_rms_norm_dynamic_per_token_quant(m);
+    bind_deepseek_v4_rms_norm_per_block_quant(m);
+    bind_deepseek_v4_rotary_embedding(m);
+    bind_deepseek_v4_silu_and_mul(m);
+    bind_deepseek_v4_sglang_jit(m);
+    bind_deepseek_v4_static_scaled_int8_quant(m);
+    bind_deepseek_v4_transfer_kv(m);
+    bind_deepseek_v4_transfer_kv_mla(m);
     bind_random_sample(m);
     bind_cross_entropy(m);
     bind_conv2d(m);

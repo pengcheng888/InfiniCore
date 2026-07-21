@@ -27,14 +27,24 @@ inline at::ScalarType to_at_dtype(DataType dtype) {
         return at::kFloat;
     case DataType::F16:
         return at::kHalf;
+    case DataType::F8:
+#if defined(ENABLE_HYGON_API)
+        return at::kFloat8_e4m3fnuz;
+#else
+        return at::kFloat8_e4m3fn;
+#endif
     case DataType::BF16:
         return at::kBFloat16;
+    case DataType::I8:
+        return at::kChar;
     case DataType::I32:
         return at::kInt;
     case DataType::I64:
         return at::kLong;
+    case DataType::U8:
+        return at::kByte;
     default:
-        throw std::runtime_error("Unsupported dtype for ATen");
+        throw std::runtime_error(std::string("Unsupported dtype for ATen: ") + infinicore::toString(dtype) + " (" + std::to_string(static_cast<int>(dtype)) + ")");
     }
 }
 

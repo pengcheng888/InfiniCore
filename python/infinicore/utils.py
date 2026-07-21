@@ -2,6 +2,7 @@ import numpy as np
 import torch
 
 import infinicore
+from infinicore.lib import _infinicore
 
 try:
     import ml_dtypes
@@ -29,6 +30,8 @@ def to_torch_dtype(infini_dtype):
         return torch.int64
     elif infini_dtype == infinicore.uint8:
         return torch.uint8
+    elif infini_dtype == infinicore.dtype(_infinicore.DataType.F8):
+        return torch.float8_e4m3fnuz if hasattr(torch, "float8_e4m3fnuz") else torch.float8_e4m3fn
     elif infini_dtype == infinicore.bool:
         return torch.bool
     else:
@@ -53,6 +56,8 @@ def to_infinicore_dtype(torch_dtype):
         return infinicore.int64
     elif torch_dtype == torch.uint8:
         return infinicore.uint8
+    elif torch_dtype in [getattr(torch, "float8_e4m3fnuz", None), getattr(torch, "float8_e4m3fn", None)]:
+        return infinicore.dtype(_infinicore.DataType.F8)
     else:
         raise ValueError(f"Unsupported torch dtype: {torch_dtype}")
 

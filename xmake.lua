@@ -961,9 +961,13 @@ target("_infinicore")
     add_rpathdirs(INFINI_ROOT.."/lib")
     add_links("infiniop", "infinirt", "infiniccl")
 
-    before_build(function (target)
+    on_load(function (target)
         if has_config("aten") then
+            if has_config("hygon-dcu") then
+                target:add("defines", "__HIP_PLATFORM_AMD__", { public = true })
+            end
             local torch_dir = os.iorunv("python", {"-c", "import torch, os; print(os.path.dirname(torch.__file__))"}):trim()
+            target:add("includedirs", path.join(torch_dir, "include"), path.join(torch_dir, "include/torch/csrc/api/include"), { public = true })
             target:add("linkdirs", path.join(torch_dir, "lib"), { public = true })
             target:add("rpathdirs", path.join(torch_dir, "lib"), { public = true })
             target:add(

@@ -128,6 +128,35 @@ from infinicore.ops.qwen3_rms_norm import qwen3_rms_norm
 from infinicore.ops.qwen3_rotary_embedding import qwen3_rotary_embedding, qwen3_rotary_embedding_
 from infinicore.ops.qwen3_silu_and_mul import qwen3_silu_and_mul
 from infinicore.ops.qwen3_store_kvcache import qwen3_store_kvcache, qwen3_store_kvcache_
+from infinicore.ops.deepseek_v4_add_rms_norm import deepseek_v4_add_rms_norm, deepseek_v4_add_rms_norm_inplace
+from infinicore.ops.deepseek_v4_assign_extend_cache_locs import deepseek_v4_assign_extend_cache_locs_
+from infinicore.ops.deepseek_v4_assign_req_to_token_pool import deepseek_v4_assign_req_to_token_pool_
+from infinicore.ops.deepseek_v4_concat_and_cache_mla import deepseek_v4_concat_and_cache_mla_
+from infinicore.ops.deepseek_v4_create_chunked_prefix_cache_kv_indices import deepseek_v4_create_chunked_prefix_cache_kv_indices_
+from infinicore.ops.deepseek_v4_create_flashmla_kv_indices import deepseek_v4_create_flashmla_kv_indices_
+from infinicore.ops.deepseek_v4_dcu_cache_alloc import deepseek_v4_dcu_alloc_decode_kernel_, deepseek_v4_dcu_alloc_extend_kernel_
+from infinicore.ops.deepseek_v4_deep_gemm import deepseek_v4_deep_gemm_low_latency_grouped_gemm_, deepseek_v4_deep_gemm_moe_w8a8_i8_marlin_prefill_down_, deepseek_v4_deep_gemm_moe_w8a8_marlin_decode_down_fp8_
+from infinicore.ops.deepseek_v4_dynamic_scaled_int8_quant import deepseek_v4_dynamic_scaled_int8_quant_
+from infinicore.ops.deepseek_v4_fast_topk import deepseek_v4_fast_topk_, deepseek_v4_fast_topk_transform_fused_, deepseek_v4_fast_topk_transform_ragged_fused_
+from infinicore.ops.deepseek_v4_flashmla_cache import deepseek_v4_flashmla_cache_indexer_, deepseek_v4_fused_store_flashmla_cache_
+from infinicore.ops.deepseek_v4_fused_qk_norm_rope import deepseek_v4_fused_qk_norm_rope, deepseek_v4_fused_qk_norm_rope_
+from infinicore.ops.deepseek_v4_silu_and_mul_clamp import deepseek_v4_silu_and_mul_clamp, deepseek_v4_silu_and_mul_clamp_
+from infinicore.ops.deepseek_v4_linear_bf16_fp32 import deepseek_v4_linear_bf16_fp32, deepseek_v4_linear_bf16_fp32_
+from infinicore.ops.deepseek_v4_moe_align_block_size import deepseek_v4_moe_align_block_size_
+from infinicore.ops.deepseek_v4_moe_marlin_w8a8 import deepseek_v4_moe_marlin_w8a8_, deepseek_v4_moe_marlin_w8a8_fp8_
+from infinicore.ops.deepseek_v4_moe_topk_sigmoid import deepseek_v4_moe_topk_sigmoid_
+from infinicore.ops.deepseek_v4_moe_topk_softmax import deepseek_v4_moe_topk_softmax_
+from infinicore.ops.deepseek_v4_paged_mqa_logits import deepseek_v4_paged_mqa_logits_, deepseek_v4_paged_mqa_logits_metadata_
+from infinicore.ops.deepseek_v4_sparse_attn_indexer import deepseek_v4_sparse_attn_indexer_decode_, deepseek_v4_sparse_attn_indexer_prefill_
+from infinicore.ops.deepseek_v4_rms_norm import deepseek_v4_rms_norm
+from infinicore.ops.deepseek_v4_rms_norm_dynamic_per_token_quant import deepseek_v4_rms_norm_dynamic_per_token_quant_
+from infinicore.ops.deepseek_v4_rms_norm_per_block_quant import deepseek_v4_rms_norm_per_block_quant_
+from infinicore.ops.deepseek_v4_rotary_embedding import deepseek_v4_rotary_embedding, deepseek_v4_rotary_embedding_
+from infinicore.ops.deepseek_v4_silu_and_mul import deepseek_v4_silu_and_mul
+from infinicore.ops.deepseek_v4_sglang_jit import deepseek_v4_compressed_attn_decode_, deepseek_v4_compressed_attn_metadata_, deepseek_v4_compressed_attn_prefill_, deepseek_v4_flashmla_decode_, deepseek_v4_flashmla_decode_q_nope_pe_, deepseek_v4_flashmla_metadata_, deepseek_v4_flashmla_sparse_prefill_, deepseek_v4_mega_moe_pre_dispatch_, deepseek_v4_silu_and_mul_quant_
+from infinicore.ops.deepseek_v4_static_scaled_int8_quant import deepseek_v4_static_scaled_int8_quant_
+from infinicore.ops.deepseek_v4_transfer_kv import deepseek_v4_transfer_kv_per_layer_, deepseek_v4_transfer_kv_per_layer_pf_lf_
+from infinicore.ops.deepseek_v4_transfer_kv_mla import deepseek_v4_transfer_kv_per_layer_mla_, deepseek_v4_transfer_kv_per_layer_mla_pf_lf_
 from infinicore.ops.rearrange import rearrange
 from infinicore.ops.reciprocal import reciprocal
 from infinicore.ops.rot import rot
@@ -297,6 +326,59 @@ __all__ = [
     "qwen3_silu_and_mul",
     "qwen3_store_kvcache",
     "qwen3_store_kvcache_",
+    "deepseek_v4_add_rms_norm",
+    "deepseek_v4_add_rms_norm_inplace",
+    "deepseek_v4_assign_extend_cache_locs_",
+    "deepseek_v4_assign_req_to_token_pool_",
+    "deepseek_v4_concat_and_cache_mla_",
+    "deepseek_v4_create_chunked_prefix_cache_kv_indices_",
+    "deepseek_v4_create_flashmla_kv_indices_",
+    "deepseek_v4_dcu_alloc_decode_kernel_",
+    "deepseek_v4_dcu_alloc_extend_kernel_",
+    "deepseek_v4_deep_gemm_low_latency_grouped_gemm_",
+    "deepseek_v4_deep_gemm_moe_w8a8_i8_marlin_prefill_down_",
+    "deepseek_v4_deep_gemm_moe_w8a8_marlin_decode_down_fp8_",
+    "deepseek_v4_dynamic_scaled_int8_quant_",
+    "deepseek_v4_fast_topk_",
+    "deepseek_v4_fast_topk_transform_fused_",
+    "deepseek_v4_fast_topk_transform_ragged_fused_",
+    "deepseek_v4_flashmla_cache_indexer_",
+    "deepseek_v4_fused_store_flashmla_cache_",
+    "deepseek_v4_fused_qk_norm_rope",
+    "deepseek_v4_fused_qk_norm_rope_",
+    "deepseek_v4_silu_and_mul_clamp",
+    "deepseek_v4_silu_and_mul_clamp_",
+    "deepseek_v4_linear_bf16_fp32",
+    "deepseek_v4_linear_bf16_fp32_",
+    "deepseek_v4_moe_align_block_size_",
+    "deepseek_v4_moe_marlin_w8a8_",
+    "deepseek_v4_moe_marlin_w8a8_fp8_",
+    "deepseek_v4_moe_topk_sigmoid_",
+    "deepseek_v4_moe_topk_softmax_",
+    "deepseek_v4_paged_mqa_logits_",
+    "deepseek_v4_paged_mqa_logits_metadata_",
+    "deepseek_v4_sparse_attn_indexer_decode_",
+    "deepseek_v4_sparse_attn_indexer_prefill_",
+    "deepseek_v4_rms_norm",
+    "deepseek_v4_rms_norm_dynamic_per_token_quant_",
+    "deepseek_v4_rms_norm_per_block_quant_",
+    "deepseek_v4_rotary_embedding",
+    "deepseek_v4_rotary_embedding_",
+    "deepseek_v4_silu_and_mul",
+    "deepseek_v4_silu_and_mul_quant_",
+    "deepseek_v4_mega_moe_pre_dispatch_",
+    "deepseek_v4_compressed_attn_metadata_",
+    "deepseek_v4_compressed_attn_prefill_",
+    "deepseek_v4_compressed_attn_decode_",
+    "deepseek_v4_flashmla_metadata_",
+    "deepseek_v4_flashmla_decode_",
+    "deepseek_v4_flashmla_decode_q_nope_pe_",
+    "deepseek_v4_flashmla_sparse_prefill_",
+    "deepseek_v4_static_scaled_int8_quant_",
+    "deepseek_v4_transfer_kv_per_layer_",
+    "deepseek_v4_transfer_kv_per_layer_pf_lf_",
+    "deepseek_v4_transfer_kv_per_layer_mla_",
+    "deepseek_v4_transfer_kv_per_layer_mla_pf_lf_",
     "hypot",
     "index_copy",
     "index_add",

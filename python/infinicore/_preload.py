@@ -76,6 +76,10 @@ def preload_torch_hip() -> None:
     spec = importlib.util.find_spec("torch")
     if spec is None or not spec.origin:
         return
+    try:
+        __import__("torch")
+    except Exception:
+        return
     torch_dir = os.path.dirname(spec.origin)
     torch_libdir = os.path.join(torch_dir, "lib")
     if not os.path.isdir(torch_libdir):
@@ -139,6 +143,101 @@ def preload_torch_cuda() -> None:
         __import__("sgl_kernel")
     except Exception:
         pass
+
+
+_deepseek_v4_lightop_lib = None
+
+
+def register_deepseek_v4_lightop_ops() -> None:
+    """Register stable torch dispatcher wrappers for lightop pybind SO ops."""
+    global _deepseek_v4_lightop_lib
+    if _deepseek_v4_lightop_lib is not None:
+        return
+    try:
+        import torch
+        from lightop import op as lightop_op
+    except Exception:
+        return
+
+    try:
+        lib = torch.library.Library("infinicore_deepseek_v4", "FRAGMENT")
+        lib.define(
+            "lightop_moe_gemm_marlin_w8a8(Tensor input, Tensor b_qweight, Tensor(a!) output, "
+            "Tensor a_scale, Tensor b_scale, Tensor? topk_weights, Tensor sorted_token_ids, "
+            "Tensor expert_ids, Tensor num_tokens_post_pad, int top_k, int mode, int delta) -> Tensor(a!)"
+        )
+        lib.define(
+            "lightop_fuse_silu_mul_quant(Tensor input, Tensor(a!) output, Tensor(b!) scales, "
+            "Tensor? num_local_tokens_tensor, int topk, int expect_m, Tensor? expert_ids) -> (Tensor(a!), Tensor(b!))"
+        )
+        lib.define(
+            "lightop_moe_sum(Tensor input, Tensor(a!) output, Tensor? bias, Tensor? expert_mask, "
+            "Tensor? num_local_tokens, float factor, int expect_m) -> Tensor(a!)"
+        )
+
+        def _moe_gemm(input, b_qweight, output, a_scale, b_scale, topk_weights,
+                      sorted_token_ids, expert_ids, num_tokens_post_pad, top_k: int,
+                      mode: int, delta: int):
+            if mode < 1000:
+                lightop_op.moe_gemm_marlin_w8a8(
+                    input, b_qweight, output, a_scale, b_scale, topk_weights,
+                    sorted_token_ids, expert_ids, num_tokens_post_pad, top_k, mode, delta)
+            else:
+                lightop_op.moe_marlin_w8a8_asm(
+                    input, b_qweight, output, a_scale, b_scale, topk_weights,
+                    sorted_token_ids, expert_ids, num_tokens_post_pad, top_k, mode, delta)
+            return output
+
+        def _fuse_silu_mul_quant(input, output, scales, num_local_tokens_tensor=None,
+                                 topk: int = 1, expect_m: int = -1, expert_ids=None):
+            lightop_op.fuse_silu_mul_quant(
+                input, output, scales, num_local_tokens_tensor, topk, expect_m, expert_ids)
+            return output, scales
+
+        def _moe_sum(input, output, bias=None, expert_mask=None, num_local_tokens=None,
+                     factor: float = 1.0, expect_m: int = -1):
+            lightop_op.moe_sum(input, output, bias, expert_mask, num_local_tokens, factor, expect_m)
+            return output
+
+        lib.impl("lightop_moe_gemm_marlin_w8a8", _moe_gemm, "CUDA")
+        lib.impl("lightop_fuse_silu_mul_quant", _fuse_silu_mul_quant, "CUDA")
+        lib.impl("lightop_moe_sum", _moe_sum, "CUDA")
+        _deepseek_v4_lightop_lib = lib
+    except Exception:
+        _deepseek_v4_lightop_lib = None
+
+def _prefer_rocm_vllm_platform() -> None:
+    """Avoid vLLM cuda/rocm double-plugin activation in mixed Hygon envs."""
+    try:
+        import vllm.platforms as platforms
+
+        platforms.builtin_platform_plugins["cuda"] = lambda: None
+    except Exception:
+        pass
+
+
+def preload_deepseek_v4_extensions() -> None:
+    """
+    Best-effort import of Hygon DeepSeek-V4 extension modules.
+
+    Importing these modules registers their torch custom-op schemas. InfiniCore
+    C++ bridge operators resolve the schemas through c10::Dispatcher at call
+    time, so InfiniLM must preload them before running C++ forward. Import
+    vllm._C directly; vllm._custom_ops can activate conflicting platform
+    plugins in this mixed CUDA/ROCm environment.
+    """
+    _prefer_rocm_vllm_platform()
+    for module_name in (
+        "sgl_kernel",
+        "aiter",
+        "vllm._C",
+        "sglang.srt.layers.quantization.compressed_tensors.compressed_tensors_moe_marlin",
+    ):
+        try:
+            __import__(module_name)
+        except Exception:
+            pass
+    register_deepseek_v4_lightop_ops()
 
 
 def preload_flash_attn() -> None:
@@ -228,6 +327,7 @@ def preload_device(device_type: str) -> None:
         preload_hpcc()
     elif device_type == "HYGON":
         preload_torch_hip()
+        preload_deepseek_v4_extensions()
         preload_flash_attn()
     elif device_type == "NVIDIA":
         preload_torch_cuda()
