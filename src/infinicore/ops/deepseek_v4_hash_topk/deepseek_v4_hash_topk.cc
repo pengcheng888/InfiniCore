@@ -1,5 +1,7 @@
 #include "infinicore/ops/deepseek_v4_hash_topk.hpp"
 
+#include "deepseek_v4_hash_topk_kernel.hpp"
+
 #include "infinicore/device.hpp"
 
 #ifdef ENABLE_ATEN
@@ -59,6 +61,33 @@ void check_shapes(const Tensor &topk_weights,
     }
 }
 
+
+#if defined(ENABLE_ATEN) && (defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API))
+void check_kernel_tensors(const Tensor &topk_weights,
+                          const Tensor &topk_indices,
+                          const Tensor &router_logits,
+                          const Tensor &input_ids,
+                          const Tensor &tid2eid) {
+    if (topk_weights->dtype() != DataType::F32 || topk_indices->dtype() != DataType::I32 ||
+        router_logits->dtype() != DataType::F32 || input_ids->dtype() != DataType::I64 ||
+        (tid2eid->dtype() != DataType::I64 && tid2eid->dtype() != DataType::I32)) {
+        throw std::runtime_error("deepseek_v4_hash_topk_kernel_ expects F32 weights/logits, I32 indices, I64 input_ids, and I64/I32 tid2eid.");
+    }
+    if (!topk_weights->is_contiguous() || !topk_indices->is_contiguous() ||
+        !router_logits->is_contiguous() || !input_ids->is_contiguous() || !tid2eid->is_contiguous()) {
+        throw std::runtime_error("deepseek_v4_hash_topk_kernel_ expects contiguous tensors.");
+    }
+}
+
+void *current_accelerator_stream() {
+#if defined(ENABLE_HYGON_API)
+    return reinterpret_cast<void *>(infinicore::adaptor::get_hip_stream().stream());
+#else
+    return reinterpret_cast<void *>(infinicore::adaptor::get_cuda_stream().stream());
+#endif
+}
+#endif
+
 } // namespace
 
 void deepseek_v4_hash_topk_naive_(Tensor topk_weights,
@@ -99,6 +128,134 @@ void deepseek_v4_hash_topk_naive_(Tensor topk_weights,
     (void)tid2eid;
     (void)renormalize;
     throw std::runtime_error("deepseek_v4_hash_topk_naive_ requires an ATen-enabled HYGON/NVIDIA build.");
+#endif
+}
+
+
+void deepseek_v4_hash_topk_kernel_(Tensor topk_weights,
+                                   Tensor topk_indices,
+                                   const Tensor &router_logits,
+                                   const Tensor &input_ids,
+                                   const Tensor &tid2eid,
+                                   bool renormalize) {
+#if defined(ENABLE_ATEN) && (defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API))
+    check_accelerator_tensor(router_logits, "deepseek_v4_hash_topk_kernel_");
+#if defined(ENABLE_HYGON_API)
+    c10::hip::HIPStreamGuard guard(infinicore::adaptor::get_hip_stream());
+#else
+    c10::cuda::CUDAStreamGuard guard(infinicore::adaptor::get_cuda_stream());
+#endif
+
+    check_shapes(topk_weights, topk_indices, router_logits, input_ids, tid2eid);
+    check_kernel_tensors(topk_weights, topk_indices, router_logits, input_ids, tid2eid);
+    if (tid2eid->size(1) > 32) {
+        throw std::runtime_error("deepseek_v4_hash_topk_kernel_ supports topk <= 32.");
+    }
+
+    deepseek_v4_hash_topk::launch_hash_topk(
+        reinterpret_cast<float *>(topk_weights->data()),
+        reinterpret_cast<int32_t *>(topk_indices->data()),
+        reinterpret_cast<const float *>(router_logits->data()),
+        reinterpret_cast<const int64_t *>(input_ids->data()),
+        tid2eid->data(),
+        tid2eid->dtype() == DataType::I64,
+        static_cast<int64_t>(router_logits->size(0)),
+        static_cast<int64_t>(router_logits->size(1)),
+        static_cast<int64_t>(tid2eid->size(1)),
+        renormalize,
+        current_accelerator_stream());
+#else
+    (void)topk_weights;
+    (void)topk_indices;
+    (void)router_logits;
+    (void)input_ids;
+    (void)tid2eid;
+    (void)renormalize;
+    throw std::runtime_error("deepseek_v4_hash_topk_kernel_ requires an ATen-enabled HYGON/NVIDIA build.");
+#endif
+}
+
+
+void deepseek_v4_hash_topk_generic_kernel_(Tensor topk_weights,
+                                           Tensor topk_indices,
+                                           const Tensor &router_logits,
+                                           const Tensor &input_ids,
+                                           const Tensor &tid2eid,
+                                           bool renormalize) {
+#if defined(ENABLE_ATEN) && (defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API))
+    check_accelerator_tensor(router_logits, "deepseek_v4_hash_topk_generic_kernel_");
+#if defined(ENABLE_HYGON_API)
+    c10::hip::HIPStreamGuard guard(infinicore::adaptor::get_hip_stream());
+#else
+    c10::cuda::CUDAStreamGuard guard(infinicore::adaptor::get_cuda_stream());
+#endif
+
+    check_shapes(topk_weights, topk_indices, router_logits, input_ids, tid2eid);
+    check_kernel_tensors(topk_weights, topk_indices, router_logits, input_ids, tid2eid);
+    if (tid2eid->size(1) > 32) {
+        throw std::runtime_error("deepseek_v4_hash_topk_generic_kernel_ supports topk <= 32.");
+    }
+
+    deepseek_v4_hash_topk::launch_hash_topk_generic(
+        reinterpret_cast<float *>(topk_weights->data()),
+        reinterpret_cast<int32_t *>(topk_indices->data()),
+        reinterpret_cast<const float *>(router_logits->data()),
+        reinterpret_cast<const int64_t *>(input_ids->data()),
+        tid2eid->data(),
+        tid2eid->dtype() == DataType::I64,
+        static_cast<int64_t>(router_logits->size(0)),
+        static_cast<int64_t>(router_logits->size(1)),
+        static_cast<int64_t>(tid2eid->size(1)),
+        renormalize,
+        current_accelerator_stream());
+#else
+    (void)topk_weights;
+    (void)topk_indices;
+    (void)router_logits;
+    (void)input_ids;
+    (void)tid2eid;
+    (void)renormalize;
+    throw std::runtime_error("deepseek_v4_hash_topk_generic_kernel_ requires an ATen-enabled HYGON/NVIDIA build.");
+#endif
+}
+
+void deepseek_v4_hash_topk_dsv4_kernel_(Tensor topk_weights,
+                                        Tensor topk_indices,
+                                        const Tensor &router_logits,
+                                        const Tensor &input_ids,
+                                        const Tensor &tid2eid,
+                                        bool renormalize) {
+#if defined(ENABLE_ATEN) && (defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API))
+    check_accelerator_tensor(router_logits, "deepseek_v4_hash_topk_dsv4_kernel_");
+#if defined(ENABLE_HYGON_API)
+    c10::hip::HIPStreamGuard guard(infinicore::adaptor::get_hip_stream());
+#else
+    c10::cuda::CUDAStreamGuard guard(infinicore::adaptor::get_cuda_stream());
+#endif
+
+    check_shapes(topk_weights, topk_indices, router_logits, input_ids, tid2eid);
+    check_kernel_tensors(topk_weights, topk_indices, router_logits, input_ids, tid2eid);
+    if (router_logits->size(1) != 256 || tid2eid->size(1) != 6 || topk_weights->size(1) != 6 || !renormalize) {
+        throw std::runtime_error("deepseek_v4_hash_topk_dsv4_kernel_ requires num_experts=256, topk=6, renormalize=true.");
+    }
+
+    deepseek_v4_hash_topk::launch_hash_topk_dsv4(
+        reinterpret_cast<float *>(topk_weights->data()),
+        reinterpret_cast<int32_t *>(topk_indices->data()),
+        reinterpret_cast<const float *>(router_logits->data()),
+        reinterpret_cast<const int64_t *>(input_ids->data()),
+        tid2eid->data(),
+        tid2eid->dtype() == DataType::I64,
+        static_cast<int64_t>(router_logits->size(0)),
+        current_accelerator_stream());
+#else
+    (void)topk_weights;
+    (void)topk_indices;
+    (void)router_logits;
+    (void)input_ids;
+    (void)tid2eid;
+    (void)renormalize;
+    throw std::runtime_error("deepseek_v4_hash_topk_dsv4_kernel_ requires an ATen-enabled HYGON/NVIDIA build.");
 #endif
 }
 

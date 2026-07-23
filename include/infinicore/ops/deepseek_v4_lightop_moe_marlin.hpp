@@ -6,6 +6,14 @@
 
 namespace infinicore::op {
 
+void deepseek_v4_lightop_moe_align_block_size_(const Tensor &topk_ids,
+                                                int num_experts,
+                                                int block_size,
+                                                Tensor sorted_token_ids,
+                                                Tensor expert_ids,
+                                                Tensor num_tokens_post_pad,
+                                                bool is_fuse_fill);
+
 void deepseek_v4_lightop_moe_gemm_marlin_w8a8_(const Tensor &input,
                                                 const Tensor &b_qweight,
                                                 Tensor output,

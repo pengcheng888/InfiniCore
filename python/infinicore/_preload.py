@@ -174,6 +174,12 @@ def register_deepseek_v4_lightop_ops() -> None:
             "lightop_moe_sum(Tensor input, Tensor(a!) output, Tensor? bias, Tensor? expert_mask, "
             "Tensor? num_local_tokens, float factor, int expect_m) -> Tensor(a!)"
         )
+        lib.define(
+            "lightop_moe_align_block_size(Tensor topk_ids, int num_experts, int block_size, "
+            "Tensor(a!) sorted_token_ids, Tensor(b!) expert_ids, Tensor(c!) num_tokens_post_pad, "
+            "Tensor? expert_map, Tensor? expert_mask, Tensor? num_local_tokens, bool is_ep, "
+            "bool is_fuse_fill) -> (Tensor(a!), Tensor(b!), Tensor(c!))"
+        )
 
         def _moe_gemm(input, b_qweight, output, a_scale, b_scale, topk_weights,
                       sorted_token_ids, expert_ids, num_tokens_post_pad, top_k: int,
@@ -199,9 +205,28 @@ def register_deepseek_v4_lightop_ops() -> None:
             lightop_op.moe_sum(input, output, bias, expert_mask, num_local_tokens, factor, expect_m)
             return output
 
+        def _moe_align(topk_ids, num_experts: int, block_size: int, sorted_token_ids,
+                       expert_ids, num_tokens_post_pad, expert_map=None, expert_mask=None,
+                       num_local_tokens=None, is_ep: bool = False, is_fuse_fill: bool = True):
+            lightop_op.moe_align_block_size(
+                topk_ids,
+                num_experts,
+                block_size,
+                sorted_token_ids,
+                expert_ids,
+                num_tokens_post_pad,
+                expert_map=expert_map,
+                expert_mask=expert_mask,
+                num_local_tokens=num_local_tokens,
+                Is_EP=is_ep,
+                Is_fuse_fill=is_fuse_fill,
+            )
+            return sorted_token_ids, expert_ids, num_tokens_post_pad
+
         lib.impl("lightop_moe_gemm_marlin_w8a8", _moe_gemm, "CUDA")
         lib.impl("lightop_fuse_silu_mul_quant", _fuse_silu_mul_quant, "CUDA")
         lib.impl("lightop_moe_sum", _moe_sum, "CUDA")
+        lib.impl("lightop_moe_align_block_size", _moe_align, "CUDA")
         _deepseek_v4_lightop_lib = lib
     except Exception:
         _deepseek_v4_lightop_lib = None

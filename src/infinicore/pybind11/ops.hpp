@@ -50,6 +50,7 @@
 #include "ops/deepseek_v4_dynamic_scaled_int8_quant.hpp"
 #include "ops/deepseek_v4_fast_topk.hpp"
 #include "ops/deepseek_v4_flashmla_cache.hpp"
+#include "ops/deepseek_v4_fused_experts_impl_int8_marlin.hpp"
 #include "ops/deepseek_v4_fused_qk_norm_rope.hpp"
 #include "ops/deepseek_v4_hash_topk.hpp"
 #include "ops/deepseek_v4_silu_and_mul_clamp.hpp"
@@ -263,6 +264,7 @@ inline void bind(py::module &m) {
     bind_deepseek_v4_dynamic_scaled_int8_quant(m);
     bind_deepseek_v4_fast_topk(m);
     bind_deepseek_v4_flashmla_cache(m);
+    bind_deepseek_v4_fused_experts_impl_int8_marlin(m);
     bind_deepseek_v4_fused_qk_norm_rope(m);
     bind_deepseek_v4_hash_topk(m);
     bind_deepseek_v4_silu_and_mul_clamp(m);

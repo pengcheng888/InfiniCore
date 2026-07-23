@@ -1,5 +1,7 @@
 #include "infinicore/ops/deepseek_v4_mhc.hpp"
 
+#include "deepseek_v4_mhc_kernel.hpp"
+
 #include "infinicore/device.hpp"
 
 #ifdef ENABLE_ATEN
@@ -45,6 +47,26 @@ at::Tensor sinkhorn(at::Tensor comb, int sinkhorn_iters, double eps) {
         comb = comb / (comb.sum(1, true) + eps);
     }
     return comb;
+}
+
+void check_contiguous_aten(const at::Tensor &tensor, const char *op_name, const char *arg_name) {
+    if (!tensor.is_contiguous()) {
+        throw std::runtime_error(std::string(op_name) + " expects contiguous tensor: " + arg_name);
+    }
+}
+
+void check_dtype(const Tensor &tensor, DataType dtype, const char *op_name, const char *arg_name) {
+    if (tensor->dtype() != dtype) {
+        throw std::runtime_error(std::string(op_name) + " unexpected dtype for " + arg_name + ": expected " + toString(dtype) + ", got " + toString(tensor->dtype()));
+    }
+}
+
+void *current_accelerator_stream() {
+#if defined(ENABLE_HYGON_API)
+    return reinterpret_cast<void *>(infinicore::adaptor::get_hip_stream().stream());
+#else
+    return reinterpret_cast<void *>(infinicore::adaptor::get_cuda_stream().stream());
+#endif
 }
 #endif
 
@@ -119,6 +141,105 @@ void deepseek_v4_mhc_pre_naive_(Tensor y,
 #endif
 }
 
+void deepseek_v4_mhc_pre_kernel_(Tensor y,
+                          Tensor post,
+                          Tensor comb,
+                          const Tensor &x,
+                          const Tensor &fn,
+                          const Tensor &scale,
+                          const Tensor &base,
+                          double rms_eps,
+                          double hc_eps,
+                          int sinkhorn_iters) {
+#if defined(ENABLE_ATEN) && (defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API))
+    const char *op_name = "deepseek_v4_mhc_pre_kernel_";
+    check_accelerator_tensor(x, op_name);
+    check_dtype(x, DataType::BF16, op_name, "x");
+    check_dtype(y, DataType::BF16, op_name, "y");
+    check_dtype(post, DataType::F32, op_name, "post");
+    check_dtype(comb, DataType::F32, op_name, "comb");
+    check_dtype(fn, DataType::F32, op_name, "fn");
+    check_dtype(scale, DataType::F32, op_name, "scale");
+    check_dtype(base, DataType::F32, op_name, "base");
+
+#if defined(ENABLE_HYGON_API)
+    auto stream_guard = infinicore::adaptor::get_hip_stream();
+    c10::hip::HIPStreamGuard guard(stream_guard);
+#else
+    auto stream_guard = infinicore::adaptor::get_cuda_stream();
+    c10::cuda::CUDAStreamGuard guard(stream_guard);
+#endif
+
+    if (x->ndim() != 3 || fn->ndim() != 2 || scale->ndim() != 1 || base->ndim() != 1) {
+        throw std::runtime_error("deepseek_v4_mhc_pre_kernel_ unexpected input rank.");
+    }
+    const int64_t tokens = static_cast<int64_t>(x->size(0));
+    const int64_t hc = static_cast<int64_t>(x->size(1));
+    const int64_t hidden = static_cast<int64_t>(x->size(2));
+    const int64_t mix_hc = (2 + hc) * hc;
+    if (hc > 16) {
+        throw std::runtime_error("deepseek_v4_mhc_pre_kernel_ supports hc <= 16.");
+    }
+    if (fn->shape() != Shape{static_cast<size_t>(mix_hc), static_cast<size_t>(hc * hidden)} ||
+        base->size(0) != static_cast<size_t>(mix_hc) || scale->size(0) != 3 ||
+        y->shape() != Shape{static_cast<size_t>(tokens), static_cast<size_t>(hidden)} ||
+        post->shape() != Shape{static_cast<size_t>(tokens), static_cast<size_t>(hc)} ||
+        comb->shape() != Shape{static_cast<size_t>(tokens), static_cast<size_t>(hc), static_cast<size_t>(hc)}) {
+        throw std::runtime_error("deepseek_v4_mhc_pre_kernel_ shape mismatch.");
+    }
+
+    auto y_at = infinicore::adaptor::to_aten_tensor(y);
+    auto post_at = infinicore::adaptor::to_aten_tensor(post);
+    auto comb_at = infinicore::adaptor::to_aten_tensor(comb);
+    auto x_at = infinicore::adaptor::to_aten_tensor(x);
+    auto fn_at = infinicore::adaptor::to_aten_tensor(fn);
+    auto scale_at = infinicore::adaptor::to_aten_tensor(scale);
+    auto base_at = infinicore::adaptor::to_aten_tensor(base);
+    check_contiguous_aten(y_at, op_name, "y");
+    check_contiguous_aten(post_at, op_name, "post");
+    check_contiguous_aten(comb_at, op_name, "comb");
+    check_contiguous_aten(x_at, op_name, "x");
+    check_contiguous_aten(fn_at, op_name, "fn");
+    check_contiguous_aten(scale_at, op_name, "scale");
+    check_contiguous_aten(base_at, op_name, "base");
+
+    auto options = fn_at.options().dtype(at::kFloat);
+    auto mixes = at::empty({tokens, mix_hc}, options);
+    auto sqsum = at::empty({tokens}, options);
+    auto pre = at::empty({tokens, hc}, options);
+    deepseek_v4_mhc::launch_pre_kernel(
+        y_at.data_ptr(),
+        post_at.data_ptr<float>(),
+        comb_at.data_ptr<float>(),
+        x_at.data_ptr(),
+        fn_at.data_ptr<float>(),
+        scale_at.data_ptr<float>(),
+        base_at.data_ptr<float>(),
+        mixes.data_ptr<float>(),
+        sqsum.data_ptr<float>(),
+        pre.data_ptr<float>(),
+        tokens,
+        hc,
+        hidden,
+        rms_eps,
+        hc_eps,
+        sinkhorn_iters,
+        current_accelerator_stream());
+#else
+    (void)y;
+    (void)post;
+    (void)comb;
+    (void)x;
+    (void)fn;
+    (void)scale;
+    (void)base;
+    (void)rms_eps;
+    (void)hc_eps;
+    (void)sinkhorn_iters;
+    throw std::runtime_error("deepseek_v4_mhc_pre_kernel_ requires an ATen-enabled HYGON/NVIDIA build.");
+#endif
+}
+
 void deepseek_v4_mhc_post_naive_(Tensor y,
                            const Tensor &x,
                            const Tensor &residual,
@@ -147,6 +268,72 @@ void deepseek_v4_mhc_post_naive_(Tensor y,
     (void)post;
     (void)comb;
     throw std::runtime_error("deepseek_v4_mhc_post_naive_ requires an ATen-enabled HYGON/NVIDIA build.");
+#endif
+}
+
+void deepseek_v4_mhc_post_kernel_(Tensor y,
+                           const Tensor &x,
+                           const Tensor &residual,
+                           const Tensor &post,
+                           const Tensor &comb) {
+#if defined(ENABLE_ATEN) && (defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API))
+    const char *op_name = "deepseek_v4_mhc_post_kernel_";
+    check_accelerator_tensor(x, op_name);
+    check_dtype(x, DataType::BF16, op_name, "x");
+    check_dtype(residual, DataType::BF16, op_name, "residual");
+    check_dtype(y, DataType::BF16, op_name, "y");
+    check_dtype(post, DataType::F32, op_name, "post");
+    check_dtype(comb, DataType::F32, op_name, "comb");
+
+#if defined(ENABLE_HYGON_API)
+    auto stream_guard = infinicore::adaptor::get_hip_stream();
+    c10::hip::HIPStreamGuard guard(stream_guard);
+#else
+    auto stream_guard = infinicore::adaptor::get_cuda_stream();
+    c10::cuda::CUDAStreamGuard guard(stream_guard);
+#endif
+
+    if (x->ndim() != 2 || residual->ndim() != 3 || post->ndim() != 2 || comb->ndim() != 3) {
+        throw std::runtime_error("deepseek_v4_mhc_post_kernel_ unexpected input rank.");
+    }
+    const int64_t tokens = static_cast<int64_t>(residual->size(0));
+    const int64_t hc = static_cast<int64_t>(residual->size(1));
+    const int64_t hidden = static_cast<int64_t>(residual->size(2));
+    if (x->shape() != Shape{static_cast<size_t>(tokens), static_cast<size_t>(hidden)} ||
+        y->shape() != Shape{static_cast<size_t>(tokens), static_cast<size_t>(hc), static_cast<size_t>(hidden)} ||
+        post->shape() != Shape{static_cast<size_t>(tokens), static_cast<size_t>(hc)} ||
+        comb->shape() != Shape{static_cast<size_t>(tokens), static_cast<size_t>(hc), static_cast<size_t>(hc)}) {
+        throw std::runtime_error("deepseek_v4_mhc_post_kernel_ shape mismatch.");
+    }
+
+    auto y_at = infinicore::adaptor::to_aten_tensor(y);
+    auto x_at = infinicore::adaptor::to_aten_tensor(x);
+    auto residual_at = infinicore::adaptor::to_aten_tensor(residual);
+    auto post_at = infinicore::adaptor::to_aten_tensor(post);
+    auto comb_at = infinicore::adaptor::to_aten_tensor(comb);
+    check_contiguous_aten(y_at, op_name, "y");
+    check_contiguous_aten(x_at, op_name, "x");
+    check_contiguous_aten(residual_at, op_name, "residual");
+    check_contiguous_aten(post_at, op_name, "post");
+    check_contiguous_aten(comb_at, op_name, "comb");
+
+    deepseek_v4_mhc::launch_post_kernel(
+        y_at.data_ptr(),
+        x_at.data_ptr(),
+        residual_at.data_ptr(),
+        post_at.data_ptr<float>(),
+        comb_at.data_ptr<float>(),
+        tokens,
+        hc,
+        hidden,
+        current_accelerator_stream());
+#else
+    (void)y;
+    (void)x;
+    (void)residual;
+    (void)post;
+    (void)comb;
+    throw std::runtime_error("deepseek_v4_mhc_post_kernel_ requires an ATen-enabled HYGON/NVIDIA build.");
 #endif
 }
 
@@ -197,6 +384,83 @@ void deepseek_v4_mhc_head_naive_(Tensor y,
     (void)rms_eps;
     (void)hc_eps;
     throw std::runtime_error("deepseek_v4_mhc_head_naive_ requires an ATen-enabled HYGON/NVIDIA build.");
+#endif
+}
+
+
+void deepseek_v4_mhc_head_kernel_(Tensor y,
+                           const Tensor &x,
+                           const Tensor &fn,
+                           const Tensor &scale,
+                           const Tensor &base,
+                           double rms_eps,
+                           double hc_eps) {
+#if defined(ENABLE_ATEN) && (defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API))
+    const char *op_name = "deepseek_v4_mhc_head_kernel_";
+    check_accelerator_tensor(x, op_name);
+    check_dtype(x, DataType::BF16, op_name, "x");
+    check_dtype(y, DataType::BF16, op_name, "y");
+    check_dtype(fn, DataType::F32, op_name, "fn");
+    check_dtype(scale, DataType::F32, op_name, "scale");
+    check_dtype(base, DataType::F32, op_name, "base");
+
+#if defined(ENABLE_HYGON_API)
+    auto stream_guard = infinicore::adaptor::get_hip_stream();
+    c10::hip::HIPStreamGuard guard(stream_guard);
+#else
+    auto stream_guard = infinicore::adaptor::get_cuda_stream();
+    c10::cuda::CUDAStreamGuard guard(stream_guard);
+#endif
+
+    if (x->ndim() != 3 || fn->ndim() != 2 || scale->ndim() != 1 || base->ndim() != 1) {
+        throw std::runtime_error("deepseek_v4_mhc_head_kernel_ unexpected input rank.");
+    }
+    const int64_t tokens = static_cast<int64_t>(x->size(0));
+    const int64_t hc = static_cast<int64_t>(x->size(1));
+    const int64_t hidden = static_cast<int64_t>(x->size(2));
+    if (fn->shape() != Shape{static_cast<size_t>(hc), static_cast<size_t>(hc * hidden)} ||
+        base->size(0) != static_cast<size_t>(hc) || scale->size(0) != 1 ||
+        y->shape() != Shape{static_cast<size_t>(tokens), static_cast<size_t>(hidden)}) {
+        throw std::runtime_error("deepseek_v4_mhc_head_kernel_ shape mismatch.");
+    }
+
+    auto y_at = infinicore::adaptor::to_aten_tensor(y);
+    auto x_at = infinicore::adaptor::to_aten_tensor(x);
+    auto fn_at = infinicore::adaptor::to_aten_tensor(fn);
+    auto scale_at = infinicore::adaptor::to_aten_tensor(scale);
+    auto base_at = infinicore::adaptor::to_aten_tensor(base);
+    check_contiguous_aten(y_at, op_name, "y");
+    check_contiguous_aten(x_at, op_name, "x");
+    check_contiguous_aten(fn_at, op_name, "fn");
+    check_contiguous_aten(scale_at, op_name, "scale");
+    check_contiguous_aten(base_at, op_name, "base");
+
+    auto options = fn_at.options().dtype(at::kFloat);
+    auto mixes = at::empty({tokens, hc}, options);
+    auto sqsum = at::empty({tokens}, options);
+    deepseek_v4_mhc::launch_head_kernel(
+        y_at.data_ptr(),
+        x_at.data_ptr(),
+        fn_at.data_ptr<float>(),
+        scale_at.data_ptr<float>(),
+        base_at.data_ptr<float>(),
+        mixes.data_ptr<float>(),
+        sqsum.data_ptr<float>(),
+        tokens,
+        hc,
+        hidden,
+        rms_eps,
+        hc_eps,
+        current_accelerator_stream());
+#else
+    (void)y;
+    (void)x;
+    (void)fn;
+    (void)scale;
+    (void)base;
+    (void)rms_eps;
+    (void)hc_eps;
+    throw std::runtime_error("deepseek_v4_mhc_head_kernel_ requires an ATen-enabled HYGON/NVIDIA build.");
 #endif
 }
 

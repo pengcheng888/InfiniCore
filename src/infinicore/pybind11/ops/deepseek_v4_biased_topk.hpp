@@ -16,6 +16,27 @@ inline void bind_deepseek_v4_biased_topk(py::module &m) {
           py::arg("router_logits"),
           py::arg("correction_bias"),
           py::arg("renormalize"));
+    m.def("deepseek_v4_topk_kernel_",
+          &op::deepseek_v4_topk_kernel_,
+          py::arg("topk_weights"),
+          py::arg("topk_indices"),
+          py::arg("router_logits"),
+          py::arg("correction_bias"),
+          py::arg("renormalize"));
+    m.def("deepseek_v4_topk_generic_kernel_",
+          &op::deepseek_v4_topk_generic_kernel_,
+          py::arg("topk_weights"),
+          py::arg("topk_indices"),
+          py::arg("router_logits"),
+          py::arg("correction_bias"),
+          py::arg("renormalize"));
+    m.def("deepseek_v4_topk_dsv4_kernel_",
+          &op::deepseek_v4_topk_dsv4_kernel_,
+          py::arg("topk_weights"),
+          py::arg("topk_indices"),
+          py::arg("router_logits"),
+          py::arg("correction_bias"),
+          py::arg("renormalize"));
 }
 
 } // namespace infinicore::ops
