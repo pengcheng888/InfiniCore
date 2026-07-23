@@ -40,6 +40,15 @@ inline void bind_deepseek_v4_flashmla_cache(py::module &m) {
           py::arg("kv_cache_dtype"),
           py::arg("scale"));
 
+
+    m.def("deepseek_v4_store_flashmla_raw_cache_",
+          &op::deepseek_v4_store_flashmla_raw_cache_,
+          py::arg("input"),
+          py::arg("cache"),
+          py::arg("indices"),
+          py::arg("page_size") = 256,
+          R"doc(DeepSeek-V4 SGLang-compatible raw FlashMLA SWA cache store.)doc");
+
     m.def("deepseek_v4_flashmla_cache_indexer_",
           &ops::py_deepseek_v4_flashmla_cache_indexer_,
           py::arg("req_to_token"),

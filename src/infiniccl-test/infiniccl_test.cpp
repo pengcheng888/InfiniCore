@@ -1,7 +1,9 @@
 #include "infiniccl_test.hpp"
 
 #include <chrono>
+#include <cstdint>
 #include <cstring>
+#include <functional>
 #include <iostream>
 #include <numeric>
 #include <pthread.h>
@@ -39,22 +41,32 @@ struct ThreadArgs {
     double *time;
 };
 
-void setData(infiniDtype_t dtype, void *data, size_t count, float val) {
+float allReduceInputValue(int rank, size_t index) {
+    return static_cast<float>(rank + 1) +
+           0.25f * static_cast<float>(index % 4);
+}
+
+float allReduceExpectedValue(int ndevice, size_t index) {
+    return static_cast<float>(ndevice * (ndevice + 1) / 2) +
+           0.25f * static_cast<float>(index % 4) * static_cast<float>(ndevice);
+}
+
+void setData(infiniDtype_t dtype, void *data, size_t count, const std::function<float(size_t)> &value_fn) {
     switch (dtype) {
     case INFINI_DTYPE_F32:
         for (size_t i = 0; i < count; i++) {
-            ((float *)data)[i] = val;
+            ((float *)data)[i] = value_fn(i);
         }
         break;
 
     case INFINI_DTYPE_F16:
         for (size_t i = 0; i < count; i++) {
-            ((fp16_t *)data)[i] = utils::cast<fp16_t>(val);
+            ((fp16_t *)data)[i] = utils::cast<fp16_t>(value_fn(i));
         }
         break;
     case INFINI_DTYPE_BF16:
         for (size_t i = 0; i < count; i++) {
-            ((bf16_t *)data)[i] = utils::cast<bf16_t>(val);
+            ((bf16_t *)data)[i] = utils::cast<bf16_t>(value_fn(i));
         }
         break;
     default:
@@ -153,21 +165,31 @@ int testAllReduce(infiniDevice_t device_type, int ndevice) {
     std::vector<int> device_ids(ndevice);
     std::vector<int> results(ndevice);
     std::vector<double> times(ndevice);
-    void *data = std::malloc(MAX_COUNT * sizeof(float)); // Use float as max dtype size
-    void *ans = std::malloc(MAX_COUNT * sizeof(float));
+    std::vector<std::vector<uint8_t>> rank_data(
+        ndevice, std::vector<uint8_t>(MAX_COUNT * sizeof(float)));
+    std::vector<uint8_t> ans(MAX_COUNT * sizeof(float));
 
     for (int i = 0; i < ndevice; i++) {
         device_ids[i] = i;
     }
 
     for (infiniDtype_t dtype : TEST_DTYPES) {
-        setData(dtype, data, MAX_COUNT, 1.0f);
-        setData(dtype, ans, MAX_COUNT, 1.0f * ndevice);
+        for (int rank = 0; rank < ndevice; rank++) {
+            const int rank_value = rank;
+            setData(dtype, rank_data[rank].data(), MAX_COUNT,
+                    [rank_value](size_t index) {
+                        return allReduceInputValue(rank_value, index);
+                    });
+        }
+        setData(dtype, ans.data(), MAX_COUNT,
+                [ndevice](size_t index) {
+                    return allReduceExpectedValue(ndevice, index);
+                });
         for (size_t count : TEST_COUNTS) {
             TEST_INFINI(infinicclCommInitAll(device_type, comms.data(), ndevice, device_ids.data()));
             std::cout << "Testing AllReduce with " << count << " elements of " << infiniDtypeToString(dtype) << std::endl;
             for (int rank = 0; rank < ndevice; rank++) {
-                thread_args[rank] = {rank, device_ids[rank], comms[rank], device_type, dtype, count, data, ans, &results[rank], &times[rank]};
+                thread_args[rank] = {rank, device_ids[rank], comms[rank], device_type, dtype, count, rank_data[rank].data(), ans.data(), &results[rank], &times[rank]};
                 pthread_create(&threads[rank], NULL, testAllReduceThread, &thread_args[rank]);
             }
             for (int rank = 0; rank < ndevice; rank++) {
@@ -185,15 +207,11 @@ int testAllReduce(infiniDevice_t device_type, int ndevice) {
             if (failed > 0) {
                 std::cout << "Failed with " << failed << " errors." << std::endl
                           << std::endl;
-                std::free(data);
-                std::free(ans);
                 return 1;
             }
             std::cout << std::endl;
         }
     }
 
-    std::free(data);
-    std::free(ans);
     return 0;
 }

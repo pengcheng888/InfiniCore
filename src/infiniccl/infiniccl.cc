@@ -3,6 +3,7 @@
 #include "./ascend/infiniccl_ascend.h"
 #include "./cambricon/infiniccl_cambricon.h"
 #include "./cuda/infiniccl_cuda.h"
+#include "./hygon/infiniccl_hygon.h"
 #include "./kunlun/infiniccl_kunlun.h"
 #include "./metax/infiniccl_metax.h"
 #include "./moore/infiniccl_moore.h"
@@ -21,7 +22,7 @@ __INFINI_C infiniStatus_t infinicclCommInitAll(
         COMM_INIT_ALL(INFINI_DEVICE_NVIDIA, cuda);
         COMM_INIT_ALL(INFINI_DEVICE_ILUVATAR, cuda);
         COMM_INIT_ALL(INFINI_DEVICE_QY, cuda);
-        COMM_INIT_ALL(INFINI_DEVICE_HYGON, cuda);
+        COMM_INIT_ALL(INFINI_DEVICE_HYGON, hygon);
         COMM_INIT_ALL(INFINI_DEVICE_ASCEND, ascend);
         COMM_INIT_ALL(INFINI_DEVICE_CAMBRICON, cambricon);
         COMM_INIT_ALL(INFINI_DEVICE_METAX, metax);
@@ -48,7 +49,7 @@ __INFINI_C infiniStatus_t infinicclCommDestroy(infinicclComm_t comm) {
         COMM_DESTROY(INFINI_DEVICE_NVIDIA, cuda);
         COMM_DESTROY(INFINI_DEVICE_ILUVATAR, cuda);
         COMM_DESTROY(INFINI_DEVICE_QY, cuda);
-        COMM_DESTROY(INFINI_DEVICE_HYGON, cuda);
+        COMM_DESTROY(INFINI_DEVICE_HYGON, hygon);
         COMM_DESTROY(INFINI_DEVICE_ASCEND, ascend);
         COMM_DESTROY(INFINI_DEVICE_CAMBRICON, cambricon);
         COMM_DESTROY(INFINI_DEVICE_METAX, metax);
@@ -74,7 +75,7 @@ __INFINI_C infiniStatus_t infinicclGroupStart(infinicclComm_t comm) {
         GROUP_START(INFINI_DEVICE_NVIDIA, cuda);
         GROUP_START(INFINI_DEVICE_ILUVATAR, cuda);
         GROUP_START(INFINI_DEVICE_QY, cuda);
-        GROUP_START(INFINI_DEVICE_HYGON, cuda);
+        GROUP_START(INFINI_DEVICE_HYGON, hygon);
         GROUP_START(INFINI_DEVICE_ASCEND, ascend);
         GROUP_START(INFINI_DEVICE_CAMBRICON, cambricon);
         GROUP_START(INFINI_DEVICE_METAX, metax);
@@ -101,7 +102,7 @@ __INFINI_C infiniStatus_t infinicclGroupEnd(infinicclComm_t comm) {
         GROUP_END(INFINI_DEVICE_NVIDIA, cuda);
         GROUP_END(INFINI_DEVICE_ILUVATAR, cuda);
         GROUP_END(INFINI_DEVICE_QY, cuda);
-        GROUP_END(INFINI_DEVICE_HYGON, cuda);
+        GROUP_END(INFINI_DEVICE_HYGON, hygon);
         GROUP_END(INFINI_DEVICE_ASCEND, ascend);
         GROUP_END(INFINI_DEVICE_CAMBRICON, cambricon);
         GROUP_END(INFINI_DEVICE_METAX, metax);
@@ -136,7 +137,7 @@ __INFINI_C infiniStatus_t infinicclAllReduce(
         ALL_REDUCE(INFINI_DEVICE_NVIDIA, cuda);
         ALL_REDUCE(INFINI_DEVICE_ILUVATAR, cuda);
         ALL_REDUCE(INFINI_DEVICE_QY, cuda);
-        ALL_REDUCE(INFINI_DEVICE_HYGON, cuda);
+        ALL_REDUCE(INFINI_DEVICE_HYGON, hygon);
         ALL_REDUCE(INFINI_DEVICE_ASCEND, ascend);
         ALL_REDUCE(INFINI_DEVICE_CAMBRICON, cambricon);
         ALL_REDUCE(INFINI_DEVICE_METAX, metax);
@@ -171,7 +172,7 @@ __INFINI_C infiniStatus_t infinicclAllGather(
         ALL_GATHER(INFINI_DEVICE_NVIDIA, cuda);
         ALL_GATHER(INFINI_DEVICE_ILUVATAR, cuda);
         ALL_GATHER(INFINI_DEVICE_QY, cuda);
-        ALL_GATHER(INFINI_DEVICE_HYGON, cuda);
+        ALL_GATHER(INFINI_DEVICE_HYGON, hygon);
         ALL_GATHER(INFINI_DEVICE_ASCEND, ascend);
         ALL_GATHER(INFINI_DEVICE_CAMBRICON, cambricon);
         ALL_GATHER(INFINI_DEVICE_METAX, metax);
@@ -207,7 +208,7 @@ __INFINI_C infiniStatus_t infinicclAllGatherV(
         ALL_GATHER_V(INFINI_DEVICE_NVIDIA, cuda);
         ALL_GATHER_V(INFINI_DEVICE_ILUVATAR, cuda);
         ALL_GATHER_V(INFINI_DEVICE_QY, cuda);
-        ALL_GATHER_V(INFINI_DEVICE_HYGON, cuda);
+        ALL_GATHER_V(INFINI_DEVICE_HYGON, hygon);
         ALL_GATHER_V(INFINI_DEVICE_ASCEND, ascend);
         ALL_GATHER_V(INFINI_DEVICE_CAMBRICON, cambricon);
         ALL_GATHER_V(INFINI_DEVICE_METAX, metax);
@@ -243,7 +244,7 @@ __INFINI_C infiniStatus_t infinicclReduceScatter(
         REDUCE_SCATTER(INFINI_DEVICE_NVIDIA, cuda);
         REDUCE_SCATTER(INFINI_DEVICE_ILUVATAR, cuda);
         REDUCE_SCATTER(INFINI_DEVICE_QY, cuda);
-        REDUCE_SCATTER(INFINI_DEVICE_HYGON, cuda);
+        REDUCE_SCATTER(INFINI_DEVICE_HYGON, hygon);
         REDUCE_SCATTER(INFINI_DEVICE_ASCEND, ascend);
         REDUCE_SCATTER(INFINI_DEVICE_CAMBRICON, cambricon);
         REDUCE_SCATTER(INFINI_DEVICE_METAX, metax);
@@ -280,7 +281,7 @@ __INFINI_C infiniStatus_t infinicclReduceScatterV(
         REDUCE_SCATTER_V(INFINI_DEVICE_NVIDIA, cuda);
         REDUCE_SCATTER_V(INFINI_DEVICE_ILUVATAR, cuda);
         REDUCE_SCATTER_V(INFINI_DEVICE_QY, cuda);
-        REDUCE_SCATTER_V(INFINI_DEVICE_HYGON, cuda);
+        REDUCE_SCATTER_V(INFINI_DEVICE_HYGON, hygon);
         REDUCE_SCATTER_V(INFINI_DEVICE_ASCEND, ascend);
         REDUCE_SCATTER_V(INFINI_DEVICE_CAMBRICON, cambricon);
         REDUCE_SCATTER_V(INFINI_DEVICE_METAX, metax);

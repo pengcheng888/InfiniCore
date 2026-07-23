@@ -52,3 +52,19 @@ def deepseek_v4_flashmla_cache_indexer_(
         page_size,
     )
     return kv_indices
+
+
+
+def deepseek_v4_store_flashmla_raw_cache_(
+    input: Tensor,
+    cache: Tensor,
+    indices: Tensor,
+    page_size: int = 256,
+) -> Tensor:
+    _infinicore.deepseek_v4_store_flashmla_raw_cache_(
+        input._underlying,
+        cache._underlying,
+        indices._underlying,
+        page_size,
+    )
+    return cache

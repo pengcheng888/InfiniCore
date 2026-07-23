@@ -14,6 +14,11 @@ void deepseek_v4_fused_store_flashmla_cache_(const Tensor &kv_c,
                                              const std::string &kv_cache_dtype,
                                              const Tensor &scale);
 
+void deepseek_v4_store_flashmla_raw_cache_(const Tensor &input,
+                                           Tensor cache,
+                                           const Tensor &indices,
+                                           int page_size);
+
 void deepseek_v4_flashmla_cache_indexer_(const Tensor &req_to_token,
                                          const Tensor &req_pool_indices,
                                          const Tensor &page_kernel_lens,

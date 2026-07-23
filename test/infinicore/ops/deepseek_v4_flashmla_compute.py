@@ -1,6 +1,7 @@
 import argparse
 
 import infinicore
+import flash_mla.cuda as flash_mla_cuda
 import torch
 from flash_mla.flash_mla_interface import flash_mla_sparse_fwd
 
@@ -58,6 +59,64 @@ def test_sparse_prefill_compute():
     assert torch.equal(lse, ref_lse)
 
 
+def test_sparse_decode_attention_compute():
+    torch.manual_seed(11)
+    page_size = 256
+    bytes_per_token = 584
+    page_bytes = ((bytes_per_token * page_size + 575) // 576) * 576
+    blocks, cache_tokens, tokens, heads, topk = 2, 128, 3, 4, 64
+
+    raw = torch.zeros((blocks, page_bytes), device="cuda", dtype=torch.uint8)
+    kv = torch.randn((cache_tokens, 512), device="cuda", dtype=torch.bfloat16)
+    slot = torch.arange(cache_tokens, device="cuda", dtype=torch.int32)
+    infinicore.deepseek_v4_store_flashmla_raw_cache_(
+        _as_core(kv),
+        _as_core(raw),
+        _as_core(slot),
+        page_size,
+    )
+    infinicore.sync_stream()
+
+    q = torch.randn((tokens, heads, 512), device="cuda", dtype=torch.bfloat16)
+    indices = torch.arange(topk, device="cuda", dtype=torch.int32).reshape(1, topk).repeat(tokens, 1)
+    topk_lengths = torch.full((tokens,), topk, device="cuda", dtype=torch.int32)
+    attn_sink = torch.zeros((heads,), device="cuda", dtype=torch.float32)
+
+    k_cache = raw[:, : page_size * bytes_per_token].view(torch.float8_e4m3fn).view(
+        blocks, page_size, 1, bytes_per_token
+    )
+    ref, _, _, _ = flash_mla_cuda.sparse_decode_fwd(
+        q.unsqueeze(1),
+        k_cache,
+        indices.unsqueeze(1),
+        topk_lengths,
+        attn_sink,
+        None,
+        None,
+        None,
+        None,
+        None,
+        512,
+        512**-0.5,
+    )
+    torch.cuda.synchronize()
+
+    out = torch.empty_like(q)
+    infinicore.deepseek_v4_flashmla_sparse_attention_(
+        _as_core(q),
+        _as_core(raw),
+        _as_core(indices),
+        _as_core(topk_lengths),
+        _as_core(attn_sink),
+        _as_core(out),
+        512**-0.5,
+        page_size,
+        512,
+    )
+    infinicore.sync_stream()
+    assert torch.equal(out, ref.squeeze(1))
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--hygon", action="store_true")
@@ -66,6 +125,7 @@ def main():
     test_metadata_object()
     test_dense_fp8_metadata()
     test_sparse_prefill_compute()
+    test_sparse_decode_attention_compute()
     print("DeepseekV4FlashMLACompute: passed")
 
 

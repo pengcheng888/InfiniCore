@@ -50,10 +50,11 @@
 #include "ops/deepseek_v4_dynamic_scaled_int8_quant.hpp"
 #include "ops/deepseek_v4_fast_topk.hpp"
 #include "ops/deepseek_v4_flashmla_cache.hpp"
+#include "ops/deepseek_v4_flashmla_compute.hpp"
 #include "ops/deepseek_v4_fused_experts_impl_int8_marlin.hpp"
 #include "ops/deepseek_v4_fused_qk_norm_rope.hpp"
+#include "ops/deepseek_v4_fused_rope.hpp"
 #include "ops/deepseek_v4_hash_topk.hpp"
-#include "ops/deepseek_v4_silu_and_mul_clamp.hpp"
 #include "ops/deepseek_v4_linear_bf16_fp32.hpp"
 #include "ops/deepseek_v4_mhc.hpp"
 #include "ops/deepseek_v4_moe_align_block_size.hpp"
@@ -61,13 +62,15 @@
 #include "ops/deepseek_v4_moe_topk_sigmoid.hpp"
 #include "ops/deepseek_v4_moe_topk_softmax.hpp"
 #include "ops/deepseek_v4_paged_mqa_logits.hpp"
-#include "ops/deepseek_v4_sparse_attn_indexer.hpp"
 #include "ops/deepseek_v4_rms_norm.hpp"
 #include "ops/deepseek_v4_rms_norm_dynamic_per_token_quant.hpp"
 #include "ops/deepseek_v4_rms_norm_per_block_quant.hpp"
+#include "ops/deepseek_v4_rmsnorm_self.hpp"
 #include "ops/deepseek_v4_rotary_embedding.hpp"
-#include "ops/deepseek_v4_silu_and_mul.hpp"
 #include "ops/deepseek_v4_sglang_jit.hpp"
+#include "ops/deepseek_v4_silu_and_mul.hpp"
+#include "ops/deepseek_v4_silu_and_mul_clamp.hpp"
+#include "ops/deepseek_v4_sparse_attn_indexer.hpp"
 #include "ops/deepseek_v4_static_scaled_int8_quant.hpp"
 #include "ops/deepseek_v4_transfer_kv.hpp"
 #include "ops/deepseek_v4_transfer_kv_mla.hpp"
@@ -265,7 +268,9 @@ inline void bind(py::module &m) {
     bind_deepseek_v4_fast_topk(m);
     bind_deepseek_v4_flashmla_cache(m);
     bind_deepseek_v4_fused_experts_impl_int8_marlin(m);
+    bind_deepseek_v4_flashmla_compute(m);
     bind_deepseek_v4_fused_qk_norm_rope(m);
+    bind_deepseek_v4_fused_rope(m);
     bind_deepseek_v4_hash_topk(m);
     bind_deepseek_v4_silu_and_mul_clamp(m);
     bind_deepseek_v4_linear_bf16_fp32(m);
@@ -277,6 +282,7 @@ inline void bind(py::module &m) {
     bind_deepseek_v4_paged_mqa_logits(m);
     bind_deepseek_v4_sparse_attn_indexer(m);
     bind_deepseek_v4_rms_norm(m);
+    bind_deepseek_v4_rmsnorm_self(m);
     bind_deepseek_v4_rms_norm_dynamic_per_token_quant(m);
     bind_deepseek_v4_rms_norm_per_block_quant(m);
     bind_deepseek_v4_rotary_embedding(m);
