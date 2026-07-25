@@ -2,22 +2,18 @@
 
 #include "deepseek_v4_biased_topk_kernel.hpp"
 
+#include "../../utils.hpp"
+#include "infinicore/context/context.hpp"
 #include "infinicore/device.hpp"
-
-#ifdef ENABLE_ATEN
-#include "infinicore/adaptor/aten_adaptor.hpp"
-#include <ATen/ATen.h>
-#if defined(ENABLE_HYGON_API)
-#include <c10/hip/HIPGuard.h>
-#elif defined(ENABLE_NVIDIA_API)
-#include <c10/cuda/CUDAGuard.h>
-#endif
-#endif
+#include "infinicore/graph/graph.hpp"
 
 #include <stdexcept>
 #include <string>
 
 namespace infinicore::op {
+
+INFINICORE_GRAPH_OP_CLASS(DeepseekV4TopkDsv4Kernel, Tensor, Tensor, const Tensor &, const Tensor &, bool);
+INFINICORE_GRAPH_OP_DISPATCHERS_IMPL(DeepseekV4TopkDsv4Kernel);
 
 namespace {
 
@@ -55,7 +51,7 @@ void check_shapes(const Tensor &topk_weights,
 }
 
 
-#if defined(ENABLE_ATEN) && (defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API))
+#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API)
 void check_kernel_tensors(const Tensor &topk_weights,
                           const Tensor &topk_indices,
                           const Tensor &router_logits,
@@ -69,78 +65,122 @@ void check_kernel_tensors(const Tensor &topk_weights,
         throw std::runtime_error("deepseek_v4_topk_kernel_ expects contiguous tensors.");
     }
 }
+#endif
 
-void *current_accelerator_stream() {
-#if defined(ENABLE_HYGON_API)
-    return reinterpret_cast<void *>(infinicore::adaptor::get_hip_stream().stream());
-#else
-    return reinterpret_cast<void *>(infinicore::adaptor::get_cuda_stream().stream());
-#endif
+bool is_dsv4_topk_shape(const Tensor &topk_weights,
+                        const Tensor &router_logits,
+                        bool renormalize) {
+    return router_logits->size(1) == 256 && topk_weights->size(1) == 6 && renormalize;
 }
-#endif
 
 } // namespace
 
-void deepseek_v4_topk_naive_(Tensor topk_weights,
-                              Tensor topk_indices,
-                              const Tensor &router_logits,
-                              const Tensor &correction_bias,
-                              bool renormalize) {
-#if defined(ENABLE_ATEN) && (defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API))
-    check_accelerator_tensor(router_logits, "deepseek_v4_topk_naive_");
-#if defined(ENABLE_HYGON_API)
-    c10::hip::HIPStreamGuard guard(infinicore::adaptor::get_hip_stream());
-#else
-    c10::cuda::CUDAStreamGuard guard(infinicore::adaptor::get_cuda_stream());
-#endif
+DeepseekV4TopkDsv4Kernel::DeepseekV4TopkDsv4Kernel(Tensor topk_weights,
+                                                   Tensor topk_indices,
+                                                   const Tensor &router_logits,
+                                                   const Tensor &correction_bias,
+                                                   bool renormalize) {
+    INFINICORE_ASSERT_TENSORS_SAME_DEVICE(topk_weights, topk_indices, router_logits, correction_bias);
+    INFINICORE_GRAPH_OP_DISPATCH(topk_weights->device().getType(), topk_weights, topk_indices, router_logits, correction_bias, renormalize);
+}
 
+void DeepseekV4TopkDsv4Kernel::execute(Tensor topk_weights,
+                                       Tensor topk_indices,
+                                       const Tensor &router_logits,
+                                       const Tensor &correction_bias,
+                                       bool renormalize) {
+    INFINICORE_GRAPH_OP_RECORD_OR_RUN(DeepseekV4TopkDsv4Kernel, topk_weights, topk_indices, router_logits, correction_bias, renormalize);
+}
+
+namespace deepseek_v4_biased_topk_graph_impl {
+
+struct Dsv4PlannedMeta {
+    graph::GraphTensor topk_weights;
+    graph::GraphTensor topk_indices;
+    graph::GraphTensor router_logits;
+    graph::GraphTensor correction_bias;
+    int64_t tokens;
+};
+
+void *plan_dsv4(Tensor topk_weights,
+                Tensor topk_indices,
+                const Tensor &router_logits,
+                const Tensor &correction_bias,
+                bool renormalize) {
+    check_accelerator_tensor(router_logits, "DeepseekV4TopkDsv4Kernel");
     check_shapes(topk_weights, topk_indices, router_logits, correction_bias);
-
-    auto weights_at = infinicore::adaptor::to_aten_tensor(topk_weights);
-    auto indices_at = infinicore::adaptor::to_aten_tensor(topk_indices);
-    auto logits_at = infinicore::adaptor::to_aten_tensor(router_logits).to(at::kFloat);
-    auto bias_at = infinicore::adaptor::to_aten_tensor(correction_bias).to(at::kFloat);
-    const auto k = topk_weights->size(1);
-
-    auto scores = at::sqrt(at::softplus(logits_at));
-    auto choice_scores = scores + bias_at.unsqueeze(0);
-    auto topk = at::topk(choice_scores, static_cast<int64_t>(k), -1, true, true);
-    auto selected = std::get<1>(topk);
-    auto gathered = scores.gather(1, selected);
-    if (renormalize) {
-        gathered = gathered / gathered.sum(-1, true);
+    check_kernel_tensors(topk_weights, topk_indices, router_logits, correction_bias);
+    if (!is_dsv4_topk_shape(topk_weights, router_logits, renormalize)) {
+        throw std::runtime_error("DeepseekV4TopkDsv4Kernel requires num_experts=256, topk=6, renormalize=true.");
     }
+    return new Dsv4PlannedMeta{
+        graph::GraphTensor(topk_weights),
+        graph::GraphTensor(topk_indices),
+        graph::GraphTensor(router_logits),
+        graph::GraphTensor(correction_bias),
+        static_cast<int64_t>(router_logits->size(0))};
+}
 
-    weights_at.copy_(gathered.to(weights_at.scalar_type()));
-    indices_at.copy_(selected.to(indices_at.scalar_type()));
+void run_dsv4(void *planned_meta) {
+#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API)
+    auto *planned = reinterpret_cast<Dsv4PlannedMeta *>(planned_meta);
+    deepseek_v4_biased_topk::launch_biased_topk_dsv4(
+        reinterpret_cast<float *>(planned->topk_weights->data()),
+        reinterpret_cast<int32_t *>(planned->topk_indices->data()),
+        reinterpret_cast<const float *>(planned->router_logits->data()),
+        reinterpret_cast<const float *>(planned->correction_bias->data()),
+        planned->tokens,
+        context::getStream());
 #else
-    (void)topk_weights;
-    (void)topk_indices;
-    (void)router_logits;
-    (void)correction_bias;
-    (void)renormalize;
-    throw std::runtime_error("deepseek_v4_topk_naive_ requires an ATen-enabled HYGON/NVIDIA build.");
+    (void)planned_meta;
+    throw std::runtime_error("DeepseekV4TopkDsv4Kernel requires a HYGON/NVIDIA build.");
 #endif
 }
 
+void cleanup_dsv4(void **planned_meta_ptr) {
+    delete *reinterpret_cast<Dsv4PlannedMeta **>(planned_meta_ptr);
+    *planned_meta_ptr = nullptr;
+}
+
+} // namespace deepseek_v4_biased_topk_graph_impl
+
+namespace deepseek_v4_biased_topk_register {
+INFINICORE_GRAPH_OP_REGISTER_ALLDEVICE(DeepseekV4TopkDsv4Kernel,
+                                       &deepseek_v4_biased_topk_graph_impl::plan_dsv4,
+                                       &deepseek_v4_biased_topk_graph_impl::run_dsv4,
+                                       &deepseek_v4_biased_topk_graph_impl::cleanup_dsv4);
+} // namespace deepseek_v4_biased_topk_register
+
+namespace {
+
+void run_biased_topk_dsv4_kernel(Tensor topk_weights,
+                                 Tensor topk_indices,
+                                 const Tensor &router_logits,
+                                 const Tensor &correction_bias,
+                                 bool renormalize) {
+    DeepseekV4TopkDsv4Kernel::execute(topk_weights, topk_indices, router_logits, correction_bias, renormalize);
+}
+
+} // namespace
 
 void deepseek_v4_topk_kernel_(Tensor topk_weights,
                               Tensor topk_indices,
                               const Tensor &router_logits,
                               const Tensor &correction_bias,
                               bool renormalize) {
-#if defined(ENABLE_ATEN) && (defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API))
+#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API)
     check_accelerator_tensor(router_logits, "deepseek_v4_topk_kernel_");
-#if defined(ENABLE_HYGON_API)
-    c10::hip::HIPStreamGuard guard(infinicore::adaptor::get_hip_stream());
-#else
-    c10::cuda::CUDAStreamGuard guard(infinicore::adaptor::get_cuda_stream());
-#endif
 
     check_shapes(topk_weights, topk_indices, router_logits, correction_bias);
     check_kernel_tensors(topk_weights, topk_indices, router_logits, correction_bias);
     if (router_logits->size(1) > 512 || topk_weights->size(1) > 16) {
         throw std::runtime_error("deepseek_v4_topk_kernel_ supports num_experts <= 512 and topk <= 16.");
+    }
+    if (is_dsv4_topk_shape(topk_weights, router_logits, renormalize)) {
+        // DeepSeek V4 fixed-shape fast path. Keep this specialization internal;
+        // callers should use deepseek_v4_topk_kernel_.
+        run_biased_topk_dsv4_kernel(topk_weights, topk_indices, router_logits, correction_bias, renormalize);
+        return;
     }
 
     deepseek_v4_biased_topk::launch_biased_topk(
@@ -152,14 +192,14 @@ void deepseek_v4_topk_kernel_(Tensor topk_weights,
         static_cast<int64_t>(router_logits->size(1)),
         static_cast<int64_t>(topk_weights->size(1)),
         renormalize,
-        current_accelerator_stream());
+        context::getStream());
 #else
     (void)topk_weights;
     (void)topk_indices;
     (void)router_logits;
     (void)correction_bias;
     (void)renormalize;
-    throw std::runtime_error("deepseek_v4_topk_kernel_ requires an ATen-enabled HYGON/NVIDIA build.");
+    throw std::runtime_error("deepseek_v4_topk_kernel_ requires a HYGON/NVIDIA build.");
 #endif
 }
 
@@ -169,13 +209,8 @@ void deepseek_v4_topk_generic_kernel_(Tensor topk_weights,
                                       const Tensor &router_logits,
                                       const Tensor &correction_bias,
                                       bool renormalize) {
-#if defined(ENABLE_ATEN) && (defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API))
+#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API)
     check_accelerator_tensor(router_logits, "deepseek_v4_topk_generic_kernel_");
-#if defined(ENABLE_HYGON_API)
-    c10::hip::HIPStreamGuard guard(infinicore::adaptor::get_hip_stream());
-#else
-    c10::cuda::CUDAStreamGuard guard(infinicore::adaptor::get_cuda_stream());
-#endif
 
     check_shapes(topk_weights, topk_indices, router_logits, correction_bias);
     check_kernel_tensors(topk_weights, topk_indices, router_logits, correction_bias);
@@ -192,50 +227,14 @@ void deepseek_v4_topk_generic_kernel_(Tensor topk_weights,
         static_cast<int64_t>(router_logits->size(1)),
         static_cast<int64_t>(topk_weights->size(1)),
         renormalize,
-        current_accelerator_stream());
+        context::getStream());
 #else
     (void)topk_weights;
     (void)topk_indices;
     (void)router_logits;
     (void)correction_bias;
     (void)renormalize;
-    throw std::runtime_error("deepseek_v4_topk_generic_kernel_ requires an ATen-enabled HYGON/NVIDIA build.");
-#endif
-}
-
-void deepseek_v4_topk_dsv4_kernel_(Tensor topk_weights,
-                                   Tensor topk_indices,
-                                   const Tensor &router_logits,
-                                   const Tensor &correction_bias,
-                                   bool renormalize) {
-#if defined(ENABLE_ATEN) && (defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API))
-    check_accelerator_tensor(router_logits, "deepseek_v4_topk_dsv4_kernel_");
-#if defined(ENABLE_HYGON_API)
-    c10::hip::HIPStreamGuard guard(infinicore::adaptor::get_hip_stream());
-#else
-    c10::cuda::CUDAStreamGuard guard(infinicore::adaptor::get_cuda_stream());
-#endif
-
-    check_shapes(topk_weights, topk_indices, router_logits, correction_bias);
-    check_kernel_tensors(topk_weights, topk_indices, router_logits, correction_bias);
-    if (router_logits->size(1) != 256 || topk_weights->size(1) != 6 || !renormalize) {
-        throw std::runtime_error("deepseek_v4_topk_dsv4_kernel_ requires num_experts=256, topk=6, renormalize=true.");
-    }
-
-    deepseek_v4_biased_topk::launch_biased_topk_dsv4(
-        reinterpret_cast<float *>(topk_weights->data()),
-        reinterpret_cast<int32_t *>(topk_indices->data()),
-        reinterpret_cast<const float *>(router_logits->data()),
-        reinterpret_cast<const float *>(correction_bias->data()),
-        static_cast<int64_t>(router_logits->size(0)),
-        current_accelerator_stream());
-#else
-    (void)topk_weights;
-    (void)topk_indices;
-    (void)router_logits;
-    (void)correction_bias;
-    (void)renormalize;
-    throw std::runtime_error("deepseek_v4_topk_dsv4_kernel_ requires an ATen-enabled HYGON/NVIDIA build.");
+    throw std::runtime_error("deepseek_v4_topk_generic_kernel_ requires a HYGON/NVIDIA build.");
 #endif
 }
 

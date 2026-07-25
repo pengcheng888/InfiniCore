@@ -17,20 +17,23 @@ public:
 class GraphOperator {
 public:
     virtual void run() const = 0;
+    virtual bool supports_device_graph_capture() const { return true; }
     virtual ~GraphOperator() = default;
 };
 
 class DispatchableGraphOperator : public GraphOperator {
 public:
     void run() const override;
+    bool supports_device_graph_capture() const override { return device_graph_capture_supported_; }
     ~DispatchableGraphOperator() override;
 
 protected:
     using run_schema = void (*)(void *);
     using cleanup_schema = void (*)(void **);
-    void *planned_meta_;
-    run_schema runner_;
-    cleanup_schema deleter_;
+    void *planned_meta_ = nullptr;
+    run_schema runner_ = nullptr;
+    cleanup_schema deleter_ = nullptr;
+    bool device_graph_capture_supported_ = true;
 };
 
 class Graph {

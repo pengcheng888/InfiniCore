@@ -3,8 +3,20 @@
 #include "../utils.hpp"
 #include "infinicore/context/context.hpp"
 #include <infinirt.h>
+#include <cstdlib>
+#include <cstdio>
 
 namespace infinicore::graph {
+
+namespace {
+bool graph_debug_enabled() {
+    static const bool enabled = []() {
+        const char *value = std::getenv("INFINICORE_GRAPH_DEBUG");
+        return value != nullptr && value[0] != '\0' && value[0] != '0';
+    }();
+    return enabled;
+}
+} // namespace
 
 /* =========================
  * GraphTensor
@@ -32,9 +44,9 @@ DispatchableGraphOperator::~DispatchableGraphOperator() {
  * ========================= */
 
 struct Graph::DeviceGraph {
-    infinirtGraph_t graph;
-    infinirtGraphExec_t exec;
-    infinirtGraphNode_t node;
+    infinirtGraph_t graph = nullptr;
+    infinirtGraphExec_t exec = nullptr;
+    infinirtGraphNode_t node = nullptr;
     std::vector<char> log_buffer;
 
     DeviceGraph() {
@@ -60,8 +72,14 @@ Graph::Graph() {
 
 void Graph::run() const {
     if (device_graph_ != nullptr && device_graph_.get()->exec != nullptr) {
+        if (graph_debug_enabled()) {
+            std::fprintf(stderr, "[infinicore graph] run device_graph ops=%zu\n", op_list_.size());
+        }
         device_graph_.get()->launch();
     } else {
+        if (graph_debug_enabled()) {
+            std::fprintf(stderr, "[infinicore graph] run op_list ops=%zu\n", op_list_.size());
+        }
         for (auto &op : op_list_) {
             op->run();
         }
@@ -69,10 +87,33 @@ void Graph::run() const {
 }
 
 void Graph::add_operator(std::shared_ptr<GraphOperator> op) {
+    if (graph_debug_enabled()) {
+        std::fprintf(stderr,
+                     "[infinicore graph] add_operator supports_device_graph_capture=%d\n",
+                     op->supports_device_graph_capture() ? 1 : 0);
+    }
     op_list_.push_back(op);
 }
 
 void Graph::instantiate() {
+    if (graph_debug_enabled()) {
+        std::fprintf(stderr, "[infinicore graph] instantiate ops=%zu\n", op_list_.size());
+    }
+    if (op_list_.empty()) {
+        device_graph_.reset();
+        return;
+    }
+
+    for (auto &op : op_list_) {
+        if (!op->supports_device_graph_capture()) {
+            if (graph_debug_enabled()) {
+                std::fprintf(stderr, "[infinicore graph] skip device graph capture\n");
+            }
+            device_graph_.reset();
+            return;
+        }
+    }
+
     // Reset device graph
     device_graph_ = std::make_unique<DeviceGraph>();
 
@@ -86,6 +127,7 @@ void Graph::instantiate() {
             context::getStream(),
             INFINIRT_STREAM_CAPTURE_MODE_RELAXED)
         != INFINI_STATUS_SUCCESS) {
+        device_graph_.reset();
         return;
     }
 
@@ -96,6 +138,7 @@ void Graph::instantiate() {
             context::getStream(),
             &device_graph_.get()->graph)
         != INFINI_STATUS_SUCCESS) {
+        device_graph_.reset();
         return;
     }
 
@@ -111,6 +154,7 @@ void Graph::instantiate() {
             warned_once = true;
             spdlog::warn("Fail to instantiate device graph: {}", std::string(device_graph_.get()->log_buffer.data()));
         }
+        device_graph_.reset();
     }
 }
 

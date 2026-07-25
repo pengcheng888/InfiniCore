@@ -56,7 +56,7 @@ def _make_outputs(tokens, topk, device):
             torch.empty(tokens, topk, dtype=torch.float32, device=device),
             torch.empty(tokens, topk, dtype=torch.int32, device=device),
         )
-        for name in ("naive", "generic", "dsv4", "auto")
+        for name in ("naive", "generic", "auto")
     }
 
 
@@ -123,16 +123,6 @@ def _run_case(tokens, args):
             args.renormalize,
         )
 
-    def hash_dsv4():
-        _infinicore.deepseek_v4_hash_topk_dsv4_kernel_(
-            raw["hash_weights_dsv4"],
-            raw["hash_indices_dsv4"],
-            raw["logits_hash"],
-            raw["input_ids"],
-            raw["tid2eid"],
-            args.renormalize,
-        )
-
     def hash_auto():
         _infinicore.deepseek_v4_hash_topk_kernel_(
             raw["hash_weights_auto"],
@@ -161,15 +151,6 @@ def _run_case(tokens, args):
             args.renormalize,
         )
 
-    def biased_dsv4():
-        _infinicore.deepseek_v4_topk_dsv4_kernel_(
-            raw["biased_weights_dsv4"],
-            raw["biased_indices_dsv4"],
-            raw["logits_biased"],
-            raw["bias"],
-            args.renormalize,
-        )
-
     def biased_auto():
         _infinicore.deepseek_v4_topk_kernel_(
             raw["biased_weights_auto"],
@@ -183,13 +164,11 @@ def _run_case(tokens, args):
         "hash_topk": {
             "naive": hash_naive,
             "generic": hash_generic,
-            "dsv4": hash_dsv4,
             "auto": hash_auto,
         },
         "biased_topk": {
             "naive": biased_naive,
             "generic": biased_generic,
-            "dsv4": biased_dsv4,
             "auto": biased_auto,
         },
     }
@@ -198,18 +177,17 @@ def _run_case(tokens, args):
         for op_name, op_fns in fns.items():
             op_fns["naive"]()
             op_fns["generic"]()
-            op_fns["dsv4"]()
             op_fns["auto"]()
         _sync()
         for group_name, op_name in (("hash", "hash_topk"), ("biased", "biased_topk")):
             ref_weights, ref_indices = tensors[group_name]["naive"]
-            for backend in ("generic", "dsv4", "auto"):
+            for backend in ("generic", "auto"):
                 out_weights, out_indices = tensors[group_name][backend]
                 _check_against(f"{op_name}/{backend}", ref_weights, ref_indices, out_weights, out_indices, args.atol, args.rtol)
 
     rows = []
     for op_name, op_fns in fns.items():
-        for backend in ("naive", "generic", "dsv4", "auto"):
+        for backend in ("naive", "generic", "auto"):
             total_ms, avg_ms = _bench(op_fns[backend], args.warmup, args.iters)
             rows.append(
                 {
@@ -243,23 +221,22 @@ def _print_by_op(rows):
         print(f"op: {op}")
         header = (
             f"{'tokens':>8}  {'experts':>7}  {'topk':>4}  {'iters':>5}  "
-            f"{'naive avg':>10}  {'generic avg':>12}  {'dsv4 avg':>10}  {'auto avg':>10}  "
-            f"{'dsv4/generic':>13}  {'dsv4/naive':>11}"
+            f"{'naive avg':>10}  {'generic avg':>12}  {'auto avg':>10}  "
+            f"{'auto/generic':>13}  {'auto/naive':>11}"
         )
         print(header)
         print("-" * len(header))
         for tokens in tokens_list:
             naive = indexed.get((tokens, op, "naive"))
             generic = indexed.get((tokens, op, "generic"))
-            dsv4 = indexed.get((tokens, op, "dsv4"))
             auto = indexed.get((tokens, op, "auto"))
-            if None in (naive, generic, dsv4, auto):
+            if None in (naive, generic, auto):
                 continue
-            speedup_generic = generic["avg_ms"] / dsv4["avg_ms"] if dsv4["avg_ms"] > 0 else float("inf")
-            speedup_naive = naive["avg_ms"] / dsv4["avg_ms"] if dsv4["avg_ms"] > 0 else float("inf")
+            speedup_generic = generic["avg_ms"] / auto["avg_ms"] if auto["avg_ms"] > 0 else float("inf")
+            speedup_naive = naive["avg_ms"] / auto["avg_ms"] if auto["avg_ms"] > 0 else float("inf")
             print(
                 f"{tokens:8d}  {naive['experts']:7d}  {naive['topk']:4d}  {naive['iters']:5d}  "
-                f"{naive['avg_ms']:10.6f}  {generic['avg_ms']:12.6f}  {dsv4['avg_ms']:10.6f}  {auto['avg_ms']:10.6f}  "
+                f"{naive['avg_ms']:10.6f}  {generic['avg_ms']:12.6f}  {auto['avg_ms']:10.6f}  "
                 f"{speedup_generic:12.2f}x  {speedup_naive:10.2f}x"
             )
 

@@ -33,14 +33,6 @@ inline void bind_deepseek_v4_hash_topk(py::module &m) {
           py::arg("input_ids"),
           py::arg("tid2eid"),
           py::arg("renormalize"));
-    m.def("deepseek_v4_hash_topk_dsv4_kernel_",
-          &op::deepseek_v4_hash_topk_dsv4_kernel_,
-          py::arg("topk_weights"),
-          py::arg("topk_indices"),
-          py::arg("router_logits"),
-          py::arg("input_ids"),
-          py::arg("tid2eid"),
-          py::arg("renormalize"));
 }
 
 } // namespace infinicore::ops
