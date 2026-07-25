@@ -12,10 +12,14 @@
 #endif
 #endif
 
+#include <cstdlib>
 #include <dlfcn.h>
+#include <mutex>
 #include <optional>
+#include <sstream>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 namespace infinicore::op {
 
@@ -41,13 +45,58 @@ void check_hygon_tensor(const Tensor &tensor, const char *op_name) {
     }
 }
 
-void *resolve_deepgemm_symbol(const char *symbol) {
-    void *fn = dlsym(RTLD_DEFAULT, symbol);
-    if (fn == nullptr) {
-        throw std::runtime_error(
-            std::string("deepseek_v4_paged_mqa_logits requires deepgemm.op to be loaded with RTLD_GLOBAL; missing symbol: ") + symbol);
+template <typename Fn>
+Fn checked_symbol(void *handle, const char *symbol) {
+    dlerror();
+    void *fn = dlsym(handle, symbol);
+    const char *error = dlerror();
+    if (error != nullptr || fn == nullptr) {
+        throw std::runtime_error(std::string("deepgemm SO is missing required symbol ") + symbol +
+                                 (error != nullptr ? std::string(": ") + error : ""));
     }
-    return fn;
+    return reinterpret_cast<Fn>(fn);
+}
+
+void *open_deepgemm_so() {
+    std::vector<std::string> candidates;
+    if (const char *env_path = std::getenv("INFINICORE_DEEPGEMM_OP_SO")) {
+        if (env_path[0] != '\0') {
+            candidates.emplace_back(env_path);
+        }
+    }
+    candidates.emplace_back("/usr/local/lib/python3.10/dist-packages/deepgemm/op.cpython-310-x86_64-linux-gnu.so");
+    candidates.emplace_back("/usr/local/lib/python3.11/dist-packages/deepgemm/op.cpython-311-x86_64-linux-gnu.so");
+    candidates.emplace_back("op.cpython-310-x86_64-linux-gnu.so");
+    candidates.emplace_back("op.cpython-311-x86_64-linux-gnu.so");
+
+    std::ostringstream errors;
+    for (const auto &path : candidates) {
+        void *handle = dlopen(path.c_str(), RTLD_NOW | RTLD_GLOBAL);
+        if (handle != nullptr) {
+            return handle;
+        }
+        if (const char *error = dlerror()) {
+            errors << "\n  " << path << ": " << error;
+        }
+    }
+    throw std::runtime_error("failed to load deepgemm op SO. Set INFINICORE_DEEPGEMM_OP_SO to deepgemm/op*.so." + errors.str());
+}
+
+struct DeepgemmSymbols {
+    void *handle{nullptr};
+    MetadataFn metadata{nullptr};
+    LogitsFn logits{nullptr};
+};
+
+const DeepgemmSymbols &deepgemm_symbols() {
+    static DeepgemmSymbols symbols;
+    static std::once_flag once;
+    std::call_once(once, [] {
+        symbols.handle = open_deepgemm_so();
+        symbols.metadata = checked_symbol<MetadataFn>(symbols.handle, kMetadataSymbol);
+        symbols.logits = checked_symbol<LogitsFn>(symbols.handle, kLogitsSymbol);
+    });
+    return symbols;
 }
 #endif
 
@@ -64,7 +113,7 @@ void deepseek_v4_paged_mqa_logits_metadata_(const Tensor &context_lens,
     auto context_lens_at = infinicore::adaptor::to_aten_tensor(context_lens);
     auto schedule_meta_at = infinicore::adaptor::to_aten_tensor(schedule_meta);
 
-    static auto fn = reinterpret_cast<MetadataFn>(resolve_deepgemm_symbol(kMetadataSymbol));
+    auto fn = deepgemm_symbols().metadata;
     auto result = fn(context_lens_at, block_kv, num_sms);
     schedule_meta_at.copy_(result);
 #else
@@ -98,7 +147,7 @@ void deepseek_v4_paged_mqa_logits_(const Tensor &q,
     auto logits_at = infinicore::adaptor::to_aten_tensor(logits);
     std::optional<at::Tensor> schedule_meta_at = schedule_meta_tensor;
 
-    static auto fn = reinterpret_cast<LogitsFn>(resolve_deepgemm_symbol(kLogitsSymbol));
+    auto fn = deepgemm_symbols().logits;
     auto result = fn(q_at,
                      fused_kv_cache_at,
                      weights_at,

@@ -72,3 +72,70 @@ def deepseek_v4_sparse_attn_indexer_decode_(
         clean_logits,
     )
     return topk_indices
+
+
+
+def deepseek_v4_c4_sparse_attn_indexer_(
+    q: Tensor,
+    indexer_weights: Tensor,
+    indexer_kv_cache_raw: Tensor,
+    c4_seq_lens: Tensor,
+    page_table: Tensor,
+    logits: Tensor,
+    out_page_indices: Tensor,
+    max_c4_seq_len: int,
+    page_size: int = 64,
+    weight_scale: float = 1.0,
+    clean_logits: bool = False,
+) -> Tensor:
+    _infinicore.deepseek_v4_c4_sparse_attn_indexer_(
+        q._underlying,
+        indexer_weights._underlying,
+        indexer_kv_cache_raw._underlying,
+        c4_seq_lens._underlying,
+        page_table._underlying,
+        logits._underlying,
+        out_page_indices._underlying,
+        max_c4_seq_len,
+        page_size,
+        weight_scale,
+        clean_logits,
+    )
+    return out_page_indices
+
+
+
+def deepseek_v4_c4_act_quant_fused_scale_kernel_(
+    q: Tensor,
+    indexer_weights: Tensor,
+    q_fp8: Tensor,
+    q_scale: Tensor,
+    fused_weights: Tensor,
+    weight_scale: float = 1.0,
+) -> Tensor:
+    _infinicore.deepseek_v4_c4_act_quant_fused_scale_kernel_(
+        q._underlying,
+        indexer_weights._underlying,
+        q_fp8._underlying,
+        q_scale._underlying,
+        fused_weights._underlying,
+        weight_scale,
+    )
+    return q_fp8
+
+
+def deepseek_v4_topk_transform_512_kernel_(
+    scores: Tensor,
+    seq_lens: Tensor,
+    page_table: Tensor,
+    out_page_indices: Tensor,
+    page_size: int = 64,
+) -> Tensor:
+    _infinicore.deepseek_v4_topk_transform_512_kernel_(
+        scores._underlying,
+        seq_lens._underlying,
+        page_table._underlying,
+        out_page_indices._underlying,
+        page_size,
+    )
+    return out_page_indices

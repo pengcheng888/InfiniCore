@@ -70,6 +70,56 @@ def _test_indexer(device):
     assert torch.equal(out, ref)
 
 
+def _hadamard_ref(x):
+    work = x.reshape(-1, x.shape[-1]).float().contiguous()
+    dim = work.shape[-1]
+    span = 1
+    while span < dim:
+        view = work.reshape(work.shape[0], dim // (2 * span), 2, span)
+        even = view[:, :, 0, :].clone()
+        odd = view[:, :, 1, :].clone()
+        view[:, :, 0, :].copy_(even + odd)
+        view[:, :, 1, :].copy_(even - odd)
+        span *= 2
+    work.mul_(dim ** -0.5)
+    return work.reshape_as(x)
+
+
+def _test_indexer_rotate_and_store(device):
+    torch.manual_seed(1)
+    page_size = 64
+    blocks = 2
+    x = torch.randn(3, 128, dtype=torch.float32, device=device)
+    rotated = x.clone()
+    infinicore.deepseek_v4_indexer_rotate_(_as_core(rotated))
+    infinicore.sync_stream()
+    assert torch.allclose(rotated, _hadamard_ref(x), atol=1e-5, rtol=1e-5)
+
+    indices = torch.tensor([0, 63, 64], dtype=torch.int32, device=device)
+    out_cache = torch.zeros(blocks, 132 * page_size, dtype=torch.uint8, device=device)
+    infinicore.deepseek_v4_store_indexer_raw_cache_(
+        _as_core(rotated),
+        _as_core(out_cache),
+        _as_core(indices),
+        page_size,
+    )
+    infinicore.sync_stream()
+
+    scale = torch.clamp(rotated.abs().amax(dim=-1, keepdim=True), min=1.0e-4) / 448.0
+    quant = torch.clamp(rotated / scale, -448.0, 448.0).to(torch.float8_e4m3fn).view(torch.uint8)
+    scale_bytes = scale.reshape(-1).contiguous().view(torch.uint8).reshape(-1, 4)
+    ref_cache = torch.zeros_like(out_cache)
+    flat = ref_cache.reshape(-1)
+    for row, idx in enumerate(indices.cpu().tolist()):
+        page = idx // page_size
+        offset = idx % page_size
+        base = page * 132 * page_size + offset * 128
+        scale_base = page * 132 * page_size + 128 * page_size + offset * 4
+        flat[base : base + 128] = quant[row]
+        flat[scale_base : scale_base + 4] = scale_bytes[row]
+    assert torch.equal(out_cache, ref_cache)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--hygon", action="store_true")
@@ -79,6 +129,7 @@ def main():
 
     _test_fused_store(device)
     _test_indexer(device)
+    _test_indexer_rotate_and_store(device)
     print("DeepseekV4FlashMLACache: passed")
 
 

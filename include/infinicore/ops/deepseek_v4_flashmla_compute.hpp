@@ -17,11 +17,30 @@ Tensor deepseek_v4_c4_compress_stateful_reference(const Tensor &kv_score_input,
                                                   const Tensor &extra_loc,
                                                   const Tensor &positions);
 
+Tensor deepseek_v4_c4_compress_stateful(const Tensor &kv_score_input,
+                                        const Tensor &ape,
+                                        Tensor compressor_state,
+                                        const Tensor &write_loc,
+                                        const Tensor &extra_loc,
+                                        const Tensor &positions);
+
 Tensor deepseek_v4_c128_compress_stateful_reference(const Tensor &kv_score_input,
                                                     const Tensor &ape,
                                                     Tensor compressor_state,
                                                     const Tensor &write_loc,
                                                     const Tensor &positions);
+
+Tensor deepseek_v4_c128_compress_stateful(const Tensor &kv_score_input,
+                                          const Tensor &ape,
+                                          Tensor compressor_state,
+                                          const Tensor &write_loc,
+                                          const Tensor &positions);
+
+void deepseek_v4_compress_fused_norm_rope_(Tensor input,
+                                           const Tensor &norm_weight,
+                                           float epsilon,
+                                           const Tensor &freqs_cis,
+                                           const Tensor &positions);
 
 void deepseek_v4_flashmla_sparse_attention_(const Tensor &q,
                                             const Tensor &raw_cache,

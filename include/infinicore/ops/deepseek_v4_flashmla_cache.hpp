@@ -19,6 +19,27 @@ void deepseek_v4_store_flashmla_raw_cache_(const Tensor &input,
                                            const Tensor &indices,
                                            int page_size);
 
+void deepseek_v4_store_flashmla_raw_cache_kernel_(const Tensor &input,
+                                                  Tensor cache,
+                                                  const Tensor &indices,
+                                                  int page_size);
+
+void deepseek_v4_indexer_rotate_128_kernel_(Tensor input,
+                                            bool apply_scale = true);
+
+void deepseek_v4_indexer_rotate_(Tensor input,
+                                    bool apply_scale = true);
+
+void deepseek_v4_store_indexer_raw_cache_(const Tensor &input,
+                                          Tensor cache,
+                                          const Tensor &indices,
+                                          int page_size = 64);
+
+void deepseek_v4_store_indexer_raw_cache_kernel_(const Tensor &input,
+                                                 Tensor cache,
+                                                 const Tensor &indices,
+                                                 int page_size = 64);
+
 void deepseek_v4_flashmla_cache_indexer_(const Tensor &req_to_token,
                                          const Tensor &req_pool_indices,
                                          const Tensor &page_kernel_lens,

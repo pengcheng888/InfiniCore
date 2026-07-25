@@ -673,6 +673,8 @@ target("infinicore_cpp_api")
         add_files("src/infinicore/ops/deepseek_v4_fused_experts_impl_int8_marlin/*.cu")
         add_files("src/infinicore/ops/deepseek_v4_hash_topk/*.cu")
         add_files("src/infinicore/ops/deepseek_v4_biased_topk/*.cu")
+        add_files("src/infinicore/ops/deepseek_v4_flashmla_cache/*.cu")
+        add_files("src/infinicore/ops/deepseek_v4_sparse_attn_indexer/*.cu")
     elseif has_config("nv-gpu") and has_config("aten") then
         set_toolchains("cuda")
         add_links("cudart")
@@ -680,6 +682,8 @@ target("infinicore_cpp_api")
         add_files("src/infinicore/ops/deepseek_v4_fused_experts_impl_int8_marlin/*.cu")
         add_files("src/infinicore/ops/deepseek_v4_hash_topk/*.cu")
         add_files("src/infinicore/ops/deepseek_v4_biased_topk/*.cu")
+        add_files("src/infinicore/ops/deepseek_v4_flashmla_cache/*.cu")
+        add_files("src/infinicore/ops/deepseek_v4_sparse_attn_indexer/*.cu")
     end
 
     local INFINI_ROOT = os.getenv("INFINI_ROOT") or (os.getenv(is_host("windows") and "HOMEPATH" or "HOME") .. "/.infini")
