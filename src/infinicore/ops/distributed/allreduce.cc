@@ -1,7 +1,43 @@
 #include "infinicore/ops/distributed/allreduce.hpp"
+#include "infinicore/ops/deepseek_v4_dcu_custom_allreduce.hpp"
 #include "../../utils.hpp"
+#include "../../../infiniccl/infiniccl_impl.h"
+
+#include <cstdlib>
+#include <stdexcept>
+#include <string>
 
 namespace infinicore::op::distributed {
+
+namespace {
+
+bool deepseek_v4_allreduce_fastpath_enabled() {
+    const char *value = std::getenv("INFINICORE_ALLREDUCE_FASTPATH");
+    if (value == nullptr || value[0] == '\0') {
+        return false;
+    }
+    const std::string text(value);
+    if (text == "deepseek_v4" || text == "dsv4" || text == "hygon_deepseek_v4" || text == "1" || text == "true" || text == "TRUE" || text == "on" || text == "ON") {
+        return true;
+    }
+    if (text == "off" || text == "0" || text == "false" || text == "FALSE") {
+        return false;
+    }
+    throw std::runtime_error("INFINICORE_ALLREDUCE_FASTPATH must be off or deepseek_v4");
+}
+
+bool try_deepseek_v4_allreduce_fastpath(Tensor output, const Tensor &input, infinicclReduceOp_t op, infinicclComm_t communicator) {
+    if (!deepseek_v4_allreduce_fastpath_enabled() || communicator == nullptr || op != INFINICCL_SUM) {
+        return false;
+    }
+    return infinicore::op::deepseek_v4_dcu_custom_allreduce_(
+        output,
+        input,
+        communicator->rank,
+        communicator->world_size);
+}
+
+} // namespace
 
 struct PlannedMeta {
     graph::GraphTensor output, input;
@@ -24,6 +60,10 @@ AllReduce::~AllReduce() {
 
 void AllReduce::run() const {
     PlannedMeta *meta = reinterpret_cast<PlannedMeta *>(planned_meta_);
+
+    if (try_deepseek_v4_allreduce_fastpath(meta->output, meta->input, meta->op, meta->communicator)) {
+        return;
+    }
 
     INFINICORE_CHECK_ERROR(infinicclAllReduce(meta->input->data(),
                                               meta->output->data(),
