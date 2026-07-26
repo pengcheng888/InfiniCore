@@ -13,40 +13,33 @@ inline void bind_deepseek_v4_linear_bf16_fp32(py::module &m) {
           &op::deepseek_v4_linear_bf16_fp32,
           py::arg("input"),
           py::arg("weight"),
-          R"doc(DeepSeek-V4 BF16xBF16 -> FP32 linear kernel path, weight layout [out_features, in_features].)doc");
+          R"doc(Default DeepSeek-V4 BF16xBF16 -> FP32 linear path.)doc");
 
     m.def("deepseek_v4_linear_bf16_fp32_",
           &op::deepseek_v4_linear_bf16_fp32_,
           py::arg("out"),
           py::arg("input"),
           py::arg("weight"),
-          R"doc(Out-variant DeepSeek-V4 BF16xBF16 -> FP32 linear kernel path.)doc");
+          R"doc(Out-variant default DeepSeek-V4 BF16xBF16 -> FP32 linear path.)doc");
 
     m.def("deepseek_v4_linear_bf16_fp32_naive",
           &op::deepseek_v4_linear_bf16_fp32_naive,
           py::arg("input"),
-          py::arg("weight"),
-          R"doc(DeepSeek-V4 BF16xBF16 -> FP32 linear ATen reference path.)doc");
-
+          py::arg("weight"));
     m.def("deepseek_v4_linear_bf16_fp32_naive_",
           &op::deepseek_v4_linear_bf16_fp32_naive_,
           py::arg("out"),
           py::arg("input"),
-          py::arg("weight"),
-          R"doc(Out-variant DeepSeek-V4 BF16xBF16 -> FP32 linear ATen reference path.)doc");
-
+          py::arg("weight"));
     m.def("deepseek_v4_linear_bf16_fp32_kernel",
           &op::deepseek_v4_linear_bf16_fp32_kernel,
           py::arg("input"),
-          py::arg("weight"),
-          R"doc(DeepSeek-V4 BF16xBF16 -> FP32 linear Hygon/NVIDIA kernel path.)doc");
-
+          py::arg("weight"));
     m.def("deepseek_v4_linear_bf16_fp32_kernel_",
           &op::deepseek_v4_linear_bf16_fp32_kernel_,
           py::arg("out"),
           py::arg("input"),
-          py::arg("weight"),
-          R"doc(Out-variant DeepSeek-V4 BF16xBF16 -> FP32 linear Hygon/NVIDIA kernel path.)doc");
+          py::arg("weight"));
 }
 
 } // namespace infinicore::ops

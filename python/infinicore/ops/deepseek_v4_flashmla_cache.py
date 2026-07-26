@@ -69,7 +69,6 @@ def deepseek_v4_store_flashmla_raw_cache_(
     )
     return cache
 
-
 def deepseek_v4_indexer_rotate_(
     input: Tensor,
     apply_scale: bool = True,
@@ -79,7 +78,6 @@ def deepseek_v4_indexer_rotate_(
         apply_scale,
     )
     return input
-
 
 def deepseek_v4_store_indexer_raw_cache_(
     input: Tensor,
@@ -95,44 +93,3 @@ def deepseek_v4_store_indexer_raw_cache_(
     )
     return cache
 
-
-
-def deepseek_v4_store_flashmla_raw_cache_kernel_(
-    input: Tensor,
-    cache: Tensor,
-    indices: Tensor,
-    page_size: int = 256,
-) -> Tensor:
-    _infinicore.deepseek_v4_store_flashmla_raw_cache_kernel_(
-        input._underlying,
-        cache._underlying,
-        indices._underlying,
-        page_size,
-    )
-    return cache
-
-
-def deepseek_v4_indexer_rotate_128_kernel_(
-    input: Tensor,
-    apply_scale: bool = True,
-) -> Tensor:
-    _infinicore.deepseek_v4_indexer_rotate_128_kernel_(
-        input._underlying,
-        apply_scale,
-    )
-    return input
-
-
-def deepseek_v4_store_indexer_raw_cache_kernel_(
-    input: Tensor,
-    cache: Tensor,
-    indices: Tensor,
-    page_size: int = 64,
-) -> Tensor:
-    _infinicore.deepseek_v4_store_indexer_raw_cache_kernel_(
-        input._underlying,
-        cache._underlying,
-        indices._underlying,
-        page_size,
-    )
-    return cache

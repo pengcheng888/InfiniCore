@@ -5,6 +5,7 @@
 #include "infinicore/ops/deepseek_v4_concat_and_cache_mla.hpp"
 #include "infinicore/ops/deepseek_v4_create_flashmla_kv_indices.hpp"
 
+#include "infinicore/context/context.hpp"
 #include "infinicore/device.hpp"
 #include "infinicore/dtype.hpp"
 
@@ -22,6 +23,10 @@
 #endif
 
 namespace infinicore::op {
+
+INFINICORE_GRAPH_OP_DISPATCHERS_IMPL(DeepseekV4StoreFlashMlaRawCacheKernel);
+INFINICORE_GRAPH_OP_DISPATCHERS_IMPL(DeepseekV4IndexerRotate128Kernel);
+INFINICORE_GRAPH_OP_DISPATCHERS_IMPL(DeepseekV4StoreIndexerRawCacheKernel);
 
 namespace {
 
@@ -143,13 +148,6 @@ int dsv4_scalar_type_for_kernel(const Tensor &tensor, const char *op_name) {
     throw std::runtime_error(std::string(op_name) + " supports bf16/fp16/fp32 input.");
 }
 
-void *current_accelerator_stream() {
-#if defined(ENABLE_HYGON_API)
-    return reinterpret_cast<void *>(infinicore::adaptor::get_hip_stream().stream());
-#else
-    return reinterpret_cast<void *>(infinicore::adaptor::get_cuda_stream().stream());
-#endif
-}
 #endif
 
 } // namespace
@@ -169,197 +167,237 @@ void deepseek_v4_fused_store_flashmla_cache_(const Tensor &kv_c,
 }
 
 
+
 void deepseek_v4_store_flashmla_raw_cache_(const Tensor &input,
                                            Tensor cache,
                                            const Tensor &indices,
                                            int page_size) {
-#if defined(ENABLE_ATEN) && (defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API))
-#if defined(ENABLE_HYGON_API)
-    if (input->device().getType() != Device::Type::HYGON) {
-        throw std::runtime_error("deepseek_v4_store_flashmla_raw_cache_ expects HYGON tensors in this build.");
-    }
-    c10::hip::HIPStreamGuard guard(infinicore::adaptor::get_hip_stream());
-#else
-    if (input->device().getType() != Device::Type::NVIDIA) {
-        throw std::runtime_error("deepseek_v4_store_flashmla_raw_cache_ expects NVIDIA tensors in this build.");
-    }
-    c10::cuda::CUDAStreamGuard guard(infinicore::adaptor::get_cuda_stream());
-#endif
-
-    check_raw_store_shapes(input, cache, indices, page_size);
-    auto input_at = infinicore::adaptor::to_aten_tensor(input).contiguous();
-    auto cache_at = infinicore::adaptor::to_aten_tensor(cache);
-    auto indices_at = infinicore::adaptor::to_aten_tensor(indices).to(at::kLong);
-
-    auto valid_mask = indices_at >= 0;
-    auto valid_rows = at::nonzero(valid_mask).reshape({-1});
-    if (valid_rows.numel() == 0) {
-        return;
-    }
-    if (valid_rows.numel() != indices_at.numel()) {
-        input_at = input_at.index_select(0, valid_rows);
-        indices_at = indices_at.index_select(0, valid_rows);
-    }
-
-    const int64_t num_tokens = input_at.size(0);
-    if (num_tokens == 0) {
-        return;
-    }
-    const int64_t page_size_i64 = static_cast<int64_t>(page_size);
-    const int64_t page_bytes = dsv4_flashmla_page_bytes(page_size);
-    const auto page = at::floor_divide(indices_at, page_size_i64);
-    const auto offset = at::remainder(indices_at, page_size_i64);
-
-    auto no_pe = input_at.slice(1, 0, kDsv4FlashMlaNopeDim)
-                     .reshape({num_tokens, 7, 64})
-                     .to(at::kFloat);
-    auto scale_raw = at::clamp_min(at::amax(at::abs(no_pe), {-1}, true), 1.0e-4) / kDsv4Fp8E4M3Max;
-    auto scale_exp = at::clamp(at::ceil(at::log2(scale_raw)).to(at::kInt) + 127, 0, 255).to(at::kByte);
-    auto scale = at::pow(at::scalar_tensor(2.0, scale_raw.options()), scale_exp.to(at::kFloat) - 127.0);
-    auto quant_fp8 = at::clamp(no_pe / scale, -kDsv4Fp8E4M3Max, kDsv4Fp8E4M3Max)
-                         .to(at::ScalarType::Float8_e4m3fn)
-                         .view(at::kByte)
-                         .reshape({num_tokens, kDsv4FlashMlaNopeDim});
-
-    auto rope_bytes = input_at.slice(1, kDsv4FlashMlaNopeDim, kDsv4FlashMlaInputDim)
-                          .contiguous()
-                          .view(at::kByte)
-                          .reshape({num_tokens, kDsv4FlashMlaRopeDim * 2});
-
-    auto flat_cache = cache_at.reshape({cache_at.size(0) * cache_at.size(1)});
-    auto token_base = page * page_bytes + offset * kDsv4FlashMlaValueBytesPerToken;
-    auto nope_cols = arange_like_cols(kDsv4FlashMlaNopeDim, indices_at);
-    auto rope_cols = arange_like_cols(kDsv4FlashMlaRopeDim * 2, indices_at);
-    auto scale_cols = arange_like_cols(7, indices_at);
-
-    auto nope_pos = (token_base.unsqueeze(1) + nope_cols.unsqueeze(0)).reshape({-1});
-    auto rope_pos = (token_base.unsqueeze(1) + kDsv4FlashMlaNopeDim + rope_cols.unsqueeze(0)).reshape({-1});
-    auto scale_pos = (page * page_bytes + kDsv4FlashMlaValueBytesPerToken * page_size_i64 +
-                      offset * kDsv4FlashMlaScaleBytesPerToken)
-                         .unsqueeze(1) +
-                     scale_cols.unsqueeze(0);
-
-    flat_cache.index_put_({nope_pos}, quant_fp8.reshape({-1}));
-    flat_cache.index_put_({rope_pos}, rope_bytes.reshape({-1}));
-    flat_cache.index_put_({scale_pos.reshape({-1})}, scale_exp.reshape({num_tokens, 7}).reshape({-1}));
-#else
-    (void)input;
-    (void)cache;
-    (void)indices;
-    (void)page_size;
-    throw std::runtime_error("deepseek_v4_store_flashmla_raw_cache_ requires an ATen-enabled HYGON/NVIDIA build.");
-#endif
+    deepseek_v4_store_flashmla_raw_cache_kernel_(input, cache, indices, page_size);
 }
 
-
 void deepseek_v4_indexer_rotate_(Tensor input, bool apply_scale) {
-#if defined(ENABLE_ATEN) && (defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API))
-#if defined(ENABLE_HYGON_API)
-    if (input->device().getType() != Device::Type::HYGON) {
-        throw std::runtime_error("deepseek_v4_indexer_rotate_ expects HYGON tensors in this build.");
-    }
-    c10::hip::HIPStreamGuard guard(infinicore::adaptor::get_hip_stream());
-#else
-    if (input->device().getType() != Device::Type::NVIDIA) {
-        throw std::runtime_error("deepseek_v4_indexer_rotate_ expects NVIDIA tensors in this build.");
-    }
-    c10::cuda::CUDAStreamGuard guard(infinicore::adaptor::get_cuda_stream());
-#endif
-
-    check_indexer_rotate_shapes(input);
-    auto input_at = infinicore::adaptor::to_aten_tensor(input);
-    const int64_t dim = input_at.size(input_at.dim() - 1);
-    const int64_t rows = input_at.numel() / dim;
-    auto work = input_at.reshape({rows, dim}).to(at::kFloat).contiguous();
-    for (int64_t span = 1; span < dim; span <<= 1) {
-        auto view = work.reshape({rows, dim / (2 * span), 2, span});
-        auto even = view.select(2, 0).clone();
-        auto odd = view.select(2, 1).clone();
-        view.select(2, 0).copy_(even + odd);
-        view.select(2, 1).copy_(even - odd);
-    }
-    if (apply_scale) {
-        work.mul_(1.0 / std::sqrt(static_cast<double>(dim)));
-    }
-    input_at.copy_(work.reshape(input_at.sizes()).to(input_at.scalar_type()));
-#else
-    (void)input;
-    (void)apply_scale;
-    throw std::runtime_error("deepseek_v4_indexer_rotate_ requires an ATen-enabled HYGON/NVIDIA build.");
-#endif
+    deepseek_v4_indexer_rotate_128_kernel_(input, apply_scale);
 }
 
 void deepseek_v4_store_indexer_raw_cache_(const Tensor &input,
                                           Tensor cache,
                                           const Tensor &indices,
                                           int page_size) {
-#if defined(ENABLE_ATEN) && (defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API))
-#if defined(ENABLE_HYGON_API)
-    if (input->device().getType() != Device::Type::HYGON) {
-        throw std::runtime_error("deepseek_v4_store_indexer_raw_cache_ expects HYGON tensors in this build.");
+    deepseek_v4_store_indexer_raw_cache_kernel_(input, cache, indices, page_size);
+}
+
+DeepseekV4StoreFlashMlaRawCacheKernel::DeepseekV4StoreFlashMlaRawCacheKernel(const Tensor &input,
+                                                                             Tensor cache,
+                                                                             const Tensor &indices,
+                                                                             int page_size) {
+    INFINICORE_GRAPH_OP_DISPATCH(input->device().getType(), input, cache, indices, page_size);
+}
+
+void DeepseekV4StoreFlashMlaRawCacheKernel::execute(const Tensor &input,
+                                                    Tensor cache,
+                                                    const Tensor &indices,
+                                                    int page_size) {
+    INFINICORE_GRAPH_OP_RECORD_OR_RUN(DeepseekV4StoreFlashMlaRawCacheKernel, input, cache, indices, page_size);
+}
+
+namespace deepseek_v4_store_flashmla_raw_cache_graph_impl {
+
+struct PlannedMeta {
+    graph::GraphTensor input;
+    graph::GraphTensor cache;
+    graph::GraphTensor indices;
+    int input_dtype;
+    bool indices_i64;
+    int64_t tokens;
+    int page_size;
+    int64_t page_bytes;
+};
+
+void *plan(const Tensor &input, Tensor cache, const Tensor &indices, int page_size) {
+    check_raw_store_shapes(input, cache, indices, page_size);
+    if (!input->is_contiguous() || !cache->is_contiguous() || !indices->is_contiguous()) {
+        throw std::runtime_error("deepseek_v4_store_flashmla_raw_cache_kernel_ expects contiguous tensors.");
     }
-    c10::hip::HIPStreamGuard guard(infinicore::adaptor::get_hip_stream());
+    if (input->dtype() == DataType::F32) {
+        throw std::runtime_error("deepseek_v4_store_flashmla_raw_cache_kernel_ expects bf16/fp16 input because RoPE bytes are copied verbatim.");
+    }
+    return new PlannedMeta{graph::GraphTensor(input),
+                           graph::GraphTensor(cache),
+                           graph::GraphTensor(indices),
+                           dsv4_scalar_type_for_kernel(input, "deepseek_v4_store_flashmla_raw_cache_kernel_"),
+                           indices->dtype() == DataType::I64,
+                           static_cast<int64_t>(input->size(0)),
+                           page_size,
+                           dsv4_flashmla_page_bytes(page_size)};
+}
+
+void run(void *planned_meta) {
+#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API)
+    auto *planned = reinterpret_cast<PlannedMeta *>(planned_meta);
+    deepseek_v4_flashmla_cache::launch_store_flashmla_raw_cache(planned->input->data(),
+                                                                planned->input_dtype,
+                                                                reinterpret_cast<uint8_t *>(planned->cache->data()),
+                                                                planned->indices->data(),
+                                                                planned->indices_i64,
+                                                                planned->tokens,
+                                                                planned->page_size,
+                                                                planned->page_bytes,
+                                                                context::getStream());
 #else
-    if (input->device().getType() != Device::Type::NVIDIA) {
-        throw std::runtime_error("deepseek_v4_store_indexer_raw_cache_ expects NVIDIA tensors in this build.");
-    }
-    c10::cuda::CUDAStreamGuard guard(infinicore::adaptor::get_cuda_stream());
-#endif
-
-    check_indexer_raw_store_shapes(input, cache, indices, page_size);
-    auto input_at = infinicore::adaptor::to_aten_tensor(input).contiguous();
-    auto cache_at = infinicore::adaptor::to_aten_tensor(cache);
-    auto indices_at = infinicore::adaptor::to_aten_tensor(indices).to(at::kLong);
-
-    auto valid_mask = indices_at >= 0;
-    auto valid_rows = at::nonzero(valid_mask).reshape({-1});
-    if (valid_rows.numel() == 0) {
-        return;
-    }
-    if (valid_rows.numel() != indices_at.numel()) {
-        input_at = input_at.index_select(0, valid_rows);
-        indices_at = indices_at.index_select(0, valid_rows);
-    }
-
-    const int64_t num_tokens = input_at.size(0);
-    if (num_tokens == 0) {
-        return;
-    }
-    const int64_t page_size_i64 = static_cast<int64_t>(page_size);
-    const int64_t page_bytes = dsv4_indexer_page_bytes(page_size);
-    const auto page = at::floor_divide(indices_at, page_size_i64);
-    const auto offset = at::remainder(indices_at, page_size_i64);
-
-    auto input_float = input_at.to(at::kFloat);
-    const double fp8_max = dsv4_indexer_fp8_max();
-    auto scale = at::clamp_min(at::amax(at::abs(input_float), {-1}, true), 1.0e-4) / fp8_max;
-    auto quant_fp8 = at::clamp(input_float / scale, -fp8_max, fp8_max)
-                         .to(dsv4_indexer_fp8_dtype())
-                         .view(at::kByte)
-                         .reshape({num_tokens, kDsv4IndexerInputDim});
-    auto scale_bytes = scale.reshape({num_tokens}).contiguous().view(at::kByte).reshape({num_tokens, kDsv4IndexerScaleBytesPerToken});
-
-    auto flat_cache = cache_at.reshape({cache_at.size(0) * cache_at.size(1)});
-    auto token_base = page * page_bytes + offset * kDsv4IndexerInputDim;
-    auto value_cols = arange_like_cols(kDsv4IndexerInputDim, indices_at);
-    auto scale_cols = arange_like_cols(kDsv4IndexerScaleBytesPerToken, indices_at);
-    auto value_pos = (token_base.unsqueeze(1) + value_cols.unsqueeze(0)).reshape({-1});
-    auto scale_pos = (page * page_bytes + kDsv4IndexerInputDim * page_size_i64 +
-                      offset * kDsv4IndexerScaleBytesPerToken)
-                         .unsqueeze(1) +
-                     scale_cols.unsqueeze(0);
-
-    flat_cache.index_put_({value_pos}, quant_fp8.reshape({-1}));
-    flat_cache.index_put_({scale_pos.reshape({-1})}, scale_bytes.reshape({-1}));
-#else
-    (void)input;
-    (void)cache;
-    (void)indices;
-    (void)page_size;
-    throw std::runtime_error("deepseek_v4_store_indexer_raw_cache_ requires an ATen-enabled HYGON/NVIDIA build.");
+    (void)planned_meta;
+    throw std::runtime_error("deepseek_v4_store_flashmla_raw_cache_kernel_ requires an ATen-enabled HYGON/NVIDIA build.");
 #endif
 }
 
+void cleanup(void **planned_meta_ptr) {
+    delete *reinterpret_cast<PlannedMeta **>(planned_meta_ptr);
+    *planned_meta_ptr = nullptr;
+}
+
+} // namespace deepseek_v4_store_flashmla_raw_cache_graph_impl
+
+namespace deepseek_v4_store_flashmla_raw_cache_register {
+INFINICORE_GRAPH_OP_REGISTER_ALLDEVICE(DeepseekV4StoreFlashMlaRawCacheKernel,
+                                       &deepseek_v4_store_flashmla_raw_cache_graph_impl::plan,
+                                       &deepseek_v4_store_flashmla_raw_cache_graph_impl::run,
+                                       &deepseek_v4_store_flashmla_raw_cache_graph_impl::cleanup);
+} // namespace deepseek_v4_store_flashmla_raw_cache_register
+
+
+DeepseekV4IndexerRotate128Kernel::DeepseekV4IndexerRotate128Kernel(Tensor input, bool apply_scale) {
+    INFINICORE_GRAPH_OP_DISPATCH(input->device().getType(), input, apply_scale);
+}
+
+void DeepseekV4IndexerRotate128Kernel::execute(Tensor input, bool apply_scale) {
+    INFINICORE_GRAPH_OP_RECORD_OR_RUN(DeepseekV4IndexerRotate128Kernel, input, apply_scale);
+}
+
+namespace deepseek_v4_indexer_rotate_128_graph_impl {
+
+struct PlannedMeta {
+    graph::GraphTensor input;
+    int input_dtype;
+    int64_t rows;
+    bool apply_scale;
+};
+
+void *plan(Tensor input, bool apply_scale) {
+    check_indexer_rotate_shapes(input);
+    if (input->size(input->ndim() - 1) != static_cast<size_t>(kDsv4IndexerInputDim)) {
+        throw std::runtime_error("DeepseekV4IndexerRotate128Kernel only supports last dimension 128.");
+    }
+    if (!input->is_contiguous()) {
+        throw std::runtime_error("DeepseekV4IndexerRotate128Kernel expects contiguous tensors.");
+    }
+    return new PlannedMeta{graph::GraphTensor(input),
+                           dsv4_scalar_type_for_kernel(input, "DeepseekV4IndexerRotate128Kernel"),
+                           static_cast<int64_t>(input->numel() / kDsv4IndexerInputDim),
+                           apply_scale};
+}
+
+void run(void *planned_meta) {
+#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API)
+    auto *planned = reinterpret_cast<PlannedMeta *>(planned_meta);
+    deepseek_v4_flashmla_cache::launch_indexer_rotate_128(
+        planned->input->data(),
+        planned->input_dtype,
+        planned->rows,
+        planned->apply_scale,
+        context::getStream());
+#else
+    (void)planned_meta;
+    throw std::runtime_error("DeepseekV4IndexerRotate128Kernel requires a HYGON/NVIDIA build.");
+#endif
+}
+
+void cleanup(void **planned_meta_ptr) {
+    delete *reinterpret_cast<PlannedMeta **>(planned_meta_ptr);
+    *planned_meta_ptr = nullptr;
+}
+
+} // namespace deepseek_v4_indexer_rotate_128_graph_impl
+
+namespace deepseek_v4_indexer_rotate_128_register {
+INFINICORE_GRAPH_OP_REGISTER_ALLDEVICE(DeepseekV4IndexerRotate128Kernel,
+                                       &deepseek_v4_indexer_rotate_128_graph_impl::plan,
+                                       &deepseek_v4_indexer_rotate_128_graph_impl::run,
+                                       &deepseek_v4_indexer_rotate_128_graph_impl::cleanup);
+} // namespace deepseek_v4_indexer_rotate_128_register
+
+DeepseekV4StoreIndexerRawCacheKernel::DeepseekV4StoreIndexerRawCacheKernel(const Tensor &input,
+                                                                           Tensor cache,
+                                                                           const Tensor &indices,
+                                                                           int page_size) {
+    INFINICORE_GRAPH_OP_DISPATCH(input->device().getType(), input, cache, indices, page_size);
+}
+
+void DeepseekV4StoreIndexerRawCacheKernel::execute(const Tensor &input,
+                                                   Tensor cache,
+                                                   const Tensor &indices,
+                                                   int page_size) {
+    INFINICORE_GRAPH_OP_RECORD_OR_RUN(DeepseekV4StoreIndexerRawCacheKernel, input, cache, indices, page_size);
+}
+
+namespace deepseek_v4_store_indexer_raw_cache_graph_impl {
+
+struct PlannedMeta {
+    graph::GraphTensor input;
+    graph::GraphTensor cache;
+    graph::GraphTensor indices;
+    int input_dtype;
+    bool indices_i64;
+    int64_t tokens;
+    int page_size;
+    int64_t page_bytes;
+};
+
+void *plan(const Tensor &input, Tensor cache, const Tensor &indices, int page_size) {
+    check_indexer_raw_store_shapes(input, cache, indices, page_size);
+    if (!input->is_contiguous() || !cache->is_contiguous() || !indices->is_contiguous()) {
+        throw std::runtime_error("DeepseekV4StoreIndexerRawCacheKernel expects contiguous tensors.");
+    }
+    return new PlannedMeta{graph::GraphTensor(input),
+                           graph::GraphTensor(cache),
+                           graph::GraphTensor(indices),
+                           dsv4_scalar_type_for_kernel(input, "DeepseekV4StoreIndexerRawCacheKernel"),
+                           indices->dtype() == DataType::I64,
+                           static_cast<int64_t>(input->size(0)),
+                           page_size,
+                           dsv4_indexer_page_bytes(page_size)};
+}
+
+void run(void *planned_meta) {
+#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API)
+    auto *planned = reinterpret_cast<PlannedMeta *>(planned_meta);
+    deepseek_v4_flashmla_cache::launch_store_indexer_raw_cache(
+        planned->input->data(),
+        planned->input_dtype,
+        reinterpret_cast<uint8_t *>(planned->cache->data()),
+        planned->indices->data(),
+        planned->indices_i64,
+        planned->tokens,
+        planned->page_size,
+        planned->page_bytes,
+        context::getStream());
+#else
+    (void)planned_meta;
+    throw std::runtime_error("DeepseekV4StoreIndexerRawCacheKernel requires a HYGON/NVIDIA build.");
+#endif
+}
+
+void cleanup(void **planned_meta_ptr) {
+    delete *reinterpret_cast<PlannedMeta **>(planned_meta_ptr);
+    *planned_meta_ptr = nullptr;
+}
+
+} // namespace deepseek_v4_store_indexer_raw_cache_graph_impl
+
+namespace deepseek_v4_store_indexer_raw_cache_register {
+INFINICORE_GRAPH_OP_REGISTER_ALLDEVICE(DeepseekV4StoreIndexerRawCacheKernel,
+                                       &deepseek_v4_store_indexer_raw_cache_graph_impl::plan,
+                                       &deepseek_v4_store_indexer_raw_cache_graph_impl::run,
+                                       &deepseek_v4_store_indexer_raw_cache_graph_impl::cleanup);
+} // namespace deepseek_v4_store_indexer_raw_cache_register
 
 void deepseek_v4_store_flashmla_raw_cache_kernel_(const Tensor &input,
                                                   Tensor cache,
@@ -370,12 +408,10 @@ void deepseek_v4_store_flashmla_raw_cache_kernel_(const Tensor &input,
     if (input->device().getType() != Device::Type::HYGON) {
         throw std::runtime_error("deepseek_v4_store_flashmla_raw_cache_kernel_ expects HYGON tensors in this build.");
     }
-    c10::hip::HIPStreamGuard guard(infinicore::adaptor::get_hip_stream());
 #else
     if (input->device().getType() != Device::Type::NVIDIA) {
         throw std::runtime_error("deepseek_v4_store_flashmla_raw_cache_kernel_ expects NVIDIA tensors in this build.");
     }
-    c10::cuda::CUDAStreamGuard guard(infinicore::adaptor::get_cuda_stream());
 #endif
     check_raw_store_shapes(input, cache, indices, page_size);
     if (!input->is_contiguous() || !cache->is_contiguous() || !indices->is_contiguous()) {
@@ -384,16 +420,7 @@ void deepseek_v4_store_flashmla_raw_cache_kernel_(const Tensor &input,
     if (input->dtype() == DataType::F32) {
         throw std::runtime_error("deepseek_v4_store_flashmla_raw_cache_kernel_ expects bf16/fp16 input because RoPE bytes are copied verbatim.");
     }
-    deepseek_v4_flashmla_cache::launch_store_flashmla_raw_cache(
-        input->data(),
-        dsv4_scalar_type_for_kernel(input, "deepseek_v4_store_flashmla_raw_cache_kernel_"),
-        reinterpret_cast<uint8_t *>(cache->data()),
-        indices->data(),
-        indices->dtype() == DataType::I64,
-        static_cast<int64_t>(input->size(0)),
-        page_size,
-        dsv4_flashmla_page_bytes(page_size),
-        current_accelerator_stream());
+    DeepseekV4StoreFlashMlaRawCacheKernel::execute(input, cache, indices, page_size);
 #else
     (void)input;
     (void)cache;
@@ -409,12 +436,10 @@ void deepseek_v4_indexer_rotate_128_kernel_(Tensor input, bool apply_scale) {
     if (input->device().getType() != Device::Type::HYGON) {
         throw std::runtime_error("deepseek_v4_indexer_rotate_128_kernel_ expects HYGON tensors in this build.");
     }
-    c10::hip::HIPStreamGuard guard(infinicore::adaptor::get_hip_stream());
 #else
     if (input->device().getType() != Device::Type::NVIDIA) {
         throw std::runtime_error("deepseek_v4_indexer_rotate_128_kernel_ expects NVIDIA tensors in this build.");
     }
-    c10::cuda::CUDAStreamGuard guard(infinicore::adaptor::get_cuda_stream());
 #endif
     check_indexer_rotate_shapes(input);
     if (input->size(input->ndim() - 1) != static_cast<size_t>(kDsv4IndexerInputDim)) {
@@ -424,12 +449,7 @@ void deepseek_v4_indexer_rotate_128_kernel_(Tensor input, bool apply_scale) {
         throw std::runtime_error("deepseek_v4_indexer_rotate_128_kernel_ expects contiguous tensors.");
     }
     const int64_t rows = static_cast<int64_t>(input->numel() / kDsv4IndexerInputDim);
-    deepseek_v4_flashmla_cache::launch_indexer_rotate_128(
-        input->data(),
-        dsv4_scalar_type_for_kernel(input, "deepseek_v4_indexer_rotate_128_kernel_"),
-        rows,
-        apply_scale,
-        current_accelerator_stream());
+    DeepseekV4IndexerRotate128Kernel::execute(input, apply_scale);
 #else
     (void)input;
     (void)apply_scale;
@@ -446,27 +466,16 @@ void deepseek_v4_store_indexer_raw_cache_kernel_(const Tensor &input,
     if (input->device().getType() != Device::Type::HYGON) {
         throw std::runtime_error("deepseek_v4_store_indexer_raw_cache_kernel_ expects HYGON tensors in this build.");
     }
-    c10::hip::HIPStreamGuard guard(infinicore::adaptor::get_hip_stream());
 #else
     if (input->device().getType() != Device::Type::NVIDIA) {
         throw std::runtime_error("deepseek_v4_store_indexer_raw_cache_kernel_ expects NVIDIA tensors in this build.");
     }
-    c10::cuda::CUDAStreamGuard guard(infinicore::adaptor::get_cuda_stream());
 #endif
     check_indexer_raw_store_shapes(input, cache, indices, page_size);
     if (!input->is_contiguous() || !cache->is_contiguous() || !indices->is_contiguous()) {
         throw std::runtime_error("deepseek_v4_store_indexer_raw_cache_kernel_ expects contiguous tensors.");
     }
-    deepseek_v4_flashmla_cache::launch_store_indexer_raw_cache(
-        input->data(),
-        dsv4_scalar_type_for_kernel(input, "deepseek_v4_store_indexer_raw_cache_kernel_"),
-        reinterpret_cast<uint8_t *>(cache->data()),
-        indices->data(),
-        indices->dtype() == DataType::I64,
-        static_cast<int64_t>(input->size(0)),
-        page_size,
-        dsv4_indexer_page_bytes(page_size),
-        current_accelerator_stream());
+    DeepseekV4StoreIndexerRawCacheKernel::execute(input, cache, indices, page_size);
 #else
     (void)input;
     (void)cache;

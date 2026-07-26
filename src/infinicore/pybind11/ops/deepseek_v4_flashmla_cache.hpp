@@ -48,26 +48,36 @@ inline void bind_deepseek_v4_flashmla_cache(py::module &m) {
           py::arg("indices"),
           py::arg("page_size") = 256,
           R"doc(DeepSeek-V4 SGLang-compatible raw FlashMLA SWA cache store.)doc");
-
+    m.def("deepseek_v4_store_flashmla_raw_cache_naive_",
+          &op::deepseek_v4_store_flashmla_raw_cache_naive_,
+          py::arg("input"),
+          py::arg("cache"),
+          py::arg("indices"),
+          py::arg("page_size") = 256);
     m.def("deepseek_v4_store_flashmla_raw_cache_kernel_",
           &op::deepseek_v4_store_flashmla_raw_cache_kernel_,
           py::arg("input"),
           py::arg("cache"),
           py::arg("indices"),
-          py::arg("page_size") = 256,
-          R"doc(DeepSeek-V4 native raw FlashMLA SWA cache store kernel.)doc");
+          py::arg("page_size") = 256);
+
+
 
     m.def("deepseek_v4_indexer_rotate_",
           &op::deepseek_v4_indexer_rotate_,
           py::arg("input"),
           py::arg("apply_scale") = true,
           R"doc(DeepSeek-V4 SGLang-compatible C4 indexer Hadamard rotate.)doc");
-
+    m.def("deepseek_v4_indexer_rotate_naive_",
+          &op::deepseek_v4_indexer_rotate_naive_,
+          py::arg("input"),
+          py::arg("apply_scale") = true);
     m.def("deepseek_v4_indexer_rotate_128_kernel_",
           &op::deepseek_v4_indexer_rotate_128_kernel_,
           py::arg("input"),
-          py::arg("apply_scale") = true,
-          R"doc(DeepSeek-V4 native 128-dim C4 indexer Hadamard rotate kernel.)doc");
+          py::arg("apply_scale") = true);
+
+
 
     m.def("deepseek_v4_store_indexer_raw_cache_",
           &op::deepseek_v4_store_indexer_raw_cache_,
@@ -76,14 +86,20 @@ inline void bind_deepseek_v4_flashmla_cache(py::module &m) {
           py::arg("indices"),
           py::arg("page_size") = 64,
           R"doc(DeepSeek-V4 SGLang-compatible raw C4 indexer cache store.)doc");
-
+    m.def("deepseek_v4_store_indexer_raw_cache_naive_",
+          &op::deepseek_v4_store_indexer_raw_cache_naive_,
+          py::arg("input"),
+          py::arg("cache"),
+          py::arg("indices"),
+          py::arg("page_size") = 64);
     m.def("deepseek_v4_store_indexer_raw_cache_kernel_",
           &op::deepseek_v4_store_indexer_raw_cache_kernel_,
           py::arg("input"),
           py::arg("cache"),
           py::arg("indices"),
-          py::arg("page_size") = 64,
-          R"doc(DeepSeek-V4 native raw C4 indexer cache store kernel.)doc");
+          py::arg("page_size") = 64);
+
+
 
     m.def("deepseek_v4_flashmla_cache_indexer_",
           &ops::py_deepseek_v4_flashmla_cache_indexer_,

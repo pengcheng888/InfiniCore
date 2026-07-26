@@ -117,6 +117,142 @@ def test_sparse_decode_attention_compute():
     assert torch.equal(out, ref.squeeze(1))
 
 
+def _flashmla_page_bytes(page_size):
+    bytes_per_token = 584
+    value_alignment = 576
+    return ((bytes_per_token * page_size + value_alignment - 1) // value_alignment) * value_alignment
+
+
+def _make_flashmla_raw_cache(page_size, blocks, cache_tokens, seed):
+    torch.manual_seed(seed)
+    raw = torch.zeros((blocks, _flashmla_page_bytes(page_size)), device="cuda", dtype=torch.uint8)
+    kv = torch.randn((cache_tokens, 512), device="cuda", dtype=torch.bfloat16)
+    slot = torch.arange(cache_tokens, device="cuda", dtype=torch.int32)
+    infinicore.deepseek_v4_store_flashmla_raw_cache_(
+        _as_core(kv),
+        _as_core(raw),
+        _as_core(slot),
+        page_size,
+    )
+    infinicore.sync_stream()
+    return raw
+
+
+def _run_sparse_attention(raw, q, indices, topk_lengths, attn_sink, extra=None):
+    out = torch.empty_like(q)
+    kwargs = {}
+    if extra is not None:
+        extra_raw, extra_indices, extra_topk_lengths, extra_page_size = extra
+        kwargs.update(
+            extra_raw_cache=_as_core(extra_raw),
+            extra_indices=_as_core(extra_indices),
+            extra_topk_lengths=_as_core(extra_topk_lengths),
+            extra_page_size=extra_page_size,
+        )
+    infinicore.deepseek_v4_flashmla_sparse_attention_(
+        _as_core(q),
+        _as_core(raw),
+        _as_core(indices),
+        _as_core(topk_lengths),
+        _as_core(attn_sink),
+        _as_core(out),
+        512**-0.5,
+        256,
+        512,
+        **kwargs,
+    )
+    infinicore.sync_stream()
+    return out
+
+
+def _assert_local_heads_match_full_heads(use_extra):
+    torch.manual_seed(23 if not use_extra else 29)
+    tokens = 3
+    global_heads = 16
+    tp_size = 8
+    local_heads = global_heads // tp_size
+    topk = 64
+    page_size = 256
+
+    raw = _make_flashmla_raw_cache(page_size, blocks=2, cache_tokens=128, seed=31)
+    q_full = torch.randn((tokens, global_heads, 512), device="cuda", dtype=torch.bfloat16)
+    indices = torch.arange(topk, device="cuda", dtype=torch.int32).reshape(1, topk).repeat(tokens, 1)
+    topk_lengths = torch.full((tokens,), topk, device="cuda", dtype=torch.int32)
+    attn_sink = torch.linspace(-0.25, 0.25, global_heads, device="cuda", dtype=torch.float32)
+
+    extra = None
+    if use_extra:
+        extra_page_size = 64
+        extra_topk = 32
+        extra_raw = _make_flashmla_raw_cache(extra_page_size, blocks=2, cache_tokens=96, seed=37)
+        extra_indices = torch.arange(extra_topk, device="cuda", dtype=torch.int32).reshape(1, extra_topk).repeat(tokens, 1)
+        extra_topk_lengths = torch.full((tokens,), extra_topk, device="cuda", dtype=torch.int32)
+        extra = (extra_raw, extra_indices, extra_topk_lengths, extra_page_size)
+
+    full_out = _run_sparse_attention(raw, q_full, indices, topk_lengths, attn_sink, extra=extra)
+    for tp_rank in (0, 3, 7):
+        head_start = tp_rank * local_heads
+        head_stop = head_start + local_heads
+        q_local = q_full[:, head_start:head_stop, :].contiguous()
+        sink_local = attn_sink[head_start:head_stop].contiguous()
+        local_out = _run_sparse_attention(raw, q_local, indices, topk_lengths, sink_local, extra=extra)
+        ref = full_out[:, head_start:head_stop, :].contiguous()
+        assert torch.equal(local_out, ref), f"local-head FlashMLA mismatch at tp_rank={tp_rank}, use_extra={use_extra}"
+
+
+def test_sparse_decode_local_heads_match_full_heads():
+    _assert_local_heads_match_full_heads(use_extra=False)
+    _assert_local_heads_match_full_heads(use_extra=True)
+
+
+def test_sparse_decode_attention_cached_metadata():
+    torch.manual_seed(41)
+    page_size = 256
+    tokens, heads, topk = 1, 8, 64
+    raw = _make_flashmla_raw_cache(page_size, blocks=1, cache_tokens=256, seed=43)
+    q = torch.randn((tokens, heads, 512), device="cuda", dtype=torch.bfloat16)
+    indices = torch.arange(topk, device="cuda", dtype=torch.int32).reshape(1, topk).repeat(tokens, 1)
+    topk_lengths = torch.full((tokens,), topk, device="cuda", dtype=torch.int32)
+    attn_sink = torch.zeros((heads,), device="cuda", dtype=torch.float32)
+
+    out_first = torch.empty_like(q)
+    _, sched_meta, num_splits = infinicore.deepseek_v4_flashmla_sparse_attention_with_metadata_(
+        _as_core(q),
+        _as_core(raw),
+        _as_core(indices),
+        _as_core(topk_lengths),
+        _as_core(attn_sink),
+        _as_core(out_first),
+        None,
+        None,
+        512**-0.5,
+        page_size,
+        512,
+    )
+    infinicore.sync_stream()
+    assert sched_meta.shape[1] == 8
+    assert num_splits.numel() == 2
+
+    out_second = torch.empty_like(q)
+    _, sched_meta_again, num_splits_again = infinicore.deepseek_v4_flashmla_sparse_attention_with_metadata_(
+        _as_core(q),
+        _as_core(raw),
+        _as_core(indices),
+        _as_core(topk_lengths),
+        _as_core(attn_sink),
+        _as_core(out_second),
+        sched_meta,
+        num_splits,
+        512**-0.5,
+        page_size,
+        512,
+    )
+    infinicore.sync_stream()
+    assert torch.equal(out_first, out_second)
+    assert sched_meta_again.data_ptr() == sched_meta.data_ptr()
+    assert num_splits_again.data_ptr() == num_splits.data_ptr()
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--hygon", action="store_true")
@@ -126,6 +262,8 @@ def main():
     test_dense_fp8_metadata()
     test_sparse_prefill_compute()
     test_sparse_decode_attention_compute()
+    test_sparse_decode_local_heads_match_full_heads()
+    test_sparse_decode_attention_cached_metadata()
     print("DeepseekV4FlashMLACompute: passed")
 
 

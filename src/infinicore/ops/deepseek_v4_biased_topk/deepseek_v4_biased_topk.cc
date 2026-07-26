@@ -163,6 +163,18 @@ void run_biased_topk_dsv4_kernel(Tensor topk_weights,
 
 } // namespace
 
+void deepseek_v4_topk_(Tensor topk_weights,
+                       Tensor topk_indices,
+                       const Tensor &router_logits,
+                       const Tensor &correction_bias,
+                       bool renormalize) {
+    deepseek_v4_topk_kernel_(topk_weights,
+                             topk_indices,
+                             router_logits,
+                             correction_bias,
+                             renormalize);
+}
+
 void deepseek_v4_topk_kernel_(Tensor topk_weights,
                               Tensor topk_indices,
                               const Tensor &router_logits,

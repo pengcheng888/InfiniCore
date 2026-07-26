@@ -6,6 +6,7 @@
 
 #include "deepseek_v4_sparse_attn_indexer_kernel.hpp"
 
+#include "infinicore/context/context.hpp"
 #include "infinicore/device.hpp"
 #include "infinicore/dtype.hpp"
 #include "infinicore/ops/deepseek_v4_paged_mqa_logits.hpp"
@@ -28,6 +29,8 @@
 #include <vector>
 
 namespace infinicore::op {
+
+INFINICORE_GRAPH_OP_DISPATCHERS_IMPL(DeepseekV4C4SparseAttnIndexerNoLogits);
 
 namespace {
 
@@ -292,6 +295,35 @@ void topk_transform_512_at(const at::Tensor &scores,
     auto transformed = at::where(valid_topk, page_indices, negative);
     out_page_indices.slice(1, 0, kC4TopK).copy_(transformed);
 }
+
+void topk_transform_512_dispatch_at(const at::Tensor &scores,
+                                    const at::Tensor &seq_lens,
+                                    const at::Tensor &page_tables,
+                                    at::Tensor &out_page_indices,
+                                    int page_size,
+                                    const char *op_name) {
+    if (scores.size(1) > kC4TopK) {
+        topk_transform_512_at(scores, seq_lens, page_tables, out_page_indices, page_size);
+        return;
+    }
+    if (!scores.is_contiguous() || !seq_lens.is_contiguous() || !page_tables.is_contiguous() || !out_page_indices.is_contiguous()) {
+        throw std::runtime_error(std::string(op_name) + " native topk path expects contiguous tensors.");
+    }
+    deepseek_v4_sparse_attn_indexer::launch_topk_transform_512(
+        reinterpret_cast<const float *>(scores.data_ptr()),
+        scores.stride(0),
+        seq_lens.data_ptr(),
+        seq_lens.scalar_type() == at::kLong,
+        page_tables.data_ptr(),
+        page_tables.scalar_type() == at::kLong,
+        page_tables.stride(0),
+        reinterpret_cast<int32_t *>(out_page_indices.data_ptr()),
+        out_page_indices.stride(0),
+        scores.size(0),
+        scores.size(1),
+        page_size,
+        current_accelerator_stream());
+}
 #endif
 
 } // namespace
@@ -442,7 +474,6 @@ void deepseek_v4_c4_act_quant_fused_scale_kernel_(const Tensor &q,
                                                   float weight_scale) {
 #if defined(ENABLE_ATEN) && defined(ENABLE_HYGON_API)
     check_hygon_tensor(q, "deepseek_v4_c4_act_quant_fused_scale_kernel_");
-    c10::hip::HIPStreamGuard guard(infinicore::adaptor::get_hip_stream());
     if (q->ndim() != 3 || q->size(2) != static_cast<size_t>(kC4IndexerHeadDim)) {
         throw std::runtime_error("deepseek_v4_c4_act_quant_fused_scale_kernel_ expects q [batch, heads, 128].");
     }
@@ -513,20 +544,17 @@ void deepseek_v4_topk_transform_512_kernel_(const Tensor &scores,
     if (!scores->is_contiguous() || !seq_lens->is_contiguous() || !page_table->is_contiguous() || !out_page_indices->is_contiguous()) {
         throw std::runtime_error("deepseek_v4_topk_transform_512_kernel_ expects contiguous tensors.");
     }
-    deepseek_v4_sparse_attn_indexer::launch_topk_transform_512(
-        reinterpret_cast<const float *>(scores->data()),
-        static_cast<int64_t>(scores->stride(0)),
-        seq_lens->data(),
-        seq_lens->dtype() == DataType::I64,
-        page_table->data(),
-        page_table->dtype() == DataType::I64,
-        static_cast<int64_t>(page_table->stride(0)),
-        reinterpret_cast<int32_t *>(out_page_indices->data()),
-        static_cast<int64_t>(out_page_indices->stride(0)),
-        static_cast<int64_t>(scores->size(0)),
-        static_cast<int64_t>(scores->size(1)),
+    auto scores_at = infinicore::adaptor::to_aten_tensor(scores);
+    auto seq_lens_at = infinicore::adaptor::to_aten_tensor(seq_lens);
+    auto page_table_at = infinicore::adaptor::to_aten_tensor(page_table);
+    auto out_page_indices_at = infinicore::adaptor::to_aten_tensor(out_page_indices);
+    topk_transform_512_dispatch_at(
+        scores_at,
+        seq_lens_at,
+        page_table_at,
+        out_page_indices_at,
         page_size,
-        current_accelerator_stream());
+        "deepseek_v4_topk_transform_512_kernel_");
 #else
     (void)scores;
     (void)seq_lens;
@@ -607,23 +635,13 @@ void deepseek_v4_c4_sparse_attn_indexer_(const Tensor &q,
 
     auto logits_view = logits_at.slice(0, 0, q_at.size(0)).slice(1, 0, max_c4_seq_len);
     logits_view.copy_(result);
-    if (!logits_view.is_contiguous() || !seq_lens_flat.is_contiguous() || !page_table_at.is_contiguous() || !out_indices_at.is_contiguous()) {
-        throw std::runtime_error("deepseek_v4_c4_sparse_attn_indexer_ native topk path expects contiguous tensors.");
-    }
-    deepseek_v4_sparse_attn_indexer::launch_topk_transform_512(
-        reinterpret_cast<const float *>(logits_view.data_ptr()),
-        logits_view.stride(0),
-        seq_lens_flat.data_ptr(),
-        seq_lens_flat.scalar_type() == at::kLong,
-        page_table_at.data_ptr(),
-        page_table_at.scalar_type() == at::kLong,
-        page_table_at.stride(0),
-        reinterpret_cast<int32_t *>(out_indices_at.data_ptr()),
-        out_indices_at.stride(0),
-        logits_view.size(0),
-        logits_view.size(1),
+    topk_transform_512_dispatch_at(
+        logits_view,
+        seq_lens_flat,
+        page_table_at,
+        out_indices_at,
         page_size,
-        current_accelerator_stream());
+        "deepseek_v4_c4_sparse_attn_indexer_");
 #else
     (void)q;
     (void)indexer_weights;
@@ -638,6 +656,244 @@ void deepseek_v4_c4_sparse_attn_indexer_(const Tensor &q,
     (void)clean_logits;
     throw std::runtime_error("deepseek_v4_c4_sparse_attn_indexer_ requires an ATen-enabled HYGON build with lightop.");
 #endif
+}
+
+
+void deepseek_v4_c4_sparse_attn_indexer_no_logits_impl(const Tensor &q,
+                                                   const Tensor &indexer_weights,
+                                                   const Tensor &indexer_kv_cache_raw,
+                                                   const Tensor &c4_seq_lens,
+                                                   const Tensor &page_table,
+                                                   Tensor out_page_indices,
+                                                   int max_c4_seq_len,
+                                                   int page_size,
+                                                   float weight_scale,
+                                                   bool clean_logits) {
+#if defined(ENABLE_ATEN) && defined(ENABLE_HYGON_API)
+    check_hygon_tensor(q, "deepseek_v4_c4_sparse_attn_indexer_no_logits_");
+    c10::hip::HIPStreamGuard guard(infinicore::adaptor::get_hip_stream());
+
+    auto q_at = infinicore::adaptor::to_aten_tensor(q);
+    auto weights_at = infinicore::adaptor::to_aten_tensor(indexer_weights);
+    auto cache_raw_at = infinicore::adaptor::to_aten_tensor(indexer_kv_cache_raw);
+    auto c4_seq_lens_at = infinicore::adaptor::to_aten_tensor(c4_seq_lens);
+    auto page_table_at = infinicore::adaptor::to_aten_tensor(page_table);
+    auto out_indices_at = infinicore::adaptor::to_aten_tensor(out_page_indices);
+
+    if (q_at.dim() != 3 || q_at.size(2) != kC4IndexerHeadDim) {
+        throw std::runtime_error("deepseek_v4_c4_sparse_attn_indexer_no_logits_ expects q [batch, heads, 128].");
+    }
+    if (cache_raw_at.dim() != 2 || cache_raw_at.size(1) != page_size * (kC4IndexerHeadDim + kC4IndexerScaleBytes)) {
+        throw std::runtime_error("deepseek_v4_c4_sparse_attn_indexer_no_logits_ expects raw indexer cache [blocks, page_size * 132].");
+    }
+    if (max_c4_seq_len <= 0) {
+        throw std::runtime_error("deepseek_v4_c4_sparse_attn_indexer_no_logits_ max_c4_seq_len must be positive.");
+    }
+
+    auto q_contig = q_at.contiguous();
+    auto weights_contig = weights_at.contiguous();
+    auto q_quant_native = at::empty_like(q_contig, q_contig.options().dtype(c4_indexer_fp8_dtype()));
+    auto q_scale_native = at::empty({q_contig.size(0), q_contig.size(1), 1}, q_contig.options().dtype(at::kFloat));
+    auto fused_weights = at::empty_like(weights_contig, weights_contig.options().dtype(at::kFloat));
+    deepseek_v4_sparse_attn_indexer::launch_c4_act_quant_fused_scale(
+        q_contig.data_ptr(),
+        c4_at_scalar_type_for_kernel(q_contig, "deepseek_v4_c4_sparse_attn_indexer_no_logits_"),
+        weights_contig.data_ptr(),
+        c4_at_scalar_type_for_kernel(weights_contig, "deepseek_v4_c4_sparse_attn_indexer_no_logits_"),
+        reinterpret_cast<uint8_t *>(q_quant_native.data_ptr()),
+        reinterpret_cast<float *>(q_scale_native.data_ptr()),
+        reinterpret_cast<float *>(fused_weights.data_ptr()),
+        q_contig.size(0) * q_contig.size(1),
+        weight_scale,
+        current_accelerator_stream());
+
+    auto q_fp8 = q_quant_native.unsqueeze(1);
+    auto cache_view = cache_raw_at.view({cache_raw_at.size(0), page_size, 1, kC4IndexerHeadDim + kC4IndexerScaleBytes});
+    auto seq_lens_for_gemm = as_c4_seq_lens_for_gemm(c4_seq_lens_at);
+    auto seq_lens_flat = as_c4_seq_lens_flat(c4_seq_lens_at);
+
+    std::optional<at::Tensor> schedule_meta = std::nullopt;
+    auto paged_fn = lightop_symbols().paged_mqa_logits;
+    auto result = paged_fn(q_fp8,
+                           cache_view,
+                           fused_weights,
+                           seq_lens_for_gemm,
+                           page_table_at,
+                           schedule_meta,
+                           max_c4_seq_len,
+                           clean_logits);
+    auto logits_view = result.contiguous();
+    if (logits_view.dim() != 2 || logits_view.size(0) < q_at.size(0) || logits_view.size(1) < max_c4_seq_len) {
+        throw std::runtime_error("deepseek_v4_c4_sparse_attn_indexer_no_logits_ paged logits shape mismatch.");
+    }
+    if (logits_view.size(0) != q_at.size(0) || logits_view.size(1) != max_c4_seq_len) {
+        logits_view = logits_view.slice(0, 0, q_at.size(0)).slice(1, 0, max_c4_seq_len).contiguous();
+    }
+    topk_transform_512_dispatch_at(
+        logits_view,
+        seq_lens_flat,
+        page_table_at,
+        out_indices_at,
+        page_size,
+        "deepseek_v4_c4_sparse_attn_indexer_no_logits_");
+#else
+    (void)q;
+    (void)indexer_weights;
+    (void)indexer_kv_cache_raw;
+    (void)c4_seq_lens;
+    (void)page_table;
+    (void)out_page_indices;
+    (void)max_c4_seq_len;
+    (void)page_size;
+    (void)weight_scale;
+    (void)clean_logits;
+    throw std::runtime_error("deepseek_v4_c4_sparse_attn_indexer_no_logits_ requires an ATen-enabled HYGON build with lightop.");
+#endif
+}
+
+
+DeepseekV4C4SparseAttnIndexerNoLogits::DeepseekV4C4SparseAttnIndexerNoLogits(const Tensor &q,
+                                                                               const Tensor &indexer_weights,
+                                                                               const Tensor &indexer_kv_cache_raw,
+                                                                               const Tensor &c4_seq_lens,
+                                                                               const Tensor &page_table,
+                                                                               Tensor out_page_indices,
+                                                                               int max_c4_seq_len,
+                                                                               int page_size,
+                                                                               float weight_scale,
+                                                                               bool clean_logits) {
+    INFINICORE_GRAPH_OP_DISPATCH(q->device().getType(),
+                                 q,
+                                 indexer_weights,
+                                 indexer_kv_cache_raw,
+                                 c4_seq_lens,
+                                 page_table,
+                                 out_page_indices,
+                                 max_c4_seq_len,
+                                 page_size,
+                                 weight_scale,
+                                 clean_logits);
+}
+
+void DeepseekV4C4SparseAttnIndexerNoLogits::execute(const Tensor &q,
+                                                     const Tensor &indexer_weights,
+                                                     const Tensor &indexer_kv_cache_raw,
+                                                     const Tensor &c4_seq_lens,
+                                                     const Tensor &page_table,
+                                                     Tensor out_page_indices,
+                                                     int max_c4_seq_len,
+                                                     int page_size,
+                                                     float weight_scale,
+                                                     bool clean_logits) {
+    INFINICORE_GRAPH_OP_RECORD_OR_RUN(DeepseekV4C4SparseAttnIndexerNoLogits,
+                                      q,
+                                      indexer_weights,
+                                      indexer_kv_cache_raw,
+                                      c4_seq_lens,
+                                      page_table,
+                                      out_page_indices,
+                                      max_c4_seq_len,
+                                      page_size,
+                                      weight_scale,
+                                      clean_logits);
+}
+
+namespace deepseek_v4_c4_sparse_attn_indexer_no_logits_graph_impl {
+
+struct PlannedMeta {
+    graph::GraphTensor q;
+    graph::GraphTensor indexer_weights;
+    graph::GraphTensor indexer_kv_cache_raw;
+    graph::GraphTensor c4_seq_lens;
+    graph::GraphTensor page_table;
+    graph::GraphTensor out_page_indices;
+    int max_c4_seq_len;
+    int page_size;
+    float weight_scale;
+    bool clean_logits;
+};
+
+void *plan(const Tensor &q,
+           const Tensor &indexer_weights,
+           const Tensor &indexer_kv_cache_raw,
+           const Tensor &c4_seq_lens,
+           const Tensor &page_table,
+           Tensor out_page_indices,
+           int max_c4_seq_len,
+           int page_size,
+           float weight_scale,
+           bool clean_logits) {
+#if defined(ENABLE_HYGON_API)
+    if (q->device().getType() != Device::Type::HYGON) {
+        throw std::runtime_error("DeepseekV4C4SparseAttnIndexerNoLogits expects HYGON tensors in this build.");
+    }
+#endif
+    if (q->ndim() != 3 || q->size(2) != static_cast<size_t>(kC4IndexerHeadDim)) {
+        throw std::runtime_error("DeepseekV4C4SparseAttnIndexerNoLogits expects q [batch, heads, 128].");
+    }
+    if (out_page_indices->ndim() != 2 || out_page_indices->size(0) != q->size(0) || out_page_indices->size(1) < static_cast<size_t>(kC4TopK) || out_page_indices->dtype() != DataType::I32) {
+        throw std::runtime_error("DeepseekV4C4SparseAttnIndexerNoLogits expects output page indices [batch, >=512] int32.");
+    }
+    return new PlannedMeta{graph::GraphTensor(q),
+                           graph::GraphTensor(indexer_weights),
+                           graph::GraphTensor(indexer_kv_cache_raw),
+                           graph::GraphTensor(c4_seq_lens),
+                           graph::GraphTensor(page_table),
+                           graph::GraphTensor(out_page_indices),
+                           max_c4_seq_len,
+                           page_size,
+                           weight_scale,
+                           clean_logits};
+}
+
+void run(void *planned_meta) {
+    auto *planned = reinterpret_cast<PlannedMeta *>(planned_meta);
+    deepseek_v4_c4_sparse_attn_indexer_no_logits_impl(planned->q,
+                                                      planned->indexer_weights,
+                                                      planned->indexer_kv_cache_raw,
+                                                      planned->c4_seq_lens,
+                                                      planned->page_table,
+                                                      planned->out_page_indices,
+                                                      planned->max_c4_seq_len,
+                                                      planned->page_size,
+                                                      planned->weight_scale,
+                                                      planned->clean_logits);
+}
+
+void cleanup(void **planned_meta_ptr) {
+    delete *reinterpret_cast<PlannedMeta **>(planned_meta_ptr);
+    *planned_meta_ptr = nullptr;
+}
+
+} // namespace deepseek_v4_c4_sparse_attn_indexer_no_logits_graph_impl
+
+namespace deepseek_v4_c4_sparse_attn_indexer_no_logits_register {
+INFINICORE_GRAPH_OP_REGISTER_ALLDEVICE(DeepseekV4C4SparseAttnIndexerNoLogits,
+                                       &deepseek_v4_c4_sparse_attn_indexer_no_logits_graph_impl::plan,
+                                       &deepseek_v4_c4_sparse_attn_indexer_no_logits_graph_impl::run,
+                                       &deepseek_v4_c4_sparse_attn_indexer_no_logits_graph_impl::cleanup);
+} // namespace deepseek_v4_c4_sparse_attn_indexer_no_logits_register
+
+void deepseek_v4_c4_sparse_attn_indexer_no_logits_(const Tensor &q,
+                                                   const Tensor &indexer_weights,
+                                                   const Tensor &indexer_kv_cache_raw,
+                                                   const Tensor &c4_seq_lens,
+                                                   const Tensor &page_table,
+                                                   Tensor out_page_indices,
+                                                   int max_c4_seq_len,
+                                                   int page_size,
+                                                   float weight_scale,
+                                                   bool clean_logits) {
+    DeepseekV4C4SparseAttnIndexerNoLogits::execute(q,
+                                                   indexer_weights,
+                                                   indexer_kv_cache_raw,
+                                                   c4_seq_lens,
+                                                   page_table,
+                                                   out_page_indices,
+                                                   max_c4_seq_len,
+                                                   page_size,
+                                                   weight_scale,
+                                                   clean_logits);
 }
 
 } // namespace infinicore::op

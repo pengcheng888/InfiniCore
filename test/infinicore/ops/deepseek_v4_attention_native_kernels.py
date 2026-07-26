@@ -3,6 +3,7 @@ import time
 
 import infinicore
 import torch
+from infinicore.lib import _infinicore
 
 
 FP8_MAX = 448.0
@@ -10,7 +11,7 @@ TOPK = 512
 
 
 def _as_core(tensor):
-    return infinicore.from_torch(tensor)
+    return infinicore.from_torch(tensor)._underlying
 
 
 def _sync():
@@ -113,8 +114,8 @@ def _check_rotate(device):
     x = (torch.randn(17, 128, device=device, dtype=torch.bfloat16) * 0.2).contiguous()
     ref = x.clone()
     out = x.clone()
-    infinicore.deepseek_v4_indexer_rotate_(_as_core(ref), True)
-    infinicore.deepseek_v4_indexer_rotate_128_kernel_(_as_core(out), True)
+    _infinicore.deepseek_v4_indexer_rotate_naive_(_as_core(ref), True)
+    _infinicore.deepseek_v4_indexer_rotate_128_kernel_(_as_core(out), True)
     _sync()
     assert torch.equal(out, ref), f"rotate mismatch max={((out.float() - ref.float()).abs().max()).item()}"
 
@@ -128,8 +129,8 @@ def _check_indexer_store(device):
     indices = torch.tensor([0, 1, -1, 7, 63, 64, 65, 79, -1], device=device, dtype=torch.int32)
     ref = torch.zeros(blocks, _indexer_page_bytes(page_size), device=device, dtype=torch.uint8)
     out = torch.zeros_like(ref)
-    infinicore.deepseek_v4_store_indexer_raw_cache_(_as_core(x), _as_core(ref), _as_core(indices), page_size)
-    infinicore.deepseek_v4_store_indexer_raw_cache_kernel_(_as_core(x), _as_core(out), _as_core(indices), page_size)
+    _infinicore.deepseek_v4_store_indexer_raw_cache_naive_(_as_core(x), _as_core(ref), _as_core(indices), page_size)
+    _infinicore.deepseek_v4_store_indexer_raw_cache_kernel_(_as_core(x), _as_core(out), _as_core(indices), page_size)
     _sync()
     assert torch.equal(out, ref), f"indexer raw cache mismatch bytes={(out != ref).sum().item()}"
 
@@ -143,8 +144,8 @@ def _check_flash_store(device):
     indices = torch.tensor([0, -1, 5, 63, 64, 65, 79], device=device, dtype=torch.int64)
     ref = torch.zeros(blocks, _flash_page_bytes(page_size), device=device, dtype=torch.uint8)
     out = torch.zeros_like(ref)
-    infinicore.deepseek_v4_store_flashmla_raw_cache_(_as_core(x), _as_core(ref), _as_core(indices), page_size)
-    infinicore.deepseek_v4_store_flashmla_raw_cache_kernel_(_as_core(x), _as_core(out), _as_core(indices), page_size)
+    _infinicore.deepseek_v4_store_flashmla_raw_cache_naive_(_as_core(x), _as_core(ref), _as_core(indices), page_size)
+    _infinicore.deepseek_v4_store_flashmla_raw_cache_kernel_(_as_core(x), _as_core(out), _as_core(indices), page_size)
     _sync()
     assert torch.equal(out, ref), f"flash raw cache mismatch bytes={(out != ref).sum().item()}"
 
@@ -159,7 +160,7 @@ def _check_act_quant(device):
     out_fp8 = torch.empty_like(ref_fp8)
     out_scale = torch.empty_like(ref_scale)
     out_fused = torch.empty_like(ref_fused)
-    infinicore.deepseek_v4_c4_act_quant_fused_scale_kernel_(
+    _infinicore.deepseek_v4_c4_act_quant_fused_scale_kernel_(
         _as_core(q),
         _as_core(weights),
         _as_core(out_fp8),
@@ -183,7 +184,7 @@ def _check_topk(device):
     page_table = (torch.arange(batch * pages, device=device, dtype=torch.int32).reshape(batch, pages) + 11).contiguous()
     ref = _topk_transform_ref(scores, seq_lens, page_table, page_size)
     out = torch.empty(batch, TOPK, device=device, dtype=torch.int32)
-    infinicore.deepseek_v4_topk_transform_512_kernel_(_as_core(scores), _as_core(seq_lens), _as_core(page_table), _as_core(out), page_size)
+    _infinicore.deepseek_v4_topk_transform_512_kernel_(_as_core(scores), _as_core(seq_lens), _as_core(page_table), _as_core(out), page_size)
     _sync()
     assert torch.equal(out, ref), "topk transform <=512 mismatch"
 
@@ -194,7 +195,7 @@ def _check_topk(device):
     page_table = torch.arange(3 * pages, device=device, dtype=torch.int64).reshape(3, pages).contiguous()
     ref = _topk_transform_ref(scores, seq_lens, page_table, page_size)
     out = torch.empty(3, TOPK, device=device, dtype=torch.int32)
-    infinicore.deepseek_v4_topk_transform_512_kernel_(_as_core(scores), _as_core(seq_lens), _as_core(page_table), _as_core(out), page_size)
+    _infinicore.deepseek_v4_topk_transform_512_kernel_(_as_core(scores), _as_core(seq_lens), _as_core(page_table), _as_core(out), page_size)
     _sync()
     assert torch.equal(out[:2], ref[:2]), "topk transform sequential large mismatch"
     assert torch.equal(torch.sort(out[2]).values, torch.sort(ref[2]).values), "topk transform >512 set mismatch"
@@ -217,8 +218,8 @@ def _run_benchmarks(device, repeats, warmup):
     rotate_native = rotate_x.clone()
     _bench(
         "rotate_128",
-        lambda: infinicore.deepseek_v4_indexer_rotate_(_as_core(rotate_ref.copy_(rotate_x)), True),
-        lambda: infinicore.deepseek_v4_indexer_rotate_128_kernel_(_as_core(rotate_native.copy_(rotate_x)), True),
+        lambda: _infinicore.deepseek_v4_indexer_rotate_naive_(_as_core(rotate_ref.copy_(rotate_x)), True),
+        lambda: _infinicore.deepseek_v4_indexer_rotate_128_kernel_(_as_core(rotate_native.copy_(rotate_x)), True),
         repeats,
         warmup,
     )
@@ -232,8 +233,8 @@ def _run_benchmarks(device, repeats, warmup):
     out_cache = torch.empty_like(ref_cache)
     _bench(
         "indexer_raw_cache_store",
-        lambda: infinicore.deepseek_v4_store_indexer_raw_cache_(_as_core(store_x), _as_core(ref_cache.zero_()), _as_core(indices), page_size),
-        lambda: infinicore.deepseek_v4_store_indexer_raw_cache_kernel_(_as_core(store_x), _as_core(out_cache.zero_()), _as_core(indices), page_size),
+        lambda: _infinicore.deepseek_v4_store_indexer_raw_cache_naive_(_as_core(store_x), _as_core(ref_cache.zero_()), _as_core(indices), page_size),
+        lambda: _infinicore.deepseek_v4_store_indexer_raw_cache_kernel_(_as_core(store_x), _as_core(out_cache.zero_()), _as_core(indices), page_size),
         repeats,
         warmup,
     )
@@ -246,8 +247,8 @@ def _run_benchmarks(device, repeats, warmup):
     flash_out_cache = torch.empty_like(flash_ref_cache)
     _bench(
         "flashmla_raw_cache_store",
-        lambda: infinicore.deepseek_v4_store_flashmla_raw_cache_(_as_core(flash_x), _as_core(flash_ref_cache.zero_()), _as_core(flash_indices), page_size),
-        lambda: infinicore.deepseek_v4_store_flashmla_raw_cache_kernel_(_as_core(flash_x), _as_core(flash_out_cache.zero_()), _as_core(flash_indices), page_size),
+        lambda: _infinicore.deepseek_v4_store_flashmla_raw_cache_naive_(_as_core(flash_x), _as_core(flash_ref_cache.zero_()), _as_core(flash_indices), page_size),
+        lambda: _infinicore.deepseek_v4_store_flashmla_raw_cache_kernel_(_as_core(flash_x), _as_core(flash_out_cache.zero_()), _as_core(flash_indices), page_size),
         repeats,
         warmup,
     )
@@ -269,7 +270,7 @@ def _run_benchmarks(device, repeats, warmup):
         ref_fused.copy_(fused)
 
     def act_native():
-        infinicore.deepseek_v4_c4_act_quant_fused_scale_kernel_(
+        _infinicore.deepseek_v4_c4_act_quant_fused_scale_kernel_(
             _as_core(q), _as_core(weights), _as_core(out_fp8), _as_core(out_scale), _as_core(out_fused), 1.0
         )
 
@@ -287,7 +288,7 @@ def _run_benchmarks(device, repeats, warmup):
         topk_ref.copy_(_topk_transform_ref(scores, seq_lens, page_table, page_size))
 
     def topk_native_fn():
-        infinicore.deepseek_v4_topk_transform_512_kernel_(
+        _infinicore.deepseek_v4_topk_transform_512_kernel_(
             _as_core(scores), _as_core(seq_lens), _as_core(page_table), _as_core(topk_out), page_size
         )
 

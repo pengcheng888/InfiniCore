@@ -57,6 +57,10 @@ Tensor Tensor::from_blob(void *raw_ptr, const Shape &shape, const DataType &dtyp
     return Tensor{TensorImpl::from_blob(raw_ptr, shape, dtype, device)};
 }
 
+Tensor Tensor::from_blob(void *raw_ptr, const Shape &shape, const DataType &dtype, const Device &device, Memory::Deleter deleter) {
+    return Tensor{TensorImpl::from_blob(raw_ptr, shape, dtype, device, std::move(deleter))};
+}
+
 Tensor Tensor::strided_from_blob(void *raw_ptr, const Shape &shape, const Strides &strides, const DataType &dtype, const Device &device) {
     return Tensor{TensorImpl::strided_from_blob(raw_ptr, shape, strides, dtype, device)};
 }
@@ -261,9 +265,18 @@ std::shared_ptr<TensorImpl> TensorImpl::from_blob(
     const Shape &shape,
     const DataType &dtype,
     const Device &device) {
+    return TensorImpl::from_blob(raw_ptr, shape, dtype, device, nullptr);
+}
+
+std::shared_ptr<TensorImpl> TensorImpl::from_blob(
+    void *raw_ptr,
+    const Shape &shape,
+    const DataType &dtype,
+    const Device &device,
+    Memory::Deleter deleter) {
     auto t = std::shared_ptr<TensorImpl>(new TensorImpl(shape, dtype));
     t->data_.offset = 0;
-    t->data_.memory = std::make_shared<Memory>((std::byte *)raw_ptr, t->numel() * dsize(dtype), device, nullptr);
+    t->data_.memory = std::make_shared<Memory>((std::byte *)raw_ptr, t->numel() * dsize(dtype), device, std::move(deleter));
     return t;
 }
 

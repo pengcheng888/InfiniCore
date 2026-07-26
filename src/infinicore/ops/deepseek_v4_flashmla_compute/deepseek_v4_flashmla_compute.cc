@@ -1,5 +1,8 @@
 #include "infinicore/ops/deepseek_v4_flashmla_compute.hpp"
 
+#include "deepseek_v4_flashmla_compute_kernel.hpp"
+
+#include "infinicore/context/context.hpp"
 #include "infinicore/device.hpp"
 #include "infinicore/dtype.hpp"
 
@@ -25,6 +28,11 @@
 #endif
 
 namespace infinicore::op {
+
+INFINICORE_GRAPH_OP_DISPATCHERS_IMPL(DeepseekV4FlashMlaSparseAttentionWithMetadata);
+INFINICORE_GRAPH_OP_DISPATCHERS_IMPL(DeepseekV4CompressFusedNormRopeKernel);
+INFINICORE_GRAPH_OP_DISPATCHERS_IMPL(DeepseekV4C4CompressStatefulKernel);
+INFINICORE_GRAPH_OP_DISPATCHERS_IMPL(DeepseekV4C128CompressStatefulKernel);
 
 namespace {
 
@@ -138,6 +146,40 @@ void check_compress_fused_norm_rope_shapes(const Tensor &input,
     }
 }
 
+
+int dsv4_scalar_type_for_kernel(const Tensor &tensor, const char *op_name) {
+    if (tensor->dtype() == DataType::BF16) {
+        return deepseek_v4_flashmla_compute_kernel::kDsv4BF16;
+    }
+    if (tensor->dtype() == DataType::F16) {
+        return deepseek_v4_flashmla_compute_kernel::kDsv4F16;
+    }
+    if (tensor->dtype() == DataType::F32) {
+        return deepseek_v4_flashmla_compute_kernel::kDsv4F32;
+    }
+    throw std::runtime_error(std::string(op_name) + " supports bf16/fp16/fp32 tensors only.");
+}
+
+void check_common_accel_tensor(const Tensor &tensor, const char *op_name) {
+    check_hygon_or_nvidia_tensor(tensor, op_name);
+    if (!tensor->is_contiguous()) {
+        throw std::runtime_error(std::string(op_name) + " expects contiguous tensors.");
+    }
+}
+
+int c4_ape_layout(const Tensor &ape, int64_t head_dim, const char *op_name) {
+    if (ape->ndim() != 2) {
+        throw std::runtime_error(std::string(op_name) + " expects ape rank 2.");
+    }
+    if (ape->size(0) == 8 && ape->size(1) == static_cast<size_t>(head_dim)) {
+        return 0;
+    }
+    if (ape->size(0) == 4 && ape->size(1) == static_cast<size_t>(2 * head_dim)) {
+        return 1;
+    }
+    throw std::runtime_error(std::string(op_name) + " expects ape [8, head_dim] or [4, 2 * head_dim].");
+}
+
 #if defined(ENABLE_ATEN) && (defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API))
 void apply_rope_2d_last64_aten_(at::Tensor rope, const at::Tensor &freqs_cis, const at::Tensor &positions) {
     constexpr int64_t rope_dim = 64;
@@ -182,6 +224,53 @@ using FlashMlaSparseDecodeFn = std::tuple<at::Tensor,
                                                                         const std::optional<at::Tensor> &,
                                                                         int,
                                                                         float);
+
+std::optional<at::Tensor> optional_i32_aten_tensor(std::optional<Tensor> tensor,
+                                                   const char *name,
+                                                   const char *op_name) {
+    if (!tensor.has_value() || !tensor.value()) {
+        return std::nullopt;
+    }
+    check_hygon_or_nvidia_tensor(tensor.value(), op_name);
+    if (tensor.value()->dtype() != DataType::I32) {
+        throw std::runtime_error(std::string(op_name) + " expects " + name + " dtype int32.");
+    }
+    if (!tensor.value()->is_contiguous()) {
+        throw std::runtime_error(std::string(op_name) + " expects contiguous " + name + ".");
+    }
+    return infinicore::adaptor::to_aten_tensor(tensor.value());
+}
+
+Tensor wrap_i32_aten_tensor_to_infinicore(const std::optional<at::Tensor> &tensor,
+                                          const Device &device,
+                                          const char *name,
+                                          const char *op_name) {
+    (void)device;
+    if (!tensor.has_value() || !tensor.value().defined()) {
+        return Tensor{};
+    }
+    auto source = tensor.value();
+    if (source.scalar_type() != at::kInt) {
+        throw std::runtime_error(std::string(op_name) + " returned non-int32 " + name + ".");
+    }
+    return infinicore::adaptor::from_aten_tensor(source.contiguous());
+}
+
+DeepseekV4FlashMLASparseAttentionSchedule build_flashmla_sparse_schedule_result(
+    std::optional<Tensor> input_tile_scheduler_metadata,
+    std::optional<Tensor> input_num_splits,
+    const std::optional<at::Tensor> &new_tile_scheduler_metadata,
+    const std::optional<at::Tensor> &new_num_splits,
+    const Device &device,
+    const char *op_name) {
+    return {
+        input_tile_scheduler_metadata.has_value() && input_tile_scheduler_metadata.value()
+            ? input_tile_scheduler_metadata.value()
+            : wrap_i32_aten_tensor_to_infinicore(new_tile_scheduler_metadata, device, "tile_scheduler_metadata", op_name),
+        input_num_splits.has_value() && input_num_splits.value()
+            ? input_num_splits.value()
+            : wrap_i32_aten_tensor_to_infinicore(new_num_splits, device, "num_splits", op_name)};
+}
 
 uintptr_t find_elf_symbol_value(const std::string &path, const char *symbol) {
     std::ifstream file(path, std::ios::binary);
@@ -276,225 +365,491 @@ void *resolve_flashmla_sparse_decode(const char *op_name) {
 } // namespace
 
 
-void deepseek_v4_compress_fused_norm_rope_(Tensor input,
-                                           const Tensor &norm_weight,
-                                           float epsilon,
-                                           const Tensor &freqs_cis,
-                                           const Tensor &positions) {
-#if defined(ENABLE_ATEN) && (defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API))
-    check_hygon_or_nvidia_tensor(input, "deepseek_v4_compress_fused_norm_rope_");
-    check_hygon_or_nvidia_tensor(norm_weight, "deepseek_v4_compress_fused_norm_rope_");
-    check_hygon_or_nvidia_tensor(freqs_cis, "deepseek_v4_compress_fused_norm_rope_");
-    check_hygon_or_nvidia_tensor(positions, "deepseek_v4_compress_fused_norm_rope_");
-#if defined(ENABLE_HYGON_API)
-    c10::hip::HIPStreamGuard guard(infinicore::adaptor::get_hip_stream());
+
+DeepseekV4CompressFusedNormRopeKernel::DeepseekV4CompressFusedNormRopeKernel(
+    Tensor input,
+    const Tensor &norm_weight,
+    float epsilon,
+    const Tensor &freqs_cis,
+    const Tensor &positions) {
+    INFINICORE_GRAPH_OP_DISPATCH(input->device().getType(), input, norm_weight, epsilon, freqs_cis, positions);
+}
+
+void DeepseekV4CompressFusedNormRopeKernel::execute(Tensor input,
+                                                    const Tensor &norm_weight,
+                                                    float epsilon,
+                                                    const Tensor &freqs_cis,
+                                                    const Tensor &positions) {
+    INFINICORE_GRAPH_OP_RECORD_OR_RUN(DeepseekV4CompressFusedNormRopeKernel,
+                                      input,
+                                      norm_weight,
+                                      epsilon,
+                                      freqs_cis,
+                                      positions);
+}
+
+namespace deepseek_v4_compress_fused_norm_rope_graph_impl {
+
+struct PlannedMeta {
+    graph::GraphTensor input;
+    graph::GraphTensor norm_weight;
+    graph::GraphTensor freqs_cis;
+    graph::GraphTensor positions;
+    int input_dtype;
+    int norm_weight_dtype;
+    bool positions_i64;
+    int64_t tokens;
+    int64_t dim;
+    float epsilon;
+};
+
+void *plan(Tensor input,
+           const Tensor &norm_weight,
+           float epsilon,
+           const Tensor &freqs_cis,
+           const Tensor &positions) {
+    check_compress_fused_norm_rope_shapes(input, norm_weight, freqs_cis, positions);
+    check_common_accel_tensor(input, "DeepseekV4CompressFusedNormRopeKernel");
+    check_common_accel_tensor(norm_weight, "DeepseekV4CompressFusedNormRopeKernel");
+    check_common_accel_tensor(freqs_cis, "DeepseekV4CompressFusedNormRopeKernel");
+    check_common_accel_tensor(positions, "DeepseekV4CompressFusedNormRopeKernel");
+    return new PlannedMeta{graph::GraphTensor(input),
+                           graph::GraphTensor(norm_weight),
+                           graph::GraphTensor(freqs_cis),
+                           graph::GraphTensor(positions),
+                           dsv4_scalar_type_for_kernel(input, "DeepseekV4CompressFusedNormRopeKernel"),
+                           dsv4_scalar_type_for_kernel(norm_weight, "DeepseekV4CompressFusedNormRopeKernel"),
+                           positions->dtype() == DataType::I64,
+                           static_cast<int64_t>(input->size(0)),
+                           static_cast<int64_t>(input->size(1)),
+                           epsilon};
+}
+
+void run(void *planned_meta) {
+#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API)
+    auto *planned = reinterpret_cast<PlannedMeta *>(planned_meta);
+    deepseek_v4_flashmla_compute_kernel::launch_compress_fused_norm_rope(
+        planned->input->data(),
+        planned->input_dtype,
+        planned->norm_weight->data(),
+        planned->norm_weight_dtype,
+        reinterpret_cast<const float *>(planned->freqs_cis->data()),
+        planned->positions->data(),
+        planned->positions_i64,
+        planned->tokens,
+        planned->dim,
+        planned->epsilon,
+        context::getStream());
 #else
-    c10::cuda::CUDAStreamGuard guard(infinicore::adaptor::get_cuda_stream());
+    (void)planned_meta;
+    throw std::runtime_error("DeepseekV4CompressFusedNormRopeKernel requires a HYGON/NVIDIA build.");
+#endif
+}
+
+void cleanup(void **planned_meta_ptr) {
+    delete *reinterpret_cast<PlannedMeta **>(planned_meta_ptr);
+    *planned_meta_ptr = nullptr;
+}
+
+} // namespace deepseek_v4_compress_fused_norm_rope_graph_impl
+
+namespace deepseek_v4_compress_fused_norm_rope_register {
+INFINICORE_GRAPH_OP_REGISTER_ALLDEVICE(DeepseekV4CompressFusedNormRopeKernel,
+                                       &deepseek_v4_compress_fused_norm_rope_graph_impl::plan,
+                                       &deepseek_v4_compress_fused_norm_rope_graph_impl::run,
+                                       &deepseek_v4_compress_fused_norm_rope_graph_impl::cleanup);
+} // namespace deepseek_v4_compress_fused_norm_rope_register
+
+DeepseekV4C4CompressStatefulKernel::DeepseekV4C4CompressStatefulKernel(
+    Tensor output,
+    const Tensor &kv_score_input,
+    const Tensor &ape,
+    Tensor compressor_state,
+    const Tensor &write_loc,
+    const Tensor &extra_loc,
+    const Tensor &positions) {
+    INFINICORE_GRAPH_OP_DISPATCH(output->device().getType(),
+                                 output,
+                                 kv_score_input,
+                                 ape,
+                                 compressor_state,
+                                 write_loc,
+                                 extra_loc,
+                                 positions);
+}
+
+void DeepseekV4C4CompressStatefulKernel::execute(Tensor output,
+                                                 const Tensor &kv_score_input,
+                                                 const Tensor &ape,
+                                                 Tensor compressor_state,
+                                                 const Tensor &write_loc,
+                                                 const Tensor &extra_loc,
+                                                 const Tensor &positions) {
+    INFINICORE_GRAPH_OP_RECORD_OR_RUN(DeepseekV4C4CompressStatefulKernel,
+                                      output,
+                                      kv_score_input,
+                                      ape,
+                                      compressor_state,
+                                      write_loc,
+                                      extra_loc,
+                                      positions);
+}
+
+namespace deepseek_v4_c4_compress_stateful_graph_impl {
+
+struct PlannedMeta {
+    graph::GraphTensor output;
+    graph::GraphTensor kv_score_input;
+    graph::GraphTensor ape;
+    graph::GraphTensor compressor_state;
+    graph::GraphTensor write_loc;
+    graph::GraphTensor extra_loc;
+    graph::GraphTensor positions;
+    Tensor output_owner;
+    int output_dtype;
+    int kv_score_dtype;
+    int state_dtype;
+    int ape_dtype;
+    int ape_layout;
+    bool write_loc_i64;
+    bool extra_loc_i64;
+    bool positions_i64;
+    int64_t extra_cols;
+    int64_t tokens;
+    int64_t head_dim;
+};
+
+void *plan(Tensor output,
+           const Tensor &kv_score_input,
+           const Tensor &ape,
+           Tensor compressor_state,
+           const Tensor &write_loc,
+           const Tensor &extra_loc,
+           const Tensor &positions) {
+    check_common_accel_tensor(kv_score_input, "DeepseekV4C4CompressStatefulKernel");
+    check_common_accel_tensor(ape, "DeepseekV4C4CompressStatefulKernel");
+    check_common_accel_tensor(compressor_state, "DeepseekV4C4CompressStatefulKernel");
+    check_common_accel_tensor(write_loc, "DeepseekV4C4CompressStatefulKernel");
+    check_common_accel_tensor(extra_loc, "DeepseekV4C4CompressStatefulKernel");
+    check_common_accel_tensor(positions, "DeepseekV4C4CompressStatefulKernel");
+    if (kv_score_input->ndim() != 2 || kv_score_input->size(1) % 4 != 0) {
+        throw std::runtime_error("DeepseekV4C4CompressStatefulKernel expects kv_score_input [tokens, 4 * head_dim].");
+    }
+    const int64_t tokens = static_cast<int64_t>(kv_score_input->size(0));
+    const int64_t head_dim = static_cast<int64_t>(kv_score_input->size(1) / 4);
+    if (output->shape() != Shape{static_cast<size_t>(tokens), static_cast<size_t>(head_dim)}) {
+        throw std::runtime_error("DeepseekV4C4CompressStatefulKernel output shape mismatch.");
+    }
+    if (compressor_state->ndim() != 2 || compressor_state->size(1) != static_cast<size_t>(4 * head_dim) || compressor_state->size(0) % 4 != 0) {
+        throw std::runtime_error("DeepseekV4C4CompressStatefulKernel compressor_state shape mismatch.");
+    }
+    if (write_loc->numel() != static_cast<size_t>(tokens) || positions->numel() != static_cast<size_t>(tokens)) {
+        throw std::runtime_error("DeepseekV4C4CompressStatefulKernel metadata token count mismatch.");
+    }
+    int64_t extra_cols = 1;
+    if (extra_loc->ndim() == 2) {
+        if (extra_loc->size(0) != static_cast<size_t>(tokens) || extra_loc->size(1) < 1) {
+            throw std::runtime_error("DeepseekV4C4CompressStatefulKernel expects extra_loc [tokens, >=1].");
+        }
+        extra_cols = static_cast<int64_t>(extra_loc->size(1));
+    } else if (extra_loc->ndim() != 1 || extra_loc->size(0) != static_cast<size_t>(tokens)) {
+        throw std::runtime_error("DeepseekV4C4CompressStatefulKernel expects extra_loc rank 1 or 2.");
+    }
+    const int ape_layout = c4_ape_layout(ape, head_dim, "DeepseekV4C4CompressStatefulKernel");
+    return new PlannedMeta{graph::GraphTensor(output),
+                           graph::GraphTensor(kv_score_input),
+                           graph::GraphTensor(ape),
+                           graph::GraphTensor(compressor_state),
+                           graph::GraphTensor(write_loc),
+                           graph::GraphTensor(extra_loc),
+                           graph::GraphTensor(positions),
+                           output,
+                           dsv4_scalar_type_for_kernel(output, "DeepseekV4C4CompressStatefulKernel"),
+                           dsv4_scalar_type_for_kernel(kv_score_input, "DeepseekV4C4CompressStatefulKernel"),
+                           dsv4_scalar_type_for_kernel(compressor_state, "DeepseekV4C4CompressStatefulKernel"),
+                           dsv4_scalar_type_for_kernel(ape, "DeepseekV4C4CompressStatefulKernel"),
+                           ape_layout,
+                           write_loc->dtype() == DataType::I64,
+                           extra_loc->dtype() == DataType::I64,
+                           positions->dtype() == DataType::I64,
+                           extra_cols,
+                           tokens,
+                           head_dim};
+}
+
+void run(void *planned_meta) {
+#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API)
+    auto *planned = reinterpret_cast<PlannedMeta *>(planned_meta);
+    deepseek_v4_flashmla_compute_kernel::launch_c4_compress_stateful(
+        planned->output->data(),
+        planned->output_dtype,
+        planned->kv_score_input->data(),
+        planned->kv_score_dtype,
+        planned->compressor_state->data(),
+        planned->state_dtype,
+        planned->ape->data(),
+        planned->ape_dtype,
+        planned->ape_layout,
+        planned->write_loc->data(),
+        planned->write_loc_i64,
+        planned->extra_loc->data(),
+        planned->extra_loc_i64,
+        planned->extra_cols,
+        planned->positions->data(),
+        planned->positions_i64,
+        planned->tokens,
+        planned->head_dim,
+        context::getStream());
+#else
+    (void)planned_meta;
+    throw std::runtime_error("DeepseekV4C4CompressStatefulKernel requires a HYGON/NVIDIA build.");
+#endif
+}
+
+void cleanup(void **planned_meta_ptr) {
+    delete *reinterpret_cast<PlannedMeta **>(planned_meta_ptr);
+    *planned_meta_ptr = nullptr;
+}
+
+} // namespace deepseek_v4_c4_compress_stateful_graph_impl
+
+namespace deepseek_v4_c4_compress_stateful_register {
+INFINICORE_GRAPH_OP_REGISTER_ALLDEVICE(DeepseekV4C4CompressStatefulKernel,
+                                       &deepseek_v4_c4_compress_stateful_graph_impl::plan,
+                                       &deepseek_v4_c4_compress_stateful_graph_impl::run,
+                                       &deepseek_v4_c4_compress_stateful_graph_impl::cleanup);
+} // namespace deepseek_v4_c4_compress_stateful_register
+
+DeepseekV4C128CompressStatefulKernel::DeepseekV4C128CompressStatefulKernel(
+    Tensor output,
+    const Tensor &kv_score_input,
+    const Tensor &ape,
+    Tensor compressor_state,
+    const Tensor &write_loc,
+    const Tensor &positions) {
+    INFINICORE_GRAPH_OP_DISPATCH(output->device().getType(),
+                                 output,
+                                 kv_score_input,
+                                 ape,
+                                 compressor_state,
+                                 write_loc,
+                                 positions);
+}
+
+void DeepseekV4C128CompressStatefulKernel::execute(Tensor output,
+                                                   const Tensor &kv_score_input,
+                                                   const Tensor &ape,
+                                                   Tensor compressor_state,
+                                                   const Tensor &write_loc,
+                                                   const Tensor &positions) {
+    INFINICORE_GRAPH_OP_RECORD_OR_RUN(DeepseekV4C128CompressStatefulKernel,
+                                      output,
+                                      kv_score_input,
+                                      ape,
+                                      compressor_state,
+                                      write_loc,
+                                      positions);
+}
+
+namespace deepseek_v4_c128_compress_stateful_graph_impl {
+
+struct PlannedMeta {
+    graph::GraphTensor output;
+    graph::GraphTensor kv_score_input;
+    graph::GraphTensor ape;
+    graph::GraphTensor compressor_state;
+    graph::GraphTensor write_loc;
+    graph::GraphTensor positions;
+    Tensor output_owner;
+    int output_dtype;
+    int kv_score_dtype;
+    int state_dtype;
+    int ape_dtype;
+    bool write_loc_i64;
+    bool positions_i64;
+    int64_t tokens;
+    int64_t head_dim;
+};
+
+void *plan(Tensor output,
+           const Tensor &kv_score_input,
+           const Tensor &ape,
+           Tensor compressor_state,
+           const Tensor &write_loc,
+           const Tensor &positions) {
+    check_common_accel_tensor(kv_score_input, "DeepseekV4C128CompressStatefulKernel");
+    check_common_accel_tensor(ape, "DeepseekV4C128CompressStatefulKernel");
+    check_common_accel_tensor(compressor_state, "DeepseekV4C128CompressStatefulKernel");
+    check_common_accel_tensor(write_loc, "DeepseekV4C128CompressStatefulKernel");
+    check_common_accel_tensor(positions, "DeepseekV4C128CompressStatefulKernel");
+    if (kv_score_input->ndim() != 2 || kv_score_input->size(1) % 2 != 0) {
+        throw std::runtime_error("DeepseekV4C128CompressStatefulKernel expects kv_score_input [tokens, 2 * head_dim].");
+    }
+    const int64_t tokens = static_cast<int64_t>(kv_score_input->size(0));
+    const int64_t head_dim = static_cast<int64_t>(kv_score_input->size(1) / 2);
+    if (head_dim != kDsv4FlashMlaQDim) {
+        throw std::runtime_error("DeepseekV4C128CompressStatefulKernel expects head_dim 512.");
+    }
+    if (output->shape() != Shape{static_cast<size_t>(tokens), static_cast<size_t>(head_dim)}) {
+        throw std::runtime_error("DeepseekV4C128CompressStatefulKernel output shape mismatch.");
+    }
+    if (compressor_state->ndim() != 2 || compressor_state->size(1) != static_cast<size_t>(2 * head_dim) || compressor_state->size(0) % 128 != 0) {
+        throw std::runtime_error("DeepseekV4C128CompressStatefulKernel compressor_state shape mismatch.");
+    }
+    if (write_loc->numel() != static_cast<size_t>(tokens) || positions->numel() != static_cast<size_t>(tokens)) {
+        throw std::runtime_error("DeepseekV4C128CompressStatefulKernel metadata token count mismatch.");
+    }
+    if (ape->ndim() != 2 || ape->size(0) < 128 || ape->size(1) != static_cast<size_t>(head_dim)) {
+        throw std::runtime_error("DeepseekV4C128CompressStatefulKernel expects ape [>=128, head_dim].");
+    }
+    return new PlannedMeta{graph::GraphTensor(output),
+                           graph::GraphTensor(kv_score_input),
+                           graph::GraphTensor(ape),
+                           graph::GraphTensor(compressor_state),
+                           graph::GraphTensor(write_loc),
+                           graph::GraphTensor(positions),
+                           output,
+                           dsv4_scalar_type_for_kernel(output, "DeepseekV4C128CompressStatefulKernel"),
+                           dsv4_scalar_type_for_kernel(kv_score_input, "DeepseekV4C128CompressStatefulKernel"),
+                           dsv4_scalar_type_for_kernel(compressor_state, "DeepseekV4C128CompressStatefulKernel"),
+                           dsv4_scalar_type_for_kernel(ape, "DeepseekV4C128CompressStatefulKernel"),
+                           write_loc->dtype() == DataType::I64,
+                           positions->dtype() == DataType::I64,
+                           tokens,
+                           head_dim};
+}
+
+void run(void *planned_meta) {
+#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API)
+    auto *planned = reinterpret_cast<PlannedMeta *>(planned_meta);
+    deepseek_v4_flashmla_compute_kernel::launch_c128_compress_stateful(
+        planned->output->data(),
+        planned->output_dtype,
+        planned->kv_score_input->data(),
+        planned->kv_score_dtype,
+        planned->compressor_state->data(),
+        planned->state_dtype,
+        planned->ape->data(),
+        planned->ape_dtype,
+        planned->write_loc->data(),
+        planned->write_loc_i64,
+        planned->positions->data(),
+        planned->positions_i64,
+        planned->tokens,
+        planned->head_dim,
+        context::getStream());
+#else
+    (void)planned_meta;
+    throw std::runtime_error("DeepseekV4C128CompressStatefulKernel requires a HYGON/NVIDIA build.");
+#endif
+}
+
+void cleanup(void **planned_meta_ptr) {
+    delete *reinterpret_cast<PlannedMeta **>(planned_meta_ptr);
+    *planned_meta_ptr = nullptr;
+}
+
+} // namespace deepseek_v4_c128_compress_stateful_graph_impl
+
+namespace deepseek_v4_c128_compress_stateful_register {
+INFINICORE_GRAPH_OP_REGISTER_ALLDEVICE(DeepseekV4C128CompressStatefulKernel,
+                                       &deepseek_v4_c128_compress_stateful_graph_impl::plan,
+                                       &deepseek_v4_c128_compress_stateful_graph_impl::run,
+                                       &deepseek_v4_c128_compress_stateful_graph_impl::cleanup);
+} // namespace deepseek_v4_c128_compress_stateful_register
+
+void deepseek_v4_compress_fused_norm_rope_kernel_(Tensor input,
+                                                  const Tensor &norm_weight,
+                                                  float epsilon,
+                                                  const Tensor &freqs_cis,
+                                                  const Tensor &positions) {
+#if defined(ENABLE_ATEN) && (defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API))
+#if defined(ENABLE_HYGON_API)
+#else
 #endif
     check_compress_fused_norm_rope_shapes(input, norm_weight, freqs_cis, positions);
-
-    auto input_at = infinicore::adaptor::to_aten_tensor(input);
-    if (!input_at.is_contiguous()) {
-        throw std::runtime_error("deepseek_v4_compress_fused_norm_rope_ expects contiguous input.");
-    }
-    const int64_t input_dim = input_at.size(1);
-    auto weight_at = infinicore::adaptor::to_aten_tensor(norm_weight).to(at::kFloat).reshape({1, input_dim});
-    auto input_float = input_at.to(at::kFloat);
-    auto variance = (input_float * input_float).mean({-1}, true);
-    auto normalized = input_float * at::rsqrt(variance + static_cast<double>(epsilon)) * weight_at;
-    input_at.copy_(normalized.to(input_at.scalar_type()));
-
-    auto rope = input_at.slice(1, input_dim - 64, input_dim);
-    apply_rope_2d_last64_aten_(rope,
-                               infinicore::adaptor::to_aten_tensor(freqs_cis),
-                               infinicore::adaptor::to_aten_tensor(positions));
+    check_common_accel_tensor(input, "deepseek_v4_compress_fused_norm_rope_kernel_");
+    check_common_accel_tensor(norm_weight, "deepseek_v4_compress_fused_norm_rope_kernel_");
+    check_common_accel_tensor(freqs_cis, "deepseek_v4_compress_fused_norm_rope_kernel_");
+    check_common_accel_tensor(positions, "deepseek_v4_compress_fused_norm_rope_kernel_");
+    DeepseekV4CompressFusedNormRopeKernel::execute(input,
+                                                     norm_weight,
+                                                     epsilon,
+                                                     freqs_cis,
+                                                     positions);
 #else
     (void)input;
     (void)norm_weight;
     (void)epsilon;
     (void)freqs_cis;
     (void)positions;
-    throw std::runtime_error("deepseek_v4_compress_fused_norm_rope_ requires an ATen-enabled HYGON/NVIDIA build.");
+    throw std::runtime_error("deepseek_v4_compress_fused_norm_rope_kernel_ requires an ATen-enabled HYGON/NVIDIA build.");
 #endif
 }
 
+void deepseek_v4_compress_fused_norm_rope_(Tensor input,
+                                           const Tensor &norm_weight,
+                                           float epsilon,
+                                           const Tensor &freqs_cis,
+                                           const Tensor &positions) {
+    deepseek_v4_compress_fused_norm_rope_kernel_(input, norm_weight, epsilon, freqs_cis, positions);
+}
 
-Tensor deepseek_v4_c4_compress_prefill_reference(const Tensor &kv_score_input,
-                                                 const Tensor &ape) {
-#if defined(ENABLE_ATEN) && defined(ENABLE_HYGON_API)
-    check_hygon_or_nvidia_tensor(kv_score_input, "deepseek_v4_c4_compress_prefill_reference");
-    c10::hip::HIPStreamGuard guard(infinicore::adaptor::get_hip_stream());
 
-    if (kv_score_input->ndim() != 2 || kv_score_input->size(1) % 4 != 0) {
-        throw std::runtime_error("deepseek_v4_c4_compress_prefill_reference expects kv_score_input [tokens, 4 * head_dim].");
-    }
-    const int64_t tokens = static_cast<int64_t>(kv_score_input->size(0));
-    const int64_t head_dim = static_cast<int64_t>(kv_score_input->size(1) / 4);
-    if (head_dim != kDsv4FlashMlaQDim) {
-        throw std::runtime_error("deepseek_v4_c4_compress_prefill_reference expects head_dim 512.");
-    }
-    if (ape->ndim() != 2) {
-        throw std::runtime_error("deepseek_v4_c4_compress_prefill_reference expects ape rank 2.");
-    }
-
-    auto output = Tensor::zeros({static_cast<size_t>(tokens), static_cast<size_t>(head_dim)}, kv_score_input->dtype(), kv_score_input->device());
-    if (tokens == 0) {
-        return output;
-    }
-
-    auto kv_score_at = infinicore::adaptor::to_aten_tensor(kv_score_input).contiguous().to(at::kFloat)
-                           .reshape({tokens, 4, head_dim});
-    auto ape_at = infinicore::adaptor::to_aten_tensor(ape).contiguous().to(at::kFloat);
-    at::Tensor ape_view;
-    if (ape_at.dim() == 2 && ape_at.size(0) == 4 && ape_at.size(1) == 2 * head_dim) {
-        auto ape_chunks = ape_at.reshape({4, 2, head_dim});
-        // SGLang applies the non-2604 C4 APE hotfix after loading: [score, overlap] -> [overlap, score].
-        ape_view = at::cat({ape_chunks.select(1, 1), ape_chunks.select(1, 0)}, 0).contiguous();
-    } else if (ape_at.dim() == 2 && ape_at.size(0) == 8 && ape_at.size(1) == head_dim) {
-        ape_view = ape_at;
-    } else {
-        throw std::runtime_error("deepseek_v4_c4_compress_prefill_reference expects ape [4, 1024] or [8, 512].");
-    }
-
-    auto output_at = infinicore::adaptor::to_aten_tensor(output);
-    for (int64_t end = 3; end < tokens; end += 4) {
-        std::vector<at::Tensor> kv_parts;
-        std::vector<at::Tensor> score_parts;
-        std::vector<at::Tensor> bias_parts;
-        const int64_t overlap_start = std::max<int64_t>(0, end - 7);
-        const int64_t overlap_end = end - 3;
-        if (overlap_end > overlap_start) {
-            const int64_t overlap_len = overlap_end - overlap_start;
-            auto overlap = kv_score_at.slice(0, overlap_start, overlap_end);
-            kv_parts.push_back(overlap.select(1, 0));
-            score_parts.push_back(overlap.select(1, 2));
-            bias_parts.push_back(ape_view.slice(0, 4 - overlap_len, 4));
-        }
-
-        const int64_t normal_start = std::max<int64_t>(0, end - 3);
-        const int64_t normal_end = end + 1;
-        auto normal = kv_score_at.slice(0, normal_start, normal_end);
-        const int64_t normal_len = normal_end - normal_start;
-        kv_parts.push_back(normal.select(1, 1));
-        score_parts.push_back(normal.select(1, 3));
-        bias_parts.push_back(ape_view.slice(0, 8 - normal_len, 8));
-
-        auto kv_window = at::cat(kv_parts, 0);
-        auto score_window = at::cat(score_parts, 0) + at::cat(bias_parts, 0);
-        auto prob = at::softmax(score_window, 0);
-        auto compressed = (kv_window * prob).sum(0);
-        output_at.select(0, end).copy_(compressed.to(output_at.scalar_type()));
-    }
-    return output;
+Tensor deepseek_v4_c4_compress_stateful_kernel(const Tensor &kv_score_input,
+                                               const Tensor &ape,
+                                               Tensor compressor_state,
+                                               const Tensor &write_loc,
+                                               const Tensor &extra_loc,
+                                               const Tensor &positions) {
+#if defined(ENABLE_ATEN) && (defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API))
+#if defined(ENABLE_HYGON_API)
 #else
-    (void)kv_score_input;
-    (void)ape;
-    throw std::runtime_error("deepseek_v4_c4_compress_prefill_reference requires an ATen-enabled HYGON/NVIDIA build.");
 #endif
-}
-
-
-Tensor deepseek_v4_c4_compress_stateful_reference(const Tensor &kv_score_input,
-                                                  const Tensor &ape,
-                                                  Tensor compressor_state,
-                                                  const Tensor &write_loc,
-                                                  const Tensor &extra_loc,
-                                                  const Tensor &positions) {
-#if defined(ENABLE_ATEN) && defined(ENABLE_HYGON_API)
-    check_hygon_or_nvidia_tensor(kv_score_input, "deepseek_v4_c4_compress_stateful_reference");
-    check_hygon_or_nvidia_tensor(compressor_state, "deepseek_v4_c4_compress_stateful_reference");
-    c10::hip::HIPStreamGuard guard(infinicore::adaptor::get_hip_stream());
-
+    check_common_accel_tensor(kv_score_input, "deepseek_v4_c4_compress_stateful_kernel");
+    check_common_accel_tensor(ape, "deepseek_v4_c4_compress_stateful_kernel");
+    check_common_accel_tensor(compressor_state, "deepseek_v4_c4_compress_stateful_kernel");
+    check_common_accel_tensor(write_loc, "deepseek_v4_c4_compress_stateful_kernel");
+    check_common_accel_tensor(extra_loc, "deepseek_v4_c4_compress_stateful_kernel");
+    check_common_accel_tensor(positions, "deepseek_v4_c4_compress_stateful_kernel");
     if (kv_score_input->ndim() != 2 || kv_score_input->size(1) % 4 != 0) {
-        throw std::runtime_error("deepseek_v4_c4_compress_stateful_reference expects kv_score_input [tokens, 4 * head_dim].");
+        throw std::runtime_error("deepseek_v4_c4_compress_stateful_kernel expects kv_score_input [tokens, 4 * head_dim].");
     }
     const int64_t tokens = static_cast<int64_t>(kv_score_input->size(0));
     const int64_t head_dim = static_cast<int64_t>(kv_score_input->size(1) / 4);
-    if (head_dim <= 0) {
-        throw std::runtime_error("deepseek_v4_c4_compress_stateful_reference expects positive head_dim.");
-    }
     if (compressor_state->ndim() != 2 || compressor_state->size(1) != static_cast<size_t>(4 * head_dim) || compressor_state->size(0) % 4 != 0) {
-        throw std::runtime_error("deepseek_v4_c4_compress_stateful_reference expects compressor_state [4 * groups, 4 * head_dim].");
+        throw std::runtime_error("deepseek_v4_c4_compress_stateful_kernel expects compressor_state [4 * groups, 4 * head_dim].");
     }
     if (write_loc->numel() != static_cast<size_t>(tokens) || positions->numel() != static_cast<size_t>(tokens)) {
-        throw std::runtime_error("deepseek_v4_c4_compress_stateful_reference metadata token count mismatch.");
+        throw std::runtime_error("deepseek_v4_c4_compress_stateful_kernel metadata token count mismatch.");
     }
-
-    auto output = Tensor::zeros({static_cast<size_t>(tokens), static_cast<size_t>(head_dim)}, kv_score_input->dtype(), kv_score_input->device());
-    if (tokens == 0) {
-        return output;
+    if (write_loc->dtype() != DataType::I32 && write_loc->dtype() != DataType::I64) {
+        throw std::runtime_error("deepseek_v4_c4_compress_stateful_kernel write_loc must be int32/int64.");
     }
-
-    auto state_at = infinicore::adaptor::to_aten_tensor(compressor_state);
-    if (!state_at.is_contiguous()) {
-        throw std::runtime_error("deepseek_v4_c4_compress_stateful_reference expects contiguous compressor_state.");
+    if (positions->dtype() != DataType::I32 && positions->dtype() != DataType::I64) {
+        throw std::runtime_error("deepseek_v4_c4_compress_stateful_kernel positions must be int32/int64.");
     }
-    auto kv_score_at = infinicore::adaptor::to_aten_tensor(kv_score_input).contiguous().to(state_at.scalar_type())
-                           .reshape({tokens, 4 * head_dim});
-    auto state_groups = state_at.view({static_cast<int64_t>(compressor_state->size(0)) / 4, 4, 4, head_dim});
-
-    auto write_loc_at = infinicore::adaptor::to_aten_tensor(write_loc).reshape({tokens}).to(at::kLong);
-    at::Tensor extra_prev_at;
-    auto extra_at_raw = infinicore::adaptor::to_aten_tensor(extra_loc).to(at::kLong);
-    if (extra_at_raw.dim() == 2) {
-        if (extra_at_raw.size(0) != tokens || extra_at_raw.size(1) < 1) {
-            throw std::runtime_error("deepseek_v4_c4_compress_stateful_reference expects extra_loc [tokens, >=1].");
+    if (extra_loc->dtype() != DataType::I32 && extra_loc->dtype() != DataType::I64) {
+        throw std::runtime_error("deepseek_v4_c4_compress_stateful_kernel extra_loc must be int32/int64.");
+    }
+    int64_t extra_cols = 1;
+    if (extra_loc->ndim() == 2) {
+        if (extra_loc->size(0) != static_cast<size_t>(tokens) || extra_loc->size(1) < 1) {
+            throw std::runtime_error("deepseek_v4_c4_compress_stateful_kernel expects extra_loc [tokens, >=1].");
         }
-        extra_prev_at = extra_at_raw.select(1, 0).reshape({tokens});
-    } else if (extra_at_raw.dim() == 1 && extra_at_raw.size(0) == tokens) {
-        extra_prev_at = extra_at_raw;
-    } else {
-        throw std::runtime_error("deepseek_v4_c4_compress_stateful_reference expects extra_loc rank 1 or 2.");
+        extra_cols = static_cast<int64_t>(extra_loc->size(1));
+    } else if (extra_loc->ndim() != 1 || extra_loc->size(0) != static_cast<size_t>(tokens)) {
+        throw std::runtime_error("deepseek_v4_c4_compress_stateful_kernel expects extra_loc rank 1 or 2.");
     }
-    auto positions_at = infinicore::adaptor::to_aten_tensor(positions).reshape({tokens}).to(at::kLong);
-    auto write_pos_at = positions_at.remainder(4);
-
-    auto valid_write = write_loc_at.ge(0);
-    auto valid_rows = at::nonzero(valid_write).reshape({-1});
-    if (valid_rows.numel() > 0) {
-        auto valid_groups = write_loc_at.index_select(0, valid_rows);
-        auto valid_write_pos = write_pos_at.index_select(0, valid_rows);
-        auto valid_values = kv_score_at.index_select(0, valid_rows).reshape({valid_rows.numel(), 4, head_dim});
-        state_groups.index_put_({valid_groups, valid_write_pos}, valid_values);
-    }
-
-    auto boundary_mask = valid_write.logical_and((positions_at + 1).remainder(4).eq(0));
-    auto boundary_rows = at::nonzero(boundary_mask).reshape({-1});
-    if (boundary_rows.numel() > 0) {
-        auto groups = write_loc_at.index_select(0, boundary_rows);
-        auto prev_groups = extra_prev_at.index_select(0, boundary_rows).clamp_min(0);
-        auto boundary_positions = positions_at.index_select(0, boundary_rows);
-
-        auto normal_state = state_groups.index_select(0, groups).to(at::kFloat);
-        auto overlap_state = state_groups.index_select(0, prev_groups).to(at::kFloat);
-
-        auto overlap_kv = overlap_state.select(2, 0);
-        auto normal_kv = normal_state.select(2, 1);
-        auto overlap_score = overlap_state.select(2, 2);
-        auto normal_score = normal_state.select(2, 3);
-
-        auto has_overlap = boundary_positions.ge(7).view({-1, 1, 1});
-        overlap_kv = at::where(has_overlap, overlap_kv, at::zeros_like(overlap_kv));
-        overlap_score = at::where(has_overlap, overlap_score, at::full_like(overlap_score, -1.0e9));
-
-        auto ape_at = infinicore::adaptor::to_aten_tensor(ape).contiguous().to(at::kFloat);
-        at::Tensor ape_view;
-        if (ape_at.dim() == 2 && ape_at.size(0) == 4 && ape_at.size(1) == 2 * head_dim) {
-            auto ape_chunks = ape_at.reshape({4, 2, head_dim});
-            ape_view = at::cat({ape_chunks.select(1, 1), ape_chunks.select(1, 0)}, 0).contiguous();
-        } else if (ape_at.dim() == 2 && ape_at.size(0) == 8 && ape_at.size(1) == head_dim) {
-            ape_view = ape_at;
-        } else {
-            throw std::runtime_error("deepseek_v4_c4_compress_stateful_reference expects ape [4, 2 * head_dim] or [8, head_dim].");
-        }
-
-        auto kv_window = at::cat({overlap_kv, normal_kv}, 1);
-        auto score_window = at::cat({overlap_score, normal_score}, 1) + ape_view.view({1, 8, head_dim});
-        auto prob = at::softmax(score_window, 1);
-        auto compressed = (kv_window * prob).sum(1);
-        auto output_at = infinicore::adaptor::to_aten_tensor(output);
-        output_at.index_copy_(0, boundary_rows, compressed.to(output_at.scalar_type()));
-    }
+    const int ape_layout = c4_ape_layout(ape, head_dim, "deepseek_v4_c4_compress_stateful_kernel");
+    auto output = Tensor::empty({static_cast<size_t>(tokens), static_cast<size_t>(head_dim)}, kv_score_input->dtype(), kv_score_input->device());
+    DeepseekV4C4CompressStatefulKernel::execute(output,
+                                                  kv_score_input,
+                                                  ape,
+                                                  compressor_state,
+                                                  write_loc,
+                                                  extra_loc,
+                                                  positions);
     return output;
 #else
     (void)kv_score_input;
@@ -503,10 +858,9 @@ Tensor deepseek_v4_c4_compress_stateful_reference(const Tensor &kv_score_input,
     (void)write_loc;
     (void)extra_loc;
     (void)positions;
-    throw std::runtime_error("deepseek_v4_c4_compress_stateful_reference requires an ATen-enabled HYGON/NVIDIA build.");
+    throw std::runtime_error("deepseek_v4_c4_compress_stateful_kernel requires an ATen-enabled HYGON/NVIDIA build.");
 #endif
 }
-
 
 Tensor deepseek_v4_c4_compress_stateful(const Tensor &kv_score_input,
                                         const Tensor &ape,
@@ -514,86 +868,59 @@ Tensor deepseek_v4_c4_compress_stateful(const Tensor &kv_score_input,
                                         const Tensor &write_loc,
                                         const Tensor &extra_loc,
                                         const Tensor &positions) {
-    return deepseek_v4_c4_compress_stateful_reference(kv_score_input,
-                                                      ape,
-                                                      compressor_state,
-                                                      write_loc,
-                                                      extra_loc,
-                                                      positions);
+    return deepseek_v4_c4_compress_stateful_kernel(kv_score_input,
+                                                   ape,
+                                                   compressor_state,
+                                                   write_loc,
+                                                   extra_loc,
+                                                   positions);
 }
 
 
-Tensor deepseek_v4_c128_compress_stateful_reference(const Tensor &kv_score_input,
-                                                    const Tensor &ape,
-                                                    Tensor compressor_state,
-                                                    const Tensor &write_loc,
-                                                    const Tensor &positions) {
-#if defined(ENABLE_ATEN) && defined(ENABLE_HYGON_API)
-    check_hygon_or_nvidia_tensor(kv_score_input, "deepseek_v4_c128_compress_stateful_reference");
-    check_hygon_or_nvidia_tensor(compressor_state, "deepseek_v4_c128_compress_stateful_reference");
-    c10::hip::HIPStreamGuard guard(infinicore::adaptor::get_hip_stream());
-
+Tensor deepseek_v4_c128_compress_stateful_kernel(const Tensor &kv_score_input,
+                                                 const Tensor &ape,
+                                                 Tensor compressor_state,
+                                                 const Tensor &write_loc,
+                                                 const Tensor &positions) {
+#if defined(ENABLE_ATEN) && (defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API))
+#if defined(ENABLE_HYGON_API)
+#else
+#endif
+    check_common_accel_tensor(kv_score_input, "deepseek_v4_c128_compress_stateful_kernel");
+    check_common_accel_tensor(ape, "deepseek_v4_c128_compress_stateful_kernel");
+    check_common_accel_tensor(compressor_state, "deepseek_v4_c128_compress_stateful_kernel");
+    check_common_accel_tensor(write_loc, "deepseek_v4_c128_compress_stateful_kernel");
+    check_common_accel_tensor(positions, "deepseek_v4_c128_compress_stateful_kernel");
     if (kv_score_input->ndim() != 2 || kv_score_input->size(1) % 2 != 0) {
-        throw std::runtime_error("deepseek_v4_c128_compress_stateful_reference expects kv_score_input [tokens, 2 * head_dim].");
+        throw std::runtime_error("deepseek_v4_c128_compress_stateful_kernel expects kv_score_input [tokens, 2 * head_dim].");
     }
     const int64_t tokens = static_cast<int64_t>(kv_score_input->size(0));
     const int64_t head_dim = static_cast<int64_t>(kv_score_input->size(1) / 2);
     if (head_dim != kDsv4FlashMlaQDim) {
-        throw std::runtime_error("deepseek_v4_c128_compress_stateful_reference expects head_dim 512.");
+        throw std::runtime_error("deepseek_v4_c128_compress_stateful_kernel expects head_dim 512.");
     }
     if (compressor_state->ndim() != 2 || compressor_state->size(1) != static_cast<size_t>(2 * head_dim) || compressor_state->size(0) % 128 != 0) {
-        throw std::runtime_error("deepseek_v4_c128_compress_stateful_reference expects compressor_state [128 * groups, 2 * head_dim].");
+        throw std::runtime_error("deepseek_v4_c128_compress_stateful_kernel expects compressor_state [128 * groups, 2 * head_dim].");
     }
     if (write_loc->numel() != static_cast<size_t>(tokens) || positions->numel() != static_cast<size_t>(tokens)) {
-        throw std::runtime_error("deepseek_v4_c128_compress_stateful_reference metadata token count mismatch.");
+        throw std::runtime_error("deepseek_v4_c128_compress_stateful_kernel metadata token count mismatch.");
     }
-    if (ape->ndim() != 2 || ape->size(1) != static_cast<size_t>(head_dim)) {
-        throw std::runtime_error("deepseek_v4_c128_compress_stateful_reference expects ape [128, head_dim].");
+    if (write_loc->dtype() != DataType::I32 && write_loc->dtype() != DataType::I64) {
+        throw std::runtime_error("deepseek_v4_c128_compress_stateful_kernel write_loc must be int32/int64.");
     }
-
-    auto output = Tensor::zeros({static_cast<size_t>(tokens), static_cast<size_t>(head_dim)}, kv_score_input->dtype(), kv_score_input->device());
-    if (tokens == 0) {
-        return output;
+    if (positions->dtype() != DataType::I32 && positions->dtype() != DataType::I64) {
+        throw std::runtime_error("deepseek_v4_c128_compress_stateful_kernel positions must be int32/int64.");
     }
-
-    auto state_at = infinicore::adaptor::to_aten_tensor(compressor_state);
-    if (!state_at.is_contiguous()) {
-        throw std::runtime_error("deepseek_v4_c128_compress_stateful_reference expects contiguous compressor_state.");
+    if (ape->ndim() != 2 || ape->size(0) < 128 || ape->size(1) != static_cast<size_t>(head_dim)) {
+        throw std::runtime_error("deepseek_v4_c128_compress_stateful_kernel expects ape [>=128, head_dim].");
     }
-    auto kv_score_at = infinicore::adaptor::to_aten_tensor(kv_score_input).contiguous().to(state_at.scalar_type())
-                           .reshape({tokens, 2 * head_dim});
-    auto state_groups = state_at.view({static_cast<int64_t>(compressor_state->size(0)) / 128, 128, 2, head_dim});
-
-    auto write_loc_at = infinicore::adaptor::to_aten_tensor(write_loc).reshape({tokens}).to(at::kLong);
-    auto positions_at = infinicore::adaptor::to_aten_tensor(positions).reshape({tokens}).to(at::kLong);
-    auto write_pos_at = positions_at.remainder(128);
-
-    auto valid_write = write_loc_at.ge(0);
-    auto valid_rows = at::nonzero(valid_write).reshape({-1});
-    if (valid_rows.numel() > 0) {
-        auto valid_groups = write_loc_at.index_select(0, valid_rows);
-        auto valid_write_pos = write_pos_at.index_select(0, valid_rows);
-        auto valid_values = kv_score_at.index_select(0, valid_rows).reshape({valid_rows.numel(), 2, head_dim});
-        state_groups.index_put_({valid_groups, valid_write_pos}, valid_values);
-    }
-
-    auto boundary_mask = valid_write.logical_and((positions_at + 1).remainder(128).eq(0));
-    auto boundary_rows = at::nonzero(boundary_mask).reshape({-1});
-    if (boundary_rows.numel() > 0) {
-        auto groups = write_loc_at.index_select(0, boundary_rows);
-        auto state = state_groups.index_select(0, groups).to(at::kFloat);
-        auto kv_window = state.select(2, 0);
-        auto score_window = state.select(2, 1);
-        auto ape_at = infinicore::adaptor::to_aten_tensor(ape).contiguous().to(at::kFloat);
-        if (ape_at.size(0) < 128) {
-            throw std::runtime_error("deepseek_v4_c128_compress_stateful_reference expects ape first dim >= 128.");
-        }
-        score_window = score_window + ape_at.slice(0, 0, 128).view({1, 128, head_dim});
-        auto prob = at::softmax(score_window, 1);
-        auto compressed = (kv_window * prob).sum(1);
-        auto output_at = infinicore::adaptor::to_aten_tensor(output);
-        output_at.index_copy_(0, boundary_rows, compressed.to(output_at.scalar_type()));
-    }
+    auto output = Tensor::empty({static_cast<size_t>(tokens), static_cast<size_t>(head_dim)}, kv_score_input->dtype(), kv_score_input->device());
+    DeepseekV4C128CompressStatefulKernel::execute(output,
+                                                    kv_score_input,
+                                                    ape,
+                                                    compressor_state,
+                                                    write_loc,
+                                                    positions);
     return output;
 #else
     (void)kv_score_input;
@@ -601,7 +928,7 @@ Tensor deepseek_v4_c128_compress_stateful_reference(const Tensor &kv_score_input
     (void)compressor_state;
     (void)write_loc;
     (void)positions;
-    throw std::runtime_error("deepseek_v4_c128_compress_stateful_reference requires an ATen-enabled HYGON build.");
+    throw std::runtime_error("deepseek_v4_c128_compress_stateful_kernel requires an ATen-enabled HYGON/NVIDIA build.");
 #endif
 }
 
@@ -610,27 +937,30 @@ Tensor deepseek_v4_c128_compress_stateful(const Tensor &kv_score_input,
                                           Tensor compressor_state,
                                           const Tensor &write_loc,
                                           const Tensor &positions) {
-    return deepseek_v4_c128_compress_stateful_reference(kv_score_input,
-                                                        ape,
-                                                        compressor_state,
-                                                        write_loc,
-                                                        positions);
+    return deepseek_v4_c128_compress_stateful_kernel(kv_score_input,
+                                                     ape,
+                                                     compressor_state,
+                                                     write_loc,
+                                                     positions);
 }
 
 
-void deepseek_v4_flashmla_sparse_attention_(const Tensor &q,
-                                            const Tensor &raw_cache,
-                                            const Tensor &indices,
-                                            const Tensor &topk_lengths,
-                                            std::optional<Tensor> attn_sink,
-                                            Tensor output,
-                                            float softmax_scale,
-                                            int page_size,
-                                            int head_dim_v,
-                                            std::optional<Tensor> extra_raw_cache,
-                                            std::optional<Tensor> extra_indices,
-                                            std::optional<Tensor> extra_topk_lengths,
-                                            int extra_page_size) {
+DeepseekV4FlashMLASparseAttentionSchedule deepseek_v4_flashmla_sparse_attention_with_metadata_impl(
+    const Tensor &q,
+    const Tensor &raw_cache,
+    const Tensor &indices,
+    const Tensor &topk_lengths,
+    std::optional<Tensor> attn_sink,
+    Tensor output,
+    std::optional<Tensor> tile_scheduler_metadata,
+    std::optional<Tensor> num_splits,
+    float softmax_scale,
+    int page_size,
+    int head_dim_v,
+    std::optional<Tensor> extra_raw_cache,
+    std::optional<Tensor> extra_indices,
+    std::optional<Tensor> extra_topk_lengths,
+    int extra_page_size) {
 #if defined(ENABLE_ATEN) && defined(ENABLE_HYGON_API)
     check_hygon_or_nvidia_tensor(q, "deepseek_v4_flashmla_sparse_attention_");
     c10::hip::HIPStreamGuard guard(infinicore::adaptor::get_hip_stream());
@@ -667,7 +997,7 @@ void deepseek_v4_flashmla_sparse_attention_(const Tensor &q,
     const int64_t tokens = q_was_3d ? q_at_original.size(0) : q_at_original.size(0) * q_at_original.size(1);
     const int64_t heads = q_at_original.size(q_at_original.dim() - 2);
     if (tokens == 0) {
-        return;
+        return {};
     }
     auto q_flash = q_at_original.reshape({tokens, heads, kDsv4FlashMlaQDim}).unsqueeze(1);
 
@@ -754,8 +1084,10 @@ void deepseek_v4_flashmla_sparse_attention_(const Tensor &q,
         extra_topk_lengths_opt = extra_topk_lengths_storage;
     }
 
-    std::optional<at::Tensor> tile_scheduler_metadata = std::nullopt;
-    std::optional<at::Tensor> num_splits = std::nullopt;
+    auto tile_scheduler_metadata_at = optional_i32_aten_tensor(
+        tile_scheduler_metadata, "tile_scheduler_metadata", "deepseek_v4_flashmla_sparse_attention_with_metadata_");
+    auto num_splits_at = optional_i32_aten_tensor(
+        num_splits, "num_splits", "deepseek_v4_flashmla_sparse_attention_with_metadata_");
     static auto flash_mla_sparse_decode_fn = reinterpret_cast<FlashMlaSparseDecodeFn>(
         resolve_flashmla_sparse_decode("deepseek_v4_flashmla_sparse_attention_"));
     auto flash_out = flash_mla_sparse_decode_fn(q_flash,
@@ -763,8 +1095,8 @@ void deepseek_v4_flashmla_sparse_attention_(const Tensor &q,
                                                 indices_flash,
                                                 topk_lengths_opt,
                                                 attn_sink_opt,
-                                                tile_scheduler_metadata,
-                                                num_splits,
+                                                tile_scheduler_metadata_at,
+                                                num_splits_at,
                                                 extra_k_cache_opt,
                                                 extra_indices_opt,
                                                 extra_topk_lengths_opt,
@@ -778,6 +1110,12 @@ void deepseek_v4_flashmla_sparse_attention_(const Tensor &q,
         throw std::runtime_error("deepseek_v4_flashmla_sparse_attention_ output shape mismatch.");
     }
     output_at.copy_(result);
+    return build_flashmla_sparse_schedule_result(tile_scheduler_metadata,
+                                                num_splits,
+                                                std::get<2>(flash_out),
+                                                std::get<3>(flash_out),
+                                                q->device(),
+                                                "deepseek_v4_flashmla_sparse_attention_with_metadata_");
 #else
     (void)q;
     (void)raw_cache;
@@ -785,6 +1123,8 @@ void deepseek_v4_flashmla_sparse_attention_(const Tensor &q,
     (void)topk_lengths;
     (void)attn_sink;
     (void)output;
+    (void)tile_scheduler_metadata;
+    (void)num_splits;
     (void)softmax_scale;
     (void)page_size;
     (void)head_dim_v;
@@ -794,5 +1134,267 @@ void deepseek_v4_flashmla_sparse_attention_(const Tensor &q,
     (void)extra_page_size;
     throw std::runtime_error("deepseek_v4_flashmla_sparse_attention_ requires an ATen-enabled HYGON/NVIDIA build.");
 #endif
+}
+
+DeepseekV4FlashMlaSparseAttentionWithMetadata::DeepseekV4FlashMlaSparseAttentionWithMetadata(
+    const Tensor &q,
+    const Tensor &raw_cache,
+    const Tensor &indices,
+    const Tensor &topk_lengths,
+    std::optional<Tensor> attn_sink,
+    Tensor output,
+    std::optional<Tensor> tile_scheduler_metadata,
+    std::optional<Tensor> num_splits,
+    float softmax_scale,
+    int page_size,
+    int head_dim_v,
+    std::optional<Tensor> extra_raw_cache,
+    std::optional<Tensor> extra_indices,
+    std::optional<Tensor> extra_topk_lengths,
+    int extra_page_size) {
+    // FlashMLA schedule tensors are owned by the graph plan, so the wrapper
+    // can participate in device graph capture while replaying the third-party SO.
+    INFINICORE_GRAPH_OP_DISPATCH(q->device().getType(),
+                                 q,
+                                 raw_cache,
+                                 indices,
+                                 topk_lengths,
+                                 attn_sink,
+                                 output,
+                                 tile_scheduler_metadata,
+                                 num_splits,
+                                 softmax_scale,
+                                 page_size,
+                                 head_dim_v,
+                                 extra_raw_cache,
+                                 extra_indices,
+                                 extra_topk_lengths,
+                                 extra_page_size);
+}
+
+void DeepseekV4FlashMlaSparseAttentionWithMetadata::execute(
+    const Tensor &q,
+    const Tensor &raw_cache,
+    const Tensor &indices,
+    const Tensor &topk_lengths,
+    std::optional<Tensor> attn_sink,
+    Tensor output,
+    std::optional<Tensor> tile_scheduler_metadata,
+    std::optional<Tensor> num_splits,
+    float softmax_scale,
+    int page_size,
+    int head_dim_v,
+    std::optional<Tensor> extra_raw_cache,
+    std::optional<Tensor> extra_indices,
+    std::optional<Tensor> extra_topk_lengths,
+    int extra_page_size) {
+    INFINICORE_GRAPH_OP_RECORD_OR_RUN(DeepseekV4FlashMlaSparseAttentionWithMetadata,
+                                      q,
+                                      raw_cache,
+                                      indices,
+                                      topk_lengths,
+                                      attn_sink,
+                                      output,
+                                      tile_scheduler_metadata,
+                                      num_splits,
+                                      softmax_scale,
+                                      page_size,
+                                      head_dim_v,
+                                      extra_raw_cache,
+                                      extra_indices,
+                                      extra_topk_lengths,
+                                      extra_page_size);
+}
+
+namespace deepseek_v4_flashmla_sparse_attention_graph_impl {
+
+struct PlannedMeta {
+    graph::GraphTensor q;
+    graph::GraphTensor raw_cache;
+    graph::GraphTensor indices;
+    graph::GraphTensor topk_lengths;
+    std::optional<graph::GraphTensor> attn_sink;
+    graph::GraphTensor output;
+    graph::GraphTensor tile_scheduler_metadata;
+    graph::GraphTensor num_splits;
+    Tensor tile_scheduler_metadata_owner;
+    Tensor num_splits_owner;
+    float softmax_scale;
+    int page_size;
+    int head_dim_v;
+    std::optional<graph::GraphTensor> extra_raw_cache;
+    std::optional<graph::GraphTensor> extra_indices;
+    std::optional<graph::GraphTensor> extra_topk_lengths;
+    int extra_page_size;
+};
+
+std::optional<graph::GraphTensor> to_graph_optional(const std::optional<Tensor> &tensor) {
+    if (!tensor.has_value() || !tensor.value()) {
+        return std::nullopt;
+    }
+    return graph::GraphTensor(tensor.value());
+}
+
+std::optional<Tensor> to_tensor_optional(const std::optional<graph::GraphTensor> &tensor) {
+    if (!tensor.has_value()) {
+        return std::nullopt;
+    }
+    return tensor.value();
+}
+
+void *plan(const Tensor &q,
+           const Tensor &raw_cache,
+           const Tensor &indices,
+           const Tensor &topk_lengths,
+           std::optional<Tensor> attn_sink,
+           Tensor output,
+           std::optional<Tensor> tile_scheduler_metadata,
+           std::optional<Tensor> num_splits,
+           float softmax_scale,
+           int page_size,
+           int head_dim_v,
+           std::optional<Tensor> extra_raw_cache,
+           std::optional<Tensor> extra_indices,
+           std::optional<Tensor> extra_topk_lengths,
+           int extra_page_size) {
+    check_hygon_or_nvidia_tensor(q, "deepseek_v4_flashmla_sparse_attention_with_metadata_");
+    check_sparse_attention_shapes(q, raw_cache, indices, topk_lengths, output, page_size, head_dim_v);
+    if (!tile_scheduler_metadata.has_value() || !tile_scheduler_metadata.value() ||
+        !num_splits.has_value() || !num_splits.value()) {
+        throw std::runtime_error("deepseek_v4_flashmla_sparse_attention_with_metadata_ graph path requires prebuilt FlashMLA metadata.");
+    }
+    return new PlannedMeta{graph::GraphTensor(q),
+                           graph::GraphTensor(raw_cache),
+                           graph::GraphTensor(indices),
+                           graph::GraphTensor(topk_lengths),
+                           to_graph_optional(attn_sink),
+                           graph::GraphTensor(output),
+                           graph::GraphTensor(tile_scheduler_metadata.value()),
+                           graph::GraphTensor(num_splits.value()),
+                           tile_scheduler_metadata.value(),
+                           num_splits.value(),
+                           softmax_scale,
+                           page_size,
+                           head_dim_v,
+                           to_graph_optional(extra_raw_cache),
+                           to_graph_optional(extra_indices),
+                           to_graph_optional(extra_topk_lengths),
+                           extra_page_size};
+}
+
+void run(void *planned_meta) {
+    auto *planned = reinterpret_cast<PlannedMeta *>(planned_meta);
+    (void)deepseek_v4_flashmla_sparse_attention_with_metadata_impl(planned->q,
+                                                                   planned->raw_cache,
+                                                                   planned->indices,
+                                                                   planned->topk_lengths,
+                                                                   to_tensor_optional(planned->attn_sink),
+                                                                   planned->output,
+                                                                   planned->tile_scheduler_metadata,
+                                                                   planned->num_splits,
+                                                                   planned->softmax_scale,
+                                                                   planned->page_size,
+                                                                   planned->head_dim_v,
+                                                                   to_tensor_optional(planned->extra_raw_cache),
+                                                                   to_tensor_optional(planned->extra_indices),
+                                                                   to_tensor_optional(planned->extra_topk_lengths),
+                                                                   planned->extra_page_size);
+}
+
+void cleanup(void **planned_meta_ptr) {
+    delete *reinterpret_cast<PlannedMeta **>(planned_meta_ptr);
+    *planned_meta_ptr = nullptr;
+}
+
+} // namespace deepseek_v4_flashmla_sparse_attention_graph_impl
+
+namespace deepseek_v4_flashmla_sparse_attention_register {
+INFINICORE_GRAPH_OP_REGISTER_ALLDEVICE(DeepseekV4FlashMlaSparseAttentionWithMetadata,
+                                       &deepseek_v4_flashmla_sparse_attention_graph_impl::plan,
+                                       &deepseek_v4_flashmla_sparse_attention_graph_impl::run,
+                                       &deepseek_v4_flashmla_sparse_attention_graph_impl::cleanup);
+} // namespace deepseek_v4_flashmla_sparse_attention_register
+
+DeepseekV4FlashMLASparseAttentionSchedule deepseek_v4_flashmla_sparse_attention_with_metadata_(
+    const Tensor &q,
+    const Tensor &raw_cache,
+    const Tensor &indices,
+    const Tensor &topk_lengths,
+    std::optional<Tensor> attn_sink,
+    Tensor output,
+    std::optional<Tensor> tile_scheduler_metadata,
+    std::optional<Tensor> num_splits,
+    float softmax_scale,
+    int page_size,
+    int head_dim_v,
+    std::optional<Tensor> extra_raw_cache,
+    std::optional<Tensor> extra_indices,
+    std::optional<Tensor> extra_topk_lengths,
+    int extra_page_size) {
+    const bool has_schedule = tile_scheduler_metadata.has_value() && tile_scheduler_metadata.value() &&
+                              num_splits.has_value() && num_splits.value();
+    if (has_schedule) {
+        DeepseekV4FlashMlaSparseAttentionWithMetadata::execute(q,
+                                                               raw_cache,
+                                                               indices,
+                                                               topk_lengths,
+                                                               attn_sink,
+                                                               output,
+                                                               tile_scheduler_metadata,
+                                                               num_splits,
+                                                               softmax_scale,
+                                                               page_size,
+                                                               head_dim_v,
+                                                               extra_raw_cache,
+                                                               extra_indices,
+                                                               extra_topk_lengths,
+                                                               extra_page_size);
+        return {tile_scheduler_metadata.value(), num_splits.value()};
+    }
+    return deepseek_v4_flashmla_sparse_attention_with_metadata_impl(q,
+                                                                   raw_cache,
+                                                                   indices,
+                                                                   topk_lengths,
+                                                                   attn_sink,
+                                                                   output,
+                                                                   tile_scheduler_metadata,
+                                                                   num_splits,
+                                                                   softmax_scale,
+                                                                   page_size,
+                                                                   head_dim_v,
+                                                                   extra_raw_cache,
+                                                                   extra_indices,
+                                                                   extra_topk_lengths,
+                                                                   extra_page_size);
+}
+
+void deepseek_v4_flashmla_sparse_attention_(const Tensor &q,
+                                            const Tensor &raw_cache,
+                                            const Tensor &indices,
+                                            const Tensor &topk_lengths,
+                                            std::optional<Tensor> attn_sink,
+                                            Tensor output,
+                                            float softmax_scale,
+                                            int page_size,
+                                            int head_dim_v,
+                                            std::optional<Tensor> extra_raw_cache,
+                                            std::optional<Tensor> extra_indices,
+                                            std::optional<Tensor> extra_topk_lengths,
+                                            int extra_page_size) {
+    (void)deepseek_v4_flashmla_sparse_attention_with_metadata_(q,
+                                                              raw_cache,
+                                                              indices,
+                                                              topk_lengths,
+                                                              attn_sink,
+                                                              output,
+                                                              std::nullopt,
+                                                              std::nullopt,
+                                                              softmax_scale,
+                                                              page_size,
+                                                              head_dim_v,
+                                                              extra_raw_cache,
+                                                              extra_indices,
+                                                              extra_topk_lengths,
+                                                              extra_page_size);
 }
 } // namespace infinicore::op

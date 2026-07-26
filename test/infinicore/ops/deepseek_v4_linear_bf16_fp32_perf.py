@@ -3,6 +3,7 @@ import time
 
 import infinicore
 import torch
+from infinicore.lib import _infinicore
 
 
 DEFAULT_TOKENS = "1,4,16,64,256,1024,4096"
@@ -12,8 +13,10 @@ def _parse_int_list(text):
     return [int(item.strip()) for item in text.split(",") if item.strip()]
 
 
-def _as_core(tensor):
-    return infinicore.from_torch(tensor)
+def _wrap(tensor, keepalive):
+    wrapped = infinicore.from_torch(tensor)
+    keepalive.append(wrapped)
+    return wrapped._underlying
 
 
 def _sync():
@@ -43,16 +46,17 @@ def _make_case(tokens, hidden, out_features, seed):
 
 def _run_case(tokens, args):
     x, weight, naive_out, kernel_out = _make_case(tokens, args.hidden, args.out_features, args.seed)
-    x_core = _as_core(x)
-    weight_core = _as_core(weight)
-    naive_core = _as_core(naive_out)
-    kernel_core = _as_core(kernel_out)
+    keepalive = []
+    x_core = _wrap(x, keepalive)
+    weight_core = _wrap(weight, keepalive)
+    naive_core = _wrap(naive_out, keepalive)
+    kernel_core = _wrap(kernel_out, keepalive)
 
     def naive():
-        infinicore.deepseek_v4_linear_bf16_fp32_naive_(naive_core, x_core, weight_core)
+        _infinicore.deepseek_v4_linear_bf16_fp32_naive_(naive_core, x_core, weight_core)
 
     def kernel():
-        infinicore.deepseek_v4_linear_bf16_fp32_kernel_(kernel_core, x_core, weight_core)
+        _infinicore.deepseek_v4_linear_bf16_fp32_kernel_(kernel_core, x_core, weight_core)
 
     max_abs = float("nan")
     allclose = "skip"

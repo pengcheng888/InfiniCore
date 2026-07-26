@@ -127,14 +127,6 @@ bool same_storage(const Tensor &a, const Tensor &b) {
     return a && b && a->data() == b->data() && a->shape() == b->shape();
 }
 
-void *current_accelerator_stream() {
-#if defined(ENABLE_HYGON_API)
-    return reinterpret_cast<void *>(infinicore::adaptor::get_hip_stream().stream());
-#else
-    return reinterpret_cast<void *>(infinicore::adaptor::get_cuda_stream().stream());
-#endif
-}
-
 void lmslim_per_token_quant_int8_bf16_(Tensor output, Tensor scale, const Tensor &input) {
     if (input->dtype() != DataType::BF16) {
         throw std::runtime_error("deepseek_v4_fused_experts_impl_int8_marlin_ native quant currently expects BF16 input.");
@@ -153,7 +145,7 @@ void lmslim_per_token_quant_int8_bf16_(Tensor output, Tensor scale, const Tensor
         input->data(),
         rows,
         cols,
-        current_accelerator_stream());
+        context::getStream());
 }
 
 struct FusedExpertsWorkspace {
@@ -526,7 +518,7 @@ void deepseek_v4_fused_experts_impl_int8_marlin_impl_(Tensor output,
             static_cast<int64_t>(top_k),
             static_cast<int64_t>(hidden_size),
             static_cast<float>(routed_scaling_factor),
-            current_accelerator_stream());
+            context::getStream());
     } else {
         deepseek_v4_lightop_moe_sum_(
             target_output,

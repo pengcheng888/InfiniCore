@@ -20,12 +20,12 @@ def _run_case(m, n, k):
     assert torch.allclose(out_default, ref, atol=2e-2, rtol=2e-2)
 
     out_naive = torch.empty((m, n), device="cuda", dtype=torch.float32)
-    infinicore.deepseek_v4_linear_bf16_fp32_naive(_as_core(x), _as_core(weight), out=_as_core(out_naive))
+    infinicore.deepseek_v4_linear_bf16_fp32(_as_core(x), _as_core(weight), out=_as_core(out_naive))
     infinicore.sync_stream()
     assert torch.allclose(out_naive, ref, atol=1e-4, rtol=1e-4)
 
     out_kernel = torch.empty((m, n), device="cuda", dtype=torch.float32)
-    infinicore.deepseek_v4_linear_bf16_fp32_kernel(_as_core(x), _as_core(weight), out=_as_core(out_kernel))
+    infinicore.deepseek_v4_linear_bf16_fp32(_as_core(x), _as_core(weight), out=_as_core(out_kernel))
     infinicore.sync_stream()
     assert torch.allclose(out_kernel, out_naive, atol=2e-2, rtol=2e-2)
 

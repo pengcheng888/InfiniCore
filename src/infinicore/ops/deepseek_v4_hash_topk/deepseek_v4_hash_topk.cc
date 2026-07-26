@@ -183,6 +183,20 @@ void run_hash_topk_dsv4_kernel(Tensor topk_weights,
 
 } // namespace
 
+void deepseek_v4_hash_topk_(Tensor topk_weights,
+                            Tensor topk_indices,
+                            const Tensor &router_logits,
+                            const Tensor &input_ids,
+                            const Tensor &tid2eid,
+                            bool renormalize) {
+    deepseek_v4_hash_topk_kernel_(topk_weights,
+                                  topk_indices,
+                                  router_logits,
+                                  input_ids,
+                                  tid2eid,
+                                  renormalize);
+}
+
 void deepseek_v4_hash_topk_kernel_(Tensor topk_weights,
                                    Tensor topk_indices,
                                    const Tensor &router_logits,

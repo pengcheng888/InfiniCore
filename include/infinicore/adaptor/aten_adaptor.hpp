@@ -67,6 +67,7 @@ inline at::Device to_at_device(const Device &device) {
 }
 
 at::Tensor to_aten_tensor(const infinicore::Tensor &t);
+Tensor from_aten_tensor(const at::Tensor &t);
 
 #if defined(ENABLE_HYGON_API)
 c10::hip::HIPStream get_hip_stream();

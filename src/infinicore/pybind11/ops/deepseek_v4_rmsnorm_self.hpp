@@ -13,14 +13,33 @@ inline void bind_deepseek_v4_rmsnorm_self(py::module &m) {
           &op::deepseek_v4_rmsnorm_self,
           py::arg("input"),
           py::arg("epsilon"),
-          R"doc(DeepSeek-V4 parameterless RMSNorm over the last dimension.)doc");
+          R"doc(Default parameterless RMSNorm for DeepSeek-V4 attention.)doc");
 
     m.def("deepseek_v4_rmsnorm_self_",
           &op::deepseek_v4_rmsnorm_self_,
           py::arg("out"),
           py::arg("input"),
           py::arg("epsilon"),
-          R"doc(Out-variant DeepSeek-V4 parameterless RMSNorm over the last dimension.)doc");
+          R"doc(Out-variant default parameterless RMSNorm for DeepSeek-V4 attention.)doc");
+
+    m.def("deepseek_v4_rmsnorm_self_naive",
+          &op::deepseek_v4_rmsnorm_self_naive,
+          py::arg("input"),
+          py::arg("epsilon"));
+    m.def("deepseek_v4_rmsnorm_self_naive_",
+          &op::deepseek_v4_rmsnorm_self_naive_,
+          py::arg("out"),
+          py::arg("input"),
+          py::arg("epsilon"));
+    m.def("deepseek_v4_rmsnorm_self_kernel",
+          &op::deepseek_v4_rmsnorm_self_kernel,
+          py::arg("input"),
+          py::arg("epsilon"));
+    m.def("deepseek_v4_rmsnorm_self_kernel_",
+          &op::deepseek_v4_rmsnorm_self_kernel_,
+          py::arg("out"),
+          py::arg("input"),
+          py::arg("epsilon"));
 }
 
 } // namespace infinicore::ops

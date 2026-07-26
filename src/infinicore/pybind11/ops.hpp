@@ -59,6 +59,7 @@
 #include "ops/deepseek_v4_mhc.hpp"
 #include "ops/deepseek_v4_moe_align_block_size.hpp"
 #include "ops/deepseek_v4_moe_marlin_w8a8.hpp"
+#include "ops/deepseek_v4_moe_w8a8.hpp"
 #include "ops/deepseek_v4_moe_topk_sigmoid.hpp"
 #include "ops/deepseek_v4_moe_topk_softmax.hpp"
 #include "ops/deepseek_v4_paged_mqa_logits.hpp"
@@ -277,6 +278,7 @@ inline void bind(py::module &m) {
     bind_deepseek_v4_mhc(m);
     bind_deepseek_v4_moe_align_block_size(m);
     bind_deepseek_v4_moe_marlin_w8a8(m);
+    bind_deepseek_v4_moe_w8a8(m);
     bind_deepseek_v4_moe_topk_sigmoid(m);
     bind_deepseek_v4_moe_topk_softmax(m);
     bind_deepseek_v4_paged_mqa_logits(m);
