@@ -121,8 +121,7 @@ void run(void *planned_meta) {
             std::nullopt,
             0.0,
             true,
-            static_cast<double>(p->scale),
-            num_heads != num_kv_heads);
+            std::optional<double>(static_cast<double>(p->scale)));
         out_work.copy_(result.permute({0, 2, 1, 3}).reshape({q.size(0), num_heads, value_dim}));
         if (out_need_copy_back) {
             p->out->copy_from(out_work_ic);
