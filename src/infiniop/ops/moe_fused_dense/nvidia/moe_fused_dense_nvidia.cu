@@ -221,83 +221,73 @@ __global__ void apply_shuffle_mul_sum_kernel(const T *__restrict__ expert_out,
 
 #ifdef ENABLE_CUTLASS_API
 template <typename T>
-__global__ void setup_prefill_gemm1_compact_kernel(cutlass::gemm::GemmCoord *problems,
-                                                   void **ptr_a,
-                                                   void **ptr_b,
-                                                   void **ptr_c,
-                                                   void **ptr_d,
-                                                   int64_t *lda,
-                                                   int64_t *ldb,
-                                                   int64_t *ldc,
-                                                   int64_t *ldd,
-                                                   int *active_count,
-                                                   const int *counts,
-                                                   const int *offsets,
-                                                   const T *packed_hidden,
-                                                   const T *w13,
-                                                   T *gate_up,
-                                                   int num_experts,
-                                                   int hidden_size,
-                                                   int intermediate_size) {
+__global__ void setup_prefill_gemm1_kernel(cutlass::gemm::GemmCoord *problems,
+                                           void **ptr_a,
+                                           void **ptr_b,
+                                           void **ptr_c,
+                                           void **ptr_d,
+                                           int64_t *lda,
+                                           int64_t *ldb,
+                                           int64_t *ldc,
+                                           int64_t *ldd,
+                                           const int *counts,
+                                           const int *offsets,
+                                           const T *packed_hidden,
+                                           const T *w13,
+                                           T *gate_up,
+                                           int num_experts,
+                                           int hidden_size,
+                                           int intermediate_size) {
     int expert = blockIdx.x * blockDim.x + threadIdx.x;
     if (expert >= num_experts) {
         return;
     }
     int m = counts[expert];
-    if (m <= 0) {
-        return;
-    }
-    int idx = atomicAdd(active_count, 1);
     int off = offsets[expert];
-    problems[idx] = cutlass::gemm::GemmCoord(m, intermediate_size * 2, hidden_size);
-    ptr_a[idx] = const_cast<T *>(packed_hidden + static_cast<size_t>(off) * hidden_size);
-    ptr_b[idx] = const_cast<T *>(w13 + static_cast<size_t>(expert) * intermediate_size * 2 * hidden_size);
-    ptr_c[idx] = gate_up + static_cast<size_t>(off) * intermediate_size * 2;
-    ptr_d[idx] = gate_up + static_cast<size_t>(off) * intermediate_size * 2;
-    lda[idx] = hidden_size;
-    ldb[idx] = hidden_size;
-    ldc[idx] = intermediate_size * 2;
-    ldd[idx] = intermediate_size * 2;
+    problems[expert] = cutlass::gemm::GemmCoord(m, intermediate_size * 2, hidden_size);
+    ptr_a[expert] = const_cast<T *>(packed_hidden + static_cast<size_t>(off) * hidden_size);
+    ptr_b[expert] = const_cast<T *>(w13 + static_cast<size_t>(expert) * intermediate_size * 2 * hidden_size);
+    ptr_c[expert] = gate_up + static_cast<size_t>(off) * intermediate_size * 2;
+    ptr_d[expert] = gate_up + static_cast<size_t>(off) * intermediate_size * 2;
+    lda[expert] = hidden_size;
+    ldb[expert] = hidden_size;
+    ldc[expert] = intermediate_size * 2;
+    ldd[expert] = intermediate_size * 2;
 }
 
 template <typename T>
-__global__ void setup_prefill_gemm2_compact_kernel(cutlass::gemm::GemmCoord *problems,
-                                                   void **ptr_a,
-                                                   void **ptr_b,
-                                                   void **ptr_c,
-                                                   void **ptr_d,
-                                                   int64_t *lda,
-                                                   int64_t *ldb,
-                                                   int64_t *ldc,
-                                                   int64_t *ldd,
-                                                   int *active_count,
-                                                   const int *counts,
-                                                   const int *offsets,
-                                                   const T *activated,
-                                                   const T *w2,
-                                                   T *expert_out,
-                                                   int num_experts,
-                                                   int hidden_size,
-                                                   int intermediate_size) {
+__global__ void setup_prefill_gemm2_kernel(cutlass::gemm::GemmCoord *problems,
+                                           void **ptr_a,
+                                           void **ptr_b,
+                                           void **ptr_c,
+                                           void **ptr_d,
+                                           int64_t *lda,
+                                           int64_t *ldb,
+                                           int64_t *ldc,
+                                           int64_t *ldd,
+                                           const int *counts,
+                                           const int *offsets,
+                                           const T *activated,
+                                           const T *w2,
+                                           T *expert_out,
+                                           int num_experts,
+                                           int hidden_size,
+                                           int intermediate_size) {
     int expert = blockIdx.x * blockDim.x + threadIdx.x;
     if (expert >= num_experts) {
         return;
     }
     int m = counts[expert];
-    if (m <= 0) {
-        return;
-    }
-    int idx = atomicAdd(active_count, 1);
     int off = offsets[expert];
-    problems[idx] = cutlass::gemm::GemmCoord(m, hidden_size, intermediate_size);
-    ptr_a[idx] = const_cast<T *>(activated + static_cast<size_t>(off) * intermediate_size);
-    ptr_b[idx] = const_cast<T *>(w2 + static_cast<size_t>(expert) * hidden_size * intermediate_size);
-    ptr_c[idx] = expert_out + static_cast<size_t>(off) * hidden_size;
-    ptr_d[idx] = expert_out + static_cast<size_t>(off) * hidden_size;
-    lda[idx] = intermediate_size;
-    ldb[idx] = intermediate_size;
-    ldc[idx] = hidden_size;
-    ldd[idx] = hidden_size;
+    problems[expert] = cutlass::gemm::GemmCoord(m, hidden_size, intermediate_size);
+    ptr_a[expert] = const_cast<T *>(activated + static_cast<size_t>(off) * intermediate_size);
+    ptr_b[expert] = const_cast<T *>(w2 + static_cast<size_t>(expert) * hidden_size * intermediate_size);
+    ptr_c[expert] = expert_out + static_cast<size_t>(off) * hidden_size;
+    ptr_d[expert] = expert_out + static_cast<size_t>(off) * hidden_size;
+    lda[expert] = intermediate_size;
+    ldb[expert] = intermediate_size;
+    ldc[expert] = hidden_size;
+    ldd[expert] = hidden_size;
 }
 
 template <typename T>
@@ -551,31 +541,25 @@ infiniStatus_t calculate_typed(const MoeFusedDenseInfo &info,
             reinterpret_cast<const int *>(num_tokens_post_padded),
             pairs, topk, num_experts, hidden_size, intermediate_size, block_size);
 
-        int host_active_count = 0;
-        if (cudaMemcpyAsync(&host_active_count, active_count, sizeof(int), cudaMemcpyDeviceToHost, stream) != cudaSuccess) {
-            return INFINI_STATUS_INTERNAL_ERROR;
-        }
-        if (cudaStreamSynchronize(stream) != cudaSuccess) {
-            return INFINI_STATUS_INTERNAL_ERROR;
-        }
-        if (host_active_count > 0) {
-            CHECK_STATUS(launch_cutlass_gemm_grouped_device_meta<CutlassT>(
-                host_active_count, grouped_problems, grouped_ptr_a, grouped_ptr_b, grouped_ptr_c, grouped_ptr_d,
-                grouped_lda, grouped_ldb, grouped_ldc, grouped_ldd, stream));
+        // Decode has one token and exactly one valid aligned row for each of
+        // its top-k routes, so the compact problem count is always topk.
+        // A D2H count copy and stream sync cannot be captured for replay.
+        CHECK_STATUS(launch_cutlass_gemm_grouped_device_meta<CutlassT>(
+            topk, grouped_problems, grouped_ptr_a, grouped_ptr_b, grouped_ptr_c, grouped_ptr_d,
+            grouped_lda, grouped_ldb, grouped_ldc, grouped_ldd, stream));
 
-            swiglu_kernel<T><<<(host_active_count * intermediate_size + 255) / 256, 256, 0, stream>>>(gate_up, activated, host_active_count, intermediate_size);
+        swiglu_kernel<T><<<(topk * intermediate_size + 255) / 256, 256, 0, stream>>>(gate_up, activated, topk, intermediate_size);
 
-            setup_decode_gemm2_aligned_compact_kernel<T><<<(max_num_tokens_padded + 255) / 256, 256, 0, stream>>>(
-                grouped_problems, grouped_ptr_a, grouped_ptr_b, grouped_ptr_c, grouped_ptr_d,
-                grouped_lda, grouped_ldb, grouped_ldc, grouped_ldd, activated, w2_t, expert_out,
-                reinterpret_cast<const int *>(sorted_token_ids),
-                reinterpret_cast<const int *>(expert_ids),
-                reinterpret_cast<const int *>(num_tokens_post_padded),
-                output_permutation, pairs, num_experts, hidden_size, intermediate_size, block_size);
-            CHECK_STATUS(launch_cutlass_gemm_grouped_device_meta<CutlassT>(
-                host_active_count, grouped_problems, grouped_ptr_a, grouped_ptr_b, grouped_ptr_c, grouped_ptr_d,
-                grouped_lda, grouped_ldb, grouped_ldc, grouped_ldd, stream));
-        }
+        setup_decode_gemm2_aligned_compact_kernel<T><<<(max_num_tokens_padded + 255) / 256, 256, 0, stream>>>(
+            grouped_problems, grouped_ptr_a, grouped_ptr_b, grouped_ptr_c, grouped_ptr_d,
+            grouped_lda, grouped_ldb, grouped_ldc, grouped_ldd, activated, w2_t, expert_out,
+            reinterpret_cast<const int *>(sorted_token_ids),
+            reinterpret_cast<const int *>(expert_ids),
+            reinterpret_cast<const int *>(num_tokens_post_padded),
+            output_permutation, pairs, num_experts, hidden_size, intermediate_size, block_size);
+        CHECK_STATUS(launch_cutlass_gemm_grouped_device_meta<CutlassT>(
+            topk, grouped_problems, grouped_ptr_a, grouped_ptr_b, grouped_ptr_c, grouped_ptr_d,
+            grouped_lda, grouped_ldb, grouped_ldc, grouped_ldd, stream));
 
         apply_shuffle_mul_sum_kernel<T><<<1, std::min(hidden_size, 1024), 0, stream>>>(
             expert_out, reinterpret_cast<T *>(output), output_permutation,
@@ -609,33 +593,27 @@ infiniStatus_t calculate_typed(const MoeFusedDenseInfo &info,
         hidden_size,
         max_num_tokens_padded);
 
-    cudaMemsetAsync(active_count, 0, sizeof(int), stream);
-    setup_prefill_gemm1_compact_kernel<T><<<(num_experts + 255) / 256, 256, 0, stream>>>(
+    setup_prefill_gemm1_kernel<T><<<(num_experts + 255) / 256, 256, 0, stream>>>(
         grouped_problems, grouped_ptr_a, grouped_ptr_b, grouped_ptr_c, grouped_ptr_d,
-        grouped_lda, grouped_ldb, grouped_ldc, grouped_ldd, active_count, counts, offsets, packed_hidden,
+        grouped_lda, grouped_ldb, grouped_ldc, grouped_ldd, counts, offsets, packed_hidden,
         w13_t, gate_up, num_experts, hidden_size, intermediate_size);
 
-    int host_active_count = 0;
-    if (cudaMemcpyAsync(&host_active_count, active_count, sizeof(int), cudaMemcpyDeviceToHost, stream) != cudaSuccess) {
-        return INFINI_STATUS_INTERNAL_ERROR;
-    }
-    if (cudaStreamSynchronize(stream) != cudaSuccess) {
-        return INFINI_STATUS_INTERNAL_ERROR;
-    }
+    // Keep one grouped problem per expert. Experts with no routed tokens have
+    // m == 0 and are skipped by CUTLASS's device-only grouped scheduler. This
+    // avoids making the runtime problem count depend on device routing data.
     CHECK_STATUS(launch_cutlass_gemm_grouped_device_meta<CutlassT>(
-        host_active_count, grouped_problems, grouped_ptr_a, grouped_ptr_b, grouped_ptr_c, grouped_ptr_d,
+        num_experts, grouped_problems, grouped_ptr_a, grouped_ptr_b, grouped_ptr_c, grouped_ptr_d,
         grouped_lda, grouped_ldb, grouped_ldc, grouped_ldd, stream));
 
     swiglu_kernel<T><<<(max_num_tokens_padded * intermediate_size + 255) / 256, 256, 0, stream>>>(
         gate_up, activated, max_num_tokens_padded, intermediate_size);
 
-    cudaMemsetAsync(active_count, 0, sizeof(int), stream);
-    setup_prefill_gemm2_compact_kernel<T><<<(num_experts + 255) / 256, 256, 0, stream>>>(
+    setup_prefill_gemm2_kernel<T><<<(num_experts + 255) / 256, 256, 0, stream>>>(
         grouped_problems, grouped_ptr_a, grouped_ptr_b, grouped_ptr_c, grouped_ptr_d,
-        grouped_lda, grouped_ldb, grouped_ldc, grouped_ldd, active_count, counts, offsets, activated,
+        grouped_lda, grouped_ldb, grouped_ldc, grouped_ldd, counts, offsets, activated,
         w2_t, expert_out, num_experts, hidden_size, intermediate_size);
     CHECK_STATUS(launch_cutlass_gemm_grouped_device_meta<CutlassT>(
-        host_active_count, grouped_problems, grouped_ptr_a, grouped_ptr_b, grouped_ptr_c, grouped_ptr_d,
+        num_experts, grouped_problems, grouped_ptr_a, grouped_ptr_b, grouped_ptr_c, grouped_ptr_d,
         grouped_lda, grouped_ldb, grouped_ldc, grouped_ldd, stream));
 
     apply_shuffle_mul_sum_kernel<T><<<num_tokens, std::min(hidden_size, 1024), 0, stream>>>(
