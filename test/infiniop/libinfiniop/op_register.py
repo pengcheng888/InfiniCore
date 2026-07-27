@@ -134,6 +134,46 @@ def addcmul_(lib):
 
 
 @OpRegister.operator
+def fused_moe_(lib):
+    lib.infiniopCreateFusedMoeDescriptor.restype = c_int32
+    lib.infiniopCreateFusedMoeDescriptor.argtypes = [
+        infiniopHandle_t,
+        POINTER(infiniopOperatorDescriptor_t),
+        infiniopTensorDescriptor_t,
+        infiniopTensorDescriptor_t,
+        infiniopTensorDescriptor_t,
+        infiniopTensorDescriptor_t,
+        infiniopTensorDescriptor_t,
+        infiniopTensorDescriptor_t,
+        c_void_p,
+        c_void_p,
+        c_int32,
+    ]
+    lib.infiniopGetFusedMoeWorkspaceSize.restype = c_int32
+    lib.infiniopGetFusedMoeWorkspaceSize.argtypes = [
+        infiniopOperatorDescriptor_t,
+        POINTER(c_size_t),
+    ]
+    lib.infiniopFusedMoe.restype = c_int32
+    lib.infiniopFusedMoe.argtypes = [
+        infiniopOperatorDescriptor_t,
+        c_void_p,
+        c_size_t,
+        c_void_p,
+        c_void_p,
+        c_void_p,
+        c_void_p,
+        c_void_p,
+        c_void_p,
+        c_void_p,
+        c_void_p,
+        c_void_p,
+    ]
+    lib.infiniopDestroyFusedMoeDescriptor.restype = c_int32
+    lib.infiniopDestroyFusedMoeDescriptor.argtypes = [infiniopOperatorDescriptor_t]
+
+
+@OpRegister.operator
 def fused_gated_delta_net_gating_(lib):
     lib.infiniopCreateFusedGatedDeltaNetGatingDescriptor.restype = c_int32
     lib.infiniopCreateFusedGatedDeltaNetGatingDescriptor.argtypes = [
