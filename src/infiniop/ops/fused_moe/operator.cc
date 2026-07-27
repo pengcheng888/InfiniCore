@@ -1,5 +1,5 @@
-#include "../../handle.h"
 #include "../../operator.h"
+#include "../../handle.h"
 #include "infiniop/ops/fused_moe.h"
 
 #if defined(ENABLE_NVIDIA_API) || defined(ENABLE_ILUVATAR_API) || defined(ENABLE_QY_API) || defined(ENABLE_HYGON_API) || defined(ENABLE_ALI_API)
@@ -24,11 +24,11 @@ __INFINI_C infiniStatus_t infiniopCreateFusedMoeDescriptor(
     infiniopTensorDescriptor_t b1_desc,
     infiniopTensorDescriptor_t b2_desc,
     infiniopFusedMoeActivation_t activation) {
-#define CREATE(CASE, NAMESPACE)                                         \
-    case CASE:                                                          \
-        return op::fused_moe::NAMESPACE::Descriptor::create(            \
+#define CREATE(CASE, NAMESPACE)                                                          \
+    case CASE:                                                                           \
+        return op::fused_moe::NAMESPACE::Descriptor::create(                             \
             handle, reinterpret_cast<op::fused_moe::NAMESPACE::Descriptor **>(desc_ptr), \
-            out_desc, input_desc, token_selected_experts_desc, token_final_scales_desc, \
+            out_desc, input_desc, token_selected_experts_desc, token_final_scales_desc,  \
             w1_desc, w2_desc, b1_desc, b2_desc, activation);
 
     switch (handle->device) {
@@ -60,8 +60,8 @@ __INFINI_C infiniStatus_t infiniopCreateFusedMoeDescriptor(
 }
 
 __INFINI_C infiniStatus_t infiniopGetFusedMoeWorkspaceSize(infiniopFusedMoeDescriptor_t desc, size_t *size) {
-#define GET(CASE, NAMESPACE)                                                               \
-    case CASE:                                                                             \
+#define GET(CASE, NAMESPACE)                                                                           \
+    case CASE:                                                                                         \
         *size = reinterpret_cast<const op::fused_moe::NAMESPACE::Descriptor *>(desc)->workspaceSize(); \
         return INFINI_STATUS_SUCCESS;
 
@@ -105,10 +105,10 @@ __INFINI_C infiniStatus_t infiniopFusedMoe(
     const void *b1,
     const void *b2,
     void *stream) {
-#define CALCULATE(CASE, NAMESPACE)                                                         \
-    case CASE:                                                                             \
+#define CALCULATE(CASE, NAMESPACE)                                                              \
+    case CASE:                                                                                  \
         return reinterpret_cast<const op::fused_moe::NAMESPACE::Descriptor *>(desc)->calculate( \
-            workspace, workspace_size, out, input, token_selected_experts, token_final_scales, \
+            workspace, workspace_size, out, input, token_selected_experts, token_final_scales,  \
             w1, w2, b1, b2, stream);
 
     switch (desc->device_type) {
@@ -140,9 +140,9 @@ __INFINI_C infiniStatus_t infiniopFusedMoe(
 }
 
 __INFINI_C infiniStatus_t infiniopDestroyFusedMoeDescriptor(infiniopFusedMoeDescriptor_t desc) {
-#define DESTROY(CASE, NAMESPACE)                                                           \
-    case CASE:                                                                             \
-        delete reinterpret_cast<const op::fused_moe::NAMESPACE::Descriptor *>(desc);       \
+#define DESTROY(CASE, NAMESPACE)                                                     \
+    case CASE:                                                                       \
+        delete reinterpret_cast<const op::fused_moe::NAMESPACE::Descriptor *>(desc); \
         return INFINI_STATUS_SUCCESS;
 
     switch (desc->device_type) {

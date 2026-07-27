@@ -33,9 +33,7 @@ public:
         infiniopTensorDescriptor_t b2_desc,
         infiniopFusedMoeActivation_t activation) {
 
-        if (out_desc == nullptr || input_desc == nullptr ||
-            token_selected_experts_desc == nullptr || token_final_scales_desc == nullptr ||
-            w1_desc == nullptr || w2_desc == nullptr) {
+        if (out_desc == nullptr || input_desc == nullptr || token_selected_experts_desc == nullptr || token_final_scales_desc == nullptr || w1_desc == nullptr || w2_desc == nullptr) {
             return INFINI_STATUS_NULL_POINTER;
         }
         if (activation != INFINIOP_FUSED_MOE_ACT_SILU && activation != INFINIOP_FUSED_MOE_ACT_SWIGLU) {
@@ -45,21 +43,14 @@ public:
         auto dtype = input_desc->dtype();
         CHECK_DTYPE(dtype, INFINI_DTYPE_F16, INFINI_DTYPE_BF16, INFINI_DTYPE_F32);
 
-        if (out_desc->dtype() != dtype || w1_desc->dtype() != dtype || w2_desc->dtype() != dtype ||
-            (b1_desc != nullptr && b1_desc->dtype() != dtype) ||
-            (b2_desc != nullptr && b2_desc->dtype() != dtype)) {
+        if (out_desc->dtype() != dtype || w1_desc->dtype() != dtype || w2_desc->dtype() != dtype || (b1_desc != nullptr && b1_desc->dtype() != dtype) || (b2_desc != nullptr && b2_desc->dtype() != dtype)) {
             return INFINI_STATUS_BAD_TENSOR_DTYPE;
         }
-        if (token_selected_experts_desc->dtype() != INFINI_DTYPE_I32 ||
-            token_final_scales_desc->dtype() != INFINI_DTYPE_F32) {
+        if (token_selected_experts_desc->dtype() != INFINI_DTYPE_I32 || token_final_scales_desc->dtype() != INFINI_DTYPE_F32) {
             return INFINI_STATUS_BAD_TENSOR_DTYPE;
         }
 
-        if (input_desc->ndim() != 2 || out_desc->ndim() != 2 ||
-            token_selected_experts_desc->ndim() != 2 || token_final_scales_desc->ndim() != 2 ||
-            w1_desc->ndim() != 3 || w2_desc->ndim() != 3 ||
-            (b1_desc != nullptr && b1_desc->ndim() != 2) ||
-            (b2_desc != nullptr && b2_desc->ndim() != 2)) {
+        if (input_desc->ndim() != 2 || out_desc->ndim() != 2 || token_selected_experts_desc->ndim() != 2 || token_final_scales_desc->ndim() != 2 || w1_desc->ndim() != 3 || w2_desc->ndim() != 3 || (b1_desc != nullptr && b1_desc->ndim() != 2) || (b2_desc != nullptr && b2_desc->ndim() != 2)) {
             return INFINI_STATUS_BAD_TENSOR_SHAPE;
         }
 
@@ -77,9 +68,7 @@ public:
         size_t w1_cols = w1_shape[1];
         size_t inter = w2_shape[2];
 
-        if (out_shape[0] != N || out_shape[1] != hidden ||
-            indices_shape[0] != N || scales_shape[0] != N || scales_shape[1] != topk ||
-            w1_shape[2] != hidden || w2_shape[0] != experts || w2_shape[1] != hidden) {
+        if (out_shape[0] != N || out_shape[1] != hidden || indices_shape[0] != N || scales_shape[0] != N || scales_shape[1] != topk || w1_shape[2] != hidden || w2_shape[0] != experts || w2_shape[1] != hidden) {
             return INFINI_STATUS_BAD_TENSOR_SHAPE;
         }
         if (activation == INFINIOP_FUSED_MOE_ACT_SWIGLU) {

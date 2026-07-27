@@ -132,6 +132,7 @@ def addcmul_(lib):
         infiniopOperatorDescriptor_t,  # descriptor
     ]
 
+
 @OpRegister.operator
 def fused_moe_(lib):
     lib.infiniopCreateFusedMoeDescriptor.restype = c_int32
@@ -170,6 +171,7 @@ def fused_moe_(lib):
     ]
     lib.infiniopDestroyFusedMoeDescriptor.restype = c_int32
     lib.infiniopDestroyFusedMoeDescriptor.argtypes = [infiniopOperatorDescriptor_t]
+
 
 @OpRegister.operator
 def fused_gated_delta_net_gating_(lib):

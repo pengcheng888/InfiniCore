@@ -1,22 +1,22 @@
 import ctypes
-from ctypes import c_uint64, c_int32
+from ctypes import c_int32, c_uint64
+
 import torch
 import torch.nn.functional as F
-
 from libinfiniop import (
     LIBINFINIOP,
-    TestTensor,
-    get_test_devices,
-    check_error,
-    test_operator,
-    get_args,
-    debug,
-    get_tolerance,
-    TestWorkspace,
+    InfiniDeviceNames,
     InfiniDtype,
     InfiniDtypeNames,
-    InfiniDeviceNames,
+    TestTensor,
+    TestWorkspace,
+    check_error,
+    debug,
+    get_args,
+    get_test_devices,
+    get_tolerance,
     infiniopOperatorDescriptor_t,
+    test_operator,
     torch_device_map,
 )
 
@@ -62,20 +62,48 @@ def torch_fused_moe(x, indices, scales, w1, w2, b1, b2, activation):
     return out.to(x.dtype)
 
 
-def test(handle, device, N, hidden, inter, experts, topk, activation, dtype=InfiniDtype.F16, sync=None):
+def test(
+    handle,
+    device,
+    N,
+    hidden,
+    inter,
+    experts,
+    topk,
+    activation,
+    dtype=InfiniDtype.F16,
+    sync=None,
+):
     print(
         f"Testing FusedMoe on {InfiniDeviceNames[device]} N={N} hidden={hidden} inter={inter} "
         f"experts={experts} topk={topk} activation={activation} dtype={InfiniDtypeNames[dtype]}"
     )
     torch_device = torch_device_map[device]
-    torch_dtype = {InfiniDtype.F16: torch.float16, InfiniDtype.BF16: torch.bfloat16, InfiniDtype.F32: torch.float32}[dtype]
+    torch_dtype = {
+        InfiniDtype.F16: torch.float16,
+        InfiniDtype.BF16: torch.bfloat16,
+        InfiniDtype.F32: torch.float32,
+    }[dtype]
 
-    x_t = (torch.rand((N, hidden), dtype=torch_dtype, device=torch_device) * 2 - 1).contiguous()
+    x_t = (
+        torch.rand((N, hidden), dtype=torch_dtype, device=torch_device) * 2 - 1
+    ).contiguous()
     w1_cols = inter * 2 if activation == ACT_SWIGLU else inter
-    w1_t = (torch.rand((experts, w1_cols, hidden), dtype=torch_dtype, device=torch_device) * 2 - 1).contiguous()
-    w2_t = (torch.rand((experts, hidden, inter), dtype=torch_dtype, device=torch_device) * 2 - 1).contiguous()
-    b1_t = (torch.rand((experts, w1_cols), dtype=torch_dtype, device=torch_device) * 0.1).contiguous()
-    b2_t = (torch.rand((experts, hidden), dtype=torch_dtype, device=torch_device) * 0.1).contiguous()
+    w1_t = (
+        torch.rand((experts, w1_cols, hidden), dtype=torch_dtype, device=torch_device)
+        * 2
+        - 1
+    ).contiguous()
+    w2_t = (
+        torch.rand((experts, hidden, inter), dtype=torch_dtype, device=torch_device) * 2
+        - 1
+    ).contiguous()
+    b1_t = (
+        torch.rand((experts, w1_cols), dtype=torch_dtype, device=torch_device) * 0.1
+    ).contiguous()
+    b2_t = (
+        torch.rand((experts, hidden), dtype=torch_dtype, device=torch_device) * 0.1
+    ).contiguous()
 
     logits = torch.rand((N, experts), dtype=torch.float32, device=torch_device)
     scales_t, indices_i64 = torch.topk(F.softmax(logits, dim=-1), topk, dim=-1)
@@ -115,7 +143,11 @@ def test(handle, device, N, hidden, inter, experts, topk, activation, dtype=Infi
     )
 
     workspace_size = c_uint64(0)
-    check_error(LIBINFINIOP.infiniopGetFusedMoeWorkspaceSize(descriptor, ctypes.byref(workspace_size)))
+    check_error(
+        LIBINFINIOP.infiniopGetFusedMoeWorkspaceSize(
+            descriptor, ctypes.byref(workspace_size)
+        )
+    )
     workspace = TestWorkspace(workspace_size.value, x.device)
 
     for tensor in [x, w1, w2, b1, b2, indices, scales, out]:
