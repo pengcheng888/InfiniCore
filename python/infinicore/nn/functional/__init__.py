@@ -41,6 +41,7 @@ from .smooth_l1_loss import smooth_l1_loss
 from .softplus import softplus
 from .softsign import softsign
 from .swiglu import swiglu
+from .tanh import tanh
 from .tanhshrink import tanhshrink
 from .triplet_margin_loss import triplet_margin_loss
 from .triplet_margin_with_distance_loss import triplet_margin_with_distance_loss
@@ -100,6 +101,7 @@ __all__ = [
     "linear_w8a8i8",
     "silu_and_mul",
     "adaptive_avg_pool3d",
+    "tanh",
     "tanhshrink",
     "multi_margin_loss",
     "softplus",
