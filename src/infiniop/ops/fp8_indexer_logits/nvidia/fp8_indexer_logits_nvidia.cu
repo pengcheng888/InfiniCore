@@ -99,7 +99,7 @@ INFINIOP_CUDA_KERNEL fp8IndexerLogitsKernel(
     if (lane == 0 && key_position < max_context_len) {
         logits[token * max_context_len + key_position] = valid
                                                            ? acc
-                                                           : -CUDART_INF_F;
+                                                           : -INFINITY;
     }
 }
 } // namespace

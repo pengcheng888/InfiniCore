@@ -79,7 +79,7 @@ INFINIOP_CUDA_KERNEL fp8SparseMlaGroupKernel(
     dot += __shfl_xor_sync(0xffffffffu, dot, 1, LANES_PER_KEY);
     dot += __shfl_xor_sync(0xffffffffu, dot, 2, LANES_PER_KEY);
     if (lane == 0) {
-        logits[key_in_group] = valid ? dot * softmax_scale : -CUDART_INF_F;
+        logits[key_in_group] = valid ? dot * softmax_scale : -INFINITY;
     }
     __syncthreads();
 
@@ -165,7 +165,7 @@ INFINIOP_CUDA_KERNEL fp8SparseMlaReduceKernel(
     if (thread < MAX_GROUPS) {
         const float value = thread < groups
                               ? group_maxs[stats_base + thread]
-                              : -CUDART_INF_F;
+                              : -INFINITY;
         max_values[thread] = value;
         scratch[thread] = value;
     }
