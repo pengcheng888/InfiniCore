@@ -531,6 +531,7 @@ infiniStatus_t calculate_typed(const MoeFusedDenseInfo &info,
     auto w2_t = reinterpret_cast<const T *>(w2);
     if (num_tokens == 1 && topk <= num_experts) {
         cudaMemsetAsync(output_permutation, 0xff, pairs * sizeof(int), stream);
+        cudaMemsetAsync(grouped_problems, 0, topk * sizeof(cutlass::gemm::GemmCoord), stream);
         cudaMemsetAsync(active_count, 0, sizeof(int), stream);
         setup_decode_gemm1_aligned_compact_kernel<T><<<(max_num_tokens_padded + 255) / 256, 256, 0, stream>>>(
             grouped_problems, grouped_ptr_a, grouped_ptr_b, grouped_ptr_c, grouped_ptr_d,
