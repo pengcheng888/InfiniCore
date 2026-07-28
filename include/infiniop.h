@@ -131,6 +131,7 @@
 #include "infiniop/ops/rwkv5_wkv.h"
 #include "infiniop/ops/scal.h"
 #include "infiniop/ops/scatter.h"
+#include "infiniop/ops/select_last_token_hidden.h"
 #include "infiniop/ops/selu.h"
 #include "infiniop/ops/sigmoid.h"
 #include "infiniop/ops/silu.h"
