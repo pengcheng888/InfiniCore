@@ -122,6 +122,7 @@
 #include "ops/swiglu.hpp"
 #include "ops/take.hpp"
 #include "ops/tan.hpp"
+#include "ops/tanh.hpp"
 #include "ops/tanhshrink.hpp"
 #include "ops/topk.hpp"
 #include "ops/topksoftmax.hpp"
@@ -223,6 +224,7 @@ inline void bind(py::module &m) {
     bind_silu(m);
     bind_swiglu(m);
     bind_tan(m);
+    bind_tanh(m);
     bind_tanhshrink(m);
     bind_logcumsumexp(m);
     bind_logical_and(m);
