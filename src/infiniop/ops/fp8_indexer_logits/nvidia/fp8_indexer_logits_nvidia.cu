@@ -11,7 +11,7 @@ constexpr size_t THREADS = 256;
 template <size_t LANES_PER_KEY>
 INFINIOP_CUDA_KERNEL fp8IndexerLogitsKernel(
     float *__restrict__ logits,
-    const cuda_fp8_e4m3 *__restrict__ q_fp8,
+    const uint8_t *__restrict__ q_fp8,
     const uint8_t *__restrict__ kv_cache,
     const int32_t *__restrict__ block_tables,
     const float *__restrict__ weights_fp32,
@@ -35,7 +35,7 @@ INFINIOP_CUDA_KERNEL fp8IndexerLogitsKernel(
                               + threadIdx.x / LANES_PER_KEY;
 
     extern __shared__ uint8_t shared_bytes[];
-    auto *shared_q = reinterpret_cast<cuda_fp8_e4m3 *>(shared_bytes);
+    auto *shared_q = shared_bytes;
     auto *shared_weights = reinterpret_cast<float *>(
         shared_bytes + num_heads * head_dim);
     const size_t q_base = token * num_heads * head_dim;
@@ -69,8 +69,7 @@ INFINIOP_CUDA_KERNEL fp8IndexerLogitsKernel(
                                          + static_cast<size_t>(physical_block) * block_size * cache_stride
                                    : nullptr;
     const auto *key = valid
-                        ? reinterpret_cast<const cuda_fp8_e4m3 *>(
-                            cache_block + key_in_block * head_dim)
+                        ? cache_block + key_in_block * head_dim
                         : nullptr;
     const float key_scale = valid
                               ? *reinterpret_cast<const float *>(
@@ -83,8 +82,8 @@ INFINIOP_CUDA_KERNEL fp8IndexerLogitsKernel(
         if (valid) {
             const auto *query = shared_q + head * head_dim;
             for (size_t column = lane; column < head_dim; column += LANES_PER_KEY) {
-                dot += static_cast<float>(query[column])
-                     * static_cast<float>(key[column]);
+                dot += infiniopFp8E4m3Decode(query[column])
+                     * infiniopFp8E4m3Decode(key[column]);
             }
         }
         // Every thread named by the full-warp mask must execute the shuffle,
@@ -182,7 +181,7 @@ infiniStatus_t Descriptor::calculate(
         fp8IndexerLogitsKernel<8><<<
             grid, THREADS, smem, reinterpret_cast<cudaStream_t>(stream)>>>(
             reinterpret_cast<float *>(logits),
-            reinterpret_cast<const cuda_fp8_e4m3 *>(q_fp8),
+            reinterpret_cast<const uint8_t *>(q_fp8),
             reinterpret_cast<const uint8_t *>(kv_cache),
             reinterpret_cast<const int32_t *>(block_tables),
             reinterpret_cast<const float *>(weights_fp32),
@@ -194,7 +193,7 @@ infiniStatus_t Descriptor::calculate(
         fp8IndexerLogitsKernel<4><<<
             grid, THREADS, smem, reinterpret_cast<cudaStream_t>(stream)>>>(
             reinterpret_cast<float *>(logits),
-            reinterpret_cast<const cuda_fp8_e4m3 *>(q_fp8),
+            reinterpret_cast<const uint8_t *>(q_fp8),
             reinterpret_cast<const uint8_t *>(kv_cache),
             reinterpret_cast<const int32_t *>(block_tables),
             reinterpret_cast<const float *>(weights_fp32),

@@ -2,7 +2,7 @@
 #include "../../handle.h"
 #include "infiniop/ops/fp8_indexer_quant.h"
 
-#if defined(ENABLE_NVIDIA_API) || defined(ENABLE_ILUVATAR_API) || defined(ENABLE_QY_API) || defined(ENABLE_ALI_API)
+#if defined(ENABLE_NVIDIA_API) || defined(ENABLE_ILUVATAR_API) || defined(ENABLE_QY_API) || defined(ENABLE_HYGON_API) || defined(ENABLE_ALI_API)
 #include "nvidia/fp8_indexer_quant_nvidia.cuh"
 #endif
 
@@ -28,6 +28,9 @@ __INFINI_C infiniStatus_t infiniopCreateFp8IndexerQuantDescriptor(
 #endif
 #ifdef ENABLE_QY_API
         CREATE(INFINI_DEVICE_QY, nvidia);
+#endif
+#ifdef ENABLE_HYGON_API
+        CREATE(INFINI_DEVICE_HYGON, nvidia);
 #endif
 #ifdef ENABLE_ALI_API
         CREATE(INFINI_DEVICE_ALI, nvidia);
@@ -59,6 +62,9 @@ __INFINI_C infiniStatus_t infiniopFp8IndexerQuant(
 #ifdef ENABLE_QY_API
         CALCULATE(INFINI_DEVICE_QY, nvidia);
 #endif
+#ifdef ENABLE_HYGON_API
+        CALCULATE(INFINI_DEVICE_HYGON, nvidia);
+#endif
 #ifdef ENABLE_ALI_API
         CALCULATE(INFINI_DEVICE_ALI, nvidia);
 #endif
@@ -83,6 +89,9 @@ __INFINI_C infiniStatus_t infiniopDestroyFp8IndexerQuantDescriptor(
 #endif
 #ifdef ENABLE_QY_API
         DESTROY(INFINI_DEVICE_QY, nvidia);
+#endif
+#ifdef ENABLE_HYGON_API
+        DESTROY(INFINI_DEVICE_HYGON, nvidia);
 #endif
 #ifdef ENABLE_ALI_API
         DESTROY(INFINI_DEVICE_ALI, nvidia);
@@ -127,6 +136,9 @@ __INFINI_C infiniStatus_t infiniopCreateFusedFp8IndexerDescriptor(
 #ifdef ENABLE_QY_API
         CREATE_FUSED(INFINI_DEVICE_QY, nvidia);
 #endif
+#ifdef ENABLE_HYGON_API
+        CREATE_FUSED(INFINI_DEVICE_HYGON, nvidia);
+#endif
 #ifdef ENABLE_ALI_API
         CREATE_FUSED(INFINI_DEVICE_ALI, nvidia);
 #endif
@@ -165,6 +177,9 @@ __INFINI_C infiniStatus_t infiniopFusedFp8Indexer(
 #ifdef ENABLE_QY_API
         CALCULATE_FUSED(INFINI_DEVICE_QY, nvidia);
 #endif
+#ifdef ENABLE_HYGON_API
+        CALCULATE_FUSED(INFINI_DEVICE_HYGON, nvidia);
+#endif
 #ifdef ENABLE_ALI_API
         CALCULATE_FUSED(INFINI_DEVICE_ALI, nvidia);
 #endif
@@ -189,6 +204,9 @@ __INFINI_C infiniStatus_t infiniopDestroyFusedFp8IndexerDescriptor(
 #endif
 #ifdef ENABLE_QY_API
         DESTROY_FUSED(INFINI_DEVICE_QY, nvidia);
+#endif
+#ifdef ENABLE_HYGON_API
+        DESTROY_FUSED(INFINI_DEVICE_HYGON, nvidia);
 #endif
 #ifdef ENABLE_ALI_API
         DESTROY_FUSED(INFINI_DEVICE_ALI, nvidia);

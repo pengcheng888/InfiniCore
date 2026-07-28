@@ -70,8 +70,8 @@ INFINIOP_CUDA_KERNEL fp8MlaRmsnormCacheKernel(
     const float quantized = scale > 0.0f
                               ? fminf(448.0f, fmaxf(-448.0f, value / scale))
                               : 0.0f;
-    const cuda_fp8_e4m3 fp8_value(quantized);
-    reinterpret_cast<cuda_fp8_e4m3 *>(cache_entry)[column] = fp8_value;
+    const uint8_t fp8_value = infiniopFp8E4m3Encode(quantized);
+    cache_entry[column] = fp8_value;
     if (lane == 0) {
         reinterpret_cast<float *>(cache_entry + LATENT_DIM)[group] = scale;
     }
@@ -86,7 +86,7 @@ INFINIOP_CUDA_KERNEL fp8MlaRmsnormCacheKernel(
     if (vendor_cache != nullptr) {
         auto *vendor_entry = vendor_cache + slot * VENDOR_CACHE_STRIDE;
         vendor_entry[column] = __float2bfloat16_rn(
-            static_cast<float>(fp8_value) * scale);
+            infiniopFp8E4m3Decode(fp8_value) * scale);
         if (column < ROPE_DIM) {
             vendor_entry[LATENT_DIM + column] = rope_value;
         }

@@ -61,14 +61,14 @@ INFINIOP_CUDA_KERNEL fp8SparseMlaGroupKernel(
     if (valid) {
         const auto *cache_entry = kv_cache
                                 + static_cast<size_t>(cache_index) * CACHE_STRIDE;
-        const auto *latent = reinterpret_cast<const cuda_fp8_e4m3 *>(cache_entry);
+        const auto *latent = cache_entry;
         const auto *scales = reinterpret_cast<const float *>(cache_entry + LATENT_DIM);
         const auto *rope = reinterpret_cast<const cuda_bfloat16 *>(
             cache_entry + LATENT_DIM + 4 * sizeof(float));
         const auto *q = query + (token * num_heads + head) * HEAD_DIM;
         for (size_t column = lane; column < LATENT_DIM; column += LANES_PER_KEY) {
             dot += __bfloat162float(q[column])
-                 * static_cast<float>(latent[column])
+                 * infiniopFp8E4m3Decode(latent[column])
                  * scales[column / 128];
         }
         for (size_t column = lane; column < ROPE_DIM; column += LANES_PER_KEY) {
@@ -133,10 +133,10 @@ INFINIOP_CUDA_KERNEL fp8SparseMlaGroupKernel(
                 }
                 const auto *cache_entry = kv_cache
                                         + static_cast<size_t>(index) * CACHE_STRIDE;
-                const auto *latent = reinterpret_cast<const cuda_fp8_e4m3 *>(cache_entry);
+                const auto *latent = cache_entry;
                 const auto *scales = reinterpret_cast<const float *>(cache_entry + LATENT_DIM);
                 acc += (logits[key] / group_sum)
-                     * static_cast<float>(latent[value_column])
+                     * infiniopFp8E4m3Decode(latent[value_column])
                      * scales[value_column / 128];
             }
         }

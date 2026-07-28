@@ -42,26 +42,9 @@ __device__ __forceinline__ float vendor_fp8_quotient(float value, float scale) {
     return fmaf(residual, reciprocal, quotient);
 }
 
-__device__ __forceinline__ uint8_t vendor_fp8_e4m3(float value) {
-    const uint32_t bits = __float_as_uint(value);
-    const uint32_t abs_bits = bits & 0x7fffffffU;
-    uint32_t magnitude = 0x7fU;
-    if (abs_bits < 0x43f00000U) {
-        if (abs_bits > 0x3c7fffffU) {
-            const uint32_t tie = (bits >> 20U) & 1U;
-            magnitude = (bits + tie + 0x0407ffffU) >> 20U;
-        } else {
-            const float absolute = __uint_as_float(abs_bits);
-            magnitude = __float_as_uint(absolute + 16384.0f);
-        }
-    }
-    const uint32_t sign = (bits >> 24U) & 0x80U;
-    return static_cast<uint8_t>((magnitude & 0x7fU) | sign);
-}
-
 template <typename T>
 INFINIOP_CUDA_KERNEL fp8IndexerQuantKernel(
-    cuda_fp8_e4m3 *__restrict__ q_fp8,
+    uint8_t *__restrict__ q_fp8,
     float *__restrict__ weights_fp32,
     const T *__restrict__ q,
     const T *__restrict__ weights,
@@ -92,13 +75,13 @@ INFINIOP_CUDA_KERNEL fp8IndexerQuantKernel(
 
     if (column < head_dim) {
         const float quantized = fminf(448.0f, fmaxf(-448.0f, value / reduction[0]));
-        q_fp8[group * head_dim + column] = cuda_fp8_e4m3(quantized);
+        q_fp8[group * head_dim + column] = infiniopFp8E4m3Encode(quantized);
     }
 }
 
 template <typename T>
 INFINIOP_CUDA_KERNEL fusedFp8IndexerKernel(
-    cuda_fp8_e4m3 *__restrict__ q_fp8,
+    uint8_t *__restrict__ q_fp8,
     float *__restrict__ weights_fp32,
     uint8_t *__restrict__ k_cache,
     const T *__restrict__ q_raw,
@@ -171,7 +154,7 @@ INFINIOP_CUDA_KERNEL fusedFp8IndexerKernel(
         __syncthreads();
         const float quantized = fminf(
             448.0f, fmaxf(-448.0f, value / scratch[0]));
-        q_fp8[q_base + column] = cuda_fp8_e4m3(quantized);
+        q_fp8[q_base + column] = infiniopFp8E4m3Encode(quantized);
         return;
     }
 
@@ -272,8 +255,8 @@ INFINIOP_CUDA_KERNEL fusedFp8IndexerKernel(
             448.0f, fmaxf(-448.0f, vendor_fp8_quotient(value0, scratch[0])));
         const float quantized1 = fminf(
             448.0f, fmaxf(-448.0f, vendor_fp8_quotient(value1, scratch[0])));
-        cache_values[column0] = vendor_fp8_e4m3(quantized0);
-        cache_values[column1] = vendor_fp8_e4m3(quantized1);
+        cache_values[column0] = infiniopFp8E4m3Encode(quantized0);
+        cache_values[column1] = infiniopFp8E4m3Encode(quantized1);
     }
     if (column == 0) {
         *reinterpret_cast<float *>(
@@ -337,14 +320,14 @@ infiniStatus_t Descriptor::calculate(
     const size_t smem = _threads * sizeof(float);
     if (_input_dtype == INFINI_DTYPE_F16) {
         fp8IndexerQuantKernel<half><<<_num_groups, _threads, smem, cuda_stream>>>(
-            reinterpret_cast<cuda_fp8_e4m3 *>(q_fp8),
+            reinterpret_cast<uint8_t *>(q_fp8),
             reinterpret_cast<float *>(weights_fp32),
             reinterpret_cast<const half *>(q),
             reinterpret_cast<const half *>(weights),
             _head_dim);
     } else {
         fp8IndexerQuantKernel<cuda_bfloat16><<<_num_groups, _threads, smem, cuda_stream>>>(
-            reinterpret_cast<cuda_fp8_e4m3 *>(q_fp8),
+            reinterpret_cast<uint8_t *>(q_fp8),
             reinterpret_cast<float *>(weights_fp32),
             reinterpret_cast<const cuda_bfloat16 *>(q),
             reinterpret_cast<const cuda_bfloat16 *>(weights),
@@ -447,7 +430,7 @@ infiniStatus_t FusedDescriptor::calculate(
 #define LAUNCH_FUSED(T)                                                   \
     fusedFp8IndexerKernel<T><<<blocks, _head_dim, smem,                   \
                                reinterpret_cast<cudaStream_t>(stream)>>>( \
-        reinterpret_cast<cuda_fp8_e4m3 *>(q_fp8),                         \
+        reinterpret_cast<uint8_t *>(q_fp8),                               \
         reinterpret_cast<float *>(weights_fp32),                          \
         reinterpret_cast<uint8_t *>(k_cache),                             \
         reinterpret_cast<const T *>(q_raw),                               \
