@@ -4,8 +4,6 @@
 #include <hc_runtime.h>
 #endif
 
-#if defined(ENABLE_METAX_API) || defined(ENABLE_QY_API)
-
 #include "../../../devices/metax/metax_common.h"
 #include "../../../devices/metax/metax_handle.h"
 #include "../../../devices/metax/metax_kernel_common.h"
@@ -132,5 +130,3 @@ Descriptor::calculate(
 }
 
 } // namespace op::dequantize_gptq::metax
-
-#endif

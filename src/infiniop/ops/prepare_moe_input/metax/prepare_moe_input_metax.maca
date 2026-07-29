@@ -4,8 +4,6 @@
 #include <hc_runtime.h>
 #endif
 
-#ifdef ENABLE_METAX_API
-
 #include "prepare_moe_input_metax.h"
 
 #include "../../../devices/metax/metax_common.h"
@@ -213,5 +211,3 @@ infiniStatus_t Descriptor::calculate(
 }
 
 } // namespace op::prepare_moe_input::metax
-
-#endif // ENABLE_METAX_API

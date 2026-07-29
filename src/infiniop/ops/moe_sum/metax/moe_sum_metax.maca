@@ -4,8 +4,6 @@
 #include <hc_runtime.h>
 #endif
 
-#ifdef ENABLE_METAX_API
-
 #include "moe_sum_metax.h"
 
 #include "../../../devices/metax/metax_common.h"
@@ -123,5 +121,3 @@ infiniStatus_t Descriptor::calculate(
 }
 
 } // namespace op::moe_sum::metax
-
-#endif // ENABLE_METAX_API
