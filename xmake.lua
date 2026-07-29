@@ -6,6 +6,11 @@ add_requires("pybind11")
 local GREEN = '\27[0;32m'
 local YELLOW = '\27[1;33m'
 local NC = '\27[0m'  -- No Color
+local PYTHON = os.getenv("PYTHON")
+
+if not PYTHON or PYTHON == "" then
+    PYTHON = is_host("windows") and "python" or "python3"
+end
 
 set_encodings("utf-8")
 
@@ -15,6 +20,24 @@ add_includedirs("third_party/nlohmann_json/single_include/")
 
 if is_mode("debug") then
     add_defines("DEBUG_MODE")
+end
+
+-- ATen
+option("aten")
+    set_default(false)
+    set_showmenu(true)
+    set_description("Whether to link ATen and Torch libraries")
+option_end()
+
+-- Optional operator implementations backed by platform vendor libraries.
+option("use-vendor-ops")
+    set_default(false)
+    set_showmenu(true)
+    set_description("Enable platform-specific InfiniCore vendor operator implementations")
+option_end()
+
+if has_config("use-vendor-ops") then
+    add_defines("ENABLE_VENDOR_OPS")
 end
 
 if is_plat("windows") then
@@ -109,7 +132,7 @@ option("iluvatar_arch")
     set_default("ivcore20")
     set_showmenu(true)
     set_description("Set Iluvatar GPU architecture (e.g. ivcore20)")
-    set_values("ivcore20")
+    set_values("ivcore11", "ivcore20")
     set_category("option")
 option_end()
 
@@ -227,13 +250,6 @@ option_end()
 if has_config("ninetoothed") then
     add_defines("ENABLE_NINETOOTHED")
 end
-
--- ATen
-option("aten")
-    set_default(false)
-    set_showmenu(true)
-    set_description("Wether to link aten and torch libraries")
-option_end()
 
 -- Flash-Attn
 option("flash-attn")
@@ -788,7 +804,7 @@ target("infinicore_cpp_api")
         end
 
         if has_config("aten") then
-            local outdata = os.iorunv("python", {"-c", "import torch, os; print(os.path.dirname(torch.__file__))"}):trim()
+            local outdata = os.iorunv(PYTHON, {"-c", "import torch, os; print(os.path.dirname(torch.__file__))"}):trim()
             local TORCH_DIR = outdata
 
             target:add(
@@ -815,7 +831,7 @@ target("infinicore_cpp_api")
                 )
 
                 -- Detect torch_musa install path
-                local musa_outdata = os.iorunv("python", {"-c", "import torch_musa, os; print(os.path.dirname(torch_musa.__file__))"}):trim()
+                local musa_outdata = os.iorunv(PYTHON, {"-c", "import torch_musa, os; print(os.path.dirname(torch_musa.__file__))"}):trim()
                 local TORCH_MUSA_DIR = musa_outdata
                 local MUSA_ROOT = os.getenv("MUSA_ROOT") or os.getenv("MUSA_HOME") or os.getenv("MUSA_PATH") or "/usr/local/musa"
 
@@ -842,11 +858,11 @@ target("infinicore_cpp_api")
                 )
 
                 -- libpython for pybind11::scoped_interpreter / embed
-                local pyinc = os.iorunv("python", {"-c",
+                local pyinc = os.iorunv(PYTHON, {"-c",
                     "import sysconfig; print(sysconfig.get_path('include'))"}):trim()
-                local pylib = os.iorunv("python", {"-c",
+                local pylib = os.iorunv(PYTHON, {"-c",
                     "import sysconfig; print(sysconfig.get_config_var('LIBDIR'))"}):trim()
-                local pyver = os.iorunv("python", {"-c",
+                local pyver = os.iorunv(PYTHON, {"-c",
                     "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"}):trim()
                 target:add("includedirs", pyinc, { public = true })
                 target:add("linkdirs",    pylib, { public = true })
@@ -869,7 +885,7 @@ target("infinicore_cpp_api")
                     { public = true }
                 )
                 -- Detect torch_npu install path
-                local npu_outdata = os.iorunv("python", {"-c", "import torch_npu, os; print(os.path.dirname(torch_npu.__file__))"}):trim()
+                local npu_outdata = os.iorunv(PYTHON, {"-c", "import torch_npu, os; print(os.path.dirname(torch_npu.__file__))"}):trim()
                 local TORCH_NPU_DIR = npu_outdata
                 target:add(
                     "linkdirs",
@@ -915,7 +931,7 @@ target("infinicore_cpp_api")
     -- Moore mate: force link torch_python to bypass --as-needed
     if has_config("moore-gpu") and has_config("aten") and has_config("flash-attn") then
         before_link(function (target)
-            local torch_dir = os.iorunv("python", {"-c",
+            local torch_dir = os.iorunv(PYTHON, {"-c",
                 "import torch, os; print(os.path.dirname(torch.__file__))"}):trim()
             local torch_lib = path.join(torch_dir, "lib")
             target:add("shflags",
@@ -940,6 +956,7 @@ target("infinicore_cpp_api")
     add_files("src/infinicore/nn/*.cc")
     add_files("src/infinicore/ops/*/*.cc")
     add_files("src/infinicore/ops/*/*/*.cc")
+    add_files("src/infinicore/ops/*/*/*/*.cc")
     -- Platform-private Hygon sources are guarded and only kept in Hygon builds.
     if has_config("hygon-dcu") and get_config("flash-attn") and get_config("flash-attn") ~= "" then
         -- Hygon links against a prebuilt flash-attn extension with a different ABI.
@@ -1059,7 +1076,7 @@ target("infinicore")
             table.insert(pip_install_args, "--editable")
         end
 
-        os.execv("python", table.join({"-m", "pip", "install"}, pip_install_args, {"."}))
+        os.execv(PYTHON, table.join({"-m", "pip", "install"}, pip_install_args, {"."}))
     end)
 target_end()
 
