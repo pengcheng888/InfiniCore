@@ -38,6 +38,7 @@ from infinicore.dtype import (
     float16,
     float32,
     float64,
+    float8,
     half,
     int,
     int8,
