@@ -7,7 +7,7 @@
 #include <vector>
 #endif
 
-#if defined(ENABLE_ILUVATAR_VENDOR_OPS)
+#if defined(ENABLE_ILUVATAR_FLASH_ATTN)
 extern "C" int32_t torch_set_current_cuda_stream(void *stream, int32_t device_index);
 #endif
 
@@ -133,7 +133,7 @@ c10::cuda::CUDAStream get_cuda_stream() {
 #endif
 
 void set_aten_stream_to_infinicore() {
-#if defined(ENABLE_ILUVATAR_VENDOR_OPS)
+#if defined(ENABLE_ILUVATAR_FLASH_ATTN)
     const auto error = torch_set_current_cuda_stream(
         infinicore::context::getStream(),
         static_cast<int32_t>(infinicore::context::getDevice().getIndex()));

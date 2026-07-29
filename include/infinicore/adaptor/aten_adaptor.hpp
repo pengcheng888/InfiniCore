@@ -49,9 +49,7 @@ inline at::Device to_at_device(const Device &device) {
     if (device.getType() == Device::Type::NVIDIA
         || device.getType() == Device::Type::METAX
         || device.getType() == Device::Type::QY
-#if defined(ENABLE_ILUVATAR_VENDOR_OPS)
         || device.getType() == Device::Type::ILUVATAR
-#endif
         || device.getType() == Device::Type::ALI
         || device.getType() == Device::Type::HYGON) {
         return at::Device(at::kCUDA, device.getIndex());
