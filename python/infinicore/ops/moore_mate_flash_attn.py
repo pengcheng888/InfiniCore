@@ -1,5 +1,5 @@
 """
-Paged Flash-Attention wrapper backed by MooreThreads mate (flash_attn).
+Paged Flash-Attention wrapper backed by MooreThreads mate v0.1.3(flash_attn).
 
 Runtime requirements:
     - torch (with MUSA)
@@ -10,28 +10,58 @@ Provides three entry points:
     - moore_mate_flash_attn_prefill: variable-length prefill (used by mha_varlen)
 """
 
+from importlib.metadata import PackageNotFoundError, version
+
 import torch
 
-try:
-    from flash_attn import flash_attn_with_kvcache, get_scheduler_metadata
+_REQUIRED_MATE_VERSION = "0.1.3"
+_MATE_LOADED = False
 
-    _MATE_AVAILABLE = True
-except ImportError:
-    _MATE_AVAILABLE = False
+try:
+    _MATE_VERSION = version("mate")
+except PackageNotFoundError:
+    _MATE_VERSION = None
+
+_MATE_VERSION_SUPPORTED = (
+    _MATE_VERSION is not None
+    and _MATE_VERSION.partition("+")[0] == _REQUIRED_MATE_VERSION
+)
 
 
 def is_available() -> bool:
-    """Return True if mate / flash_attn is installed and importable."""
-    return _MATE_AVAILABLE
+    """Return True when a supported mate version is installed."""
+    return _MATE_VERSION_SUPPORTED
 
 
 def _check_mate_available():
-    """Raise a clear error if mate is not installed."""
-    if not _MATE_AVAILABLE:
+    """Validate mate and import flash_attn only when an operator is used."""
+    global _MATE_LOADED
+    global flash_attn_with_kvcache
+    global get_scheduler_metadata
+
+    if not _MATE_VERSION_SUPPORTED:
+        installed = _MATE_VERSION or "not installed"
         raise RuntimeError(
-            "flash_attn (mate) is not installed. "
-            "Please build and install MooreThreads/mate first."
+            f"mate {_REQUIRED_MATE_VERSION} is required, but found {installed}. "
+            "Please build and install MooreThreads/mate v0.1.3 first."
         )
+
+    if _MATE_LOADED:
+        return
+
+    try:
+        from flash_attn import (
+            flash_attn_with_kvcache as _flash_attn_with_kvcache,
+        )
+        from flash_attn import get_scheduler_metadata as _get_scheduler_metadata
+    except (ImportError, OSError) as exc:
+        raise RuntimeError(
+            f"mate {_MATE_VERSION} is installed, but flash_attn could not be imported."
+        ) from exc
+
+    flash_attn_with_kvcache = _flash_attn_with_kvcache
+    get_scheduler_metadata = _get_scheduler_metadata
+    _MATE_LOADED = True
 
 
 # =============================================================================
@@ -297,7 +327,7 @@ def _test_moore_mate_flash_attn_prefill():
 
 if __name__ == "__main__":
     if not is_available():
-        raise SystemExit("mate / flash_attn not available, please build mate first.")
+        raise SystemExit("mate v0.1.3 not available, please build mate v0.1.3 first.")
 
     _test_moore_mate_flash_attn_decode()
     _test_moore_mate_flash_attn_prefill()
