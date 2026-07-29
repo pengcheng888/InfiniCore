@@ -35,6 +35,7 @@ from infinicore.dtype import (
     double,
     dtype,
     float,
+    float8,
     float16,
     float32,
     float64,
@@ -56,6 +57,10 @@ from infinicore.ops.addcmul import addcmul
 from infinicore.ops.addr import addr
 from infinicore.ops.all import all
 from infinicore.ops.argwhere import argwhere
+from infinicore.ops.ascend_flash_attn import (
+    ascend_flash_attn_decode,
+    ascend_flash_attn_prefill,
+)
 from infinicore.ops.asin import asin
 from infinicore.ops.asinh import asinh
 from infinicore.ops.asum import asum
@@ -184,6 +189,7 @@ __all__ = [
     "complex128",
     "double",
     "float",
+    "float8",
     "float16",
     "float32",
     "float64",
@@ -292,6 +298,8 @@ __all__ = [
     "var_mean",
     "moore_mate_flash_attn_prefill",
     "moore_mate_flash_attn_decode",
+    "ascend_flash_attn_prefill",
+    "ascend_flash_attn_decode",
     "var",
     "topk",
     "all",

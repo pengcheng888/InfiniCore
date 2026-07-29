@@ -6,7 +6,7 @@
 // On MetaX these headers do not exist; the equivalents come from
 // devices/metax/metax_kernel_common.h, which the .maca translation unit
 // includes before this one.
-#if !defined(__MACA__) && !defined(__MACACC__)
+#if !defined(ENABLE_METAX_API)
 #include <cuda_bf16.h>
 #include <cuda_fp16.h>
 #endif
