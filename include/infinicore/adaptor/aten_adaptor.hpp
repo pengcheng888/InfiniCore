@@ -1,5 +1,6 @@
 #ifdef ENABLE_ATEN
 #pragma once
+
 #include "../context/context.hpp"
 #include "../tensor.hpp"
 
@@ -29,6 +30,10 @@ inline at::ScalarType to_at_dtype(DataType dtype) {
         return at::kHalf;
     case DataType::BF16:
         return at::kBFloat16;
+    case DataType::I8:
+        return at::kChar;
+    case DataType::U8:
+        return at::kByte;
     case DataType::I32:
         return at::kInt;
     case DataType::I64:
@@ -40,8 +45,15 @@ inline at::ScalarType to_at_dtype(DataType dtype) {
 
 inline at::Device to_at_device(const Device &device) {
     // PyTorch ATen only exposes standard device types (e.g. kCPU/kCUDA).
-    // Treat CUDA-compatible accelerator devices as CUDA for ATen interoperability.
-    if (device.getType() == Device::Type::NVIDIA || device.getType() == Device::Type::METAX || device.getType() == Device::Type::QY || device.getType() == Device::Type::HYGON || device.getType() == Device::Type::ALI) {
+    // Treat CUDA-compatible vendor devices as CUDA devices for ATen tensor interoperability.
+    if (device.getType() == Device::Type::NVIDIA
+        || device.getType() == Device::Type::METAX
+        || device.getType() == Device::Type::QY
+#if defined(ENABLE_ILUVATAR_VENDOR_OPS)
+        || device.getType() == Device::Type::ILUVATAR
+#endif
+        || device.getType() == Device::Type::ALI
+        || device.getType() == Device::Type::HYGON) {
         return at::Device(at::kCUDA, device.getIndex());
     } else if (device.getType() == Device::Type::CPU) {
         return at::Device(at::kCPU);
@@ -67,6 +79,10 @@ at::Tensor to_aten_tensor(const infinicore::Tensor &t);
 c10::hip::HIPStream get_hip_stream();
 #elif defined(ENABLE_NVIDIA_API) || defined(ENABLE_METAX_API) || defined(ENABLE_QY_API) || defined(ENABLE_ALI_API)
 c10::cuda::CUDAStream get_cuda_stream();
+#endif
+
+#if defined(ENABLE_ILUVATAR_VENDOR_OPS)
+void set_aten_stream_to_infinicore();
 #endif
 
 #if defined(ENABLE_MOORE_API)

@@ -1,3 +1,69 @@
+if has_config("use-vendor-ops") and not has_config("aten") then
+    raise("Iluvatar vendor operators require --aten=true")
+end
+
+target("infinicore_cpp_api")
+    if has_config("use-vendor-ops") then
+        add_defines("ENABLE_ILUVATAR_VENDOR_OPS")
+        before_link(function (target)
+            local torch_dir = os.iorunv("python3", {
+                "-c",
+                "import torch, os; print(os.path.dirname(torch.__file__))",
+            }):trim()
+            local torch_lib_dir = path.join(torch_dir, "lib")
+            if not os.isdir(torch_lib_dir) then
+                raise("Iluvatar vendor operators: torch library directory not found: " .. torch_lib_dir)
+            end
+            -- Vendor extensions use ATen symbols and may be loaded after InfiniCore.
+            -- Keep the complete Torch runtime discoverable even when users import
+            -- infinicore before importing torch.
+            target:add(
+                "shflags",
+                "-Wl,--no-as-needed",
+                "-L" .. torch_lib_dir,
+                "-ltorch_python",
+                "-ltorch_cpu",
+                "-ltorch_cuda",
+                "-ltorch",
+                "-lc10_cuda",
+                "-lc10",
+                "-Wl,--as-needed",
+                "-Wl,-rpath," .. torch_lib_dir,
+                {force = true}
+            )
+        end)
+    end
+target_end()
+
+target("_infinicore")
+    if has_config("use-vendor-ops") then
+        before_link(function (target)
+            local torch_dir = os.iorunv("python3", {
+                "-c",
+                "import torch, os; print(os.path.dirname(torch.__file__))",
+            }):trim()
+            local torch_lib_dir = path.join(torch_dir, "lib")
+            if not os.isdir(torch_lib_dir) then
+                raise("Iluvatar vendor operators: torch library directory not found: " .. torch_lib_dir)
+            end
+            target:add(
+                "shflags",
+                "-Wl,--no-as-needed",
+                "-L" .. torch_lib_dir,
+                "-ltorch_python",
+                "-ltorch_cpu",
+                "-ltorch_cuda",
+                "-ltorch",
+                "-lc10_cuda",
+                "-lc10",
+                "-Wl,--as-needed",
+                "-Wl,-rpath," .. torch_lib_dir,
+                {force = true}
+            )
+        end)
+    end
+target_end()
+
 local iluvatar_arch = get_config("iluvatar_arch") or "ivcore20"
 local iluvatar_cuflags = {
     "-Wno-pass-failed",

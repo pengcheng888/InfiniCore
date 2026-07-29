@@ -140,11 +140,53 @@
 #include "ops/var.hpp"
 #include "ops/var_mean.hpp"
 
+#ifdef ENABLE_VENDOR_OPS
+#include "ops/concat_and_cache_mla.hpp"
+#include "ops/concat_and_cache_mla_int8.hpp"
+#include "ops/concat_mla_q.hpp"
+#include "ops/dsa.hpp"
+#include "ops/dynamic_scaled_int8_quant.hpp"
+#include "ops/fused_rotary_embedding.hpp"
+#include "ops/grouped_topk_vendor.hpp"
+#include "ops/moe_argsort_bincount.hpp"
+#include "ops/moe_expand_input.hpp"
+#include "ops/moe_silu_and_mul_quant.hpp"
+#include "ops/moe_sum_vendor.hpp"
+#include "ops/moe_topk_vendor.hpp"
+#include "ops/paged_attention_mla.hpp"
+#include "ops/scaled_mm_w4a8.hpp"
+#include "ops/scaled_mm_w8a8.hpp"
+#include "ops/w16a16_group_gemm.hpp"
+#include "ops/w4a8_group_gemm.hpp"
+#include "ops/w8a8_group_gemm.hpp"
+#endif
+
 namespace py = pybind11;
 
 namespace infinicore::ops {
 
 inline void bind(py::module &m) {
+#ifdef ENABLE_VENDOR_OPS
+    bind_concat_and_cache_mla(m);
+    bind_concat_and_cache_mla_int8(m);
+    bind_concat_mla_q(m);
+    bind_dsa(m);
+    bind_dynamic_scaled_int8_quant(m);
+    bind_fused_rotary_embedding(m);
+    bind_grouped_topk_vendor(m);
+    bind_moe_argsort_bincount(m);
+    bind_moe_expand_input(m);
+    bind_moe_silu_and_mul_quant(m);
+    bind_moe_sum_vendor(m);
+    bind_moe_topk_vendor(m);
+    bind_paged_attention_mla(m);
+    bind_scaled_mm_w4a8(m);
+    bind_scaled_mm_w8a8(m);
+    bind_w16a16_group_gemm(m);
+    bind_w4a8_group_gemm(m);
+    bind_w8a8_group_gemm(m);
+#endif
+
     bind_adaptive_max_pool1d(m);
     bind_add(m);
     bind_adaptive_avg_pool3d(m);
