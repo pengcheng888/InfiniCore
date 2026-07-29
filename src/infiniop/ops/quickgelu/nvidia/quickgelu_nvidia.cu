@@ -1,3 +1,5 @@
+#include "../../../elementwise/nvidia/elementwise_nvidia.cuh"
+
 #include "../cuda/kernel.cuh"
 #include "quickgelu_nvidia.cuh"
 
