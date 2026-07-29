@@ -248,7 +248,7 @@ if has_config("aten") then
         add_defines("_GLIBCXX_USE_CXX11_ABI=0")
     end
     if get_config("flash-attn") and get_config("flash-attn") ~= ""
-       and (has_config("nv-gpu") or has_config("metax-gpu") or has_config("qy-gpu") or has_config("hygon-dcu")) then
+       and (has_config("nv-gpu") or has_config("metax-gpu") or has_config("qy-gpu") or has_config("hygon-dcu") or has_config("ali-ppu")) then
         add_defines("ENABLE_FLASH_ATTN")
     end
     -- Ascend flash-attn: enabled when ascend-gpu + aten + flash-attn
@@ -674,7 +674,7 @@ target("infinicore_cpp_api")
         add_defines("CHAR_BIT=8", "INT_MIN=(-2147483647 - 1)", "INT_MAX=2147483647", "UINT_MAX=4294967295U")
     end
     add_includedirs(INFINI_ROOT.."/include", { public = true })
-    if has_config("nv-gpu") then
+    if has_config("nv-gpu") or has_config("ali-ppu") then
         local cuda_root = os.getenv("CUDA_HOME") or os.getenv("CUDA_PATH") or get_config("cuda") or "/usr/local/cuda"
         add_includedirs(cuda_root .. "/include")
     end
@@ -744,6 +744,9 @@ target("infinicore_cpp_api")
         end
         if has_config("hygon-dcu") then
             add_deps("flash-attn-hygon")
+        end
+        if has_config("ali-ppu") then
+            add_deps("flash-attn-ali")
         end
     end
 
