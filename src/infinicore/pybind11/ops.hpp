@@ -50,6 +50,10 @@
 #include "ops/floor_divide.hpp"
 #include "ops/fmin.hpp"
 #include "ops/fmod.hpp"
+#include "ops/fp8_indexer_logits.hpp"
+#include "ops/fp8_indexer_quant.hpp"
+#include "ops/fp8_mla_rmsnorm_cache.hpp"
+#include "ops/fp8_sparse_mla.hpp"
 #include "ops/fused_gated_delta_net_gating.hpp"
 #include "ops/fused_moe.hpp"
 #include "ops/gaussian_nll_loss.hpp"
@@ -110,6 +114,7 @@
 #include "ops/scal.hpp"
 #include "ops/scatter.hpp"
 #include "ops/selu.hpp"
+#include "ops/select_last_token_hidden.hpp"
 #include "ops/sigmoid.hpp"
 #include "ops/silu.hpp"
 #include "ops/silu_and_mul.hpp"
@@ -174,6 +179,10 @@ inline void bind(py::module &m) {
     bind_hinge_embedding_loss(m);
     bind_kv_caching(m);
     bind_fmod(m);
+    bind_fp8_indexer_logits(m);
+    bind_fp8_indexer_quant(m);
+    bind_fp8_mla_rmsnorm_cache(m);
+    bind_fp8_sparse_mla(m);
     bind_fused_gated_delta_net_gating(m);
     bind_fused_moe(m);
     bind_fmin(m);
@@ -272,6 +281,7 @@ inline void bind(py::module &m) {
     bind_lerp(m);
     bind_triplet_margin_loss(m);
     bind_selu(m);
+    bind_select_last_token_hidden(m);
     bind_swap(m);
     bind_sinh(m);
     bind_layer_norm(m);
