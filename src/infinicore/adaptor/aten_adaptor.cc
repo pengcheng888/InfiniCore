@@ -132,8 +132,8 @@ c10::cuda::CUDAStream get_cuda_stream() {
 }
 #endif
 
-#if defined(ENABLE_ILUVATAR_VENDOR_OPS)
 void set_aten_stream_to_infinicore() {
+#if defined(ENABLE_ILUVATAR_VENDOR_OPS)
     const auto error = torch_set_current_cuda_stream(
         infinicore::context::getStream(),
         static_cast<int32_t>(infinicore::context::getDevice().getIndex()));
@@ -142,8 +142,19 @@ void set_aten_stream_to_infinicore() {
             "torch_set_current_cuda_stream failed with error code "
             + std::to_string(error));
     }
-}
+#elif defined(ENABLE_HYGON_API)
+    c10::hip::setCurrentHIPStream(get_hip_stream());
+#elif defined(ENABLE_MOORE_API)
+    c10::musa::setCurrentMUSAStream(get_musa_stream());
+#elif defined(ENABLE_NVIDIA_API) || defined(ENABLE_METAX_API) || defined(ENABLE_QY_API) || defined(ENABLE_ALI_API)
+    c10::cuda::setCurrentCUDAStream(get_cuda_stream());
+#elif defined(ENABLE_ILUVATAR_API)
+    throw std::runtime_error(
+        "Iluvatar ATen stream synchronization requires use-vendor-ops");
+#elif !defined(ENABLE_CPU_API)
+    throw std::runtime_error("ATen stream synchronization is unsupported on this device");
 #endif
+}
 
 #if defined(ENABLE_MOORE_API)
 c10::musa::MUSAStream get_musa_stream() {

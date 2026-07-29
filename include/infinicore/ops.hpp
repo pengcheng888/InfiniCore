@@ -18,6 +18,8 @@
 #include "ops/blas_amin.hpp"
 #include "ops/blas_copy.hpp"
 #include "ops/blas_dot.hpp"
+#include "ops/bmm_strided.hpp"
+#include "ops/cast.hpp"
 #include "ops/causal_conv1d.hpp"
 #include "ops/causal_softmax.hpp"
 #include "ops/cdist.hpp"
@@ -81,6 +83,7 @@
 #include "ops/swiglu.hpp"
 #include "ops/tanh.hpp"
 #include "ops/topksoftmax.hpp"
+#include "ops/vocab_parallel_embedding.hpp"
 
 #ifdef ENABLE_VENDOR_OPS
 #include "ops/concat_and_cache_mla.hpp"
