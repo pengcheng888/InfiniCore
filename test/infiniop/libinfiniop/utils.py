@@ -127,7 +127,7 @@ class TestTensor(CTensor):
         elif mode == "manual":
             assert set_tensor is not None
             assert torch_shape == list(set_tensor.shape)
-            assert torch_strides == list(set_tensor.stride())
+            assert torch_strides is None or torch_strides == list(set_tensor.stride())
             self._torch_tensor = set_tensor.to(to_torch_dtype(dt)).to(
                 torch_device_map[device]
             )

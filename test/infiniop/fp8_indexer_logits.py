@@ -119,7 +119,12 @@ def test(handle, device, num_tokens, num_requests, _dtype, sync):
         device,
         mode="zeros",
     )
-    q_fp8 = TestTensor.from_torch(q_src, InfiniDtype.F8, device)
+    # q_src is contiguous. Avoid from_torch's generic strided rearrangement:
+    # some device runtimes cannot round-trip FP8 through the float64 scratch
+    # tensor used by that path and silently replace the input with zeros.
+    q_fp8 = TestTensor(
+        q_src.shape, None, InfiniDtype.F8, device, mode="manual", set_tensor=q_src
+    )
     kv_cache = TestTensor.from_torch(cache_src, InfiniDtype.U8, device)
     block_tables = TestTensor.from_torch(
         block_tables_src, InfiniDtype.I32, device
