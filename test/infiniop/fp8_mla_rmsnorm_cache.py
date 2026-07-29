@@ -64,9 +64,7 @@ def test(handle, device, num_tokens, write_vendor_cache, _dtype, sync):
         torch.bfloat16
     )
     weight_src = (torch.rand(_LATENT_DIM) + 0.5).to(torch.bfloat16)
-    rope_src = (torch.rand(num_tokens, _ROPE_DIM) * 2.0 - 1.0).to(
-        torch.bfloat16
-    )
+    rope_src = (torch.rand(num_tokens, _ROPE_DIM) * 2.0 - 1.0).to(torch.bfloat16)
     slots_src = torch.tensor(
         [0, block_size + 1] + ([-1] if num_tokens == 3 else []),
         dtype=torch.int64,
@@ -90,9 +88,7 @@ def test(handle, device, num_tokens, write_vendor_cache, _dtype, sync):
         if write_vendor_cache
         else None
     )
-    compressed = TestTensor.from_torch(
-        compressed_src, InfiniDtype.BF16, device
-    )
+    compressed = TestTensor.from_torch(compressed_src, InfiniDtype.BF16, device)
     weight = TestTensor.from_torch(weight_src, InfiniDtype.BF16, device)
     rope = TestTensor.from_torch(rope_src, InfiniDtype.BF16, device)
     slots = TestTensor.from_torch(slots_src, InfiniDtype.I64, device)
@@ -125,8 +121,8 @@ def test(handle, device, num_tokens, write_vendor_cache, _dtype, sync):
         rope_offset = _LATENT_DIM + 16
         expected_cache[slot, rope_offset:] = rope_src[token].view(torch.uint8)
         expected_vendor[slot, :_LATENT_DIM] = (
-            quantized.float() * scales[:, None]
-        ).reshape(-1).to(torch.bfloat16)
+            (quantized.float() * scales[:, None]).reshape(-1).to(torch.bfloat16)
+        )
         expected_vendor[slot, _LATENT_DIM:] = rope_src[token]
 
     descriptor = infiniopOperatorDescriptor_t()
@@ -168,14 +164,10 @@ def test(handle, device, num_tokens, write_vendor_cache, _dtype, sync):
     assert torch.equal(actual_cache, expected_cache)
     if vendor_cache is not None:
         assert torch.equal(
-            vendor_cache.actual_tensor().cpu().reshape(
-                -1, _LATENT_DIM + _ROPE_DIM
-            ),
+            vendor_cache.actual_tensor().cpu().reshape(-1, _LATENT_DIM + _ROPE_DIM),
             expected_vendor,
         )
-    check_error(
-        LIBINFINIOP.infiniopDestroyFp8MlaRmsnormCacheDescriptor(descriptor)
-    )
+    check_error(LIBINFINIOP.infiniopDestroyFp8MlaRmsnormCacheDescriptor(descriptor))
 
 
 if __name__ == "__main__":

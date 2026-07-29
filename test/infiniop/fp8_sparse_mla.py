@@ -69,25 +69,17 @@ def test(handle, device, num_tokens, num_heads, topk, _dtype, sync):
         torch.float8_e4m3fn
     )
     scales = torch.rand(num_cache_tokens, 4, dtype=torch.float32) * 0.02 + 0.002
-    rope = (torch.rand(num_cache_tokens, _ROPE_DIM) * 2.0 - 1.0).to(
-        torch.bfloat16
-    )
-    cache_src = torch.zeros(
-        (num_cache_tokens, 1, _CACHE_STRIDE), dtype=torch.uint8
-    )
+    rope = (torch.rand(num_cache_tokens, _ROPE_DIM) * 2.0 - 1.0).to(torch.bfloat16)
+    cache_src = torch.zeros((num_cache_tokens, 1, _CACHE_STRIDE), dtype=torch.uint8)
     flat_cache = cache_src[:, 0]
-    flat_cache[:, :_LATENT_DIM] = latent.view(torch.uint8).reshape(
-        num_cache_tokens, -1
+    flat_cache[:, :_LATENT_DIM] = latent.view(torch.uint8).reshape(num_cache_tokens, -1)
+    flat_cache[:, _LATENT_DIM : _LATENT_DIM + 16] = (
+        scales.contiguous().view(torch.uint8).reshape(num_cache_tokens, -1)
     )
-    flat_cache[:, _LATENT_DIM : _LATENT_DIM + 16] = scales.contiguous().view(
-        torch.uint8
-    ).reshape(num_cache_tokens, -1)
     flat_cache[:, _LATENT_DIM + 16 :] = rope.view(torch.uint8).reshape(
         num_cache_tokens, -1
     )
-    query_src = (torch.rand(num_tokens, num_heads, _HEAD_DIM) - 0.5).to(
-        torch.bfloat16
-    )
+    query_src = (torch.rand(num_tokens, num_heads, _HEAD_DIM) - 0.5).to(torch.bfloat16)
     indices_src = torch.arange(topk, dtype=torch.int32).repeat(num_tokens, 1, 1)
     indices_src[0, 0, 2] = -1
     indices_src[1, 0, 67] = num_cache_tokens
@@ -98,9 +90,7 @@ def test(handle, device, num_tokens, num_heads, topk, _dtype, sync):
         num_cache_tokens, _LATENT_DIM
     )
     keys = torch.cat([dequantized, rope.float()], dim=-1)
-    expected = torch.zeros(
-        (num_tokens, num_heads, _LATENT_DIM), dtype=torch.float32
-    )
+    expected = torch.zeros((num_tokens, num_heads, _LATENT_DIM), dtype=torch.float32)
     for token in range(num_tokens):
         valid_indices = [
             int(index)
@@ -108,9 +98,7 @@ def test(handle, device, num_tokens, num_heads, topk, _dtype, sync):
             if 0 <= int(index) < num_cache_tokens
         ]
         for head in range(num_heads):
-            logits = (
-                keys[valid_indices] @ query_src[token, head].float()
-            ) * _SCALE
+            logits = (keys[valid_indices] @ query_src[token, head].float()) * _SCALE
             probabilities = torch.softmax(logits, dim=0)
             expected[token, head] = (
                 probabilities[:, None] * dequantized[valid_indices]
@@ -126,9 +114,7 @@ def test(handle, device, num_tokens, num_heads, topk, _dtype, sync):
     query = TestTensor.from_torch(query_src, InfiniDtype.BF16, device)
     cache = TestTensor.from_torch(cache_src, InfiniDtype.U8, device)
     indices = TestTensor.from_torch(indices_src, InfiniDtype.I32, device)
-    topk_lens = TestTensor.from_torch(
-        topk_lens_src, InfiniDtype.I32, device
-    )
+    topk_lens = TestTensor.from_torch(topk_lens_src, InfiniDtype.I32, device)
 
     descriptor = infiniopOperatorDescriptor_t()
     check_error(

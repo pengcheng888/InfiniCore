@@ -1,10 +1,12 @@
-from typing import Sequence
-import torch
 import ctypes
+from typing import Sequence
+
 import numpy as np
+import torch
+
 from .datatypes import *
 from .devices import *
-from .liboperators import infiniopTensorDescriptor_t, LIBINFINIOP, infiniopHandle_t
+from .liboperators import LIBINFINIOP, infiniopHandle_t, infiniopTensorDescriptor_t
 
 
 def check_error(status):
@@ -602,8 +604,9 @@ def print_discrepancy(
     if actual.shape != expected.shape:
         raise ValueError("Tensors must have the same shape to compare.")
 
-    import torch
     import sys
+
+    import torch
 
     is_terminal = sys.stdout.isatty()
 
@@ -768,12 +771,9 @@ def get_test_devices(args):
     if args.qy:
         devices_to_test.append(InfiniDeviceEnum.QY)
     if args.cambricon:
-        import torch_mlu
-
         devices_to_test.append(InfiniDeviceEnum.CAMBRICON)
     if args.ascend:
         import torch
-        import torch_npu
 
         torch.npu.set_device(0)  # Ascend NPU needs explicit device initialization
         devices_to_test.append(InfiniDeviceEnum.ASCEND)
@@ -783,12 +783,9 @@ def get_test_devices(args):
         devices_to_test.append(InfiniDeviceEnum.METAX)
     if args.moore:
         import torch
-        import torch_musa
 
         devices_to_test.append(InfiniDeviceEnum.MOORE)
     if args.kunlun:
-        import torch_xmlir
-
         devices_to_test.append(InfiniDeviceEnum.KUNLUN)
     if args.hygon:
         import torch

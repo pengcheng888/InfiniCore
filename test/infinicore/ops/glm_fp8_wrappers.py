@@ -1,9 +1,9 @@
 import math
 
 import torch
+from infinicore.lib import _infinicore
 
 import infinicore
-from infinicore.lib import _infinicore
 
 
 def wrap(tensor):
@@ -25,12 +25,10 @@ def test_indexer_quant():
     sync()
 
     scales = torch.exp2(
-        torch.ceil(
-            torch.log2(q.float().abs().amax(dim=-1).clamp_min(1.0e-4) / 448.0)
-        )
+        torch.ceil(torch.log2(q.float().abs().amax(dim=-1).clamp_min(1.0e-4) / 448.0))
     )
-    expected_q = (q.float() / scales[..., None]).clamp(-448, 448).to(
-        torch.float8_e4m3fn
+    expected_q = (
+        (q.float() / scales[..., None]).clamp(-448, 448).to(torch.float8_e4m3fn)
     )
     torch.testing.assert_close(q_fp8.float(), expected_q.float(), rtol=0, atol=0)
     torch.testing.assert_close(
@@ -41,9 +39,7 @@ def test_indexer_quant():
 def test_fused_indexer():
     torch.manual_seed(21)
     tokens, heads, head_dim, rope_dim = 2, 3, 128, 64
-    q_raw = torch.randn(
-        tokens, heads, head_dim, device="cuda", dtype=torch.bfloat16
-    )
+    q_raw = torch.randn(tokens, heads, head_dim, device="cuda", dtype=torch.bfloat16)
     k_weights = torch.randn(
         tokens, head_dim + heads, device="cuda", dtype=torch.bfloat16
     )
@@ -91,9 +87,7 @@ def test_mla_cache_and_sparse():
     cache = torch.zeros(2, 64, 656, device="cuda", dtype=torch.uint8)
     vendor = torch.zeros(2, 64, 576, device="cuda", dtype=torch.bfloat16)
     tensors = [wrap(x) for x in (cache, vendor, compressed, norm_weight, rope, slots)]
-    _infinicore.fp8_mla_rmsnorm_dual_cache_(
-        *(x._underlying for x in tensors), 1.0e-5
-    )
+    _infinicore.fp8_mla_rmsnorm_dual_cache_(*(x._underlying for x in tensors), 1.0e-5)
     sync()
 
     entries = cache.view(-1, 656)[:tokens]
@@ -114,16 +108,14 @@ def test_mla_cache_and_sparse():
     )
 
     query = torch.randn(1, 2, 576, device="cuda", dtype=torch.bfloat16)
-    indices = torch.arange(tokens, device="cuda", dtype=torch.int32).view(
-        1, 1, tokens
-    )
+    indices = torch.arange(tokens, device="cuda", dtype=torch.int32).view(1, 1, tokens)
     lens = torch.tensor([tokens], device="cuda", dtype=torch.int32)
     output = torch.zeros(1, 2, 512, device="cuda", dtype=torch.bfloat16)
-    sparse_tensors = [wrap(x) for x in (output, query, cache.view(-1, 1, 656), indices, lens)]
+    sparse_tensors = [
+        wrap(x) for x in (output, query, cache.view(-1, 1, 656), indices, lens)
+    ]
     scale = float(576**-0.5)
-    _infinicore.fp8_sparse_mla_(
-        *(x._underlying for x in sparse_tensors), scale
-    )
+    _infinicore.fp8_sparse_mla_(*(x._underlying for x in sparse_tensors), scale)
     sync()
 
     keys = torch.cat([latent, cached_rope.float()], dim=-1)
@@ -138,12 +130,8 @@ def test_mla_cache_and_sparse():
 def test_indexer_logits():
     torch.manual_seed(23)
     tokens, heads, blocks = 2, 3, 4
-    q = (torch.rand(tokens, heads, 128, device="cuda") * 8 - 4).to(
-        torch.float8_e4m3fn
-    )
-    keys = (torch.rand(blocks, 64, 128, device="cuda") * 8 - 4).to(
-        torch.float8_e4m3fn
-    )
+    q = (torch.rand(tokens, heads, 128, device="cuda") * 8 - 4).to(torch.float8_e4m3fn)
+    keys = (torch.rand(blocks, 64, 128, device="cuda") * 8 - 4).to(torch.float8_e4m3fn)
     scales = torch.rand(blocks, 64, device="cuda", dtype=torch.float32) * 0.02
     cache = torch.zeros(blocks, 64, 132, device="cuda", dtype=torch.uint8)
     raw = cache.view(blocks, -1)
@@ -175,9 +163,7 @@ def test_indexer_logits():
         for pos in range(int(positions[token]) + 1):
             block = int(block_tables[request, pos // 64])
             offset = pos % 64
-            dots = (
-                q[token].float() * keys[block, offset].float()[None, :]
-            ).sum(-1)
+            dots = (q[token].float() * keys[block, offset].float()[None, :]).sum(-1)
             expected[token, pos] = (
                 torch.relu(dots * scales[block, offset]) * weights[token]
             ).sum()

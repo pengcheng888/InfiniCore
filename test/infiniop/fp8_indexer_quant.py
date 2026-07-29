@@ -56,16 +56,14 @@ def test(handle, device, shape, dtype, sync):
     q = TestTensor(shape, None, dtype, device, scale=8.0, bias=-4.0)
     weights = TestTensor(shape[:2], None, dtype, device, scale=2.0, bias=-1.0)
     q_fp8 = TestTensor(shape, None, InfiniDtype.F8, device, mode="zeros")
-    weights_fp32 = TestTensor(
-        shape[:2], None, InfiniDtype.F32, device, mode="zeros"
-    )
+    weights_fp32 = TestTensor(shape[:2], None, InfiniDtype.F32, device, mode="zeros")
 
     q_float = q.torch_tensor().float()
     scales = torch.exp2(
         torch.ceil(torch.log2(q_float.abs().amax(dim=-1).clamp_min(1.0e-4) / 448.0))
     )
-    expected_q = (q_float / scales.unsqueeze(-1)).clamp(-448.0, 448.0).to(
-        torch.float8_e4m3fn
+    expected_q = (
+        (q_float / scales.unsqueeze(-1)).clamp(-448.0, 448.0).to(torch.float8_e4m3fn)
     )
     expected_weights = weights.torch_tensor().float() * scales
 

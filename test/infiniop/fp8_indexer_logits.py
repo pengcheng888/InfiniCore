@@ -59,15 +59,11 @@ def _make_cache(num_blocks):
         torch.float8_e4m3fn
     )
     scales = torch.rand(num_blocks, _BLOCK_SIZE, dtype=torch.float32) * 0.02 + 0.001
-    raw = torch.zeros(
-        (num_blocks, _BLOCK_SIZE * _CACHE_STRIDE), dtype=torch.uint8
+    raw = torch.zeros((num_blocks, _BLOCK_SIZE * _CACHE_STRIDE), dtype=torch.uint8)
+    raw[:, : _BLOCK_SIZE * _HEAD_DIM] = keys.view(torch.uint8).reshape(num_blocks, -1)
+    raw[:, _BLOCK_SIZE * _HEAD_DIM :] = (
+        scales.contiguous().view(torch.uint8).reshape(num_blocks, -1)
     )
-    raw[:, : _BLOCK_SIZE * _HEAD_DIM] = keys.view(torch.uint8).reshape(
-        num_blocks, -1
-    )
-    raw[:, _BLOCK_SIZE * _HEAD_DIM :] = scales.contiguous().view(
-        torch.uint8
-    ).reshape(num_blocks, -1)
     return raw.reshape(num_blocks, _BLOCK_SIZE, _CACHE_STRIDE), keys, scales
 
 
@@ -77,25 +73,21 @@ def test(handle, device, num_tokens, num_requests, _dtype, sync):
         f"tokens={num_tokens}, requests={num_requests}"
     )
     num_blocks = num_requests * 2
-    q_src = (
-        torch.rand(num_tokens, _NUM_HEADS, _HEAD_DIM) * 8.0 - 4.0
-    ).to(torch.float8_e4m3fn)
+    q_src = (torch.rand(num_tokens, _NUM_HEADS, _HEAD_DIM) * 8.0 - 4.0).to(
+        torch.float8_e4m3fn
+    )
     weights_src = torch.rand(num_tokens, _NUM_HEADS, dtype=torch.float32)
     cache_src, keys, key_scales = _make_cache(num_blocks)
-    block_tables_src = torch.arange(
-        num_blocks, dtype=torch.int32
-    ).reshape(num_requests, 2)
-    positions_src = torch.tensor(
-        [70, 45] + [12] * (num_tokens - 2), dtype=torch.int64
+    block_tables_src = torch.arange(num_blocks, dtype=torch.int32).reshape(
+        num_requests, 2
     )
+    positions_src = torch.tensor([70, 45] + [12] * (num_tokens - 2), dtype=torch.int64)
     request_ids_src = torch.tensor(
         list(range(num_requests)) + [-1] * (num_tokens - num_requests),
         dtype=torch.int32,
     )
 
-    expected = torch.full(
-        (num_tokens, _MAX_CONTEXT), -torch.inf, dtype=torch.float32
-    )
+    expected = torch.full((num_tokens, _MAX_CONTEXT), -torch.inf, dtype=torch.float32)
     for token in range(num_tokens):
         request = int(request_ids_src[token])
         if request < 0 or request >= num_requests:
@@ -126,9 +118,7 @@ def test(handle, device, num_tokens, num_requests, _dtype, sync):
         q_src.shape, None, InfiniDtype.F8, device, mode="manual", set_tensor=q_src
     )
     kv_cache = TestTensor.from_torch(cache_src, InfiniDtype.U8, device)
-    block_tables = TestTensor.from_torch(
-        block_tables_src, InfiniDtype.I32, device
-    )
+    block_tables = TestTensor.from_torch(block_tables_src, InfiniDtype.I32, device)
     weights = TestTensor.from_torch(weights_src, InfiniDtype.F32, device)
     positions = TestTensor.from_torch(positions_src, InfiniDtype.I64, device)
     request_ids = TestTensor.from_torch(request_ids_src, InfiniDtype.I32, device)
@@ -177,9 +167,7 @@ def test(handle, device, num_tokens, num_requests, _dtype, sync):
     actual = logits.actual_tensor().cpu()
     assert torch.equal(torch.isneginf(actual), torch.isneginf(expected))
     finite = torch.isfinite(expected)
-    assert torch.allclose(
-        actual[finite], expected[finite], atol=2.0e-3, rtol=2.0e-4
-    )
+    assert torch.allclose(actual[finite], expected[finite], atol=2.0e-3, rtol=2.0e-4)
     check_error(LIBINFINIOP.infiniopDestroyFp8IndexerLogitsDescriptor(descriptor))
 
 
