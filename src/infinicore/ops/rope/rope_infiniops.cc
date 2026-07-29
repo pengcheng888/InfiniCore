@@ -34,7 +34,7 @@ void *plan(Tensor x_out,
            const Tensor &sin,
            const Tensor &cos,
            infinicore::nn::RoPE::Algo algo) {
-    INFINICORE_ASSERT(x_out->device().getType() == Device::Type::NVIDIA);
+    INFINICORE_ASSERT(::infinicore::op::infiniops::isSupportedDevice(x_out->device().getType()));
     INFINICORE_ASSERT_TENSORS_SAME_DEVICE(x_out, x, pos, sin, cos);
     return new PlannedMeta{
         TensorMeta(x_out), TensorMeta(x), TensorMeta(pos), TensorMeta(sin), TensorMeta(cos),
@@ -64,9 +64,9 @@ void cleanup(void **planned_meta_ptr) {
 }
 
 static bool registered = []() {
-    RoPE::plan_dispatcher().registerDevice(Device::Type::NVIDIA, &plan);
-    RoPE::run_dispatcher().registerDevice(Device::Type::NVIDIA, &run);
-    RoPE::cleanup_dispatcher().registerDevice(Device::Type::NVIDIA, &cleanup);
+    ::infinicore::op::infiniops::registerSupportedDevices(RoPE::plan_dispatcher(), &plan);
+    ::infinicore::op::infiniops::registerSupportedDevices(RoPE::run_dispatcher(), &run);
+    ::infinicore::op::infiniops::registerSupportedDevices(RoPE::cleanup_dispatcher(), &cleanup);
     return true;
 }();
 } // namespace infinicore::op::rope_impl::infiniops

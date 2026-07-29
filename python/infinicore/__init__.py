@@ -35,6 +35,7 @@ from infinicore.dtype import (
     double,
     dtype,
     float,
+    float8,
     float16,
     float32,
     float64,
@@ -56,6 +57,10 @@ from infinicore.ops.addcmul import addcmul
 from infinicore.ops.addr import addr
 from infinicore.ops.all import all
 from infinicore.ops.argwhere import argwhere
+from infinicore.ops.ascend_flash_attn import (
+    ascend_flash_attn_decode,
+    ascend_flash_attn_prefill,
+)
 from infinicore.ops.asin import asin
 from infinicore.ops.asinh import asinh
 from infinicore.ops.asum import asum
@@ -112,7 +117,9 @@ from infinicore.ops.moore_mate_flash_attn import (
     moore_mate_flash_attn_decode,
     moore_mate_flash_attn_prefill,
 )
+from infinicore.ops.mrope import mrope
 from infinicore.ops.mul import mul
+from infinicore.ops.mul_scalar import mul_scalar
 from infinicore.ops.narrow import narrow
 from infinicore.ops.nrm2 import nrm2
 from infinicore.ops.paged_attention import paged_attention
@@ -182,6 +189,7 @@ __all__ = [
     "complex128",
     "double",
     "float",
+    "float8",
     "float16",
     "float32",
     "float64",
@@ -215,6 +223,7 @@ __all__ = [
     "addbmm",
     "floor",
     "attention",
+    "mrope",
     "block_diag",
     "kron",
     "bitwise_right_shift",
@@ -232,6 +241,7 @@ __all__ = [
     "matmul",
     "equal",
     "mul",
+    "mul_scalar",
     "diff",
     "digamma",
     "dist",
@@ -288,6 +298,8 @@ __all__ = [
     "var_mean",
     "moore_mate_flash_attn_prefill",
     "moore_mate_flash_attn_decode",
+    "ascend_flash_attn_prefill",
+    "ascend_flash_attn_decode",
     "var",
     "topk",
     "all",

@@ -39,7 +39,7 @@ void *plan(Tensor out,
            const Tensor &cache_lens,
            std::optional<Tensor> alibi_slopes,
            float scale) {
-    INFINICORE_ASSERT(out->device().getType() == Device::Type::NVIDIA);
+    INFINICORE_ASSERT(::infinicore::op::infiniops::isSupportedDevice(out->device().getType()));
     INFINICORE_ASSERT_TENSORS_SAME_DEVICE(out, q, k_cache, v_cache, block_tables, cache_lens);
     if (alibi_slopes) {
         INFINICORE_ASSERT_TENSORS_SAME_DEVICE(out, *alibi_slopes);
@@ -79,9 +79,9 @@ void cleanup(void **planned_meta_ptr) {
 }
 
 static bool registered = []() {
-    PagedAttention::plan_dispatcher().registerDevice(Device::Type::NVIDIA, &plan);
-    PagedAttention::run_dispatcher().registerDevice(Device::Type::NVIDIA, &run);
-    PagedAttention::cleanup_dispatcher().registerDevice(Device::Type::NVIDIA, &cleanup);
+    ::infinicore::op::infiniops::registerSupportedDevices(PagedAttention::plan_dispatcher(), &plan);
+    ::infinicore::op::infiniops::registerSupportedDevices(PagedAttention::run_dispatcher(), &run);
+    ::infinicore::op::infiniops::registerSupportedDevices(PagedAttention::cleanup_dispatcher(), &cleanup);
     return true;
 }();
 } // namespace infinicore::op::paged_attention_impl::infiniops

@@ -87,4 +87,45 @@ private:
     size_t original_max_position_embeddings_;
 };
 
+/**
+ * @brief YaRN (Yet another RoPE extensioN) scaling configuration.
+ *
+ * rope_scaling fields: factor, original_max_position_embeddings, beta_fast, beta_slow,
+ *                      mscale, mscale_all_dim
+ * Model fields (must match RoPE): rotary_dim (e.g. qk_rope_head_dim), rope_theta
+ */
+class YarnRopeScalingConfig : public RopeScalingConfig {
+public:
+    YarnRopeScalingConfig(
+        float factor,
+        size_t original_max_position_embeddings,
+        size_t rotary_dim,
+        float rope_theta,
+        int beta_fast = 32,
+        int beta_slow = 1,
+        float mscale = 1.0f,
+        float mscale_all_dim = 0.0f);
+
+    float get_freq_scale(size_t pos, size_t dim_idx, float base_inv_freq) const override;
+    float get_magnitude_scale(size_t pos, size_t dim_idx, float base_inv_freq) const override;
+
+    /** Recommended RoPE cache length: original_max_position_embeddings * factor. */
+    static size_t max_seq_len(float factor, size_t original_max_position_embeddings) {
+        return static_cast<size_t>(
+            static_cast<float>(original_max_position_embeddings) * factor);
+    }
+
+    float factor() const { return factor_; }
+    size_t original_max_position_embeddings() const { return original_max_position_embeddings_; }
+
+private:
+    float yarn_linear_ramp(size_t dim_idx) const;
+
+    float factor_;
+    size_t original_max_position_embeddings_;
+    float magnitude_scale_;
+    float correction_low_;
+    float correction_high_;
+};
+
 } // namespace infinicore::nn

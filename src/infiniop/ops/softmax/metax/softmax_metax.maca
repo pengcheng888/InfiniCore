@@ -56,14 +56,16 @@ infiniStatus_t launchKernel(void *y, const void *x, infiniDtype_t dtype,
                             size_t othersize, size_t dimsize, ptrdiff_t stride,
                             hcStream_t stream) {
     int num_blocks = (int)othersize;
+    // Avoid the warp kernel register pressure on large, non-contiguous rows.
+    const bool use_block_kernel = dimsize > 1024 || (dimsize >= 512 && stride != 1);
     if (dtype == INFINI_DTYPE_F16) {
-        if (dimsize > 1024) {
+        if (use_block_kernel) {
             blockSoftmax<half, BLOCK_SIZE>
                 <<<num_blocks, BLOCK_SIZE, 0, stream>>>((half *)y, (const half *)x,
                                                         dimsize, stride);
         } else if (dimsize > 31) {
             constexpr unsigned int BLOCK_SIZE_x = 32;
-            constexpr unsigned int BLOCK_SIZE_y = 32;
+            constexpr unsigned int BLOCK_SIZE_y = BLOCK_SIZE / 32;
             constexpr int numPerThreadx = 32;
             int num_block_x = (num_blocks + BLOCK_SIZE_y - 1) / BLOCK_SIZE_y;
             dim3 block_dim(BLOCK_SIZE_x, BLOCK_SIZE_y, 1);
@@ -73,7 +75,7 @@ infiniStatus_t launchKernel(void *y, const void *x, infiniDtype_t dtype,
                                                      othersize, dimsize, stride);
         } else {
             constexpr unsigned int BLOCK_SIZE_x = 16;
-            constexpr unsigned int BLOCK_SIZE_y = 32;
+            constexpr unsigned int BLOCK_SIZE_y = BLOCK_SIZE / 32;
             constexpr int numPerThreadx = 2;
             int num_block_x = (num_blocks + BLOCK_SIZE_y - 1) / BLOCK_SIZE_y;
             dim3 block_dim(BLOCK_SIZE_x, BLOCK_SIZE_y, 1);
@@ -84,13 +86,13 @@ infiniStatus_t launchKernel(void *y, const void *x, infiniDtype_t dtype,
         }
 
     } else if (dtype == INFINI_DTYPE_BF16) {
-        if (dimsize > 1024) {
+        if (use_block_kernel) {
             blockSoftmax<cuda_bfloat16, BLOCK_SIZE>
                 <<<num_blocks, BLOCK_SIZE, 0, stream>>>((cuda_bfloat16 *)y, (const cuda_bfloat16 *)x,
                                                         dimsize, stride);
         } else if (dimsize > 31) {
             constexpr unsigned int BLOCK_SIZE_x = 32;
-            constexpr unsigned int BLOCK_SIZE_y = 32;
+            constexpr unsigned int BLOCK_SIZE_y = BLOCK_SIZE / 32;
             constexpr int numPerThreadx = 32;
             int num_block_x = (num_blocks + BLOCK_SIZE_y - 1) / BLOCK_SIZE_y;
             dim3 block_dim(BLOCK_SIZE_x, BLOCK_SIZE_y, 1);
@@ -100,7 +102,7 @@ infiniStatus_t launchKernel(void *y, const void *x, infiniDtype_t dtype,
                                                      othersize, dimsize, stride);
         } else {
             constexpr unsigned int BLOCK_SIZE_x = 16;
-            constexpr unsigned int BLOCK_SIZE_y = 32;
+            constexpr unsigned int BLOCK_SIZE_y = BLOCK_SIZE / 32;
             constexpr int numPerThreadx = 2;
             int num_block_x = (num_blocks + BLOCK_SIZE_y - 1) / BLOCK_SIZE_y;
             dim3 block_dim(BLOCK_SIZE_x, BLOCK_SIZE_y, 1);
@@ -111,13 +113,13 @@ infiniStatus_t launchKernel(void *y, const void *x, infiniDtype_t dtype,
         }
 
     } else if (dtype == INFINI_DTYPE_F32) {
-        if (dimsize > 1024) {
+        if (use_block_kernel) {
             blockSoftmax<float, BLOCK_SIZE>
                 <<<num_blocks, BLOCK_SIZE, 0, stream>>>((float *)y, (const float *)x,
                                                         dimsize, stride);
         } else if (dimsize > 31) {
             constexpr unsigned int BLOCK_SIZE_x = 32;
-            constexpr unsigned int BLOCK_SIZE_y = 32;
+            constexpr unsigned int BLOCK_SIZE_y = BLOCK_SIZE / 32;
             constexpr int numPerThreadx = 32;
             int num_block_x = (num_blocks + BLOCK_SIZE_y - 1) / BLOCK_SIZE_y;
             dim3 block_dim(BLOCK_SIZE_x, BLOCK_SIZE_y, 1);
@@ -127,7 +129,7 @@ infiniStatus_t launchKernel(void *y, const void *x, infiniDtype_t dtype,
                                                      othersize, dimsize, stride);
         } else {
             constexpr unsigned int BLOCK_SIZE_x = 16;
-            constexpr unsigned int BLOCK_SIZE_y = 32;
+            constexpr unsigned int BLOCK_SIZE_y = BLOCK_SIZE / 32;
             constexpr int numPerThreadx = 2;
             int num_block_x = (num_blocks + BLOCK_SIZE_y - 1) / BLOCK_SIZE_y;
             dim3 block_dim(BLOCK_SIZE_x, BLOCK_SIZE_y, 1);
@@ -139,6 +141,7 @@ infiniStatus_t launchKernel(void *y, const void *x, infiniDtype_t dtype,
     } else {
         return INFINI_STATUS_BAD_TENSOR_DTYPE;
     }
+    CHECK_METAX(hcGetLastError());
     return INFINI_STATUS_SUCCESS;
 }
 

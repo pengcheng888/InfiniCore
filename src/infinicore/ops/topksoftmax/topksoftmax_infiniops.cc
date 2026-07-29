@@ -17,7 +17,7 @@ struct PlannedMeta {
 } // namespace
 
 void *plan(Tensor values, Tensor indices, const Tensor &x, const size_t topk, const int norm) {
-    INFINICORE_ASSERT(values->device().getType() == Device::Type::NVIDIA);
+    INFINICORE_ASSERT(::infinicore::op::infiniops::isSupportedDevice(values->device().getType()));
     INFINICORE_ASSERT_TENSORS_SAME_DEVICE(values, indices, x);
     return new PlannedMeta{TensorMeta(values), TensorMeta(indices), TensorMeta(x), graph::GraphTensor(values), graph::GraphTensor(indices), graph::GraphTensor(x), topk, norm};
 }
@@ -43,9 +43,9 @@ void cleanup(void **planned_meta_ptr) {
 }
 
 static bool registered = []() {
-    Topksoftmax::plan_dispatcher().registerDevice(Device::Type::NVIDIA, &plan);
-    Topksoftmax::run_dispatcher().registerDevice(Device::Type::NVIDIA, &run);
-    Topksoftmax::cleanup_dispatcher().registerDevice(Device::Type::NVIDIA, &cleanup);
+    ::infinicore::op::infiniops::registerSupportedDevices(Topksoftmax::plan_dispatcher(), &plan);
+    ::infinicore::op::infiniops::registerSupportedDevices(Topksoftmax::run_dispatcher(), &run);
+    ::infinicore::op::infiniops::registerSupportedDevices(Topksoftmax::cleanup_dispatcher(), &cleanup);
     return true;
 }();
 } // namespace infinicore::op::topksoftmax_impl::infiniops

@@ -193,6 +193,13 @@ option("hygon-dcu")
     set_description("Whether to compile implementations for Hygon DCU")
 option_end()
 
+option("hygon-arch")
+    -- gfx906, gfx936
+    set_default(nil)
+    set_showmenu(true)
+    set_description("Set Hygon DCU architecture, e.g. gfx936. If unset, defaults to gfx936 for BW1000 DCU.")
+option_end()
+
 if has_config("hygon-dcu") then
     add_defines("ENABLE_HYGON_API")
     includes("xmake/hygon.lua")
@@ -237,9 +244,17 @@ option_end()
 
 if has_config("aten") then
     add_defines("ENABLE_ATEN")
+    if has_config("iluvatar-gpu") then
+        add_defines("_GLIBCXX_USE_CXX11_ABI=0")
+    end
     if get_config("flash-attn") and get_config("flash-attn") ~= ""
-       and (has_config("nv-gpu") or has_config("metax-gpu") or has_config("qy-gpu")) then
+       and (has_config("nv-gpu") or has_config("metax-gpu") or has_config("qy-gpu") or has_config("hygon-dcu")) then
         add_defines("ENABLE_FLASH_ATTN")
+    end
+    -- Ascend flash-attn: enabled when ascend-gpu + aten + flash-attn
+    if has_config("ascend-npu") and get_config("flash-attn") and get_config("flash-attn") ~= "" then
+        add_defines("ENABLE_FLASH_ATTN")
+        add_defines("ENABLE_ASCEND_FLASH_ATTN")
     end
 end
 
@@ -317,6 +332,48 @@ end
 
 local infiniops_external_built = false
 
+local function filter_infiniops_ops_for_backend(infiniops_ops)
+    if not infiniops_ops or #infiniops_ops == 0 then
+        return infiniops_ops
+    end
+    if has_config("nv-gpu") then
+        return infiniops_ops
+    end
+
+    local skipped_ops = {
+        paged_attention_infinilm = true,
+        paged_attention_prefill_infinilm = true
+    }
+    local filtered = {}
+    for _, op in ipairs(infiniops_ops:split("[,;]")) do
+        op = op:trim()
+        if #op > 0 and not skipped_ops[op] then
+            table.insert(filtered, op)
+        end
+    end
+    return table.concat(filtered, ",")
+end
+
+local function get_infiniops_backend_cmake_arg()
+    local enabled = {}
+    local function add_backend(config, cmake_arg)
+        if has_config(config) then
+            table.insert(enabled, cmake_arg)
+        end
+    end
+    add_backend("nv-gpu", "-DWITH_NVIDIA=ON")
+    add_backend("metax-gpu", "-DWITH_METAX=ON")
+    add_backend("iluvatar-gpu", "-DWITH_ILUVATAR=ON")
+    add_backend("moore-gpu", "-DWITH_MOORE=ON")
+    if #enabled == 0 then
+        raise("InfiniOps integration requires one of --nv-gpu, --metax-gpu, --iluvatar-gpu, or --moore-gpu")
+    end
+    if #enabled > 1 then
+        raise("InfiniOps can build only one GPU backend at a time")
+    end
+    return enabled[1]
+end
+
 local function build_infiniops_external(xmake_os)
     if not has_config("infiniops") or infiniops_external_built then
         return
@@ -328,12 +385,17 @@ local function build_infiniops_external(xmake_os)
     local cmake_config_args = {
         "-S", infiniops_root,
         "-B", infiniops_builddir,
-        "-DWITH_NVIDIA=ON",
+        "-DWITH_CPU=ON",
+        get_infiniops_backend_cmake_arg(),
         "-DGENERATE_OPERATOR_CALL_INSTANTIATIONS=ON",
         "-DGENERATE_PYTHON_BINDINGS=OFF",
         "-DCMAKE_BUILD_TYPE=Release"
     }
-    local infiniops_ops = os.getenv("INFINI_OPS_OPS")
+    if has_config("iluvatar-gpu") and has_config("aten") then
+        table.insert(cmake_config_args, "-DTORCH_CXX11_ABI=0")
+        table.insert(cmake_config_args, "-DCMAKE_CXX_FLAGS=-D_GLIBCXX_USE_CXX11_ABI=0")
+    end
+    local infiniops_ops = filter_infiniops_ops_for_backend(os.getenv("INFINI_OPS_OPS"))
     if infiniops_ops and #infiniops_ops > 0 then
         table.insert(cmake_config_args, "-DINFINI_OPS_OPS=" .. infiniops_ops)
     end
@@ -363,6 +425,7 @@ local function build_infiniops_external(xmake_os)
         local private_infinirt = path.join(INFINI_ROOT, "lib", private_soname)
         xmake_os.cp(standalone_infinirt, private_infinirt)
         xmake_os.execv("patchelf", {"--set-soname", private_soname, private_infinirt})
+        xmake_os.execv("patchelf", {"--replace-needed", standalone_infinirt, private_soname, infiniops_lib})
         xmake_os.execv("patchelf", {"--replace-needed", "libinfinirt.so", private_soname, infiniops_lib})
     end
     infiniops_external_built = true
@@ -455,9 +518,26 @@ target("infiniop")
     set_kind("shared")
     add_deps("infinirt")
 
-    if has_config("nv-gpu") then
-        local cuda_root = os.getenv("CUDA_HOME") or os.getenv("CUDA_PATH") or get_config("cuda") or "/usr/local/cuda"
-        add_includedirs(cuda_root .. "/include")
+    local public_cuda_root = get_config("cuda") or os.getenv("CUDA_HOME") or os.getenv("CUDA_PATH")
+    if public_cuda_root and public_cuda_root ~= "" then
+        for _, include_dir in ipairs({
+            path.join(public_cuda_root, "include"),
+            path.join(public_cuda_root, "targets", "x86_64-linux", "include"),
+        }) do
+            if os.isdir(include_dir) then
+                add_includedirs(include_dir)
+            end
+        end
+        for _, link_dir in ipairs({
+            path.join(public_cuda_root, "lib64"),
+            path.join(public_cuda_root, "targets", "x86_64-linux", "lib"),
+        }) do
+            if os.isdir(link_dir) then
+                add_linkdirs(link_dir)
+            end
+        end
+    elseif has_config("nv-gpu") then
+        add_includedirs(path.join("/usr/local/cuda", "include"))
     end
 
     if has_config("cpu") then
@@ -582,19 +662,38 @@ target("infinicore_cpp_api")
     local INFINI_ROOT = os.getenv("INFINI_ROOT") or (os.getenv(is_host("windows") and "HOMEPATH" or "HOME") .. "/.infini")
 
     add_includedirs("include")
+    if has_config("metax-gpu") and has_config("use-mc") and has_config("aten") then
+        local maca_root = os.getenv("MACA_PATH") or os.getenv("MACA_HOME") or os.getenv("MACA_ROOT") or "/opt/maca"
+        add_includedirs(maca_root .. "/include")
+        add_includedirs(maca_root .. "/tools/cu-bridge/include")
+        for _, include_dir in ipairs(os.dirs(maca_root .. "/include/*")) do
+            add_includedirs(include_dir)
+        end
+        add_cxflags("-include", "climits")
+        add_cxxflags("-includeclimits", {force = true})
+        add_defines("CHAR_BIT=8", "INT_MIN=(-2147483647 - 1)", "INT_MAX=2147483647", "UINT_MAX=4294967295U")
+    end
     add_includedirs(INFINI_ROOT.."/include", { public = true })
     if has_config("nv-gpu") then
         local cuda_root = os.getenv("CUDA_HOME") or os.getenv("CUDA_PATH") or get_config("cuda") or "/usr/local/cuda"
         add_includedirs(cuda_root .. "/include")
+    end
+    if has_config("ascend-npu") then
+        local ASCEND_HOME = os.getenv("ASCEND_HOME") or os.getenv("ASCEND_TOOLKIT_HOME")
+        add_includedirs(ASCEND_HOME .. "/include")
+        add_includedirs(ASCEND_HOME .. "/include/aclnn")
+        add_includedirs(ASCEND_HOME .. "/include/aclnnop")
+        add_linkdirs(ASCEND_HOME .. "/lib64")
+        add_links("ascendcl", "nnopbase", "opapi", "runtime")
+        add_linkdirs(ASCEND_HOME .. "/../../driver/lib64/driver")
+        add_links("ascend_hal")
     end
     if has_config("infiniops") then
         local infiniops_root = path.absolute(get_config("infiniops-root") or "submodules/InfiniOps", os.projectdir())
         if not os.isdir(infiniops_root) then
             raise("InfiniOps root not found: " .. infiniops_root)
         end
-        if not has_config("nv-gpu") then
-            raise("InfiniOps integration currently has adapters only for NVIDIA")
-        end
+        get_infiniops_backend_cmake_arg()
         local infinirt_root = get_standalone_infinirt_root()
         if infinirt_root and infinirt_root ~= "" then
             add_includedirs(infinirt_root .. "/include")
@@ -642,6 +741,9 @@ target("infinicore_cpp_api")
         end
         if has_config("qy-gpu") then
             add_deps("flash-attn-qy")
+        end
+        if has_config("hygon-dcu") then
+            add_deps("flash-attn-hygon")
         end
     end
 
@@ -755,6 +857,44 @@ target("infinicore_cpp_api")
                     "-Wl,-rpath," .. pylib,
                     { force = true }
                 )
+            elseif has_config("ascend-npu") then
+                target:add(
+                    "links",
+                    "torch",
+                    "torch_cpu",
+                    "c10",
+                    { public = true }
+                )
+                -- Detect torch_npu install path
+                local npu_outdata = os.iorunv("python", {"-c", "import torch_npu, os; print(os.path.dirname(torch_npu.__file__))"}):trim()
+                local TORCH_NPU_DIR = npu_outdata
+                target:add(
+                    "linkdirs",
+                    path.join(TORCH_NPU_DIR, "lib"),
+                    { public = true }
+                )
+                target:add(
+                    "links",
+                    "torch_npu",
+                    { public = true }
+                )
+                target:add(
+                    "shflags",
+                    "-Wl,-rpath," .. path.join(TORCH_NPU_DIR, "lib"),
+                    "-Wl,-rpath," .. path.join(TORCH_DIR, "lib"),
+                    { force = true }
+                ) 
+            elseif has_config("hygon-dcu") then
+                target:add(
+                    "links",
+                    "torch",
+                    "torch_cpu",
+                    "torch_python",
+                    "c10",
+                    "torch_hip",
+                    "c10_hip",
+                    { public = true }
+                )
             else
                 target:add(
                     "links",
@@ -797,6 +937,18 @@ target("infinicore_cpp_api")
     add_files("src/infinicore/nn/*.cc")
     add_files("src/infinicore/ops/*/*.cc")
     add_files("src/infinicore/ops/*/*/*.cc")
+    -- Platform-private Hygon sources are guarded and only kept in Hygon builds.
+    if has_config("hygon-dcu") and get_config("flash-attn") and get_config("flash-attn") ~= "" then
+        -- Hygon links against a prebuilt flash-attn extension with a different ABI.
+        -- Keep the platform-specific implementation under each op's hygon/ folder.
+        add_files("src/infinicore/adaptor/flash_attn/hygon/*.cc")
+    else
+        remove_files("src/infinicore/ops/*/hygon/*.cc")
+    end
+    if has_config("infiniops") and not has_config("nv-gpu") then
+        remove_files("src/infinicore/ops/paged_attention/paged_attention_infiniops.cc")
+        remove_files("src/infinicore/ops/paged_attention_prefill/paged_attention_prefill_infiniops.cc")
+    end
     if has_config("mutual-awareness") then
         add_files("src/infinicore/analyzer/*.cc")
     end
@@ -865,6 +1017,7 @@ target("_infinicore")
                 local private_infinirt = path.join(INFINI_ROOT, "lib", private_soname)
                 os.cp(standalone_infinirt, private_infinirt)
                 os.execv("patchelf", {"--set-soname", private_soname, private_infinirt})
+                os.execv("patchelf", {"--replace-needed", standalone_infinirt, private_soname, infiniops_lib})
                 os.execv("patchelf", {"--replace-needed", "libinfinirt.so", private_soname, infiniops_lib})
             end
             os.mkdir(path.join(INFINI_ROOT, "lib"))

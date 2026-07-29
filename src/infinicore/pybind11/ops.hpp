@@ -35,6 +35,7 @@
 #include "ops/causal_conv1d.hpp"
 #include "ops/causal_softmax.hpp"
 #include "ops/cdist.hpp"
+#include "ops/chunk_gated_delta_rule.hpp"
 #include "ops/conv2d.hpp"
 #include "ops/cross_entropy.hpp"
 #include "ops/diff.hpp"
@@ -49,7 +50,12 @@
 #include "ops/floor_divide.hpp"
 #include "ops/fmin.hpp"
 #include "ops/fmod.hpp"
+#include "ops/fp8_indexer_logits.hpp"
+#include "ops/fp8_indexer_quant.hpp"
+#include "ops/fp8_mla_rmsnorm_cache.hpp"
+#include "ops/fp8_sparse_mla.hpp"
 #include "ops/fused_gated_delta_net_gating.hpp"
+#include "ops/fused_moe.hpp"
 #include "ops/gaussian_nll_loss.hpp"
 #include "ops/hardswish.hpp"
 #include "ops/hardtanh.hpp"
@@ -75,12 +81,17 @@
 #include "ops/logdet.hpp"
 #include "ops/logical_and.hpp"
 #include "ops/logical_not.hpp"
+#include "ops/mamba_selective_scan.hpp"
 #include "ops/masked_select.hpp"
 #include "ops/matmul.hpp"
 #include "ops/mha.hpp"
 #include "ops/mha_kvcache.hpp"
 #include "ops/mha_varlen.hpp"
+#include "ops/moe_fused_dense.hpp"
+#include "ops/moe_topk_softmax.hpp"
+#include "ops/mrope.hpp"
 #include "ops/mul.hpp"
+#include "ops/mul_scalar.hpp"
 #include "ops/multi_margin_loss.hpp"
 #include "ops/nrm2.hpp"
 #include "ops/pad.hpp"
@@ -91,6 +102,7 @@
 #include "ops/random_sample.hpp"
 #include "ops/rearrange.hpp"
 #include "ops/reciprocal.hpp"
+#include "ops/recurrent_gated_delta_rule.hpp"
 #include "ops/relu6.hpp"
 #include "ops/rms_norm.hpp"
 #include "ops/rope.hpp"
@@ -101,6 +113,7 @@
 #include "ops/rwkv5_wkv.hpp"
 #include "ops/scal.hpp"
 #include "ops/scatter.hpp"
+#include "ops/select_last_token_hidden.hpp"
 #include "ops/selu.hpp"
 #include "ops/sigmoid.hpp"
 #include "ops/silu.hpp"
@@ -114,6 +127,7 @@
 #include "ops/swiglu.hpp"
 #include "ops/take.hpp"
 #include "ops/tan.hpp"
+#include "ops/tanh.hpp"
 #include "ops/tanhshrink.hpp"
 #include "ops/topk.hpp"
 #include "ops/topksoftmax.hpp"
@@ -165,7 +179,12 @@ inline void bind(py::module &m) {
     bind_hinge_embedding_loss(m);
     bind_kv_caching(m);
     bind_fmod(m);
+    bind_fp8_indexer_logits(m);
+    bind_fp8_indexer_quant(m);
+    bind_fp8_mla_rmsnorm_cache(m);
+    bind_fp8_sparse_mla(m);
     bind_fused_gated_delta_net_gating(m);
+    bind_fused_moe(m);
     bind_fmin(m);
     bind_cat(m);
     bind_causal_softmax(m);
@@ -178,12 +197,17 @@ inline void bind(py::module &m) {
     bind_linear(m);
     bind_logdet(m);
     bind_matmul(m);
+    bind_mamba_selective_scan(m);
     bind_kron(m);
     bind_mul(m);
+    bind_mul_scalar(m);
     bind_nrm2(m);
     bind_mha_kvcache(m);
     bind_mha_varlen(m);
     bind_mha(m);
+    bind_moe_fused_dense(m);
+    bind_moe_topk_softmax(m);
+    bind_mrope(m);
     bind_hardswish(m);
     bind_hardtanh(m);
     bind_gaussian_nll_loss(m);
@@ -209,6 +233,7 @@ inline void bind(py::module &m) {
     bind_silu(m);
     bind_swiglu(m);
     bind_tan(m);
+    bind_tanh(m);
     bind_tanhshrink(m);
     bind_logcumsumexp(m);
     bind_logical_and(m);
@@ -247,13 +272,16 @@ inline void bind(py::module &m) {
     bind_addcmul(m);
     bind_cdist(m);
     bind_binary_cross_entropy_with_logits(m);
+    bind_chunk_gated_delta_rule(m);
     bind_reciprocal(m);
+    bind_recurrent_gated_delta_rule(m);
     bind_upsample_bilinear(m);
     bind_kthvalue(m);
     bind_ldexp(m);
     bind_lerp(m);
     bind_triplet_margin_loss(m);
     bind_selu(m);
+    bind_select_last_token_hidden(m);
     bind_swap(m);
     bind_sinh(m);
     bind_layer_norm(m);

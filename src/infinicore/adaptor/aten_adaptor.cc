@@ -32,7 +32,12 @@ at::Tensor to_aten_tensor(const infinicore::Tensor &t) {
         options);
 }
 
-#if defined(ENABLE_NVIDIA_API) || defined(ENABLE_METAX_API) || defined(ENABLE_QY_API)
+#if defined(ENABLE_HYGON_API)
+c10::hip::HIPStream get_hip_stream() {
+    return c10::hip::getStreamFromExternal(
+        hipStream_t(infinicore::context::getStream()), infinicore::context::getDevice().getIndex());
+}
+#elif defined(ENABLE_NVIDIA_API) || defined(ENABLE_METAX_API) || defined(ENABLE_QY_API)
 c10::cuda::CUDAStream get_cuda_stream() {
     return c10::cuda::getStreamFromExternal(
         cudaStream_t(infinicore::context::getStream()), infinicore::context::getDevice().getIndex());

@@ -1,11 +1,15 @@
-// infiniop/ops/causal_conv1d/operator.cc
-
 #include "../../operator.h"
 #include "../../handle.h"
 #include "infiniop/ops/causal_conv1d.h"
 
-#if defined(ENABLE_NVIDIA_API)
+#if defined(ENABLE_NVIDIA_API) || defined(ENABLE_HYGON_API)
 #include "nvidia/causal_conv1d_nvidia.cuh"
+#endif
+#ifdef ENABLE_METAX_API
+#include "metax/causal_conv1d_metax.h"
+#endif
+#ifdef ENABLE_MOORE_API
+#include "moore/causal_conv1d_moore.h"
 #endif
 
 __INFINI_C infiniStatus_t infiniopCreateCausalConv1dDescriptor(
@@ -34,6 +38,15 @@ __INFINI_C infiniStatus_t infiniopCreateCausalConv1dDescriptor(
 #ifdef ENABLE_NVIDIA_API
         CREATE(INFINI_DEVICE_NVIDIA, nvidia)
 #endif
+#ifdef ENABLE_HYGON_API
+        CREATE(INFINI_DEVICE_HYGON, nvidia)
+#endif
+#ifdef ENABLE_METAX_API
+        CREATE(INFINI_DEVICE_METAX, metax)
+#endif
+#ifdef ENABLE_MOORE_API
+        CREATE(INFINI_DEVICE_MOORE, moore)
+#endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
@@ -50,6 +63,15 @@ __INFINI_C infiniStatus_t infiniopGetCausalConv1dWorkspaceSize(
     switch (desc->device_type) {
 #ifdef ENABLE_NVIDIA_API
         GET(INFINI_DEVICE_NVIDIA, nvidia)
+#endif
+#ifdef ENABLE_HYGON_API
+        GET(INFINI_DEVICE_HYGON, nvidia)
+#endif
+#ifdef ENABLE_METAX_API
+        GET(INFINI_DEVICE_METAX, metax)
+#endif
+#ifdef ENABLE_MOORE_API
+        GET(INFINI_DEVICE_MOORE, moore)
 #endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
@@ -82,6 +104,15 @@ __INFINI_C infiniStatus_t infiniopCausalConv1d(
 #ifdef ENABLE_NVIDIA_API
         CALCULATE(INFINI_DEVICE_NVIDIA, nvidia)
 #endif
+#ifdef ENABLE_HYGON_API
+        CALCULATE(INFINI_DEVICE_HYGON, nvidia)
+#endif
+#ifdef ENABLE_METAX_API
+        CALCULATE(INFINI_DEVICE_METAX, metax)
+#endif
+#ifdef ENABLE_MOORE_API
+        CALCULATE(INFINI_DEVICE_MOORE, moore)
+#endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
@@ -98,6 +129,15 @@ __INFINI_C infiniStatus_t infiniopDestroyCausalConv1dDescriptor(
     switch (desc->device_type) {
 #ifdef ENABLE_NVIDIA_API
         DESTROY(INFINI_DEVICE_NVIDIA, nvidia)
+#endif
+#ifdef ENABLE_HYGON_API
+        DESTROY(INFINI_DEVICE_HYGON, nvidia)
+#endif
+#ifdef ENABLE_METAX_API
+        DESTROY(INFINI_DEVICE_METAX, metax)
+#endif
+#ifdef ENABLE_MOORE_API
+        DESTROY(INFINI_DEVICE_MOORE, moore)
 #endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;

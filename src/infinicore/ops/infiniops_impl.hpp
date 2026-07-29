@@ -46,8 +46,38 @@ inline infini::ops::DataType toInfiniOpsDtype(DataType dtype) {
 }
 
 inline infini::ops::Device toInfiniOpsDevice(const Device &device) {
-    INFINICORE_ASSERT(device.getType() == Device::Type::NVIDIA);
-    return infini::ops::Device{infini::ops::Device::Type::kNvidia, static_cast<int>(device.getIndex())};
+    switch (device.getType()) {
+    case Device::Type::NVIDIA:
+        return infini::ops::Device{infini::ops::Device::Type::kNvidia, static_cast<int>(device.getIndex())};
+    case Device::Type::METAX:
+        return infini::ops::Device{infini::ops::Device::Type::kMetax, static_cast<int>(device.getIndex())};
+    case Device::Type::MOORE:
+        return infini::ops::Device{infini::ops::Device::Type::kMoore, static_cast<int>(device.getIndex())};
+    case Device::Type::ILUVATAR:
+        return infini::ops::Device{infini::ops::Device::Type::kIluvatar, static_cast<int>(device.getIndex())};
+    default:
+        throw std::runtime_error("InfiniOps backend does not support this device type.");
+    }
+}
+
+inline bool isSupportedDevice(Device::Type device_type) {
+    switch (device_type) {
+    case Device::Type::NVIDIA:
+    case Device::Type::METAX:
+    case Device::Type::MOORE:
+    case Device::Type::ILUVATAR:
+        return true;
+    default:
+        return false;
+    }
+}
+
+template <typename Dispatcher, typename Function>
+void registerSupportedDevices(Dispatcher &dispatcher, Function function) {
+    dispatcher.registerDevice(Device::Type::NVIDIA, function);
+    dispatcher.registerDevice(Device::Type::METAX, function);
+    dispatcher.registerDevice(Device::Type::MOORE, function);
+    dispatcher.registerDevice(Device::Type::ILUVATAR, function);
 }
 
 struct TensorMeta {

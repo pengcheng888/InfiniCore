@@ -15,7 +15,7 @@ struct PlannedMeta {
 } // namespace
 
 void *plan(Tensor k_cache, Tensor v_cache, const Tensor &k, const Tensor &v, const Tensor &slot_mapping) {
-    INFINICORE_ASSERT(k_cache->device().getType() == Device::Type::NVIDIA);
+    INFINICORE_ASSERT(::infinicore::op::infiniops::isSupportedDevice(k_cache->device().getType()));
     INFINICORE_ASSERT_TENSORS_SAME_DEVICE(k_cache, v_cache, k, v, slot_mapping);
     return new PlannedMeta{TensorMeta(k_cache), TensorMeta(v_cache), TensorMeta(k), TensorMeta(v), TensorMeta(slot_mapping), graph::GraphTensor(k_cache), graph::GraphTensor(v_cache), graph::GraphTensor(k), graph::GraphTensor(v), graph::GraphTensor(slot_mapping)};
 }
@@ -41,9 +41,9 @@ void cleanup(void **planned_meta_ptr) {
 }
 
 static bool registered = []() {
-    PagedCaching::plan_dispatcher().registerDevice(Device::Type::NVIDIA, &plan);
-    PagedCaching::run_dispatcher().registerDevice(Device::Type::NVIDIA, &run);
-    PagedCaching::cleanup_dispatcher().registerDevice(Device::Type::NVIDIA, &cleanup);
+    ::infinicore::op::infiniops::registerSupportedDevices(PagedCaching::plan_dispatcher(), &plan);
+    ::infinicore::op::infiniops::registerSupportedDevices(PagedCaching::run_dispatcher(), &run);
+    ::infinicore::op::infiniops::registerSupportedDevices(PagedCaching::cleanup_dispatcher(), &cleanup);
     return true;
 }();
 } // namespace infinicore::op::paged_caching_impl::infiniops

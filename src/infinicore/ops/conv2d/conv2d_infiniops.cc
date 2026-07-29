@@ -30,7 +30,7 @@ void calculate(Tensor output,
                const size_t *strides,
                const size_t *dilations,
                size_t n) {
-    INFINICORE_ASSERT(output->device().getType() == Device::Type::NVIDIA);
+    INFINICORE_ASSERT(::infinicore::op::infiniops::isSupportedDevice(output->device().getType()));
     INFINICORE_ASSERT_TENSORS_SAME_DEVICE(output, input, weight);
     if (bias) {
         INFINICORE_ASSERT_TENSORS_SAME_DEVICE(output, bias);
@@ -64,7 +64,7 @@ void calculate(Tensor output,
 } // namespace
 
 static bool registered = []() {
-    Conv2d::dispatcher().registerDevice(Device::Type::NVIDIA, &calculate);
+    ::infinicore::op::infiniops::registerSupportedDevices(Conv2d::dispatcher(), &calculate);
     return true;
 }();
 

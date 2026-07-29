@@ -1,6 +1,9 @@
 #include "infinicore/nn/rope_scaling_configs.hpp"
+#include <algorithm>
 #include <cmath>
 #include <stdexcept>
+#include <string>
+#include <utility>
 
 namespace infinicore::nn {
 
@@ -70,6 +73,121 @@ float Llama3RopeScalingConfig::get_freq_scale(size_t pos, size_t dim_idx, float 
     // Since the Llama3 logic divides the frequency (inv_freq = base_inv_freq / scale),
     // we return the inverse of the computed scale.
     return 1.0f / scale;
+}
+
+namespace {
+
+float yarn_find_correction_dim(
+    int num_rotations,
+    size_t rotary_dim,
+    float base,
+    size_t original_max_position_embeddings) {
+    return (static_cast<float>(rotary_dim)
+            * std::log(static_cast<float>(original_max_position_embeddings)
+                       / (static_cast<float>(num_rotations) * 2.0f * kPi)))
+         / (2.0f * std::log(base));
+}
+
+std::pair<float, float> yarn_find_correction_range(
+    int low_rot,
+    int high_rot,
+    size_t rotary_dim,
+    float base,
+    size_t original_max_position_embeddings,
+    bool truncate) {
+    float low = yarn_find_correction_dim(
+        low_rot, rotary_dim, base, original_max_position_embeddings);
+    float high = yarn_find_correction_dim(
+        high_rot, rotary_dim, base, original_max_position_embeddings);
+    if (truncate) {
+        low = std::floor(low);
+        high = std::ceil(high);
+    }
+    low = std::max(low, 0.0f);
+    high = std::min(high, static_cast<float>(rotary_dim) - 1.0f);
+    return {low, high};
+}
+
+float yarn_get_mscale(float scale, float mscale_coeff = 1.0f) {
+    if (scale <= 1.0f) {
+        return 1.0f;
+    }
+    return 0.1f * mscale_coeff * std::log(scale) + 1.0f;
+}
+
+} // anonymous namespace
+
+// YarnRopeScalingConfig Implementation
+YarnRopeScalingConfig::YarnRopeScalingConfig(
+    float factor,
+    size_t original_max_position_embeddings,
+    size_t rotary_dim,
+    float rope_theta,
+    int beta_fast,
+    int beta_slow,
+    float mscale,
+    float mscale_all_dim)
+    : factor_(factor),
+      original_max_position_embeddings_(original_max_position_embeddings) {
+    if (factor <= 0.0f) {
+        throw std::invalid_argument(
+            "YarnRopeScalingConfig factor must be positive, got "
+            + std::to_string(factor));
+    }
+    if (original_max_position_embeddings == 0) {
+        throw std::invalid_argument(
+            "YarnRopeScalingConfig original_max_position_embeddings must be positive");
+    }
+    if (rope_theta <= 0.0f) {
+        throw std::invalid_argument(
+            "YarnRopeScalingConfig rope_theta must be positive, got "
+            + std::to_string(rope_theta));
+    }
+    if (rotary_dim < 2 || rotary_dim % 2 != 0) {
+        throw std::invalid_argument(
+            "YarnRopeScalingConfig rotary_dim must be a positive even number, got "
+            + std::to_string(rotary_dim));
+    }
+
+    // vLLM: yarn_find_correction_range(beta_fast, beta_slow, ...)
+    auto [low, high] = yarn_find_correction_range(
+        beta_fast,
+        beta_slow,
+        rotary_dim,
+        rope_theta,
+        original_max_position_embeddings,
+        true);
+    correction_low_ = low;
+    correction_high_ = high;
+
+    magnitude_scale_ = yarn_get_mscale(factor, mscale) / yarn_get_mscale(factor, mscale_all_dim);
+}
+
+float YarnRopeScalingConfig::yarn_linear_ramp(size_t dim_idx) const {
+    float low = correction_low_;
+    float high = correction_high_;
+    if (low == high) {
+        high += 0.001f; // Prevent singularity (matches vLLM)
+    }
+    float linear = (static_cast<float>(dim_idx) - low) / (high - low);
+    return std::clamp(linear, 0.0f, 1.0f);
+}
+
+float YarnRopeScalingConfig::get_freq_scale(
+    size_t /*pos*/,
+    size_t dim_idx,
+    float /*base_inv_freq*/) const {
+    constexpr float kExtrapolationFactor = 1.0f;
+    float ramp = yarn_linear_ramp(dim_idx);
+    float inv_freq_mask = (1.0f - ramp) * kExtrapolationFactor;
+    return (1.0f - inv_freq_mask) / factor_ + inv_freq_mask;
+}
+
+float YarnRopeScalingConfig::get_magnitude_scale(
+    size_t /*pos*/,
+    size_t /*dim_idx*/,
+    float /*base_inv_freq*/) const {
+    return magnitude_scale_;
 }
 
 } // namespace infinicore::nn
