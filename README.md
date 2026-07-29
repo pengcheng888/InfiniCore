@@ -220,6 +220,24 @@ python scripts/install.py [XMAKE_CONFIG_FLAGS]
   xmake install _infinicore
   ```
 
+##### 试验功能 -- 使用阿里 PPU 平台预编译 flash-attn 能力
+
+  ```shell
+  # 阿里 PPU 直接链接当前 Python 环境中已安装的 flash_attn_2_cuda 扩展。
+  # --flash-attn 指向包含 flash_attn_2_cuda*.so 的 site-packages 目录。
+  python -c "import flash_attn_2_cuda; print(flash_attn_2_cuda.__file__)"
+
+  export FLASH_ATTN_2_CUDA_SO=/usr/local/lib/python3.12/site-packages/flash_attn_2_cuda.cpython-312-x86_64-linux-gnu.so
+  xmake f --ali-ppu=true --ccl=true --graph=true --aten=true \
+      --flash-attn=/usr/local/lib/python3.12/site-packages -cv
+
+  xmake build
+  xmake install
+  xmake build _infinicore
+  xmake install _infinicore
+  pip install -e .
+  ```
+
 ##### 试验功能 -- 编译marlin相关算子
 
   ```shell
