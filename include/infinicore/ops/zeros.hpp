@@ -6,8 +6,8 @@
 
 namespace infinicore::op {
 
-INFINICORE_GRAPH_OP_CLASS(Ones, Tensor);
+INFINICORE_GRAPH_OP_CLASS(Zeros, Tensor);
 
-void ones_(Tensor output);
+void zeros_(Tensor output);
 
 } // namespace infinicore::op

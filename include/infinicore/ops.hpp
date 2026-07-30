@@ -86,6 +86,7 @@
 #include "ops/tanh.hpp"
 #include "ops/topksoftmax.hpp"
 #include "ops/vocab_parallel_embedding.hpp"
+#include "ops/zeros.hpp"
 
 #ifdef ENABLE_VENDOR_OPS
 #include "ops/concat_and_cache_mla.hpp"
