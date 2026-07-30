@@ -6,6 +6,7 @@ Runtime requirements:
     - mate (repo : https://github.com/MooreThreads/mate)
 
 Provides three entry points:
+    - moore_mate_flash_attn_dense: dense attention with layout (batch, seq, heads, dim)
     - moore_mate_flash_attn_decode: decode with layout (num_blocks, block_size, num_kv_heads, head_size)
     - moore_mate_flash_attn_prefill: variable-length prefill (used by mha_varlen)
 """
@@ -38,18 +39,20 @@ def _check_mate_available():
     global _MATE_LOADED
     global flash_attn_with_kvcache
     global get_scheduler_metadata
+    global flash_attn_varlen_func
 
     if not _MATE_VERSION_SUPPORTED:
         installed = _MATE_VERSION or "not installed"
         raise RuntimeError(
             f"mate {_REQUIRED_MATE_VERSION} is required, but found {installed}. "
-            "Please build and install MooreThreads/mate v0.1.3 first."
+            "Please build and install MooreThreads mate v0.1.3 first."
         )
 
     if _MATE_LOADED:
         return
 
     try:
+        from flash_attn import flash_attn_varlen_func as _flash_attn_varlen_func
         from flash_attn import (
             flash_attn_with_kvcache as _flash_attn_with_kvcache,
         )
@@ -61,7 +64,45 @@ def _check_mate_available():
 
     flash_attn_with_kvcache = _flash_attn_with_kvcache
     get_scheduler_metadata = _get_scheduler_metadata
+    flash_attn_varlen_func = _flash_attn_varlen_func
     _MATE_LOADED = True
+
+
+# =============================================================================
+# Dense kernels
+# =============================================================================
+
+
+@torch.inference_mode()
+def moore_mate_flash_attn_dense(
+    q: torch.Tensor,  # (batch, seqlen_q, num_heads, head_size)
+    k: torch.Tensor,  # (batch, seqlen_k, num_kv_heads, head_size)
+    v: torch.Tensor,  # (batch, seqlen_k, num_kv_heads, head_size)
+    scale: float,
+    causal: bool,
+) -> torch.Tensor:
+    """Dense MHA/GQA entry point backed by mate flash_attn_varlen_func."""
+    _check_mate_available()
+
+    q = q.contiguous()
+    k = k.contiguous()
+    v = v.contiguous()
+
+    num_heads = q.shape[2]
+    num_kv_heads = k.shape[2]
+    if num_heads % num_kv_heads != 0:
+        raise RuntimeError("query head count must be divisible by key/value head count")
+
+    return flash_attn_varlen_func(
+        q=q,
+        k=k,
+        v=v,
+        softmax_scale=scale,
+        causal=causal,
+        num_splits=-1,
+        pack_gqa=num_heads != num_kv_heads,
+        return_softmax_lse=False,
+    )
 
 
 # =============================================================================
