@@ -207,9 +207,9 @@ python scripts/install.py [XMAKE_CONFIG_FLAGS]
       --use-vendor-ops=true -cv
 
   # 方式二：指定包含 _C.cpython-*.so 的 vllm_iluvatar 预编译扩展目录。
-  # .58 的 pepe 容器中可使用以下实际路径：
+  # eg. --flash-attn=/usr/local/lib/python3.12/site-packages/vllm_iluvatar
   xmake f --iluvatar-gpu=true --cuda=$CUDA_HOME --aten=true \
-      --flash-attn=/usr/local/lib/python3.12/site-packages/vllm_iluvatar \
+      --flash-attn=<path-to-fa2> \
       -cv
 
   # 两种方式都会自动启用天数智芯 Flash Attention 实现，无需手动定义编译宏。
