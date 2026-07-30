@@ -81,9 +81,7 @@ c10::hip::HIPStream get_hip_stream();
 c10::cuda::CUDAStream get_cuda_stream();
 #endif
 
-#if defined(ENABLE_ILUVATAR_VENDOR_OPS)
 void set_aten_stream_to_infinicore();
-#endif
 
 #if defined(ENABLE_MOORE_API)
 c10::musa::MUSAStream get_musa_stream();

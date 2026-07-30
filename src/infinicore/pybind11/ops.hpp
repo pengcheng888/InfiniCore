@@ -30,7 +30,9 @@
 #include "ops/blas_copy.hpp"
 #include "ops/blas_dot.hpp"
 #include "ops/block_diag.hpp"
+#include "ops/bmm_strided.hpp"
 #include "ops/broadcast_to.hpp"
+#include "ops/cast.hpp"
 #include "ops/cat.hpp"
 #include "ops/causal_conv1d.hpp"
 #include "ops/causal_softmax.hpp"
@@ -139,6 +141,7 @@
 #include "ops/vander.hpp"
 #include "ops/var.hpp"
 #include "ops/var_mean.hpp"
+#include "ops/vocab_parallel_embedding.hpp"
 
 #ifdef ENABLE_VENDOR_OPS
 #include "ops/concat_and_cache_mla.hpp"
@@ -211,6 +214,7 @@ inline void bind(py::module &m) {
     bind_blas_copy(m);
     bind_blas_dot(m);
     bind_block_diag(m);
+    bind_bmm_strided(m);
     bind_bitwise_right_shift(m);
     bind_causal_conv1d(m);
     bind_causal_softmax(m);
@@ -228,6 +232,7 @@ inline void bind(py::module &m) {
     bind_fused_gated_delta_net_gating(m);
     bind_fused_moe(m);
     bind_fmin(m);
+    bind_cast(m);
     bind_cat(m);
     bind_causal_softmax(m);
     bind_inner(m);
@@ -281,6 +286,7 @@ inline void bind(py::module &m) {
     bind_logical_and(m);
     bind_logical_not(m);
     bind_vander(m);
+    bind_vocab_parallel_embedding(m);
     bind_unfold(m);
     bind_rope(m);
     bind_rot(m);

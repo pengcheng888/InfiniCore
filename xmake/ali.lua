@@ -42,24 +42,20 @@ target("flash-attn-ali")
 target_end()
 
 target("infinicore_cpp_api")
-    if has_config("aten") and FLASH_ATTN_ROOT and FLASH_ATTN_ROOT ~= "" then
+    if has_config("aten") then
         before_link(function (target)
-            local flash_so = ali_flash_attn_cuda_so_path()
-            local flash_dir = path.directory(flash_so)
-            local flash_name = path.filename(flash_so)
             local torch_dir = os.iorunv("python", {
                 "-c",
                 "import torch, os; print(os.path.dirname(torch.__file__))",
             }):trim()
             local torch_lib_dir = path.join(torch_dir, "lib")
             if not os.isdir(torch_lib_dir) then
-                raise("ali+flash-attn: torch library directory not found: " .. torch_lib_dir)
+                raise("ali+aten: torch library directory not found: " .. torch_lib_dir)
             end
 
-            -- The pip flash-attn extension has no RUNPATH of its own and
-            -- directly depends on the Torch runtime libraries. Keep all
-            -- dependencies loaded and discoverable when infinicore is
-            -- imported before torch.
+            -- Ali's Torch libraries are loaded with local symbol visibility by
+            -- Python. Link them explicitly so ATen calls from InfiniCore resolve
+            -- even when no flash-attn extension is configured.
             target:add(
                 "shflags",
                 "-Wl,--no-as-needed",
@@ -70,13 +66,25 @@ target("infinicore_cpp_api")
                 "-ltorch",
                 "-lc10_cuda",
                 "-lc10",
-                "-L" .. flash_dir,
-                "-l:" .. flash_name,
                 "-Wl,--as-needed",
                 "-Wl,-rpath," .. torch_lib_dir,
-                "-Wl,-rpath," .. flash_dir,
                 {force = true}
             )
+
+            if FLASH_ATTN_ROOT and FLASH_ATTN_ROOT ~= "" then
+                local flash_so = ali_flash_attn_cuda_so_path()
+                local flash_dir = path.directory(flash_so)
+                local flash_name = path.filename(flash_so)
+                target:add(
+                    "shflags",
+                    "-Wl,--no-as-needed",
+                    "-L" .. flash_dir,
+                    "-l:" .. flash_name,
+                    "-Wl,--as-needed",
+                    "-Wl,-rpath," .. flash_dir,
+                    {force = true}
+                )
+            end
         end)
     end
 target_end()

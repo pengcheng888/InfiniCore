@@ -78,7 +78,9 @@ from infinicore.ops.blas_amin import blas_amin
 from infinicore.ops.blas_copy import blas_copy
 from infinicore.ops.blas_dot import blas_dot
 from infinicore.ops.block_diag import block_diag
+from infinicore.ops.bmm_strided import bmm_strided
 from infinicore.ops.broadcast_to import broadcast_to
+from infinicore.ops.cast import cast
 from infinicore.ops.cat import cat
 from infinicore.ops.cdist import cdist
 from infinicore.ops.concat_and_cache_mla import concat_and_cache_mla
@@ -172,6 +174,7 @@ from infinicore.ops.unsqueeze import unsqueeze
 from infinicore.ops.vander import vander
 from infinicore.ops.var import var
 from infinicore.ops.var_mean import var_mean
+from infinicore.ops.vocab_parallel_embedding import vocab_parallel_embedding
 from infinicore.ops.w4a8_group_gemm import w4a8_group_gemm_
 from infinicore.ops.w8a8_group_gemm import w8a8_group_gemm_
 from infinicore.ops.w16a16_group_gemm import w16a16_group_gemm_
@@ -256,6 +259,7 @@ __all__ = [
     "attention",
     "mrope",
     "block_diag",
+    "bmm_strided",
     "kron",
     "bitwise_right_shift",
     "kv_caching",
@@ -263,6 +267,7 @@ __all__ = [
     "baddbmm",
     "bilinear",
     "fmod",
+    "cast",
     "cat",
     "conv2d",
     "inner",
@@ -311,6 +316,7 @@ __all__ = [
     "logical_not",
     "logical_and",
     "vander",
+    "vocab_parallel_embedding",
     "paged_caching",
     "paged_attention",
     "paged_attention_prefill",
