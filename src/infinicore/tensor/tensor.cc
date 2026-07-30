@@ -3,6 +3,7 @@
 #include "../utils.hpp"
 #include "infinicore/context/context.hpp"
 #include "infinicore/dtype.hpp"
+#include "infinicore/ops/ones.hpp"
 
 #include <spdlog/spdlog.h>
 
@@ -252,8 +253,11 @@ std::shared_ptr<TensorImpl> TensorImpl::ones(const Shape &shape,
                                              const DataType &dtype,
                                              const Device &device,
                                              bool pin_memory) {
-    // TODO: Implement this.
-    return empty(shape, dtype, device, pin_memory);
+    auto result = empty(shape, dtype, device, pin_memory);
+    if (result->nbytes() != 0) {
+        op::ones_(Tensor{result});
+    }
+    return result;
 }
 
 std::shared_ptr<TensorImpl> TensorImpl::from_blob(

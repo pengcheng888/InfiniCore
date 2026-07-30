@@ -11,6 +11,5 @@ public:
     static common::OpDispatcher<schema> &dispatcher();
 };
 
-Tensor ones();
 void ones_(Tensor output);
 } // namespace infinicore::op
