@@ -196,6 +196,31 @@ python scripts/install.py [XMAKE_CONFIG_FLAGS]
   xmake f --moore-gpu=y --aten=y --flash-attn=y -cv
   ```
 
+##### 试验功能 -- 使用天数智芯平台 Flash Attention 能力
+
+  ```shell
+  # 天数智芯的 MHA、MHA VarLen 和 MHA KVCache 实现依赖 ATen，
+  # 可通过以下任一种方式启用：
+
+  # 方式一：使用 vendor operators 提供的 Flash Attention 实现。
+  xmake f --iluvatar-gpu=true --cuda=$CUDA_HOME --aten=true \
+      --use-vendor-ops=true -cv
+
+  # 方式二：指定包含 _C.cpython-*.so 的 vllm_iluvatar 预编译扩展目录。
+  # .58 的 pepe 容器中可使用以下实际路径：
+  xmake f --iluvatar-gpu=true --cuda=$CUDA_HOME --aten=true \
+      --flash-attn=/usr/local/lib/python3.12/site-packages/vllm_iluvatar \
+      -cv
+
+  # 两种方式都会自动启用天数智芯 Flash Attention 实现，无需手动定义编译宏。
+  # 如需指定架构，可追加例如：--iluvatar_arch=ivcore11。
+
+  # 按需编译并安装 C++/Python 封装：
+  xmake build _infinicore
+  xmake install _infinicore
+  pip install -e .
+  ```
+
 
 ##### 试验功能 -- 使用海光 DCU 平台预编译 flash-attn 能力
 
