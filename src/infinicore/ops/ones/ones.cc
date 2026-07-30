@@ -2,26 +2,16 @@
 
 #include "../../utils.hpp"
 
-#include <stdexcept>
-
 namespace infinicore::op {
 
-common::OpDispatcher<Ones::schema> &Ones::dispatcher() {
-    static common::OpDispatcher<Ones::schema> dispatcher_;
-    return dispatcher_;
-};
+INFINICORE_GRAPH_OP_DISPATCHERS_IMPL(Ones);
+
+Ones::Ones(Tensor output) {
+    INFINICORE_GRAPH_OP_DISPATCH(output->device().getType(), output);
+}
 
 void Ones::execute(Tensor output) {
-    context::setDevice(output->device());
-    auto device_type = output->device().getType();
-    auto func = dispatcher().lookup(device_type);
-
-    if (func == nullptr) {
-        throw std::runtime_error("No Ones implementation found for device type: "
-                                 + std::to_string(static_cast<int>(device_type)));
-    }
-
-    func(output);
+    INFINICORE_GRAPH_OP_RECORD_OR_RUN(Ones, output);
 }
 
 void ones_(Tensor output) {
