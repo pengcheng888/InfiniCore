@@ -5,7 +5,13 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import torch
 import infinicore
-from framework import BaseOperatorTest, GenericTestRunner, TensorSpec, TestCase, TensorInitializer
+from framework import (
+    BaseOperatorTest,
+    GenericTestRunner,
+    TensorSpec,
+    TestCase,
+    TensorInitializer,
+)
 
 
 _TENSOR_DTYPES = [infinicore.float16, infinicore.bfloat16, infinicore.float32]
@@ -163,6 +169,62 @@ def parse_test_cases():
                     ),
                 )
             )
+
+    shape = (1, 3, 96, 128)
+    dtype = infinicore.bfloat16
+    H, D = shape[2], shape[3]
+    cu = torch.tensor([0, shape[1]], dtype=torch.int32)
+    initial_indices = torch.tensor([0], dtype=torch.int32)
+    final_indices = torch.tensor([1], dtype=torch.int32)
+    tests.append(
+        TestCase(
+            inputs=[
+                TensorSpec.from_tensor(shape, None, dtype),
+                TensorSpec.from_tensor(shape, None, dtype),
+                TensorSpec.from_tensor(shape, None, dtype),
+                TensorSpec.from_tensor(shape, None, dtype),
+                TensorSpec.from_tensor(shape[:3], None, dtype),
+                TensorSpec.from_tensor((H,), None, infinicore.float32),
+                TensorSpec.from_tensor((H, D), None, infinicore.float32),
+                TensorSpec.from_tensor(
+                    (2, H, D, D),
+                    None,
+                    dtype,
+                    init_mode=TensorInitializer.ZEROS,
+                ),
+            ],
+            kwargs={
+                "cu_seqlens": TensorSpec.from_tensor(
+                    tuple(cu.shape),
+                    None,
+                    infinicore.int32,
+                    init_mode=TensorInitializer.MANUAL,
+                    set_tensor=cu,
+                ),
+                "initial_state_indices": TensorSpec.from_tensor(
+                    tuple(initial_indices.shape),
+                    None,
+                    infinicore.int32,
+                    init_mode=TensorInitializer.MANUAL,
+                    set_tensor=initial_indices,
+                ),
+                "final_state_indices": TensorSpec.from_tensor(
+                    tuple(final_indices.shape),
+                    None,
+                    infinicore.int32,
+                    init_mode=TensorInitializer.MANUAL,
+                    set_tensor=final_indices,
+                ),
+                "scale": D**-0.5,
+                "lower_bound": -5.0,
+                "use_qk_l2norm": True,
+            },
+            output_spec=None,
+            comparison_target=None,
+            tolerance={"atol": 1e-3, "rtol": 1e-2},
+            description="KimiDeltaAttention K3 shape indexed-pool varlen zero-state",
+        )
+    )
     return tests
 
 

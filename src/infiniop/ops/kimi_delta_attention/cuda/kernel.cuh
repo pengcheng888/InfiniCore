@@ -49,7 +49,9 @@ __device__ inline float kdaBlockReduceSum(float value, float *scratch) {
         }
         __syncthreads();
     }
-    return scratch[0];
+    const float result = scratch[0];
+    __syncthreads();
+    return result;
 }
 
 template <typename Tdata, typename Tgate>
