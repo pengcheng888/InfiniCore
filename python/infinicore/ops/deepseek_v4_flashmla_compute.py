@@ -124,3 +124,65 @@ def deepseek_v4_flashmla_sparse_attention_with_metadata_(
         )
     )
     return Tensor(output_underlying), Tensor(tile_scheduler_metadata_underlying), Tensor(num_splits_underlying)
+
+
+def deepseek_v4_flashmla_sparse_attention_out_workspace_(
+    q: Tensor,
+    raw_cache: Tensor,
+    indices: Tensor,
+    topk_lengths: Tensor,
+    attn_sink: Tensor | None,
+    output: Tensor,
+    lse: Tensor,
+    lse_accum: Tensor,
+    o_accum: Tensor,
+    tile_scheduler_metadata: Tensor,
+    num_splits: Tensor,
+    softmax_scale: float,
+    page_size: int = 256,
+    head_dim_v: int = 512,
+    extra_raw_cache: Tensor | None = None,
+    extra_indices: Tensor | None = None,
+    extra_topk_lengths: Tensor | None = None,
+    extra_page_size: int = 0,
+) -> Tensor:
+    _infinicore.deepseek_v4_flashmla_sparse_attention_out_workspace_(
+        q._underlying,
+        raw_cache._underlying,
+        indices._underlying,
+        topk_lengths._underlying,
+        None if attn_sink is None else attn_sink._underlying,
+        output._underlying,
+        lse._underlying,
+        lse_accum._underlying,
+        o_accum._underlying,
+        tile_scheduler_metadata._underlying,
+        num_splits._underlying,
+        softmax_scale,
+        page_size,
+        head_dim_v,
+        None if extra_raw_cache is None else extra_raw_cache._underlying,
+        None if extra_indices is None else extra_indices._underlying,
+        None if extra_topk_lengths is None else extra_topk_lengths._underlying,
+        extra_page_size,
+    )
+    return output
+
+
+def deepseek_v4_flashmla_sparse_attention_metadata_(
+    tile_scheduler_metadata: Tensor,
+    num_splits: Tensor,
+    topk_lengths: Tensor,
+    topk: int,
+    extra_topk_lengths: Tensor | None = None,
+    extra_topk: int = -1,
+) -> tuple[Tensor, Tensor]:
+    _infinicore.deepseek_v4_flashmla_sparse_attention_metadata_(
+        tile_scheduler_metadata._underlying,
+        num_splits._underlying,
+        topk_lengths._underlying,
+        topk,
+        None if extra_topk_lengths is None else extra_topk_lengths._underlying,
+        extra_topk,
+    )
+    return tile_scheduler_metadata, num_splits

@@ -253,6 +253,154 @@ def test_sparse_decode_attention_cached_metadata():
     assert num_splits_again.data_ptr() == num_splits.data_ptr()
 
 
+def test_sparse_decode_attention_out_workspace_api_exported():
+    assert callable(infinicore.deepseek_v4_flashmla_sparse_attention_out_workspace_)
+
+
+def _assert_sparse_decode_attention_out_workspace_matches_cached_metadata(heads):
+    torch.manual_seed(53 + heads)
+    page_size = 256
+    tokens, topk = 2, 64
+    raw = _make_flashmla_raw_cache(page_size, blocks=2, cache_tokens=256, seed=59)
+    q = torch.randn((tokens, heads, 512), device="cuda", dtype=torch.bfloat16)
+    indices = torch.arange(topk, device="cuda", dtype=torch.int32).reshape(1, topk).repeat(tokens, 1)
+    topk_lengths = torch.full((tokens,), topk, device="cuda", dtype=torch.int32)
+    attn_sink = torch.zeros((heads,), device="cuda", dtype=torch.float32)
+
+    ref = torch.empty_like(q)
+    _, sched_meta, num_splits = infinicore.deepseek_v4_flashmla_sparse_attention_with_metadata_(
+        _as_core(q),
+        _as_core(raw),
+        _as_core(indices),
+        _as_core(topk_lengths),
+        _as_core(attn_sink),
+        _as_core(ref),
+        None,
+        None,
+        512**-0.5,
+        page_size,
+        512,
+    )
+    infinicore.sync_stream()
+
+    out = torch.empty_like(q)
+    lse = torch.empty((tokens, heads), device="cuda", dtype=torch.float32)
+    total_num_splits = tokens + sched_meta.shape[0]
+    lse_accum = torch.empty((total_num_splits, heads), device="cuda", dtype=torch.float32)
+    o_accum = torch.empty((total_num_splits, heads, 512), device="cuda", dtype=torch.float32)
+    infinicore.deepseek_v4_flashmla_sparse_attention_out_workspace_(
+        _as_core(q),
+        _as_core(raw),
+        _as_core(indices),
+        _as_core(topk_lengths),
+        _as_core(attn_sink),
+        _as_core(out),
+        _as_core(lse),
+        _as_core(lse_accum),
+        _as_core(o_accum),
+        sched_meta,
+        num_splits,
+        512**-0.5,
+        page_size,
+        512,
+    )
+    infinicore.sync_stream()
+    assert torch.equal(out, ref)
+
+
+def test_sparse_decode_attention_out_workspace_matches_cached_metadata():
+    _assert_sparse_decode_attention_out_workspace_matches_cached_metadata(heads=8)
+    _assert_sparse_decode_attention_out_workspace_matches_cached_metadata(heads=16)
+
+
+def _assert_sparse_decode_metadata_refresh_matches_with_metadata(use_extra):
+    torch.manual_seed(67 if not use_extra else 71)
+    page_size = 256
+    tokens, heads, topk = 7, 16, 64
+    raw = _make_flashmla_raw_cache(page_size, blocks=2, cache_tokens=256, seed=73)
+    q = torch.randn((tokens, heads, 512), device="cuda", dtype=torch.bfloat16)
+    indices = torch.arange(topk, device="cuda", dtype=torch.int32).reshape(1, topk).repeat(tokens, 1)
+    topk_lengths = torch.full((tokens,), topk, device="cuda", dtype=torch.int32)
+    attn_sink = torch.zeros((heads,), device="cuda", dtype=torch.float32)
+
+    extra_raw = None
+    extra_indices = None
+    extra_topk_lengths = None
+    extra_page_size = 0
+    extra_topk = -1
+    if use_extra:
+        extra_page_size = 64
+        extra_topk = 32
+        extra_raw = _make_flashmla_raw_cache(extra_page_size, blocks=2, cache_tokens=128, seed=79)
+        extra_indices = torch.arange(extra_topk, device="cuda", dtype=torch.int32).reshape(1, extra_topk).repeat(tokens, 1)
+        extra_topk_lengths = torch.full((tokens,), extra_topk, device="cuda", dtype=torch.int32)
+
+    ref = torch.empty_like(q)
+    _, sched_meta_ref, _ = infinicore.deepseek_v4_flashmla_sparse_attention_with_metadata_(
+        _as_core(q),
+        _as_core(raw),
+        _as_core(indices),
+        _as_core(topk_lengths),
+        _as_core(attn_sink),
+        _as_core(ref),
+        None,
+        None,
+        512**-0.5,
+        page_size,
+        512,
+        None if extra_raw is None else _as_core(extra_raw),
+        None if extra_indices is None else _as_core(extra_indices),
+        None if extra_topk_lengths is None else _as_core(extra_topk_lengths),
+        extra_page_size,
+    )
+    infinicore.sync_stream()
+
+    sched_meta = torch.empty((sched_meta_ref.shape[0], 8), device="cuda", dtype=torch.int32)
+    num_splits = torch.empty((tokens + 1,), device="cuda", dtype=torch.int32)
+    infinicore.deepseek_v4_flashmla_sparse_attention_metadata_(
+        _as_core(sched_meta),
+        _as_core(num_splits),
+        _as_core(topk_lengths),
+        topk,
+        None if extra_topk_lengths is None else _as_core(extra_topk_lengths),
+        extra_topk,
+    )
+    infinicore.sync_stream()
+
+    out = torch.empty_like(q)
+    lse = torch.empty((tokens, heads), device="cuda", dtype=torch.float32)
+    total_num_splits = tokens + sched_meta.shape[0]
+    lse_accum = torch.empty((total_num_splits, heads), device="cuda", dtype=torch.float32)
+    o_accum = torch.empty((total_num_splits, heads, 512), device="cuda", dtype=torch.float32)
+    infinicore.deepseek_v4_flashmla_sparse_attention_out_workspace_(
+        _as_core(q),
+        _as_core(raw),
+        _as_core(indices),
+        _as_core(topk_lengths),
+        _as_core(attn_sink),
+        _as_core(out),
+        _as_core(lse),
+        _as_core(lse_accum),
+        _as_core(o_accum),
+        _as_core(sched_meta),
+        _as_core(num_splits),
+        512**-0.5,
+        page_size,
+        512,
+        None if extra_raw is None else _as_core(extra_raw),
+        None if extra_indices is None else _as_core(extra_indices),
+        None if extra_topk_lengths is None else _as_core(extra_topk_lengths),
+        extra_page_size,
+    )
+    infinicore.sync_stream()
+    assert torch.equal(out, ref)
+
+
+def test_sparse_decode_attention_metadata_refresh_matches_with_metadata():
+    _assert_sparse_decode_metadata_refresh_matches_with_metadata(use_extra=False)
+    _assert_sparse_decode_metadata_refresh_matches_with_metadata(use_extra=True)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--hygon", action="store_true")
@@ -264,6 +412,9 @@ def main():
     test_sparse_decode_attention_compute()
     test_sparse_decode_local_heads_match_full_heads()
     test_sparse_decode_attention_cached_metadata()
+    test_sparse_decode_attention_out_workspace_api_exported()
+    test_sparse_decode_attention_out_workspace_matches_cached_metadata()
+    test_sparse_decode_attention_metadata_refresh_matches_with_metadata()
     print("DeepseekV4FlashMLACompute: passed")
 
 
