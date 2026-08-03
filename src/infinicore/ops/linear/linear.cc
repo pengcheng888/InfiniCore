@@ -85,7 +85,7 @@ void linear_packed_(Tensor out,
 
     auto weight_shape = packed_weight->shape();
     // packed_weight is [IC, OC] — already the layout GEMM expects
-    Size in_features  = weight_shape[0];
+    Size in_features = weight_shape[0];
     Size out_features = weight_shape[1];
 
     Size ndim = input->ndim();
