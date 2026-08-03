@@ -1,7 +1,7 @@
 #include "mxfp4_dequantize_cpu.h"
 
-#include "../../../devices/cpu/cpu_handle.h"
 #include "../../../../utils/custom_types.h"
+#include "../../../devices/cpu/cpu_handle.h"
 
 #include <cmath>
 #include <cstdint>
@@ -30,10 +30,8 @@ void dequantize(T *out,
             const uint8_t byte = packed[row * packed_width + packed_col];
             const int exponent = static_cast<int>(scales[row * scales_width + packed_col / 16]) - 127;
             const size_t out_col = packed_col * 2;
-            out[row * info.logical_width + out_col] =
-                utils::cast<T>(std::ldexp(decode_e2m1(byte & 0xf), exponent));
-            out[row * info.logical_width + out_col + 1] =
-                utils::cast<T>(std::ldexp(decode_e2m1(byte >> 4), exponent));
+            out[row * info.logical_width + out_col] = utils::cast<T>(std::ldexp(decode_e2m1(byte & 0xf), exponent));
+            out[row * info.logical_width + out_col + 1] = utils::cast<T>(std::ldexp(decode_e2m1(byte >> 4), exponent));
         }
     }
 }

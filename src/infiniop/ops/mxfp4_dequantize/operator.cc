@@ -1,5 +1,5 @@
-#include "../../handle.h"
 #include "../../operator.h"
+#include "../../handle.h"
 #include "infiniop/ops/mxfp4_dequantize.h"
 
 #ifdef ENABLE_CPU_API
@@ -15,10 +15,10 @@ __INFINI_C infiniStatus_t infiniopCreateMxfp4DequantizeDescriptor(
     infiniopTensorDescriptor_t out_desc,
     infiniopTensorDescriptor_t packed_desc,
     infiniopTensorDescriptor_t scales_desc) {
-#define CREATE(CASE, NAMESPACE)                                                       \
-    case CASE:                                                                        \
-        return op::mxfp4_dequantize::NAMESPACE::Descriptor::create(                  \
-            handle,                                                                  \
+#define CREATE(CASE, NAMESPACE)                                                         \
+    case CASE:                                                                          \
+        return op::mxfp4_dequantize::NAMESPACE::Descriptor::create(                     \
+            handle,                                                                     \
             reinterpret_cast<op::mxfp4_dequantize::NAMESPACE::Descriptor **>(desc_ptr), \
             out_desc, packed_desc, scales_desc)
     switch (handle->device) {
@@ -37,10 +37,10 @@ __INFINI_C infiniStatus_t infiniopCreateMxfp4DequantizeDescriptor(
 __INFINI_C infiniStatus_t infiniopGetMxfp4DequantizeWorkspaceSize(
     infiniopMxfp4DequantizeDescriptor_t desc,
     size_t *size) {
-#define GET(CASE, NAMESPACE)                                                                    \
-    case CASE:                                                                                  \
-        *size = reinterpret_cast<const op::mxfp4_dequantize::NAMESPACE::Descriptor *>(desc)    \
-                    ->workspaceSize();                                                          \
+#define GET(CASE, NAMESPACE)                                                                \
+    case CASE:                                                                              \
+        *size = reinterpret_cast<const op::mxfp4_dequantize::NAMESPACE::Descriptor *>(desc) \
+                    ->workspaceSize();                                                      \
         return INFINI_STATUS_SUCCESS
     switch (desc->device_type) {
 #ifdef ENABLE_CPU_API
@@ -63,9 +63,9 @@ __INFINI_C infiniStatus_t infiniopMxfp4Dequantize(
     const void *packed,
     const void *scales,
     void *stream) {
-#define CALCULATE(CASE, NAMESPACE)                                                            \
-    case CASE:                                                                                \
-        return reinterpret_cast<const op::mxfp4_dequantize::NAMESPACE::Descriptor *>(desc)  \
+#define CALCULATE(CASE, NAMESPACE)                                                         \
+    case CASE:                                                                             \
+        return reinterpret_cast<const op::mxfp4_dequantize::NAMESPACE::Descriptor *>(desc) \
             ->calculate(workspace, workspace_size, out, packed, scales, stream)
     switch (desc->device_type) {
 #ifdef ENABLE_CPU_API
@@ -82,9 +82,9 @@ __INFINI_C infiniStatus_t infiniopMxfp4Dequantize(
 
 __INFINI_C infiniStatus_t infiniopDestroyMxfp4DequantizeDescriptor(
     infiniopMxfp4DequantizeDescriptor_t desc) {
-#define DESTROY(CASE, NAMESPACE)                                                               \
-    case CASE:                                                                                 \
-        delete reinterpret_cast<const op::mxfp4_dequantize::NAMESPACE::Descriptor *>(desc);  \
+#define DESTROY(CASE, NAMESPACE)                                                            \
+    case CASE:                                                                              \
+        delete reinterpret_cast<const op::mxfp4_dequantize::NAMESPACE::Descriptor *>(desc); \
         return INFINI_STATUS_SUCCESS
     switch (desc->device_type) {
 #ifdef ENABLE_CPU_API

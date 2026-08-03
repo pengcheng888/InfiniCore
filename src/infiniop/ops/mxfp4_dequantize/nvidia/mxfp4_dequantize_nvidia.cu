@@ -15,14 +15,30 @@ namespace {
 __device__ __forceinline__ float decode_e2m1(uint8_t value) {
     float magnitude;
     switch (value & 0x7) {
-    case 0: magnitude = 0.0f; break;
-    case 1: magnitude = 0.5f; break;
-    case 2: magnitude = 1.0f; break;
-    case 3: magnitude = 1.5f; break;
-    case 4: magnitude = 2.0f; break;
-    case 5: magnitude = 3.0f; break;
-    case 6: magnitude = 4.0f; break;
-    default: magnitude = 6.0f; break;
+    case 0:
+        magnitude = 0.0f;
+        break;
+    case 1:
+        magnitude = 0.5f;
+        break;
+    case 2:
+        magnitude = 1.0f;
+        break;
+    case 3:
+        magnitude = 1.5f;
+        break;
+    case 4:
+        magnitude = 2.0f;
+        break;
+    case 5:
+        magnitude = 3.0f;
+        break;
+    case 6:
+        magnitude = 4.0f;
+        break;
+    default:
+        magnitude = 6.0f;
+        break;
     }
     return value & 0x8 ? -magnitude : magnitude;
 }
