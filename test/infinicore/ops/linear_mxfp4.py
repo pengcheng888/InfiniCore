@@ -3,7 +3,6 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-import infinicore
 import torch
 from framework import (
     BaseOperatorTest,
@@ -13,6 +12,7 @@ from framework import (
     TestCase,
 )
 
+import infinicore
 
 _DTYPES = [infinicore.float16, infinicore.bfloat16, infinicore.float32]
 _TOLERANCE = {
@@ -37,7 +37,15 @@ def dequantize_mxfp4(packed, scales):
 
 def torch_linear_mxfp4(input, packed_weight, weight_scale, bias, alpha):
     weight = dequantize_mxfp4(packed_weight, weight_scale)
-    output = torch.matmul(input.float(), weight.transpose(0, 1)) * alpha
+    if input.device.type == "cuda":
+        old_allow_tf32 = torch.backends.cuda.matmul.allow_tf32
+        torch.backends.cuda.matmul.allow_tf32 = False
+        try:
+            output = torch.matmul(input.float(), weight.transpose(0, 1)) * alpha
+        finally:
+            torch.backends.cuda.matmul.allow_tf32 = old_allow_tf32
+    else:
+        output = torch.matmul(input.float(), weight.transpose(0, 1)) * alpha
     if bias is not None:
         output = output + bias.float()
     return output.to(input.dtype)
@@ -55,7 +63,11 @@ def make_cases():
         in_features = input_shape[-1]
         input_data = torch.randn(input_shape, generator=generator) * 0.25
         packed = torch.randint(
-            0, 256, (out_features, in_features // 2), generator=generator, dtype=torch.uint8
+            0,
+            256,
+            (out_features, in_features // 2),
+            generator=generator,
+            dtype=torch.uint8,
         )
         scales = torch.randint(
             123,
@@ -132,9 +144,7 @@ class OpTest(BaseOperatorTest):
 
     def infinicore_operator(self, *args, **kwargs):
         if len(args) == 3:
-            return infinicore.nn.functional.linear_mxfp4(
-                *args, bias=None, **kwargs
-            )
+            return infinicore.nn.functional.linear_mxfp4(*args, bias=None, **kwargs)
         return infinicore.nn.functional.linear_mxfp4(*args, **kwargs)
 
 

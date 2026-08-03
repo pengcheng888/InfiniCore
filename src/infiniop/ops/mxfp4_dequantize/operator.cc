@@ -8,6 +8,12 @@
 #ifdef ENABLE_NVIDIA_API
 #include "nvidia/mxfp4_dequantize_nvidia.cuh"
 #endif
+#ifdef ENABLE_METAX_API
+#include "metax/mxfp4_dequantize_metax.h"
+#endif
+#ifdef ENABLE_MOORE_API
+#include "moore/mxfp4_dequantize_moore.h"
+#endif
 
 __INFINI_C infiniStatus_t infiniopCreateMxfp4DequantizeDescriptor(
     infiniopHandle_t handle,
@@ -27,6 +33,12 @@ __INFINI_C infiniStatus_t infiniopCreateMxfp4DequantizeDescriptor(
 #endif
 #ifdef ENABLE_NVIDIA_API
         CREATE(INFINI_DEVICE_NVIDIA, nvidia);
+#endif
+#ifdef ENABLE_METAX_API
+        CREATE(INFINI_DEVICE_METAX, metax);
+#endif
+#ifdef ENABLE_MOORE_API
+        CREATE(INFINI_DEVICE_MOORE, moore);
 #endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
@@ -48,6 +60,12 @@ __INFINI_C infiniStatus_t infiniopGetMxfp4DequantizeWorkspaceSize(
 #endif
 #ifdef ENABLE_NVIDIA_API
         GET(INFINI_DEVICE_NVIDIA, nvidia);
+#endif
+#ifdef ENABLE_METAX_API
+        GET(INFINI_DEVICE_METAX, metax);
+#endif
+#ifdef ENABLE_MOORE_API
+        GET(INFINI_DEVICE_MOORE, moore);
 #endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
@@ -74,6 +92,12 @@ __INFINI_C infiniStatus_t infiniopMxfp4Dequantize(
 #ifdef ENABLE_NVIDIA_API
         CALCULATE(INFINI_DEVICE_NVIDIA, nvidia);
 #endif
+#ifdef ENABLE_METAX_API
+        CALCULATE(INFINI_DEVICE_METAX, metax);
+#endif
+#ifdef ENABLE_MOORE_API
+        CALCULATE(INFINI_DEVICE_MOORE, moore);
+#endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
@@ -92,6 +116,12 @@ __INFINI_C infiniStatus_t infiniopDestroyMxfp4DequantizeDescriptor(
 #endif
 #ifdef ENABLE_NVIDIA_API
         DESTROY(INFINI_DEVICE_NVIDIA, nvidia);
+#endif
+#ifdef ENABLE_METAX_API
+        DESTROY(INFINI_DEVICE_METAX, metax);
+#endif
+#ifdef ENABLE_MOORE_API
+        DESTROY(INFINI_DEVICE_MOORE, moore);
 #endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
