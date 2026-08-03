@@ -57,7 +57,7 @@ inline void bind_deepseek_v4_fused_experts_impl_int8_marlin(py::module &m) {
           py::arg("routed_scaling_factor") = 1.0,
           py::arg("inplace") = false,
           py::arg("shared_output") = py::none(),
-          R"doc(DeepSeek-V4 SGLang fused_experts_impl_int8_marlin bridge. shared_output is added inside moe_sum when provided.)doc");
+          R"doc(DeepSeek-V4 native INT8 Marlin fused MoE. It is semantically equivalent to the removed deepseek_v4_moe_lmslim_marlin_w8a8_ alias; shared_output is added inside moe_sum when provided.)doc");
     m.def("deepseek_v4_python_fused_experts_impl_int8_marlin_",
           &op::deepseek_v4_python_fused_experts_impl_int8_marlin_,
           py::arg("output"),

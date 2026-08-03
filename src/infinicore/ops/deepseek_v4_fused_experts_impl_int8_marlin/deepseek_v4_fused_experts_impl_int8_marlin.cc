@@ -1,7 +1,7 @@
 #include "infinicore/ops/deepseek_v4_fused_experts_impl_int8_marlin.hpp"
 
-#include "infinicore/device.hpp"
 #include "deepseek_v4_fused_experts_impl_int8_marlin_kernel.hpp"
+#include "infinicore/device.hpp"
 
 #include "infinicore/adaptor/aten_adaptor.hpp"
 #include "infinicore/context/context.hpp"
@@ -9,10 +9,10 @@
 
 #include "../../utils.hpp"
 
-#include <optional>
 #include <algorithm>
-#include <cstdlib>
 #include <cstdio>
+#include <cstdlib>
+#include <optional>
 #include <stdexcept>
 #include <string>
 
@@ -53,6 +53,18 @@ struct MarlinConfig {
     bool supported{false};
 };
 
+struct FusedExpertsShape {
+    size_t num_tokens{0};
+    size_t hidden_size{0};
+    size_t top_k{0};
+    size_t num_experts{0};
+    size_t intermediate_size{0};
+    size_t gate_up_size{0};
+    size_t flat_topk{0};
+    size_t max_num_tokens_padded{0};
+    MarlinConfig config;
+};
+
 MarlinConfig select_deepseek_v4_marlin_config(size_t num_tokens,
                                               size_t hidden_size,
                                               size_t intermediate_size,
@@ -73,9 +85,7 @@ MarlinConfig select_deepseek_v4_marlin_config(size_t num_tokens,
             config.gemm1_mode = 55;
             config.gemm2_mode = 54;
         }
-        return config;
-    }
-    if (hidden_size == 4096 && intermediate_size == 256 && top_k == 6) {
+    } else if (hidden_size == 4096 && intermediate_size == 256 && top_k == 6) {
         config.supported = true;
         if (num_tokens <= 1) {
             config.gemm1_mode = 58;
@@ -93,9 +103,34 @@ MarlinConfig select_deepseek_v4_marlin_config(size_t num_tokens,
             config.gemm1_mode = 37;
             config.gemm2_mode = 54;
         }
-        return config;
     }
     return config;
+}
+
+FusedExpertsShape infer_fused_experts_shape(const Tensor &hidden_states,
+                                            const Tensor &w1,
+                                            const Tensor &topk_ids,
+                                            int64_t global_num_experts) {
+    FusedExpertsShape shape;
+    shape.num_tokens = hidden_states->size(0);
+    shape.hidden_size = hidden_states->size(1);
+    shape.top_k = topk_ids->size(1);
+    shape.num_experts = static_cast<size_t>(global_num_experts > 0 ? global_num_experts : static_cast<int64_t>(w1->size(0)));
+    shape.intermediate_size = w1->size(2) / 128;
+    shape.gate_up_size = shape.intermediate_size * 2;
+    shape.flat_topk = shape.num_tokens * shape.top_k;
+    shape.config = select_deepseek_v4_marlin_config(shape.num_tokens, shape.hidden_size, shape.intermediate_size, shape.top_k);
+    if (!shape.config.supported) {
+        throw std::runtime_error("deepseek_v4_fused_experts_impl_int8_marlin_ only supports DeepSeek-V4 Marlin shapes hidden=4096/topk=6/local_intermediate=256 or hidden=7168/topk=8/local_intermediate=256.");
+    }
+
+    const int block_size = shape.config.block_size;
+    shape.max_num_tokens_padded = shape.flat_topk + shape.num_experts * static_cast<size_t>(block_size - 1);
+    shape.max_num_tokens_padded = ((shape.max_num_tokens_padded + static_cast<size_t>(block_size - 1)) / static_cast<size_t>(block_size)) * static_cast<size_t>(block_size);
+    if (shape.flat_topk < shape.num_experts) {
+        shape.max_num_tokens_padded = std::min(shape.flat_topk * static_cast<size_t>(block_size), shape.max_num_tokens_padded);
+    }
+    return shape;
 }
 
 void check_input_shapes(const Tensor &output,
@@ -184,35 +219,19 @@ FusedExpertsWorkspace make_workspace(const Tensor &hidden_states,
                                      const Tensor &w1,
                                      const Tensor &topk_ids,
                                      int64_t global_num_experts) {
-    const size_t num_tokens = hidden_states->size(0);
-    const size_t hidden_size = hidden_states->size(1);
-    const size_t top_k = topk_ids->size(1);
-    const size_t num_experts = static_cast<size_t>(global_num_experts > 0 ? global_num_experts : static_cast<int64_t>(w1->size(0)));
-    const size_t intermediate_size = w1->size(2) / 128;
-    const size_t gate_up_size = intermediate_size * 2;
-    const size_t flat_topk = num_tokens * top_k;
-    const auto config = select_deepseek_v4_marlin_config(num_tokens, hidden_size, intermediate_size, top_k);
-    if (!config.supported) {
-        throw std::runtime_error("deepseek_v4_fused_experts_impl_int8_marlin_ only supports DeepSeek-V4 Marlin shapes hidden=4096/topk=6/local_intermediate=256 or hidden=7168/topk=8/local_intermediate=256.");
-    }
-
-    const int block_size = config.block_size;
-    size_t max_num_tokens_padded = flat_topk + num_experts * static_cast<size_t>(block_size - 1);
-    max_num_tokens_padded = ((max_num_tokens_padded + static_cast<size_t>(block_size - 1)) / static_cast<size_t>(block_size)) * static_cast<size_t>(block_size);
-    if (flat_topk < num_experts) {
-        max_num_tokens_padded = std::min(flat_topk * static_cast<size_t>(block_size), max_num_tokens_padded);
-    }
+    const auto shape = infer_fused_experts_shape(hidden_states, w1, topk_ids, global_num_experts);
+    const int block_size = shape.config.block_size;
 
     return FusedExpertsWorkspace(
-        Tensor::empty({max_num_tokens_padded}, DataType::I32, hidden_states->device()),
-        Tensor::empty({(max_num_tokens_padded + static_cast<size_t>(block_size - 1)) / static_cast<size_t>(block_size)}, DataType::I32, hidden_states->device()),
+        Tensor::empty({shape.max_num_tokens_padded}, DataType::I32, hidden_states->device()),
+        Tensor::empty({(shape.max_num_tokens_padded + static_cast<size_t>(block_size - 1)) / static_cast<size_t>(block_size)}, DataType::I32, hidden_states->device()),
         Tensor::empty({1}, DataType::I32, hidden_states->device()),
         Tensor::empty(hidden_states->shape(), DataType::I8, hidden_states->device()),
-        Tensor::empty({num_tokens, 1}, DataType::F32, hidden_states->device()),
-        Tensor::empty({num_tokens, top_k, gate_up_size}, hidden_states->dtype(), hidden_states->device()),
-        Tensor::empty({flat_topk, intermediate_size}, DataType::I8, hidden_states->device()),
-        Tensor::empty({flat_topk, 1}, DataType::F32, hidden_states->device()),
-        Tensor::empty({num_tokens, top_k, hidden_size}, hidden_states->dtype(), hidden_states->device()));
+        Tensor::empty({shape.num_tokens, 1}, DataType::F32, hidden_states->device()),
+        Tensor::empty({shape.num_tokens, shape.top_k, shape.gate_up_size}, hidden_states->dtype(), hidden_states->device()),
+        Tensor::empty({shape.flat_topk, shape.intermediate_size}, DataType::I8, hidden_states->device()),
+        Tensor::empty({shape.flat_topk, 1}, DataType::F32, hidden_states->device()),
+        Tensor::empty({shape.num_tokens, shape.top_k, shape.hidden_size}, hidden_states->dtype(), hidden_states->device()));
 }
 
 void deepseek_v4_fused_experts_impl_int8_marlin_impl_(Tensor output,
@@ -227,7 +246,107 @@ void deepseek_v4_fused_experts_impl_int8_marlin_impl_(Tensor output,
                                                       double routed_scaling_factor,
                                                       bool inplace,
                                                       const std::optional<Tensor> &shared_output,
-                                                      const FusedExpertsWorkspace *workspace);
+                                                      const FusedExpertsWorkspace *workspace) {
+    guard_device(hidden_states, "deepseek_v4_fused_experts_impl_int8_marlin_");
+    guard_device(output, "deepseek_v4_fused_experts_impl_int8_marlin_");
+    if (shared_output.has_value()) {
+        guard_device(*shared_output, "deepseek_v4_fused_experts_impl_int8_marlin_");
+    }
+    check_input_shapes(output, hidden_states, w1, topk_weights, topk_ids, w1_scale, w2_scale, shared_output);
+    const auto shape = infer_fused_experts_shape(hidden_states, w1, topk_ids, global_num_experts);
+    const int block_size = shape.config.block_size;
+
+    // Prepare token/expert alignment.
+    auto sorted_token_ids = workspace ? workspace->sorted_token_ids : Tensor::empty({shape.max_num_tokens_padded}, DataType::I32, hidden_states->device());
+    auto expert_ids = workspace ? workspace->expert_ids : Tensor::empty({(shape.max_num_tokens_padded + static_cast<size_t>(block_size - 1)) / static_cast<size_t>(block_size)}, DataType::I32, hidden_states->device());
+    auto num_tokens_post_pad = workspace ? workspace->num_tokens_post_pad : Tensor::empty({1}, DataType::I32, hidden_states->device());
+    deepseek_v4_lightop_moe_align_block_size_(
+        topk_ids,
+        static_cast<int>(shape.num_experts),
+        block_size,
+        sorted_token_ids,
+        expert_ids,
+        num_tokens_post_pad,
+        true);
+
+    // Quantize hidden states.
+    auto q_hidden = workspace ? workspace->q_hidden : Tensor::empty(hidden_states->shape(), DataType::I8, hidden_states->device());
+    auto hidden_scale = workspace ? workspace->hidden_scale : Tensor::empty({shape.num_tokens, 1}, DataType::F32, hidden_states->device());
+    lmslim_per_token_quant_int8_bf16_(q_hidden, hidden_scale, hidden_states);
+
+    // Expert gate/up projection.
+    auto gate_up = workspace ? workspace->gate_up : Tensor::empty({shape.num_tokens, shape.top_k, shape.gate_up_size}, hidden_states->dtype(), hidden_states->device());
+    deepseek_v4_lightop_moe_gemm_marlin_w8a8_(
+        q_hidden,
+        w1,
+        gate_up,
+        hidden_scale,
+        w1_scale,
+        std::nullopt,
+        sorted_token_ids,
+        expert_ids,
+        num_tokens_post_pad,
+        static_cast<int>(shape.top_k),
+        shape.config.gemm1_mode,
+        shape.config.delta);
+
+    // Activation and dynamic quantization.
+    auto q_activated = workspace ? workspace->q_activated : Tensor::empty({shape.flat_topk, shape.intermediate_size}, DataType::I8, hidden_states->device());
+    auto activated_scale = workspace ? workspace->activated_scale : Tensor::empty({shape.flat_topk, 1}, DataType::F32, hidden_states->device());
+    deepseek_v4_lightop_fuse_silu_mul_quant_(
+        q_activated,
+        activated_scale,
+        gate_up->view({shape.flat_topk, shape.gate_up_size}),
+        std::nullopt,
+        1,
+        -1,
+        std::nullopt);
+
+    // Expert down projection.
+    auto down = workspace ? workspace->down : Tensor::empty({shape.num_tokens, shape.top_k, shape.hidden_size}, hidden_states->dtype(), hidden_states->device());
+    deepseek_v4_lightop_moe_gemm_marlin_w8a8_(
+        q_activated,
+        w2,
+        down,
+        activated_scale,
+        w2_scale,
+        topk_weights,
+        sorted_token_ids,
+        expert_ids,
+        num_tokens_post_pad,
+        1,
+        shape.config.gemm2_mode,
+        shape.config.delta);
+
+    // Reduce top-k expert outputs and optionally add shared output.
+    Tensor target_output = inplace ? hidden_states : output;
+    if (shared_output.has_value()) {
+        if (hidden_states->dtype() != DataType::BF16) {
+            throw std::runtime_error("deepseek_v4_fused_experts_impl_int8_marlin_ shared_output path currently expects BF16 hidden states.");
+        }
+        deepseek_v4_fused_experts_impl_int8_marlin::launch_moe_sum_scale_add_bf16(
+            target_output->data(),
+            down->data(),
+            (*shared_output)->data(),
+            static_cast<int64_t>(shape.num_tokens),
+            static_cast<int64_t>(shape.top_k),
+            static_cast<int64_t>(shape.hidden_size),
+            static_cast<float>(routed_scaling_factor),
+            context::getStream());
+    } else {
+        deepseek_v4_lightop_moe_sum_(
+            target_output,
+            down,
+            std::nullopt,
+            std::nullopt,
+            std::nullopt,
+            static_cast<float>(routed_scaling_factor),
+            -1);
+    }
+    if (!same_storage(target_output, output)) {
+        output->copy_from(target_output);
+    }
+}
 
 } // namespace
 
@@ -409,134 +528,12 @@ void cleanup_fused_experts(void **meta) {
     }
 }
 
-void deepseek_v4_fused_experts_impl_int8_marlin_impl_(Tensor output,
-                                                      const Tensor &hidden_states,
-                                                      const Tensor &w1,
-                                                      const Tensor &w2,
-                                                      const Tensor &topk_weights,
-                                                      const Tensor &topk_ids,
-                                                      const Tensor &w1_scale,
-                                                      const Tensor &w2_scale,
-                                                      int64_t global_num_experts,
-                                                      double routed_scaling_factor,
-                                                      bool inplace,
-                                                      const std::optional<Tensor> &shared_output,
-                                                      const FusedExpertsWorkspace *workspace) {
-    guard_device(hidden_states, "deepseek_v4_fused_experts_impl_int8_marlin_");
-    guard_device(output, "deepseek_v4_fused_experts_impl_int8_marlin_");
-    if (shared_output.has_value()) {
-        guard_device(*shared_output, "deepseek_v4_fused_experts_impl_int8_marlin_");
-    }
-    check_input_shapes(output, hidden_states, w1, topk_weights, topk_ids, w1_scale, w2_scale, shared_output);
-
-    const size_t num_tokens = hidden_states->size(0);
-    const size_t hidden_size = hidden_states->size(1);
-    const size_t top_k = topk_ids->size(1);
-    const size_t num_experts = static_cast<size_t>(global_num_experts > 0 ? global_num_experts : static_cast<int64_t>(w1->size(0)));
-    const size_t intermediate_size = w1->size(2) / 128;
-    const size_t gate_up_size = intermediate_size * 2;
-    const size_t flat_topk = num_tokens * top_k;
-    const auto config = select_deepseek_v4_marlin_config(num_tokens, hidden_size, intermediate_size, top_k);
-    if (!config.supported) {
-        throw std::runtime_error("deepseek_v4_fused_experts_impl_int8_marlin_ only supports DeepSeek-V4 Marlin shapes hidden=4096/topk=6/local_intermediate=256 or hidden=7168/topk=8/local_intermediate=256.");
-    }
-
-    const int block_size = config.block_size;
-    size_t max_num_tokens_padded = flat_topk + num_experts * static_cast<size_t>(block_size - 1);
-    max_num_tokens_padded = ((max_num_tokens_padded + static_cast<size_t>(block_size - 1)) / static_cast<size_t>(block_size)) * static_cast<size_t>(block_size);
-    if (flat_topk < num_experts) {
-        max_num_tokens_padded = std::min(flat_topk * static_cast<size_t>(block_size), max_num_tokens_padded);
-    }
-
-    auto sorted_token_ids = workspace ? workspace->sorted_token_ids : Tensor::empty({max_num_tokens_padded}, DataType::I32, hidden_states->device());
-    auto expert_ids = workspace ? workspace->expert_ids : Tensor::empty({(max_num_tokens_padded + static_cast<size_t>(block_size - 1)) / static_cast<size_t>(block_size)}, DataType::I32, hidden_states->device());
-    auto num_tokens_post_pad = workspace ? workspace->num_tokens_post_pad : Tensor::empty({1}, DataType::I32, hidden_states->device());
-    deepseek_v4_lightop_moe_align_block_size_(
-        topk_ids,
-        static_cast<int>(num_experts),
-        block_size,
-        sorted_token_ids,
-        expert_ids,
-        num_tokens_post_pad,
-        true);
-
-    auto q_hidden = workspace ? workspace->q_hidden : Tensor::empty(hidden_states->shape(), DataType::I8, hidden_states->device());
-    auto hidden_scale = workspace ? workspace->hidden_scale : Tensor::empty({num_tokens, 1}, DataType::F32, hidden_states->device());
-    lmslim_per_token_quant_int8_bf16_(q_hidden, hidden_scale, hidden_states);
-
-    auto gate_up = workspace ? workspace->gate_up : Tensor::empty({num_tokens, top_k, gate_up_size}, hidden_states->dtype(), hidden_states->device());
-    deepseek_v4_lightop_moe_gemm_marlin_w8a8_(
-        q_hidden,
-        w1,
-        gate_up,
-        hidden_scale,
-        w1_scale,
-        std::nullopt,
-        sorted_token_ids,
-        expert_ids,
-        num_tokens_post_pad,
-        static_cast<int>(top_k),
-        config.gemm1_mode,
-        config.delta);
-
-    auto q_activated = workspace ? workspace->q_activated : Tensor::empty({flat_topk, intermediate_size}, DataType::I8, hidden_states->device());
-    auto activated_scale = workspace ? workspace->activated_scale : Tensor::empty({flat_topk, 1}, DataType::F32, hidden_states->device());
-    deepseek_v4_lightop_fuse_silu_mul_quant_(
-        q_activated,
-        activated_scale,
-        gate_up->view({flat_topk, gate_up_size}),
-        std::nullopt,
-        1,
-        -1,
-        std::nullopt);
-
-    auto down = workspace ? workspace->down : Tensor::empty({num_tokens, top_k, hidden_size}, hidden_states->dtype(), hidden_states->device());
-    deepseek_v4_lightop_moe_gemm_marlin_w8a8_(
-        q_activated,
-        w2,
-        down,
-        activated_scale,
-        w2_scale,
-        topk_weights,
-        sorted_token_ids,
-        expert_ids,
-        num_tokens_post_pad,
-        1,
-        config.gemm2_mode,
-        config.delta);
-
-    Tensor target_output = inplace ? hidden_states : output;
-    if (shared_output.has_value()) {
-        if (hidden_states->dtype() != DataType::BF16) {
-            throw std::runtime_error("deepseek_v4_fused_experts_impl_int8_marlin_ shared_output path currently expects BF16 hidden states.");
-        }
-        deepseek_v4_fused_experts_impl_int8_marlin::launch_moe_sum_scale_add_bf16(
-            target_output->data(),
-            down->data(),
-            (*shared_output)->data(),
-            static_cast<int64_t>(num_tokens),
-            static_cast<int64_t>(top_k),
-            static_cast<int64_t>(hidden_size),
-            static_cast<float>(routed_scaling_factor),
-            context::getStream());
-    } else {
-        deepseek_v4_lightop_moe_sum_(
-            target_output,
-            down,
-            std::nullopt,
-            std::nullopt,
-            std::nullopt,
-            static_cast<float>(routed_scaling_factor),
-            -1);
-    }
-    if (!same_storage(target_output, output)) {
-        output->copy_from(target_output);
-    }
-}
-
 } // namespace
 
-INFINICORE_GRAPH_OP_REGISTER_ALLDEVICE(DeepseekV4FusedExpertsImplInt8Marlin, &plan_fused_experts, &run_fused_experts, &cleanup_fused_experts);
+INFINICORE_GRAPH_OP_REGISTER_ALLDEVICE(DeepseekV4FusedExpertsImplInt8Marlin,
+                                       &plan_fused_experts,
+                                       &run_fused_experts,
+                                       &cleanup_fused_experts);
 
 void deepseek_v4_fused_experts_impl_int8_marlin_(Tensor output,
                                                  const Tensor &hidden_states,
@@ -550,6 +547,7 @@ void deepseek_v4_fused_experts_impl_int8_marlin_(Tensor output,
                                                  double routed_scaling_factor,
                                                  bool inplace,
                                                  const std::optional<Tensor> &shared_output) {
+
     DeepseekV4FusedExpertsImplInt8Marlin::execute(output,
                                                   hidden_states,
                                                   w1,

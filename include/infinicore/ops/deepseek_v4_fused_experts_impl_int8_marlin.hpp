@@ -22,6 +22,9 @@ INFINICORE_GRAPH_OP_CLASS(DeepseekV4FusedExpertsImplInt8Marlin,
                           bool,
                           std::optional<Tensor>);
 
+// DeepSeek-V4 INT8 Marlin fused MoE native implementation.
+// It is semantically equivalent to the removed
+// deepseek_v4_moe_lmslim_marlin_w8a8_ alias.
 void deepseek_v4_fused_experts_impl_int8_marlin_(Tensor output,
                                                  const Tensor &hidden_states,
                                                  const Tensor &w1,
