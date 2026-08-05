@@ -53,7 +53,11 @@ void run(void *planned_meta) {
 
     ::mha_fwd(
         q, k, v, out, alibi, 0.0F, p->scale, p->is_causal,
-        -1, -1, false, std::nullopt);
+        -1, -1,
+#if defined(INFINICORE_CAMBRICON_FLASH_ATTN_EXTENDED_API)
+        0.0F,
+#endif
+        false, std::nullopt);
 
     if (copy_back) {
         p->out->copy_from(out_work_ic);

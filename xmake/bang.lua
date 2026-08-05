@@ -4,10 +4,6 @@ local FLASH_ATTN_ROOT = get_config("flash-attn")
 local INFINI_ROOT = os.getenv("INFINI_ROOT")
     or (os.getenv("HOME") .. "/.infini")
 
-if has_config("aten") then
-    add_defines("_GLIBCXX_USE_CXX11_ABI=0")
-end
-
 local function cambricon_flash_attn_so_path()
     local explicit = os.getenv("FLASH_ATTN_2_BANG_SO")
     if explicit and explicit ~= "" then
@@ -55,10 +51,27 @@ target("infinicore_cpp_api")
                 "-c",
                 "import torch_mlu, os; print(os.path.dirname(torch_mlu.__file__))",
             }):trim()
-            target:add("defines", "_GLIBCXX_USE_CXX11_ABI=0")
+            local torch_cxx11_abi = os.iorunv("python", {
+                "-c",
+                "import torch; print(1 if torch._C._GLIBCXX_USE_CXX11_ABI else 0)",
+            }):trim()
             target:add(
-                "includedirs", path.join(torch_mlu_dir, "csrc"),
+                "defines", "_GLIBCXX_USE_CXX11_ABI=" .. torch_cxx11_abi)
+            target:add(
+                "includedirs",
+                path.join(torch_mlu_dir, "csrc"),
+                -- Installed torch_mlu packages expose framework/* under csrc/include.
+                path.join(torch_mlu_dir, "csrc", "include"),
                 {public = true})
+            if FLASH_ATTN_ROOT and FLASH_ATTN_ROOT ~= "" then
+                local flash_symbols = os.iorunv(
+                    "nm", {"-D", "-C", "--defined-only", cambricon_flash_attn_so_path()})
+                if flash_symbols:find("mha_fwd(at::Tensor&", 1, true) then
+                    target:add("defines",
+                        "INFINICORE_CAMBRICON_FLASH_ATTN_EXTENDED_API",
+                        {public = true})
+                end
+            end
             target:add(
                 "linkdirs", path.join(torch_mlu_dir, "csrc", "lib"),
                 {public = true})
@@ -102,7 +115,16 @@ target("infinicore_cpp_api")
 target_end()
 
 target("_infinicore")
-    add_defines("_GLIBCXX_USE_CXX11_ABI=0")
+    if has_config("aten") then
+        on_load(function (target)
+            local torch_cxx11_abi = os.iorunv("python", {
+                "-c",
+                "import torch; print(1 if torch._C._GLIBCXX_USE_CXX11_ABI else 0)",
+            }):trim()
+            target:add(
+                "defines", "_GLIBCXX_USE_CXX11_ABI=" .. torch_cxx11_abi)
+        end)
+    end
     add_rpathdirs(path.join(INFINI_ROOT, "lib"))
 target_end()
 
@@ -126,9 +148,10 @@ rule("mlu")
         os.mkdir(path.directory(objectfile))
 
         local cc = "cncc"
+        local bang_mlu_arch = get_config("bang-mlu-arch") or "mtp_592"
 
         local includedirs = table.concat(target:get("includedirs"), " ")
-        local args = {"-c", sourcefile, "-o", objectfile, "--bang-mlu-arch=mtp_592", "-O3", "-fPIC", "-Wall", "-Werror", "-std=c++17", "-pthread"}
+        local args = {"-c", sourcefile, "-o", objectfile, "--bang-mlu-arch=" .. bang_mlu_arch, "-O3", "-fPIC", "-Wall", "-Werror", "-std=c++17", "-pthread"}
 
         for _, includedir in ipairs(target:get("includedirs")) do
             table.insert(args, "-I" .. includedir)

@@ -104,6 +104,14 @@ option("cambricon-mlu")
     set_description("Whether to compile implementations for Cambricon MLU")
 option_end()
 
+option("bang-mlu-arch")
+    set_default("mtp_592")
+    set_showmenu(true)
+    set_description("Set Cambricon BANG MLU architecture")
+    set_values("mtp_592", "mtp_613")
+    set_category("option")
+option_end()
+
 if has_config("cambricon-mlu") then
     add_defines("ENABLE_CAMBRICON_API")
     includes("xmake/bang.lua")
@@ -128,7 +136,7 @@ option("iluvatar-gpu")
     set_description("Whether to compile implementations for Iluvatar GPU")
 option_end()
 
-option("iluvatar_arch")
+option("iluvatar-arch")
     set_default("ivcore20")
     set_showmenu(true)
     set_description("Set Iluvatar GPU architecture (e.g. ivcore20)")

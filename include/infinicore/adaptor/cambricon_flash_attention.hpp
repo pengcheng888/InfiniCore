@@ -13,7 +13,11 @@
 #include <vector>
 
 std::vector<at::Tensor>
+#if defined(INFINICORE_CAMBRICON_FLASH_ATTN_EXTENDED_API)
+mha_fwd(at::Tensor &q,
+#else
 mha_fwd(const at::Tensor &q,
+#endif
         const at::Tensor &k,
         const at::Tensor &v,
         std::optional<at::Tensor> &out,
@@ -23,17 +27,30 @@ mha_fwd(const at::Tensor &q,
         bool is_causal,
         int window_size_left,
         int window_size_right,
+#if defined(INFINICORE_CAMBRICON_FLASH_ATTN_EXTENDED_API)
+        float softcap,
+#endif
         bool return_softmax,
         std::optional<at::Generator> gen);
 
 std::vector<at::Tensor>
+#if defined(INFINICORE_CAMBRICON_FLASH_ATTN_EXTENDED_API)
+mha_varlen_fwd(at::Tensor &q,
+               at::Tensor &k,
+               at::Tensor &v,
+#else
 mha_varlen_fwd(const at::Tensor &q,
                const at::Tensor &k,
                const at::Tensor &v,
+#endif
                std::optional<at::Tensor> &out,
                const at::Tensor &cu_seqlens_q,
                const at::Tensor &cu_seqlens_k,
                std::optional<at::Tensor> &seqused_k,
+#if defined(INFINICORE_CAMBRICON_FLASH_ATTN_EXTENDED_API)
+               std::optional<const at::Tensor> &leftpad_k,
+               std::optional<at::Tensor> &block_table,
+#endif
                std::optional<at::Tensor> &alibi_slopes,
                int max_seqlen_q,
                int max_seqlen_k,
@@ -43,6 +60,9 @@ mha_varlen_fwd(const at::Tensor &q,
                bool is_causal,
                int window_size_left,
                int window_size_right,
+#if defined(INFINICORE_CAMBRICON_FLASH_ATTN_EXTENDED_API)
+               float softcap,
+#endif
                bool return_softmax,
                std::optional<at::Generator> gen);
 
