@@ -144,14 +144,26 @@ void run(void *planned_meta) {
     } else {
         auto out = std::optional<at::Tensor>(out_tensor);
         std::optional<at::Tensor> seqused_k = std::nullopt;
+#if defined(INFINICORE_CAMBRICON_FLASH_ATTN_EXTENDED_API)
+        std::optional<const at::Tensor> leftpad_k = std::nullopt;
+        std::optional<at::Tensor> flash_block_table = std::nullopt;
+#endif
         auto alibi = p->alibi_slopes
                        ? std::optional<at::Tensor>(
                            infinicore::adaptor::to_aten_tensor(*p->alibi_slopes))
                        : std::nullopt;
         ::mha_varlen_fwd(
-            q, k, v, out, cu_q, cu_k, seqused_k, alibi,
+            q, k, v, out, cu_q, cu_k, seqused_k,
+#if defined(INFINICORE_CAMBRICON_FLASH_ATTN_EXTENDED_API)
+            leftpad_k, flash_block_table,
+#endif
+            alibi,
             max_q, max_k, 0.0F, p->scale, false, true,
-            -1, -1, false, std::nullopt);
+            -1, -1,
+#if defined(INFINICORE_CAMBRICON_FLASH_ATTN_EXTENDED_API)
+            0.0F,
+#endif
+            false, std::nullopt);
     }
     if (copy_back) {
         p->out->copy_from(out_work_ic);

@@ -120,7 +120,7 @@ target("_infinicore")
     end
 target_end()
 
-local iluvatar_arch = get_config("iluvatar_arch") or "ivcore20"
+local iluvatar_arch = get_config("iluvatar-arch") or "ivcore20"
 local iluvatar_cuflags = {
     "-Wno-pass-failed",
     "-fPIC",
