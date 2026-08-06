@@ -37,7 +37,8 @@ void check_shapes(const Tensor &topk_weights,
                   const Tensor &topk_indices,
                   const Tensor &router_logits,
                   const Tensor &input_ids,
-                  const Tensor &tid2eid) {
+                  const Tensor &tid2eid,
+                  int64_t num_fused_shared_experts) {
     if (router_logits->ndim() != 2) {
         throw std::runtime_error("deepseek_v4_hash_topk_naive_ expects router_logits to be 2-D.");
     }
@@ -50,11 +51,23 @@ void check_shapes(const Tensor &topk_weights,
     if (topk_weights->shape() != topk_indices->shape()) {
         throw std::runtime_error("deepseek_v4_hash_topk_naive_ topk weight/index shape mismatch.");
     }
-    if (topk_weights->shape() != Shape{router_logits->size(0), tid2eid->size(1)}) {
+    if (num_fused_shared_experts < 0) {
+        throw std::runtime_error("deepseek_v4_hash_topk_naive_ expects num_fused_shared_experts >= 0.");
+    }
+    if (topk_weights->shape() != Shape{router_logits->size(0), tid2eid->size(1) + num_fused_shared_experts}) {
         throw std::runtime_error("deepseek_v4_hash_topk_naive_ output shape mismatch.");
     }
     if (input_ids->size(0) != router_logits->size(0)) {
         throw std::runtime_error("deepseek_v4_hash_topk_naive_ input_ids/router token count mismatch.");
+    }
+}
+
+void check_scoring_config(float routed_scaling_factor, const std::string &scoring_func) {
+    if (scoring_func != "sqrtsoftplus") {
+        throw std::runtime_error("deepseek_v4_hash_topk_naive_ only supports scoring_func='sqrtsoftplus'.");
+    }
+    if (routed_scaling_factor == 0.0f) {
+        throw std::runtime_error("deepseek_v4_hash_topk_naive_ expects routed_scaling_factor != 0.");
     }
 }
 
@@ -65,7 +78,9 @@ void deepseek_v4_hash_topk_naive_(Tensor topk_weights,
                                   const Tensor &router_logits,
                                   const Tensor &input_ids,
                                   const Tensor &tid2eid,
-                                  bool renormalize) {
+                                  int64_t num_fused_shared_experts,
+                                  float routed_scaling_factor,
+                                  const std::string &scoring_func) {
 #if defined(ENABLE_ATEN) && (defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API))
     check_accelerator_tensor(router_logits, "deepseek_v4_hash_topk_naive_");
 #if defined(ENABLE_HYGON_API)
@@ -74,7 +89,8 @@ void deepseek_v4_hash_topk_naive_(Tensor topk_weights,
     c10::cuda::CUDAStreamGuard guard(infinicore::adaptor::get_cuda_stream());
 #endif
 
-    check_shapes(topk_weights, topk_indices, router_logits, input_ids, tid2eid);
+    check_scoring_config(routed_scaling_factor, scoring_func);
+    check_shapes(topk_weights, topk_indices, router_logits, input_ids, tid2eid, num_fused_shared_experts);
 
     auto weights_at = infinicore::adaptor::to_aten_tensor(topk_weights);
     auto indices_at = infinicore::adaptor::to_aten_tensor(topk_indices);
@@ -85,18 +101,33 @@ void deepseek_v4_hash_topk_naive_(Tensor topk_weights,
     auto selected = tid2eid_at.index_select(0, input_ids_at);
     auto scores = at::sqrt(at::softplus(logits_at.to(at::kFloat)));
     auto gathered = scores.gather(1, selected);
-    if (renormalize) {
-        gathered = gathered / gathered.sum(-1, true);
+    auto out_weights = gathered / gathered.sum(-1, true);
+    auto out_indices = selected;
+    if (num_fused_shared_experts > 0) {
+        auto shared_indices = at::arange(
+                                  logits_at.size(1),
+                                  logits_at.size(1) + num_fused_shared_experts,
+                                  selected.options())
+                                  .unsqueeze(0)
+                                  .expand({logits_at.size(0), num_fused_shared_experts});
+        auto shared_weights = at::full(
+            {logits_at.size(0), num_fused_shared_experts},
+            1.0f / routed_scaling_factor,
+            logits_at.options().dtype(at::kFloat));
+        out_weights = at::cat({out_weights, shared_weights}, 1);
+        out_indices = at::cat({out_indices, shared_indices}, 1);
     }
-    weights_at.copy_(gathered.to(weights_at.scalar_type()));
-    indices_at.copy_(selected.to(indices_at.scalar_type()));
+    weights_at.copy_(out_weights.to(weights_at.scalar_type()));
+    indices_at.copy_(out_indices.to(indices_at.scalar_type()));
 #else
     (void)topk_weights;
     (void)topk_indices;
     (void)router_logits;
     (void)input_ids;
     (void)tid2eid;
-    (void)renormalize;
+    (void)num_fused_shared_experts;
+    (void)routed_scaling_factor;
+    (void)scoring_func;
     throw std::runtime_error("deepseek_v4_hash_topk_naive_ requires an ATen-enabled HYGON/NVIDIA build.");
 #endif
 }

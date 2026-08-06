@@ -1,5 +1,7 @@
 #include "infinicore/ops/deepseek_v4_linear_bf16_fp32.hpp"
 
+#include "deepseek_v4_linear_bf16_fp32_common.hpp"
+
 #include "infinicore/dtype.hpp"
 
 #include <stdexcept>
@@ -7,10 +9,9 @@
 
 namespace infinicore::op {
 
-void deepseek_v4_linear_bf16_fp32_check_shapes(const Tensor &out,
-                                               const Tensor &x,
-                                               const Tensor &weight,
-                                               const char *op_name) {
+namespace deepseek_v4_linear_bf16_fp32_impl {
+
+void check_shapes(const Tensor &out, const Tensor &x, const Tensor &weight, const char *op_name) {
     if (x->ndim() != 2 || weight->ndim() != 2) {
         throw std::runtime_error(std::string(op_name) + " expects 2D input and weight tensors.");
     }
@@ -24,6 +25,8 @@ void deepseek_v4_linear_bf16_fp32_check_shapes(const Tensor &out,
         throw std::runtime_error(std::string(op_name) + " output dtype must be float32.");
     }
 }
+
+} // namespace deepseek_v4_linear_bf16_fp32_impl
 
 Tensor deepseek_v4_linear_bf16_fp32(const Tensor &x, const Tensor &weight) {
     if (x->ndim() != 2 || weight->ndim() != 2) {
@@ -39,18 +42,6 @@ Tensor deepseek_v4_linear_bf16_fp32(const Tensor &x, const Tensor &weight) {
 
 void deepseek_v4_linear_bf16_fp32_(Tensor out, const Tensor &x, const Tensor &weight) {
     deepseek_v4_linear_bf16_fp32_kernel_(out, x, weight);
-}
-
-Tensor deepseek_v4_linear_bf16_fp32_naive(const Tensor &x, const Tensor &weight) {
-    if (x->ndim() != 2 || weight->ndim() != 2) {
-        throw std::runtime_error("deepseek_v4_linear_bf16_fp32_naive expects 2D input and weight tensors.");
-    }
-    if (x->size(1) != weight->size(1)) {
-        throw std::runtime_error("deepseek_v4_linear_bf16_fp32_naive input/weight K dimension mismatch.");
-    }
-    auto out = Tensor::empty({x->size(0), weight->size(0)}, DataType::F32, x->device());
-    deepseek_v4_linear_bf16_fp32_naive_(out, x, weight);
-    return out;
 }
 
 Tensor deepseek_v4_linear_bf16_fp32_kernel(const Tensor &x, const Tensor &weight) {

@@ -1,11 +1,14 @@
 #include "infinicore/ops/deepseek_v4_linear_bf16_fp32.hpp"
 
+#include "deepseek_v4_linear_bf16_fp32_common.hpp"
+
 #include "infinicore/device.hpp"
 #include "infinicore/dtype.hpp"
 
 #ifdef ENABLE_ATEN
 #include "infinicore/adaptor/aten_adaptor.hpp"
 #include <ATen/ATen.h>
+#include <ATen/ops/mm.h>
 #if defined(ENABLE_HYGON_API)
 #include <c10/hip/HIPGuard.h>
 #elif defined(ENABLE_NVIDIA_API)
@@ -36,6 +39,18 @@ void check_accelerator_tensor(const Tensor &tensor, const char *op_name) {
 
 } // namespace
 
+Tensor deepseek_v4_linear_bf16_fp32_naive(const Tensor &x, const Tensor &weight) {
+    if (x->ndim() != 2 || weight->ndim() != 2) {
+        throw std::runtime_error("deepseek_v4_linear_bf16_fp32_naive expects 2D input and weight tensors.");
+    }
+    if (x->size(1) != weight->size(1)) {
+        throw std::runtime_error("deepseek_v4_linear_bf16_fp32_naive input/weight K dimension mismatch.");
+    }
+    auto out = Tensor::empty({x->size(0), weight->size(0)}, DataType::F32, x->device());
+    deepseek_v4_linear_bf16_fp32_naive_(out, x, weight);
+    return out;
+}
+
 void deepseek_v4_linear_bf16_fp32_naive_(Tensor out, const Tensor &x, const Tensor &weight) {
 #if defined(ENABLE_ATEN) && (defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API))
     check_accelerator_tensor(x, "deepseek_v4_linear_bf16_fp32_naive_");
@@ -45,7 +60,7 @@ void deepseek_v4_linear_bf16_fp32_naive_(Tensor out, const Tensor &x, const Tens
     c10::cuda::CUDAStreamGuard guard(infinicore::adaptor::get_cuda_stream());
 #endif
 
-    deepseek_v4_linear_bf16_fp32_check_shapes(out, x, weight, "deepseek_v4_linear_bf16_fp32_naive_");
+    deepseek_v4_linear_bf16_fp32_impl::check_shapes(out, x, weight, "deepseek_v4_linear_bf16_fp32_naive_");
     if (x->dtype() != DataType::BF16 || weight->dtype() != DataType::BF16) {
         throw std::runtime_error("deepseek_v4_linear_bf16_fp32_naive_ expects bf16 input and weight tensors.");
     }
@@ -53,8 +68,7 @@ void deepseek_v4_linear_bf16_fp32_naive_(Tensor out, const Tensor &x, const Tens
     auto out_at = infinicore::adaptor::to_aten_tensor(out);
     auto x_at = infinicore::adaptor::to_aten_tensor(x);
     auto weight_at = infinicore::adaptor::to_aten_tensor(weight);
-    auto result = at::matmul(x_at.to(at::kFloat), weight_at.to(at::kFloat).transpose(0, 1));
-    out_at.copy_(result);
+    at::mm_out(out_at, x_at, weight_at.transpose(0, 1), at::kFloat);
 #else
     (void)out;
     (void)x;

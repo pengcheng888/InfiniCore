@@ -165,7 +165,7 @@ from infinicore.ops.deepseek_v4_flashmla_cuda import (
 from infinicore.ops.deepseek_v4_fused_qk_norm_rope import deepseek_v4_fused_qk_norm_rope, deepseek_v4_fused_qk_norm_rope_
 from infinicore.ops.deepseek_v4_fused_rope import deepseek_v4_fused_rope, deepseek_v4_fused_rope_
 from infinicore.ops.deepseek_v4_silu_and_mul_clamp import deepseek_v4_silu_and_mul_clamp, deepseek_v4_silu_and_mul_clamp_
-from infinicore.ops.deepseek_v4_linear_bf16_fp32 import deepseek_v4_linear_bf16_fp32, deepseek_v4_linear_bf16_fp32_
+from infinicore.ops.deepseek_v4_linear_bf16_fp32 import deepseek_v4_linear_bf16_fp32, deepseek_v4_linear_bf16_fp32_, deepseek_v4_linear_bf16_fp32_blas, deepseek_v4_linear_bf16_fp32_blas_
 from infinicore.ops.deepseek_v4_moe_align_block_size import deepseek_v4_moe_align_block_size_
 from infinicore.ops.deepseek_v4_moe_marlin_w8a8 import deepseek_v4_moe_marlin_w8a8_, deepseek_v4_moe_marlin_w8a8_fp8_
 from infinicore.ops.deepseek_v4_moe_topk_sigmoid import deepseek_v4_moe_topk_sigmoid_
@@ -403,6 +403,8 @@ __all__ = [
     "deepseek_v4_silu_and_mul_clamp_",
     "deepseek_v4_linear_bf16_fp32",
     "deepseek_v4_linear_bf16_fp32_",
+    "deepseek_v4_linear_bf16_fp32_blas",
+    "deepseek_v4_linear_bf16_fp32_blas_",
     "deepseek_v4_moe_align_block_size_",
     "deepseek_v4_moe_marlin_w8a8_",
     "deepseek_v4_moe_marlin_w8a8_fp8_",

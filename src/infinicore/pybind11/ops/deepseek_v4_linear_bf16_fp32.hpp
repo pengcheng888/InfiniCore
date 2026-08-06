@@ -40,6 +40,15 @@ inline void bind_deepseek_v4_linear_bf16_fp32(py::module &m) {
           py::arg("out"),
           py::arg("input"),
           py::arg("weight"));
+    m.def("deepseek_v4_linear_bf16_fp32_blas",
+          &op::deepseek_v4_linear_bf16_fp32_blas,
+          py::arg("input"),
+          py::arg("weight"));
+    m.def("deepseek_v4_linear_bf16_fp32_blas_",
+          &op::deepseek_v4_linear_bf16_fp32_blas_,
+          py::arg("out"),
+          py::arg("input"),
+          py::arg("weight"));
 }
 
 } // namespace infinicore::ops

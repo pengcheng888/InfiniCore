@@ -1,5 +1,6 @@
 #include "infinicore/ops/deepseek_v4_linear_bf16_fp32.hpp"
 
+#include "deepseek_v4_linear_bf16_fp32_common.hpp"
 #include "deepseek_v4_linear_bf16_fp32_kernel.hpp"
 
 #include "../../utils.hpp"
@@ -33,7 +34,7 @@ void check_accelerator_tensor(const Tensor &tensor, const char *op_name) {
 
 void check_kernel_tensors(const Tensor &out, const Tensor &x, const Tensor &weight, const char *op_name) {
     check_accelerator_tensor(x, op_name);
-    deepseek_v4_linear_bf16_fp32_check_shapes(out, x, weight, op_name);
+    deepseek_v4_linear_bf16_fp32_impl::check_shapes(out, x, weight, op_name);
     if (x->dtype() != DataType::BF16 || weight->dtype() != DataType::BF16) {
         throw std::runtime_error(std::string(op_name) + " expects bf16 input and weight tensors.");
     }

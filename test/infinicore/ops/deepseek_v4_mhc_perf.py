@@ -1,5 +1,6 @@
 import argparse
 import csv
+import statistics
 import time
 
 import infinicore
@@ -7,7 +8,7 @@ import torch
 from infinicore.lib import _infinicore
 
 
-DEFAULT_TOKENS = "1,4,16,64,256,1024,4096"
+DEFAULT_TOKENS = "1,2,4,8,16,32,64,128,256,512,1024,2048,4096,8192"
 
 
 def _parse_int_list(text):
@@ -29,17 +30,20 @@ def _bench(name, fn, warmup, iters):
         fn()
     _sync()
 
-    start = time.perf_counter()
+    samples = []
     for _ in range(iters):
+        start = time.perf_counter()
         fn()
-    _sync()
-    end = time.perf_counter()
+        _sync()
+        end = time.perf_counter()
+        samples.append((end - start) * 1000.0)
 
-    total_ms = (end - start) * 1000.0
+    total_ms = sum(samples)
     return {
         "op": name,
         "total_ms": total_ms,
         "avg_ms": total_ms / float(iters),
+        "median_ms": statistics.median(samples),
     }
 
 
@@ -65,8 +69,8 @@ def _make_case(tokens, hc, hidden, seed):
 
     x = torch.randn(tokens, hc, hidden, device=device, dtype=dtype)
     fn_pre = torch.randn(mix_hc, k, device=device, dtype=torch.float32) * 0.02
-    scale_pre = torch.randn(3, device=device, dtype=torch.float32) * 0.1
-    base_pre = torch.randn(mix_hc, device=device, dtype=torch.float32) * 0.1
+    hc_scale_pre = torch.randn(3, device=device, dtype=torch.float32) * 0.1
+    hc_base_pre = torch.randn(mix_hc, device=device, dtype=torch.float32) * 0.1
 
     y_pre_naive = torch.empty(tokens, hidden, device=device, dtype=dtype)
     post_pre_naive = torch.empty(tokens, hc, device=device, dtype=torch.float32)
@@ -74,6 +78,9 @@ def _make_case(tokens, hc, hidden, seed):
     y_pre_kernel = torch.empty_like(y_pre_naive)
     post_pre_kernel = torch.empty_like(post_pre_naive)
     comb_pre_kernel = torch.empty_like(comb_pre_naive)
+    y_pre_kernel_v2 = torch.empty_like(y_pre_naive)
+    post_pre_kernel_v2 = torch.empty_like(post_pre_naive)
+    comb_pre_kernel_v2 = torch.empty_like(comb_pre_naive)
 
     x_post = torch.randn(tokens, hidden, device=device, dtype=dtype)
     post = torch.rand(tokens, hc, device=device, dtype=torch.float32) * 2.0
@@ -92,14 +99,17 @@ def _make_case(tokens, hc, hidden, seed):
     u = {
         "x": _wrap(x, keepalive),
         "fn_pre": _wrap(fn_pre, keepalive),
-        "scale_pre": _wrap(scale_pre, keepalive),
-        "base_pre": _wrap(base_pre, keepalive),
+        "hc_scale_pre": _wrap(hc_scale_pre, keepalive),
+        "hc_base_pre": _wrap(hc_base_pre, keepalive),
         "y_pre_naive": _wrap(y_pre_naive, keepalive),
         "post_pre_naive": _wrap(post_pre_naive, keepalive),
         "comb_pre_naive": _wrap(comb_pre_naive, keepalive),
         "y_pre_kernel": _wrap(y_pre_kernel, keepalive),
         "post_pre_kernel": _wrap(post_pre_kernel, keepalive),
         "comb_pre_kernel": _wrap(comb_pre_kernel, keepalive),
+        "y_pre_kernel_v2": _wrap(y_pre_kernel_v2, keepalive),
+        "post_pre_kernel_v2": _wrap(post_pre_kernel_v2, keepalive),
+        "comb_pre_kernel_v2": _wrap(comb_pre_kernel_v2, keepalive),
         "x_post": _wrap(x_post, keepalive),
         "post": _wrap(post, keepalive),
         "comb": _wrap(comb, keepalive),
@@ -119,6 +129,9 @@ def _make_case(tokens, hc, hidden, seed):
         "y_pre_kernel": y_pre_kernel,
         "post_pre_kernel": post_pre_kernel,
         "comb_pre_kernel": comb_pre_kernel,
+        "y_pre_kernel_v2": y_pre_kernel_v2,
+        "post_pre_kernel_v2": post_pre_kernel_v2,
+        "comb_pre_kernel_v2": comb_pre_kernel_v2,
         "y_post_naive": y_post_naive,
         "y_post_kernel": y_post_kernel,
         "y_head_naive": y_head_naive,
@@ -130,7 +143,9 @@ def _make_case(tokens, hc, hidden, seed):
 def _run_case(tokens, hc, hidden, args):
     rms_eps = args.rms_eps
     hc_eps = args.hc_eps
-    sinkhorn_iters = args.sinkhorn_iters
+    hc_pre_eps = args.hc_pre_eps
+    hc_sinkhorn_eps = args.hc_sinkhorn_eps
+    sinkhorn_repeat = args.sinkhorn_repeat
     u, tensors, keepalive = _make_case(tokens, hc, hidden, args.seed)
 
     def pre_naive():
@@ -140,11 +155,12 @@ def _run_case(tokens, hc, hidden, args):
             u["comb_pre_naive"],
             u["x"],
             u["fn_pre"],
-            u["scale_pre"],
-            u["base_pre"],
+            u["hc_scale_pre"],
+            u["hc_base_pre"],
             rms_eps,
-            hc_eps,
-            sinkhorn_iters,
+            hc_pre_eps,
+            hc_sinkhorn_eps,
+            sinkhorn_repeat,
         )
 
     def pre_kernel():
@@ -154,11 +170,27 @@ def _run_case(tokens, hc, hidden, args):
             u["comb_pre_kernel"],
             u["x"],
             u["fn_pre"],
-            u["scale_pre"],
-            u["base_pre"],
+            u["hc_scale_pre"],
+            u["hc_base_pre"],
             rms_eps,
-            hc_eps,
-            sinkhorn_iters,
+            hc_pre_eps,
+            hc_sinkhorn_eps,
+            sinkhorn_repeat,
+        )
+
+    def pre_kernel_v2():
+        _infinicore.deepseek_v4_mhc_pre_kernel_v2_(
+            u["y_pre_kernel_v2"],
+            u["post_pre_kernel_v2"],
+            u["comb_pre_kernel_v2"],
+            u["x"],
+            u["fn_pre"],
+            u["hc_scale_pre"],
+            u["hc_base_pre"],
+            rms_eps,
+            hc_pre_eps,
+            hc_sinkhorn_eps,
+            sinkhorn_repeat,
         )
 
     def post_naive():
@@ -180,7 +212,7 @@ def _run_case(tokens, hc, hidden, args):
         )
 
     def head_naive():
-        _infinicore.deepseek_v4_mhc_head_naive_(
+        _infinicore.deepseek_v4_hc_head_naive_(
             u["y_head_naive"],
             u["x"],
             u["fn_head"],
@@ -191,7 +223,7 @@ def _run_case(tokens, hc, hidden, args):
         )
 
     def head_kernel():
-        _infinicore.deepseek_v4_mhc_head_kernel_(
+        _infinicore.deepseek_v4_hc_head_kernel_(
             u["y_head_kernel"],
             u["x"],
             u["fn_head"],
@@ -208,6 +240,13 @@ def _run_case(tokens, hc, hidden, args):
             pre_kernel,
             (tensors["y_pre_naive"], tensors["post_pre_naive"], tensors["comb_pre_naive"]),
             (tensors["y_pre_kernel"], tensors["post_pre_kernel"], tensors["comb_pre_kernel"]),
+        )
+        _check_pair(
+            "mhc_pre_v2",
+            pre_naive,
+            pre_kernel_v2,
+            (tensors["y_pre_naive"], tensors["post_pre_naive"], tensors["comb_pre_naive"]),
+            (tensors["y_pre_kernel_v2"], tensors["post_pre_kernel_v2"], tensors["comb_pre_kernel_v2"]),
         )
         _check_pair(
             "hc_post",
@@ -228,6 +267,7 @@ def _run_case(tokens, hc, hidden, args):
     for op_name, backend, fn in (
         ("mhc_pre", "naive", pre_naive),
         ("mhc_pre", "kernel", pre_kernel),
+        ("mhc_pre", "kernel_v2", pre_kernel_v2),
         ("hc_post", "naive", post_naive),
         ("hc_post", "kernel", post_kernel),
         ("hc_head", "naive", head_naive),
@@ -244,6 +284,7 @@ def _run_case(tokens, hc, hidden, args):
                 "iters": args.iters,
                 "total_ms": result["total_ms"],
                 "avg_ms": result["avg_ms"],
+                "median_ms": result["median_ms"],
             }
         )
     _sync()
@@ -255,33 +296,48 @@ def _run_case(tokens, hc, hidden, args):
 def _print_by_op(rows):
     indexed = {}
     ops = []
+    backends_by_op = {}
     for row in rows:
         indexed[(row["tokens"], row["op"], row["backend"])] = row
         if row["op"] not in ops:
             ops.append(row["op"])
+        backends_by_op.setdefault(row["op"], [])
+        if row["backend"] not in backends_by_op[row["op"]]:
+            backends_by_op[row["op"]].append(row["backend"])
 
     tokens_list = sorted({row["tokens"] for row in rows})
     for op in ops:
         print("")
         print(f"op: {op}")
-        header = (
-            f"{'tokens':>8}  {'hc':>2}  {'hidden':>6}  {'iters':>5}  "
-            f"{'naive total(ms)':>16}  {'naive avg(ms)':>14}  "
-            f"{'kernel total(ms)':>17}  {'kernel avg(ms)':>15}  {'speedup':>8}"
-        )
+        backends = backends_by_op[op]
+        header = f"{'tokens':>8}  {'hc':>2}  {'hidden':>6}  {'iters':>5}"
+        for backend in backends:
+            header += (
+                f"  {backend + ' total(ms)':>20}"
+                f"  {backend + ' avg(ms)':>18}"
+                f"  {backend + ' median(ms)':>21}"
+            )
+            if backend != "naive":
+                header += f"  {backend + ' speedup':>18}"
         print(header)
         print("-" * len(header))
         for tokens in tokens_list:
             naive = indexed.get((tokens, op, "naive"))
-            kernel = indexed.get((tokens, op, "kernel"))
-            if naive is None or kernel is None:
+            if naive is None:
                 continue
-            speedup = naive["avg_ms"] / kernel["avg_ms"] if kernel["avg_ms"] > 0 else float("inf")
-            print(
-                f"{tokens:8d}  {naive['hc']:2d}  {naive['hidden']:6d}  {naive['iters']:5d}  "
-                f"{naive['total_ms']:16.3f}  {naive['avg_ms']:14.6f}  "
-                f"{kernel['total_ms']:17.3f}  {kernel['avg_ms']:15.6f}  {speedup:7.2f}x"
-            )
+            line = f"{tokens:8d}  {naive['hc']:2d}  {naive['hidden']:6d}  {naive['iters']:5d}"
+            for backend in backends:
+                row = indexed.get((tokens, op, backend))
+                if row is None:
+                    line += f"  {'-':>20}  {'-':>18}  {'-':>21}"
+                    if backend != "naive":
+                        line += f"  {'-':>18}"
+                    continue
+                line += f"  {row['total_ms']:20.3f}  {row['avg_ms']:18.6f}  {row['median_ms']:21.6f}"
+                if backend != "naive":
+                    speedup = naive["avg_ms"] / row["avg_ms"] if row["avg_ms"] > 0 else float("inf")
+                    line += f"  {speedup:17.2f}x"
+            print(line)
 
 
 def main():
@@ -292,11 +348,13 @@ def main():
     parser.add_argument("--hc", type=int, default=4)
     parser.add_argument("--tokens", type=str, default=DEFAULT_TOKENS)
     parser.add_argument("--iters", type=int, default=40)
-    parser.add_argument("--warmup", type=int, default=1)
+    parser.add_argument("--warmup", type=int, default=3)
     parser.add_argument("--seed", type=int, default=20260722)
     parser.add_argument("--rms-eps", type=float, default=1e-6)
     parser.add_argument("--hc-eps", type=float, default=1e-6)
-    parser.add_argument("--sinkhorn-iters", type=int, default=5)
+    parser.add_argument("--hc-pre-eps", type=float, default=1e-6)
+    parser.add_argument("--hc-sinkhorn-eps", type=float, default=1e-6)
+    parser.add_argument("--sinkhorn-repeat", "--sinkhorn-iters", dest="sinkhorn_repeat", type=int, default=5)
     parser.add_argument("--check", dest="check", action="store_true", default=True)
     parser.add_argument("--no-check", dest="check", action="store_false")
     parser.add_argument("--csv", type=str, default=None)
@@ -314,7 +372,7 @@ def main():
         with open(args.csv, "w", newline="") as f:
             writer = csv.DictWriter(
                 f,
-                fieldnames=["tokens", "hc", "hidden", "op", "backend", "iters", "total_ms", "avg_ms"],
+                fieldnames=["tokens", "hc", "hidden", "op", "backend", "iters", "total_ms", "avg_ms", "median_ms"],
             )
             writer.writeheader()
             writer.writerows(all_rows)
