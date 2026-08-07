@@ -686,6 +686,7 @@ target("infinicore_cpp_api")
         add_files("src/infinicore/ops/deepseek_v4_fused_rope/*.cu")
         add_files("src/infinicore/ops/deepseek_v4_fused_norm_rope_inplace/*.cu")
         add_files("src/infinicore/ops/deepseek_v4_fused_q_norm_rope/*.cu")
+        add_files("src/infinicore/ops/deepseek_v4_fused_k_norm_rope_flashmla/*.cu")
     elseif has_config("nv-gpu") and has_config("aten") then
         set_toolchains("cuda")
         add_links("cudart", "cublas")
@@ -704,6 +705,7 @@ target("infinicore_cpp_api")
         add_files("src/infinicore/ops/deepseek_v4_fused_rope/*.cu")
         add_files("src/infinicore/ops/deepseek_v4_fused_norm_rope_inplace/*.cu")
         add_files("src/infinicore/ops/deepseek_v4_fused_q_norm_rope/*.cu")
+        add_files("src/infinicore/ops/deepseek_v4_fused_k_norm_rope_flashmla/*.cu")
     end
 
     local INFINI_ROOT = os.getenv("INFINI_ROOT") or (os.getenv(is_host("windows") and "HOMEPATH" or "HOME") .. "/.infini")

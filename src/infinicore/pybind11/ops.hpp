@@ -53,6 +53,7 @@
 #include "ops/deepseek_v4_flashmla_cache.hpp"
 #include "ops/deepseek_v4_flashmla_compute.hpp"
 #include "ops/deepseek_v4_fused_experts_impl_int8_marlin.hpp"
+#include "ops/deepseek_v4_fused_k_norm_rope_flashmla.hpp"
 #include "ops/deepseek_v4_fused_norm_rope_inplace.hpp"
 #include "ops/deepseek_v4_fused_q_norm_rope.hpp"
 #include "ops/deepseek_v4_fused_qk_norm_rope.hpp"
@@ -274,6 +275,7 @@ inline void bind(py::module &m) {
     bind_deepseek_v4_flashmla_cache(m);
     bind_deepseek_v4_fused_experts_impl_int8_marlin(m);
     bind_deepseek_v4_flashmla_compute(m);
+    bind_deepseek_v4_fused_k_norm_rope_flashmla(m);
     bind_deepseek_v4_fused_norm_rope_inplace(m);
     bind_deepseek_v4_fused_q_norm_rope(m);
     bind_deepseek_v4_fused_qk_norm_rope(m);
