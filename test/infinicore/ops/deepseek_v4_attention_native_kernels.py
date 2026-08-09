@@ -201,12 +201,88 @@ def _check_topk(device):
     assert torch.equal(torch.sort(out[2]).values, torch.sort(ref[2]).values), "topk transform >512 set mismatch"
 
 
+def _check_c4_indexer_split_chain(device):
+    torch.manual_seed(16)
+    page_size = 64
+    batch, heads, pages = 5, 32, 4
+    max_c4_seq_len = pages * page_size
+    blocks = batch * pages
+
+    q = (torch.randn(batch, heads, 128, device=device, dtype=torch.bfloat16) * 0.2).contiguous()
+    weights = torch.randn(batch, heads, device=device, dtype=torch.bfloat16).contiguous()
+    cache_raw = torch.zeros(blocks, page_size * (128 + 4), device=device, dtype=torch.uint8).contiguous()
+    cache_values = (torch.randn(blocks * page_size, 128, device=device, dtype=torch.bfloat16) * 0.2).contiguous()
+    cache_indices = torch.arange(blocks * page_size, device=device, dtype=torch.int32)
+    _infinicore.deepseek_v4_store_indexer_raw_cache_kernel_(
+        _as_core(cache_values),
+        _as_core(cache_raw),
+        _as_core(cache_indices),
+        page_size,
+    )
+    seq_lens = torch.tensor([0, 1, 73, 128, max_c4_seq_len], device=device, dtype=torch.int32)
+    page_table = torch.arange(blocks, device=device, dtype=torch.int32).reshape(batch, pages).contiguous()
+    weight_scale = 0.375
+
+    ref_logits = torch.empty(batch, max_c4_seq_len, device=device, dtype=torch.float32)
+    ref_indices = torch.empty(batch, TOPK, device=device, dtype=torch.int32)
+    _infinicore.deepseek_v4_c4_sparse_attn_indexer_(
+        _as_core(q),
+        _as_core(weights),
+        _as_core(cache_raw),
+        _as_core(seq_lens),
+        _as_core(page_table),
+        _as_core(ref_logits),
+        _as_core(ref_indices),
+        max_c4_seq_len,
+        page_size,
+        weight_scale,
+        False,
+    )
+
+    q_fp8 = torch.empty(batch, heads, 128, device=device, dtype=torch.float8_e4m3fn)
+    q_scale = torch.empty(batch, heads, 1, device=device, dtype=torch.float32)
+    fused_weights = torch.empty(batch, heads, device=device, dtype=torch.float32)
+    logits = torch.empty_like(ref_logits)
+    indices = torch.empty_like(ref_indices)
+    _infinicore.deepseek_v4_c4_act_quant_fused_scale_kernel_(
+        _as_core(q),
+        _as_core(weights),
+        _as_core(q_fp8),
+        _as_core(q_scale),
+        _as_core(fused_weights),
+        weight_scale,
+    )
+    _infinicore.deepseek_v4_c4_paged_mqa_logits_(
+        _as_core(q_fp8),
+        _as_core(fused_weights),
+        _as_core(cache_raw),
+        _as_core(seq_lens),
+        _as_core(page_table),
+        _as_core(logits),
+        max_c4_seq_len,
+        page_size,
+        False,
+    )
+    _infinicore.deepseek_v4_topk_transform_512_kernel_(
+        _as_core(logits),
+        _as_core(seq_lens),
+        _as_core(page_table),
+        _as_core(indices),
+        page_size,
+    )
+    _sync()
+    for row, seq_len in enumerate(seq_lens.cpu().tolist()):
+        assert torch.equal(logits[row, :seq_len], ref_logits[row, :seq_len]), f"split C4 paged logits mismatch at row {row}"
+    assert torch.equal(indices, ref_indices), "split C4 sparse indices mismatch"
+
+
 def _run_correctness(device):
     _check_rotate(device)
     _check_indexer_store(device)
     _check_flash_store(device)
     _check_act_quant(device)
     _check_topk(device)
+    _check_c4_indexer_split_chain(device)
     print("correctness: passed")
 
 

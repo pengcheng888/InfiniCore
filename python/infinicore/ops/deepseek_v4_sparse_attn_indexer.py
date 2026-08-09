@@ -124,6 +124,32 @@ def deepseek_v4_c4_act_quant_fused_scale_kernel_(
     return q_fp8
 
 
+def deepseek_v4_c4_paged_mqa_logits_(
+    q_fp8: Tensor,
+    fused_weights: Tensor,
+    indexer_kv_cache_raw: Tensor,
+    c4_seq_lens: Tensor,
+    page_table: Tensor,
+    logits: Tensor,
+    max_c4_seq_len: int,
+    page_size: int = 64,
+    clean_logits: bool = False,
+) -> Tensor:
+    _ensure_sparse_indexer_vendor_loaded()
+    _infinicore.deepseek_v4_c4_paged_mqa_logits_(
+        q_fp8._underlying,
+        fused_weights._underlying,
+        indexer_kv_cache_raw._underlying,
+        c4_seq_lens._underlying,
+        page_table._underlying,
+        logits._underlying,
+        max_c4_seq_len,
+        page_size,
+        clean_logits,
+    )
+    return logits
+
+
 def deepseek_v4_topk_transform_512_kernel_(
     scores: Tensor,
     seq_lens: Tensor,

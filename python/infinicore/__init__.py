@@ -171,7 +171,7 @@ from infinicore.ops.deepseek_v4_moe_marlin_w8a8 import deepseek_v4_moe_marlin_w8
 from infinicore.ops.deepseek_v4_moe_topk_sigmoid import deepseek_v4_moe_topk_sigmoid_
 from infinicore.ops.deepseek_v4_moe_topk_softmax import deepseek_v4_moe_topk_softmax_
 from infinicore.ops.deepseek_v4_paged_mqa_logits import deepseek_v4_paged_mqa_logits_, deepseek_v4_paged_mqa_logits_metadata_
-from infinicore.ops.deepseek_v4_sparse_attn_indexer import deepseek_v4_c4_act_quant_fused_scale_kernel_, deepseek_v4_c4_sparse_attn_indexer_, deepseek_v4_sparse_attn_indexer_decode_, deepseek_v4_sparse_attn_indexer_prefill_, deepseek_v4_topk_transform_512_kernel_
+from infinicore.ops.deepseek_v4_sparse_attn_indexer import deepseek_v4_c4_act_quant_fused_scale_kernel_, deepseek_v4_c4_paged_mqa_logits_, deepseek_v4_c4_sparse_attn_indexer_, deepseek_v4_sparse_attn_indexer_decode_, deepseek_v4_sparse_attn_indexer_prefill_, deepseek_v4_topk_transform_512_kernel_
 from infinicore.ops.deepseek_v4_rms_norm import deepseek_v4_rms_norm
 from infinicore.ops.deepseek_v4_rmsnorm_self import (
     deepseek_v4_rmsnorm_self,
@@ -412,6 +412,7 @@ __all__ = [
     "deepseek_v4_moe_topk_softmax_",
     "deepseek_v4_paged_mqa_logits_",
     "deepseek_v4_paged_mqa_logits_metadata_",
+    "deepseek_v4_c4_paged_mqa_logits_",
     "deepseek_v4_c4_sparse_attn_indexer_",
     "deepseek_v4_sparse_attn_indexer_decode_",
     "deepseek_v4_sparse_attn_indexer_prefill_",
