@@ -43,6 +43,7 @@
 #include "ops/deepseek_v4_assign_req_to_token_pool.hpp"
 #include "ops/deepseek_v4_biased_topk.hpp"
 #include "ops/deepseek_v4_concat_and_cache_mla.hpp"
+#include "ops/deepseek_v4_compress_norm_rope_store.hpp"
 #include "ops/deepseek_v4_compressor_kv_score.hpp"
 #include "ops/deepseek_v4_create_chunked_prefix_cache_kv_indices.hpp"
 #include "ops/deepseek_v4_create_flashmla_kv_indices.hpp"
@@ -59,6 +60,7 @@
 #include "ops/deepseek_v4_fused_qk_norm_rope.hpp"
 #include "ops/deepseek_v4_fused_rope.hpp"
 #include "ops/deepseek_v4_hash_topk.hpp"
+#include "ops/deepseek_v4_indexer_compress_norm_rope_store.hpp"
 #include "ops/deepseek_v4_linear_bf16_fp32.hpp"
 #include "ops/deepseek_v4_mhc.hpp"
 #include "ops/deepseek_v4_moe_align_block_size.hpp"
@@ -265,6 +267,7 @@ inline void bind(py::module &m) {
     bind_deepseek_v4_assign_req_to_token_pool(m);
     bind_deepseek_v4_biased_topk(m);
     bind_deepseek_v4_concat_and_cache_mla(m);
+    bind_deepseek_v4_compress_norm_rope_store(m);
     bind_deepseek_v4_compressor_kv_score(m);
     bind_deepseek_v4_create_chunked_prefix_cache_kv_indices(m);
     bind_deepseek_v4_create_flashmla_kv_indices(m);
@@ -281,6 +284,7 @@ inline void bind(py::module &m) {
     bind_deepseek_v4_fused_qk_norm_rope(m);
     bind_deepseek_v4_fused_rope(m);
     bind_deepseek_v4_hash_topk(m);
+    bind_deepseek_v4_indexer_compress_norm_rope_store(m);
     bind_deepseek_v4_silu_and_mul_clamp(m);
     bind_deepseek_v4_linear_bf16_fp32(m);
     bind_deepseek_v4_mhc(m);
