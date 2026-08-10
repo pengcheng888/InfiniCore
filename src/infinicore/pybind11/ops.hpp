@@ -43,6 +43,7 @@
 #include "ops/deepseek_v4_assign_req_to_token_pool.hpp"
 #include "ops/deepseek_v4_biased_topk.hpp"
 #include "ops/deepseek_v4_c4_act_quant_fused_scale.hpp"
+#include "ops/deepseek_v4_c4_paged_mqa_with_topk_transform_512.hpp"
 #include "ops/deepseek_v4_c4_paged_mqa_logits.hpp"
 #include "ops/deepseek_v4_concat_and_cache_mla.hpp"
 #include "ops/deepseek_v4_compress_norm_rope_store.hpp"
@@ -303,6 +304,7 @@ inline void bind(py::module &m) {
     bind_deepseek_v4_paged_mqa_logits(m);
     bind_deepseek_v4_c4_act_quant_fused_scale(m);
     bind_deepseek_v4_c4_paged_mqa_logits(m);
+    bind_deepseek_v4_c4_paged_mqa_with_topk_transform_512(m);
     bind_deepseek_v4_sparse_attn_indexer(m);
     bind_deepseek_v4_topk_transform_512(m);
     bind_deepseek_v4_rms_norm(m);
