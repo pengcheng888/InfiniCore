@@ -52,23 +52,19 @@ void check_shapes(const Tensor &q_input,
     if (q_fp8->shape() != q_input->shape() || q_fp8->dtype() != DataType::F8) {
         throw std::runtime_error(std::string(op_name) + " expects q_fp8 [tokens, heads, 128] f8.");
     }
-    if (weight->ndim() != 2 || weight->size(0) != q_input->size(0) || weight->size(1) != q_input->size(1) ||
-        weight->dtype() != DataType::BF16) {
+    if (weight->ndim() != 2 || weight->size(0) != q_input->size(0) || weight->size(1) != q_input->size(1) || weight->dtype() != DataType::BF16) {
         throw std::runtime_error(std::string(op_name) + " expects weight [tokens, heads] bf16.");
     }
-    if (weights_out->ndim() != 3 || weights_out->size(0) != q_input->size(0) || weights_out->size(1) != q_input->size(1) ||
-        weights_out->size(2) != 1 || weights_out->dtype() != DataType::F32) {
+    if (weights_out->ndim() != 3 || weights_out->size(0) != q_input->size(0) || weights_out->size(1) != q_input->size(1) || weights_out->size(2) != 1 || weights_out->dtype() != DataType::F32) {
         throw std::runtime_error(std::string(op_name) + " expects weights_out [tokens, heads, 1] fp32.");
     }
     if (freqs_cis->ndim() != 2 || freqs_cis->size(1) != static_cast<size_t>(kRopeDim) || freqs_cis->dtype() != DataType::F32) {
         throw std::runtime_error(std::string(op_name) + " expects freqs_cis [max_pos, 64] fp32.");
     }
-    if (positions->ndim() != 1 || positions->size(0) != q_input->size(0) ||
-        (positions->dtype() != DataType::I32 && positions->dtype() != DataType::I64)) {
+    if (positions->ndim() != 1 || positions->size(0) != q_input->size(0) || (positions->dtype() != DataType::I32 && positions->dtype() != DataType::I64)) {
         throw std::runtime_error(std::string(op_name) + " expects positions [tokens] int32/int64.");
     }
-    if (!q_input->is_contiguous() || !q_fp8->is_contiguous() || !weight->is_contiguous() ||
-        !weights_out->is_contiguous() || !freqs_cis->is_contiguous() || !positions->is_contiguous()) {
+    if (!q_input->is_contiguous() || !q_fp8->is_contiguous() || !weight->is_contiguous() || !weights_out->is_contiguous() || !freqs_cis->is_contiguous() || !positions->is_contiguous()) {
         throw std::runtime_error(std::string(op_name) + " expects contiguous tensors.");
     }
 }
