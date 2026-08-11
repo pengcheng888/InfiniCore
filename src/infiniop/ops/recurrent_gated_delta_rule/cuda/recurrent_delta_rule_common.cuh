@@ -4,6 +4,14 @@
 #include <cmath>
 #include <cstdint>
 
+#if defined(ENABLE_HYGON_API)
+#define INFINIOP_RECURRENT_DELTA_RULE_WARP_SIZE 64
+#define INFINIOP_RECURRENT_DELTA_RULE_FULL_MASK 0xffffffffffffffffULL
+#else
+#define INFINIOP_RECURRENT_DELTA_RULE_WARP_SIZE 32
+#define INFINIOP_RECURRENT_DELTA_RULE_FULL_MASK 0xffffffffU
+#endif
+
 namespace op::recurrent_gated_delta_rule::cuda {
 
 template <typename T>
@@ -35,11 +43,14 @@ __device__ inline int64_t loadOptionalIndex(const void *indices,
 
 template <typename Tcompute>
 __device__ inline Tcompute warpReduceSum(Tcompute value) {
+    constexpr int WARP_SIZE = INFINIOP_RECURRENT_DELTA_RULE_WARP_SIZE;
 #pragma unroll
-    for (int offset = 16; offset > 0; offset >>= 1) {
-        value += __shfl_down_sync(0xffffffff, value, offset);
+    for (int offset = WARP_SIZE / 2; offset > 0; offset >>= 1) {
+        value += __shfl_down_sync(
+            INFINIOP_RECURRENT_DELTA_RULE_FULL_MASK, value, offset, WARP_SIZE);
     }
-    return __shfl_sync(0xffffffff, value, 0);
+    return __shfl_sync(
+        INFINIOP_RECURRENT_DELTA_RULE_FULL_MASK, value, 0, WARP_SIZE);
 }
 
 template <typename Tcompute>
@@ -118,7 +129,7 @@ __device__ void recurrentDeltaRuleWarpSequence(
     ptrdiff_t v_s2,
     GatePolicy gate_policy,
     Tcompute *shared) {
-    constexpr int WARP_SIZE = 32;
+    constexpr int WARP_SIZE = INFINIOP_RECURRENT_DELTA_RULE_WARP_SIZE;
     constexpr int NUM_THREADS = WARPS_PER_BLOCK * WARP_SIZE;
     constexpr int STATE_VALUES_PER_LANE = (Dk + WARP_SIZE - 1) / WARP_SIZE;
 
@@ -257,7 +268,8 @@ __device__ void recurrentDeltaRuleWarpSequence(
             const ptrdiff_t out_base = static_cast<ptrdiff_t>(token_batch) * out_s0 + static_cast<ptrdiff_t>(token_idx) * out_s1 + static_cast<ptrdiff_t>(value_head_idx) * out_s2;
             out[out_base + value_dim_idx] = static_cast<Tdata>(hq_memory + delta * kq_memory);
         }
-        delta = __shfl_sync(0xffffffff, delta, 0);
+        delta = __shfl_sync(
+            INFINIOP_RECURRENT_DELTA_RULE_FULL_MASK, delta, 0, WARP_SIZE);
 
 #pragma unroll
         for (int i = 0; i < STATE_VALUES_PER_LANE; ++i) {

@@ -4,7 +4,7 @@
 #include "../../handle.h"
 #include "infiniop/ops/recurrent_gated_delta_rule.h"
 
-#if defined(ENABLE_NVIDIA_API)
+#if defined(ENABLE_NVIDIA_API) || defined(ENABLE_HYGON_API)
 #include "nvidia/recurrent_gated_delta_rule_nvidia.cuh"
 #endif
 #ifdef ENABLE_METAX_API
@@ -43,6 +43,9 @@ __INFINI_C infiniStatus_t infiniopCreateRecurrentGatedDeltaRuleDescriptor(
 #ifdef ENABLE_NVIDIA_API
         CREATE(INFINI_DEVICE_NVIDIA, nvidia)
 #endif
+#ifdef ENABLE_HYGON_API
+        CREATE(INFINI_DEVICE_HYGON, nvidia)
+#endif
 #ifdef ENABLE_METAX_API
         CREATE(INFINI_DEVICE_METAX, metax)
 #endif
@@ -68,6 +71,9 @@ __INFINI_C infiniStatus_t infiniopGetRecurrentGatedDeltaRuleWorkspaceSize(
     switch (desc->device_type) {
 #ifdef ENABLE_NVIDIA_API
         GET(INFINI_DEVICE_NVIDIA, nvidia)
+#endif
+#ifdef ENABLE_HYGON_API
+        GET(INFINI_DEVICE_HYGON, nvidia)
 #endif
 #ifdef ENABLE_METAX_API
         GET(INFINI_DEVICE_METAX, metax)
@@ -103,6 +109,9 @@ __INFINI_C infiniStatus_t infiniopRecurrentGatedDeltaRule(
 #ifdef ENABLE_NVIDIA_API
         CALCULATE(INFINI_DEVICE_NVIDIA, nvidia)
 #endif
+#ifdef ENABLE_HYGON_API
+        CALCULATE(INFINI_DEVICE_HYGON, nvidia)
+#endif
 #ifdef ENABLE_METAX_API
         CALCULATE(INFINI_DEVICE_METAX, metax)
 #endif
@@ -127,6 +136,9 @@ __INFINI_C infiniStatus_t infiniopDestroyRecurrentGatedDeltaRuleDescriptor(
     switch (desc->device_type) {
 #ifdef ENABLE_NVIDIA_API
         DESTROY(INFINI_DEVICE_NVIDIA, nvidia)
+#endif
+#ifdef ENABLE_HYGON_API
+        DESTROY(INFINI_DEVICE_HYGON, nvidia)
 #endif
 #ifdef ENABLE_METAX_API
         DESTROY(INFINI_DEVICE_METAX, metax)
