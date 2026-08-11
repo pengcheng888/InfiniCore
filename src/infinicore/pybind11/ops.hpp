@@ -53,6 +53,7 @@
 #include "ops/deepseek_v4_dcu_cache_alloc.hpp"
 #include "ops/deepseek_v4_deep_gemm.hpp"
 #include "ops/deepseek_v4_dynamic_scaled_int8_quant.hpp"
+#include "ops/deepseek_v4_embedding_and_hc_expand.hpp"
 #include "ops/deepseek_v4_fast_topk.hpp"
 #include "ops/deepseek_v4_flashmla_cache.hpp"
 #include "ops/deepseek_v4_flashmla_compute.hpp"
@@ -280,6 +281,7 @@ inline void bind(py::module &m) {
     bind_deepseek_v4_dcu_cache_alloc(m);
     bind_deepseek_v4_deep_gemm(m);
     bind_deepseek_v4_dynamic_scaled_int8_quant(m);
+    bind_deepseek_v4_embedding_and_hc_expand(m);
     bind_deepseek_v4_fast_topk(m);
     bind_deepseek_v4_flashmla_cache(m);
     bind_deepseek_v4_fused_experts_impl_int8_marlin(m);

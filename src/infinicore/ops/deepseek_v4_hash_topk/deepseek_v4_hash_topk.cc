@@ -124,19 +124,21 @@ struct HashTopkPlannedMeta {
     float routed_scaling_factor;
 };
 
-void *plan_hash_topk(Tensor topk_weights,
-                     Tensor topk_indices,
-                     const Tensor &router_logits,
-                     const Tensor &input_ids,
-                     const Tensor &tid2eid,
-                     int64_t num_fused_shared_experts,
-                     float routed_scaling_factor) {
-    check_accelerator_tensor(router_logits, "DeepseekV4HashTopkKernel");
+void *plan_hash_topk_common(Tensor topk_weights,
+                            Tensor topk_indices,
+                            const Tensor &router_logits,
+                            const Tensor &input_ids,
+                            const Tensor &tid2eid,
+                            int64_t num_fused_shared_experts,
+                            float routed_scaling_factor,
+                            int64_t fused_topk_limit,
+                            const char *op_name) {
+    check_accelerator_tensor(router_logits, op_name);
     check_scoring_config(routed_scaling_factor, "sqrtsoftplus");
     check_shapes(topk_weights, topk_indices, router_logits, input_ids, tid2eid, num_fused_shared_experts);
     check_kernel_tensors(topk_weights, topk_indices, router_logits, input_ids, tid2eid);
-    if (tid2eid->size(1) + num_fused_shared_experts > 32) {
-        throw std::runtime_error("DeepseekV4HashTopkKernel supports fused topk <= 32.");
+    if (tid2eid->size(1) + num_fused_shared_experts > fused_topk_limit) {
+        throw std::runtime_error(std::string(op_name) + " supports fused topk <= backend limit.");
     }
     return new HashTopkPlannedMeta{
         graph::GraphTensor(topk_weights),
@@ -152,15 +154,38 @@ void *plan_hash_topk(Tensor topk_weights,
         routed_scaling_factor};
 }
 
+void *plan_hash_topk(Tensor topk_weights,
+                     Tensor topk_indices,
+                     const Tensor &router_logits,
+                     const Tensor &input_ids,
+                     const Tensor &tid2eid,
+                     int64_t num_fused_shared_experts,
+                     float routed_scaling_factor) {
+    return plan_hash_topk_common(topk_weights,
+                                 topk_indices,
+                                 router_logits,
+                                 input_ids,
+                                 tid2eid,
+                                 num_fused_shared_experts,
+                                 routed_scaling_factor,
+                                 32,
+                                 "DeepseekV4HashTopkKernel");
+}
+
 void run_hash_topk(void *planned_meta) {
 #if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API)
     auto *planned = reinterpret_cast<HashTopkPlannedMeta *>(planned_meta);
+    auto *topk_weights = reinterpret_cast<float *>(planned->topk_weights->data());
+    auto *topk_indices = reinterpret_cast<int32_t *>(planned->topk_indices->data());
+    const auto *router_logits = reinterpret_cast<const float *>(planned->router_logits->data());
+    const auto *input_ids = reinterpret_cast<const int64_t *>(planned->input_ids->data());
+    void *tid2eid = planned->tid2eid->data();
     deepseek_v4_hash_topk::launch_hash_topk(
-        reinterpret_cast<float *>(planned->topk_weights->data()),
-        reinterpret_cast<int32_t *>(planned->topk_indices->data()),
-        reinterpret_cast<const float *>(planned->router_logits->data()),
-        reinterpret_cast<const int64_t *>(planned->input_ids->data()),
-        planned->tid2eid->data(),
+        topk_weights,
+        topk_indices,
+        router_logits,
+        input_ids,
+        tid2eid,
         planned->tid2eid_i64,
         planned->tokens,
         planned->num_experts,
@@ -277,50 +302,6 @@ void deepseek_v4_hash_topk_generic_kernel_(Tensor topk_weights,
     (void)routed_scaling_factor;
     (void)scoring_func;
     throw std::runtime_error("deepseek_v4_hash_topk_generic_kernel_ requires a HYGON/NVIDIA build.");
-#endif
-}
-
-void deepseek_v4_hash_topk_sglang_kernel_(Tensor topk_weights,
-                                          Tensor topk_indices,
-                                          const Tensor &router_logits,
-                                          const Tensor &input_ids,
-                                          const Tensor &tid2eid,
-                                          int64_t num_fused_shared_experts,
-                                          float routed_scaling_factor,
-                                          const std::string &scoring_func) {
-#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API)
-    check_accelerator_tensor(router_logits, "deepseek_v4_hash_topk_sglang_kernel_");
-
-    check_scoring_config(routed_scaling_factor, scoring_func);
-    check_shapes(topk_weights, topk_indices, router_logits, input_ids, tid2eid, num_fused_shared_experts);
-    check_kernel_tensors(topk_weights, topk_indices, router_logits, input_ids, tid2eid);
-    if (tid2eid->size(1) + num_fused_shared_experts > 32) {
-        throw std::runtime_error("deepseek_v4_hash_topk_sglang_kernel_ supports fused topk <= 32.");
-    }
-
-    deepseek_v4_hash_topk::launch_hash_topk_sglang(
-        reinterpret_cast<float *>(topk_weights->data()),
-        reinterpret_cast<int32_t *>(topk_indices->data()),
-        reinterpret_cast<const float *>(router_logits->data()),
-        reinterpret_cast<const int64_t *>(input_ids->data()),
-        tid2eid->data(),
-        tid2eid->dtype() == DataType::I64,
-        static_cast<int64_t>(router_logits->size(0)),
-        static_cast<int64_t>(router_logits->size(1)),
-        static_cast<int64_t>(tid2eid->size(1)),
-        num_fused_shared_experts,
-        routed_scaling_factor,
-        context::getStream());
-#else
-    (void)topk_weights;
-    (void)topk_indices;
-    (void)router_logits;
-    (void)input_ids;
-    (void)tid2eid;
-    (void)num_fused_shared_experts;
-    (void)routed_scaling_factor;
-    (void)scoring_func;
-    throw std::runtime_error("deepseek_v4_hash_topk_sglang_kernel_ requires a HYGON/NVIDIA build.");
 #endif
 }
 

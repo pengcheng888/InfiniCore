@@ -31,6 +31,7 @@
 #include "ops/deepseek_v4_fused_q_indexer_rope_hadamard_quant.hpp"
 #include "ops/deepseek_v4_fused_q_indexer_rope_hadamard_quant_sglang.hpp"
 #include "ops/deepseek_v4_fused_q_norm_rope.hpp"
+#include "ops/deepseek_v4_embedding_and_hc_expand.hpp"
 #include "ops/deepseek_v4_indexer_compress_norm_rope_store.hpp"
 #include "ops/embedding.hpp"
 #include "ops/flash_attention.hpp"
