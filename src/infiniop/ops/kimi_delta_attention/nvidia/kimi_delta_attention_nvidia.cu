@@ -83,8 +83,9 @@ static infiniStatus_t launch_warp_sequence(const KimiDeltaAttentionInfo &info,
                                            const void *final_state_indices,
                                            cudaStream_t stream) {
     constexpr size_t D = 128;
-    constexpr size_t WARPS_PER_BLOCK = 8;
-    constexpr size_t NUM_THREADS = WARPS_PER_BLOCK * 32;
+    constexpr size_t WARP_SIZE = INFINIOP_RECURRENT_DELTA_RULE_WARP_SIZE;
+    constexpr size_t WARPS_PER_BLOCK = 256 / WARP_SIZE;
+    constexpr size_t NUM_THREADS = WARPS_PER_BLOCK * WARP_SIZE;
     const dim3 grid(
         static_cast<uint32_t>(info.B),
         static_cast<uint32_t>(info.H),

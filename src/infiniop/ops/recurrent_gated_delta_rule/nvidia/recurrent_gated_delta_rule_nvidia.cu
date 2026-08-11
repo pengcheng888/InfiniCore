@@ -116,7 +116,7 @@ infiniStatus_t launchIndexedPoolWarpKernelTyped(
     bool initial_state_indices_i64,
     bool final_state_indices_i64,
     cudaStream_t stream) {
-    constexpr size_t NUM_THREADS = WARPS_PER_BLOCK * 32;
+    constexpr size_t NUM_THREADS = WARPS_PER_BLOCK * INFINIOP_RECURRENT_DELTA_RULE_WARP_SIZE;
     dim3 grid(uint32_t(_info.B), uint32_t(_info.Hv), uint32_t((_info.Dv + WARPS_PER_BLOCK - 1) / WARPS_PER_BLOCK));
     dim3 block(NUM_THREADS);
     size_t shared_mem_size = (Dk * 3 + NUM_THREADS + 1) * sizeof(float);
@@ -253,16 +253,17 @@ infiniStatus_t Descriptor::calculate(
     bool initial_indices_i64 = _info.initial_state_indices_dtype == INFINI_DTYPE_I64;
     bool final_indices_i64 = _info.final_state_indices_dtype == INFINI_DTYPE_I64;
 
+    constexpr size_t WARPS_PER_BLOCK = 256 / INFINIOP_RECURRENT_DELTA_RULE_WARP_SIZE;
     if (_info.Dk == 128 && _info.Dv == 128) {
         if (_opaque->internal->maxThreadsPerBlock() >= 256) {
-            return launchIndexedPoolWarpKernel<128, 128, 8>(
+            return launchIndexedPoolWarpKernel<128, 128, WARPS_PER_BLOCK>(
                 _info, out, initial_state, final_state, q, k, v, g, beta,
                 initial_state_indices, final_state_indices,
                 initial_indices_i64, final_indices_i64, stream);
         }
     } else if (_info.Dk == 64 && _info.Dv == 64) {
         if (_opaque->internal->maxThreadsPerBlock() >= 256) {
-            return launchIndexedPoolWarpKernel<64, 64, 8>(
+            return launchIndexedPoolWarpKernel<64, 64, WARPS_PER_BLOCK>(
                 _info, out, initial_state, final_state, q, k, v, g, beta,
                 initial_state_indices, final_state_indices,
                 initial_indices_i64, final_indices_i64, stream);
