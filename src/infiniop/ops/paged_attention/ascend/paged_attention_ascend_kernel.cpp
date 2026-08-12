@@ -5,16 +5,6 @@ using namespace AscendC;
 
 constexpr size_t PAGED_ATTENTION_TILE = 128;
 
-template <typename T>
-__aicore__ inline float dataToFloat(T value) {
-    if constexpr (std::is_same<T, bfloat16_t>::value) {
-        uint32_t bits = static_cast<uint32_t>(*reinterpret_cast<uint16_t *>(&value)) << 16;
-        return *reinterpret_cast<float *>(&bits);
-    } else {
-        return static_cast<float>(value);
-    }
-}
-
 template <typename Tindex>
 __aicore__ inline int64_t loadIndex(GlobalTensor<Tindex> &tensor, ptrdiff_t offset) {
     return static_cast<int64_t>(tensor.GetValue(offset));
@@ -84,6 +74,13 @@ public:
         _pipe.InitBuffer(_acc_buf, alignTileLen<float>(_head_size, BYTE_ALIGN) * sizeof(float));
         _pipe.InitBuffer(_score_buf, PAGED_ATTENTION_TILE * sizeof(float));
         _pipe.InitBuffer(_out_buf, alignTileLen<Tdata>(_head_size, BYTE_ALIGN) * sizeof(Tdata));
+
+        // Shared float scratchpad for K/V type-casting (used by computeScore and V accumulation)
+        _pipe.InitBuffer(_v_f32_buf, alignTileLen<float>(_head_size, BYTE_ALIGN) * sizeof(float));
+        // Double-buffered VECIN queue for K prefetch
+        _pipe.InitBuffer(_k_queue, 2, alignTileLen<Tdata>(_head_size, BYTE_ALIGN) * sizeof(Tdata));
+        // Double-buffered VECIN queue for V prefetch (overlaps with Score VEC computation)
+        _pipe.InitBuffer(_v_queue, 2, alignTileLen<Tdata>(_head_size, BYTE_ALIGN) * sizeof(Tdata));
     }
 
     __aicore__ inline void process() {
@@ -107,98 +104,156 @@ public:
         LocalTensor<float> acc_local = _acc_buf.Get<float>();
         LocalTensor<float> score_local = _score_buf.Get<float>();
 
+        // Load Q from global memory
         const ptrdiff_t q_base = static_cast<ptrdiff_t>(seq_idx) * _q_stride
                                + static_cast<ptrdiff_t>(head_idx * _head_size);
-        for (size_t d = 0; d < _head_size; ++d) {
-            q_local.SetValue(d, dataToFloat(_q_gm.GetValue(q_base + static_cast<ptrdiff_t>(d))));
-            acc_local.SetValue(d, 0.0f);
-        }
 
+        LocalTensor<Tdata> q_raw_local = _out_buf.Get<Tdata>();
+        DataCopy(q_raw_local, _q_gm[q_base], _head_size);
+        PipeBarrier<PIPE_ALL>();
+
+        Cast(q_local, q_raw_local, AscendC::RoundMode::CAST_NONE, _head_size);
+        Duplicate(acc_local, 0.0f, _head_size);
+
+        // ==========================================
+        // Online Softmax single-pass loop
+        // ==========================================
         float max_score = -3.4028234663852886e38f;
-        for (size_t token_idx = 0; token_idx < seq_len; ++token_idx) {
-            const float score = computeScore(q_local, seq_idx, kv_head_idx, token_idx, alibi_slope, seq_len);
-            if (score > max_score) {
-                max_score = score;
-            }
-        }
-
         float sum_exp = 0.0f;
-        for (size_t tile_begin = 0; tile_begin < seq_len; tile_begin += PAGED_ATTENTION_TILE) {
-            size_t tile_count = seq_len - tile_begin;
-            if (tile_count > PAGED_ATTENTION_TILE) {
-                tile_count = PAGED_ATTENTION_TILE;
+
+        for (size_t block_idx = 0; block_idx < _max_num_blocks_per_seq; ++block_idx) {
+            size_t token_start = block_idx * _page_block_size;
+            if (token_start >= seq_len) {
+                break;
+            }
+
+            const int64_t physical_block = loadIndex(
+                _block_tables_gm,
+                static_cast<ptrdiff_t>(seq_idx) * _block_table_batch_stride + static_cast<ptrdiff_t>(block_idx));
+
+            size_t token_end = token_start + _page_block_size;
+            if (token_end > seq_len) {
+                token_end = seq_len;
+            }
+
+            size_t tile_count = token_end - token_start;
+
+            ptrdiff_t k_block_base = static_cast<ptrdiff_t>(physical_block) * _k_batch_stride
+                                   + static_cast<ptrdiff_t>(kv_head_idx) * _k_head_stride;
+            ptrdiff_t v_block_base = static_cast<ptrdiff_t>(physical_block) * _v_batch_stride
+                                   + static_cast<ptrdiff_t>(kv_head_idx) * _v_head_stride;
+
+            // Prefetch K(0) and V(0) before entering the tile loop
+            {
+                LocalTensor<Tdata> k_buf0 = _k_queue.AllocTensor<Tdata>();
+                DataCopy(k_buf0, _k_cache_gm[k_block_base], _head_size);
+                _k_queue.EnQue(k_buf0);
+            }
+            {
+                LocalTensor<Tdata> v_buf0 = _v_queue.AllocTensor<Tdata>();
+                DataCopy(v_buf0, _v_cache_gm[v_block_base], _head_size);
+                _v_queue.EnQue(v_buf0);
             }
 
             for (size_t i = 0; i < tile_count; ++i) {
-                const float score = computeScore(q_local, seq_idx, kv_head_idx, tile_begin + i, alibi_slope, seq_len);
-                score_local.SetValue(i, score - max_score);
-            }
-            Exp(score_local, score_local, static_cast<int32_t>(tile_count));
+                size_t t = token_start + i;
 
-            for (size_t i = 0; i < tile_count; ++i) {
-                const float prob = score_local.GetValue(i);
+                // Step 1: Dequeue prefetched K(i)
+                LocalTensor<Tdata> k_raw_local = _k_queue.DeQue<Tdata>();
+
+                // Step 2: Dequeue prefetched V(i)
+                LocalTensor<Tdata> v_raw_local = _v_queue.DeQue<Tdata>();
+
+                // Step 3: Prefetch K(i+1) for the next iteration
+                if (i + 1 < tile_count) {
+                    ptrdiff_t k_base_next = k_block_base + static_cast<ptrdiff_t>(i + 1) * _k_row_stride;
+                    LocalTensor<Tdata> k_buf_next = _k_queue.AllocTensor<Tdata>();
+                    DataCopy(k_buf_next, _k_cache_gm[k_base_next], _head_size);
+                    _k_queue.EnQue(k_buf_next);
+                }
+
+                // Step 4: Prefetch V(i+1) — overlaps with the VEC-heavy Score computation below
+                if (i + 1 < tile_count) {
+                    ptrdiff_t v_base_next = v_block_base + static_cast<ptrdiff_t>(i + 1) * _v_row_stride;
+                    LocalTensor<Tdata> v_buf_next = _v_queue.AllocTensor<Tdata>();
+                    DataCopy(v_buf_next, _v_cache_gm[v_base_next], _head_size);
+                    _v_queue.EnQue(v_buf_next);
+                }
+
+                // Step 5: Compute attention Score(i) (VEC-intensive)
+                const float score = computeScore(q_local, k_raw_local, t, alibi_slope, seq_len);
+
+                // Step 6: Online Softmax update → prob(i)
+                if (score > max_score) {
+                    score_local.SetValue(0, max_score - score);
+                    Exp(score_local, score_local, 1);
+                    float rescale_factor = score_local.GetValue(0);
+
+                    Muls(acc_local, acc_local, rescale_factor, _head_size);
+                    sum_exp *= rescale_factor;
+                    max_score = score;
+                }
+
+                score_local.SetValue(0, score - max_score);
+                Exp(score_local, score_local, 1);
+                float prob = score_local.GetValue(0);
                 sum_exp += prob;
 
-                const ptrdiff_t v_base = valueBase(seq_idx, kv_head_idx, tile_begin + i);
-                for (size_t d = 0; d < _head_size; ++d) {
-                    const float acc = acc_local.GetValue(d);
-                    const float v_val = dataToFloat(_v_cache_gm.GetValue(v_base + static_cast<ptrdiff_t>(d)));
-                    acc_local.SetValue(d, acc + prob * v_val);
-                }
+                // Step 7: Accumulate V(i) weighted by prob(i) into acc_local
+                LocalTensor<float> v_f32_local = _v_f32_buf.Get<float>();
+                Cast(v_f32_local, v_raw_local, AscendC::RoundMode::CAST_NONE, _head_size);
+                PipeBarrier<PIPE_V>();
+
+                Muls(v_f32_local, v_f32_local, prob, _head_size);
+                PipeBarrier<PIPE_V>();
+
+                Add(acc_local, acc_local, v_f32_local, _head_size);
+
+                // Step 8: Release K(i) and V(i) buffers back to queues
+                _k_queue.FreeTensor(k_raw_local);
+                _v_queue.FreeTensor(v_raw_local);
             }
         }
+        PipeBarrier<PIPE_V>();
 
+        // Normalize accumulator and write back output
         const float inv_sum = 1.0f / (sum_exp + 1e-6f);
         LocalTensor<Tdata> out_local = _out_buf.Get<Tdata>();
-        for (size_t d = 0; d < _head_size; ++d) {
-            acc_local.SetValue(d, acc_local.GetValue(d) * inv_sum);
-        }
+
+        Muls(acc_local, acc_local, inv_sum, _head_size);
+        PipeBarrier<PIPE_V>();
+
         Cast(out_local, acc_local, AscendC::RoundMode::CAST_RINT, static_cast<int32_t>(_head_size));
+        PipeBarrier<PIPE_V>();
 
         const ptrdiff_t out_base = static_cast<ptrdiff_t>(seq_idx) * _o_stride
                                  + static_cast<ptrdiff_t>(head_idx * _head_size);
-        for (size_t d = 0; d < _head_size; ++d) {
-            _out_gm.SetValue(out_base + static_cast<ptrdiff_t>(d), out_local.GetValue(d));
-        }
+
+        DataCopy(_out_gm[out_base], out_local, _head_size);
     }
 
 private:
-    __aicore__ inline ptrdiff_t keyBase(size_t seq_idx, size_t kv_head_idx, size_t token_idx) {
-        const size_t block_idx = token_idx / _page_block_size;
-        const size_t token_offset = token_idx % _page_block_size;
-        const int64_t physical_block = loadIndex(
-            _block_tables_gm,
-            static_cast<ptrdiff_t>(seq_idx) * _block_table_batch_stride + static_cast<ptrdiff_t>(block_idx));
-        return static_cast<ptrdiff_t>(physical_block) * _k_batch_stride
-             + static_cast<ptrdiff_t>(kv_head_idx) * _k_head_stride
-             + static_cast<ptrdiff_t>(token_offset) * _k_row_stride;
-    }
-
-    __aicore__ inline ptrdiff_t valueBase(size_t seq_idx, size_t kv_head_idx, size_t token_idx) {
-        const size_t block_idx = token_idx / _page_block_size;
-        const size_t token_offset = token_idx % _page_block_size;
-        const int64_t physical_block = loadIndex(
-            _block_tables_gm,
-            static_cast<ptrdiff_t>(seq_idx) * _block_table_batch_stride + static_cast<ptrdiff_t>(block_idx));
-        return static_cast<ptrdiff_t>(physical_block) * _v_batch_stride
-             + static_cast<ptrdiff_t>(kv_head_idx) * _v_head_stride
-             + static_cast<ptrdiff_t>(token_offset) * _v_row_stride;
-    }
-
     __aicore__ inline float computeScore(
         LocalTensor<float> &q_local,
-        size_t seq_idx,
-        size_t kv_head_idx,
+        LocalTensor<Tdata> &k_raw_local,
         size_t token_idx,
         float alibi_slope,
         size_t seq_len) {
-        const ptrdiff_t k_base = keyBase(seq_idx, kv_head_idx, token_idx);
-        float score = 0.0f;
-        for (size_t d = 0; d < _head_size; ++d) {
-            const float q_val = q_local.GetValue(d);
-            const float k_val = dataToFloat(_k_cache_gm.GetValue(k_base + static_cast<ptrdiff_t>(d)));
-            score += q_val * k_val;
-        }
+
+        LocalTensor<float> k_f32_local = _v_f32_buf.Get<float>();
+
+        Cast(k_f32_local, k_raw_local, AscendC::RoundMode::CAST_NONE, _head_size);
+        PipeBarrier<PIPE_V>();
+
+        Mul(k_f32_local, q_local, k_f32_local, _head_size);
+        PipeBarrier<PIPE_V>();
+
+        LocalTensor<float> temp_workspace = _score_buf.Get<float>();
+        ReduceSum(k_f32_local, k_f32_local, temp_workspace, _head_size);
+        PipeBarrier<PIPE_V>();
+
+        float score = k_f32_local.GetValue(0);
+
         score *= _scale;
         if (_has_alibi) {
             score += alibi_slope * static_cast<float>(static_cast<int64_t>(token_idx) - static_cast<int64_t>(seq_len) + 1);
@@ -219,6 +274,12 @@ private:
     TBuf<TPosition::VECCALC> _acc_buf;
     TBuf<TPosition::VECCALC> _score_buf;
     TBuf<TPosition::VECCALC> _out_buf;
+    // Shared float scratchpad for K/V type-casting (used by computeScore and V accumulation)
+    TBuf<TPosition::VECCALC> _v_f32_buf;
+    // Double-buffered VECIN queue for K prefetch
+    TQue<QuePosition::VECIN, 2> _k_queue;
+    // Double-buffered VECIN queue for V prefetch (overlaps with Score compute)
+    TQue<QuePosition::VECIN, 2> _v_queue;
 
     size_t _num_heads;
     size_t _num_seqs;
