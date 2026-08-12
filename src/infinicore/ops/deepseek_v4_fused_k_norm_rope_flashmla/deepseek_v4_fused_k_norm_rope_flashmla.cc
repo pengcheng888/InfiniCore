@@ -65,22 +65,19 @@ void check_fused_k_norm_rope_flashmla_shapes(const Tensor &kv,
     if (kv->dtype() != DataType::BF16 || kv_weight->dtype() != DataType::BF16) {
         throw std::runtime_error(std::string(op_name) + " supports bf16 kv/kv_weight only.");
     }
-    if (kv->stride(1) != 1) {
-        throw std::runtime_error(std::string(op_name) + " expects contiguous head dimension in kv.");
+    if (kv->stride(1) != 1 || kv->stride(0) < static_cast<size_t>(kHeadDim)) {
+        throw std::runtime_error(std::string(op_name) + " expects row-strided kv [tokens, 512] with contiguous last dimension.");
     }
     if (kv_weight->ndim() != 1 || kv_weight->size(0) != static_cast<size_t>(kHeadDim) || !kv_weight->is_contiguous()) {
         throw std::runtime_error(std::string(op_name) + " expects contiguous kv_weight [512].");
     }
-    if (freqs_cis->ndim() != 2 || freqs_cis->size(1) != static_cast<size_t>(kRopeDim) ||
-        freqs_cis->dtype() != DataType::F32 || !freqs_cis->is_contiguous()) {
+    if (freqs_cis->ndim() != 2 || freqs_cis->size(1) != static_cast<size_t>(kRopeDim) || freqs_cis->dtype() != DataType::F32 || !freqs_cis->is_contiguous()) {
         throw std::runtime_error(std::string(op_name) + " expects contiguous freqs_cis [max_pos, 64] float32.");
     }
-    if (positions->ndim() != 1 || positions->size(0) != kv->size(0) ||
-        (positions->dtype() != DataType::I32 && positions->dtype() != DataType::I64) || !positions->is_contiguous()) {
+    if (positions->ndim() != 1 || positions->size(0) != kv->size(0) || (positions->dtype() != DataType::I32 && positions->dtype() != DataType::I64) || !positions->is_contiguous()) {
         throw std::runtime_error(std::string(op_name) + " expects contiguous positions [tokens] int32/int64.");
     }
-    if (out_loc->ndim() != 1 || out_loc->size(0) != kv->size(0) ||
-        (out_loc->dtype() != DataType::I32 && out_loc->dtype() != DataType::I64) || !out_loc->is_contiguous()) {
+    if (out_loc->ndim() != 1 || out_loc->size(0) != kv->size(0) || (out_loc->dtype() != DataType::I32 && out_loc->dtype() != DataType::I64) || !out_loc->is_contiguous()) {
         throw std::runtime_error(std::string(op_name) + " expects contiguous out_loc [tokens] int32/int64.");
     }
     if (kvcache->ndim() != 2 || kvcache->dtype() != DataType::U8 || !kvcache->is_contiguous()) {

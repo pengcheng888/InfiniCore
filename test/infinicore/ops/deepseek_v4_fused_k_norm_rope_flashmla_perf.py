@@ -122,12 +122,22 @@ def _reference_cache(kv, weight, eps, freqs_cis, positions, out_loc_cpu, blocks,
 def _make_case(tokens, freqs, pos_dtype, out_dtype, args):
     torch.manual_seed(args.seed + tokens * 17)
     if args.strided_batch:
-        base = torch.randn((tokens, DEFAULT_HEAD_DIM + 8), device="cuda", dtype=torch.bfloat16)
-        kv = base[:, :DEFAULT_HEAD_DIM]
+        base = torch.randn((tokens, DEFAULT_HEAD_DIM * 3), device="cuda", dtype=torch.bfloat16)
+        kv = base[:, 128 : 128 + DEFAULT_HEAD_DIM]
+        baseline_kv = torch.empty((tokens, DEFAULT_HEAD_DIM), device="cuda", dtype=torch.bfloat16)
+        fused_base = torch.empty_like(base)
+        fused_kv = fused_base[:, 128 : 128 + DEFAULT_HEAD_DIM]
     else:
         kv = torch.randn((tokens, DEFAULT_HEAD_DIM), device="cuda", dtype=torch.bfloat16)
-    baseline_kv = kv.clone()
-    fused_kv = kv.clone()
+        baseline_kv = kv.clone()
+        fused_kv = kv.clone()
+    baseline_kv.copy_(kv)
+    fused_kv.copy_(kv)
+    if args.strided_batch:
+        if tokens > 1:
+            assert not fused_kv.is_contiguous()
+        assert fused_kv.stride(1) == 1
+        assert fused_kv.stride(0) >= DEFAULT_HEAD_DIM
     weight = torch.randn((DEFAULT_HEAD_DIM,), device="cuda", dtype=torch.bfloat16)
     positions = ((torch.arange(tokens, device="cuda", dtype=pos_dtype) * 5) % freqs.shape[0]).contiguous()
     out_loc, out_loc_cpu = _make_out_loc(tokens, args.page_size, out_dtype, args.invalid_every)

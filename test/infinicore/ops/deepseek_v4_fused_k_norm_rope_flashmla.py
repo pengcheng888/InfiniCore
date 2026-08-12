@@ -79,8 +79,12 @@ def _check(tokens, pos_dtype, out_dtype, page_size, strided):
     eps = 1.0e-6
     blocks = 3
     if strided:
-        storage = torch.randn((tokens, 520), device="cuda", dtype=torch.bfloat16)
-        kv = storage[:, :512]
+        storage = torch.randn((tokens, 1536), device="cuda", dtype=torch.bfloat16)
+        kv = storage[:, 128:640]
+        if tokens > 1:
+            assert not kv.is_contiguous()
+        assert kv.stride(1) == 1
+        assert kv.stride(0) >= 512
     else:
         kv = torch.randn((tokens, 512), device="cuda", dtype=torch.bfloat16)
     weight = torch.randn((512,), device="cuda", dtype=torch.bfloat16)
