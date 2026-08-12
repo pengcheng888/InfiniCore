@@ -13,7 +13,22 @@
 #include <stdexcept>
 #include <vector>
 
+namespace infinicore::op {
+common::OpDispatcher<graph::graph_replay_schema> &
+mha_kvcache_graph_replay_dispatcher();
+}
+
 namespace infinicore::op::mha_kvcache_impl::flashattn_ascend {
+
+static void check_task_api(aclError status, const char *api) {
+    if (status != ACL_SUCCESS) {
+        const char *message = aclGetRecentErrMsg();
+        throw std::runtime_error(
+            std::string("[mha_kvcache/ascend] ") + api + " failed: "
+            + std::to_string(status) + ", msg: "
+            + (message ? message : "(null)"));
+    }
+}
 
 static aclDataType to_acl_dtype(DataType dtype) {
     switch (dtype) {
@@ -42,22 +57,100 @@ struct PlannedMeta {
     graph::GraphTensor out, q, k_cache, v_cache, seqlens_k, block_table;
     std::optional<graph::GraphTensor> alibi_slopes;
     float scale;
+    Tensor out_work, q_work, k_work, v_work, block_table_work;
+    Tensor workspace;
+    bool graph_planned;
+    std::vector<int64_t> initial_seq_lengths_k;
+    aclrtTaskGrp task_group = nullptr;
+    bool capturing_task_group = false;
+    bool updating_task_group = false;
 };
+
+static Tensor persistent_contiguous_work_tensor(const Tensor &tensor) {
+    if (tensor->is_contiguous()) {
+        return Tensor(tensor);
+    }
+    return Tensor::empty(tensor->shape(), tensor->dtype(), tensor->device());
+}
+
+static std::vector<int64_t>
+get_actual_seq_lengths_k(const PlannedMeta *p, int64_t batch_size) {
+    const auto shape = p->seqlens_k->shape();
+    if (p->seqlens_k->dtype() != DataType::I32 || shape.size() != 1
+        || shape[0] != static_cast<size_t>(batch_size)) {
+        throw std::runtime_error(
+            "[mha_kvcache/ascend] seqlens_k must be a 1D int32 tensor whose "
+            "length matches the batch size");
+    }
+
+    if (const auto *bound = graph::lookup_bound_host_int_array(p->seqlens_k)) {
+        if (bound->size() != static_cast<size_t>(batch_size)) {
+            throw std::runtime_error(
+                "[mha_kvcache/ascend] bound actualSeqLengthsKv size does not "
+                "match the batch size");
+        }
+        return *bound;
+    }
+
+    if (p->updating_task_group) {
+        throw std::runtime_error(
+            "[mha_kvcache/ascend] missing host actualSeqLengthsKv binding "
+            "during graph replay update");
+    }
+    if (!p->initial_seq_lengths_k.empty()) {
+        return p->initial_seq_lengths_k;
+    }
+
+    // Graph planning may perform this one host copy. Device graph capture and
+    // replay only use the cached or explicitly bound value.
+    std::vector<int32_t> host(batch_size);
+    auto copy_ret = aclrtMemcpy(
+        host.data(), batch_size * sizeof(int32_t),
+        reinterpret_cast<const void *>(p->seqlens_k->data()),
+        batch_size * sizeof(int32_t), ACL_MEMCPY_DEVICE_TO_HOST);
+    if (copy_ret != ACL_SUCCESS) {
+        throw std::runtime_error(
+            std::string("[mha_kvcache/ascend] copy seqlens_k to host failed: ")
+            + std::to_string(copy_ret));
+    }
+
+    std::vector<int64_t> result;
+    result.reserve(batch_size);
+    for (int64_t i = 0; i < batch_size; ++i) {
+        result.push_back(host[i]);
+    }
+    return result;
+}
 
 void *plan(Tensor out, const Tensor &q, const Tensor &k_cache,
            const Tensor &v_cache, const Tensor &seqlens_k,
            const Tensor &block_table, std::optional<Tensor> alibi_slopes,
            float scale) {
-    return new PlannedMeta{graph::GraphTensor(out),
-                           graph::GraphTensor(q),
-                           graph::GraphTensor(k_cache),
-                           graph::GraphTensor(v_cache),
-                           graph::GraphTensor(seqlens_k),
-                           graph::GraphTensor(block_table),
-                           alibi_slopes ? std::optional<graph::GraphTensor>(
-                               graph::GraphTensor(*alibi_slopes))
-                                        : std::nullopt,
-                           scale};
+    auto *p = new PlannedMeta{graph::GraphTensor(out),
+                              graph::GraphTensor(q),
+                              graph::GraphTensor(k_cache),
+                              graph::GraphTensor(v_cache),
+                              graph::GraphTensor(seqlens_k),
+                              graph::GraphTensor(block_table),
+                              alibi_slopes ? std::optional<graph::GraphTensor>(
+                                  graph::GraphTensor(*alibi_slopes))
+                                           : std::nullopt,
+                              scale,
+                              persistent_contiguous_work_tensor(out),
+                              persistent_contiguous_work_tensor(q),
+                              persistent_contiguous_work_tensor(k_cache),
+                              persistent_contiguous_work_tensor(v_cache),
+                              persistent_contiguous_work_tensor(block_table),
+                              {},
+                              context::isGraphRecording()};
+    try {
+        p->initial_seq_lengths_k = get_actual_seq_lengths_k(
+            p, static_cast<int64_t>(q->shape().at(0)));
+    } catch (...) {
+        delete p;
+        throw;
+    }
+    return p;
 }
 
 void run(void *planned_meta) {
@@ -98,38 +191,30 @@ void run(void *planned_meta) {
             "[mha_kvcache/ascend] k_cache and v_cache shapes are incompatible");
     }
 
-    Tensor q_work = p->q->is_contiguous() ? Tensor(p->q) : p->q->contiguous();
-    Tensor k_work = p->k_cache->is_contiguous() ? Tensor(p->k_cache)
-                                                : p->k_cache->contiguous();
-    Tensor v_work = p->v_cache->is_contiguous() ? Tensor(p->v_cache)
-                                                : p->v_cache->contiguous();
-    Tensor bt_work = p->block_table->is_contiguous()
-                       ? Tensor(p->block_table)
-                       : p->block_table->contiguous();
-    Tensor out_work = p->out->is_contiguous() ? Tensor(p->out) : p->out->contiguous();
+    const bool task_updating = p->updating_task_group;
+    if (!task_updating && !p->q->is_contiguous()) {
+        p->q_work->copy_from(p->q);
+    }
+    if (!task_updating && !p->k_cache->is_contiguous()) {
+        p->k_work->copy_from(p->k_cache);
+    }
+    if (!task_updating && !p->v_cache->is_contiguous()) {
+        p->v_work->copy_from(p->v_cache);
+    }
+    if (!task_updating && !p->block_table->is_contiguous()) {
+        p->block_table_work->copy_from(p->block_table);
+    }
+    Tensor q_work = p->q_work;
+    Tensor k_work = p->k_work;
+    Tensor v_work = p->v_work;
+    Tensor bt_work = p->block_table_work;
+    Tensor out_work = p->out_work;
 
     aclDataType q_dtype = to_acl_dtype(q_work->dtype());
 
-    // Read seqlens_k to host
-    auto seqlens_k_shape = p->seqlens_k->shape();
-    int64_t seqlens_k_len = seqlens_k_shape[0];
-    std::vector<int32_t> seqlens_k_host(seqlens_k_len);
-    auto copy_ret = aclrtMemcpy(seqlens_k_host.data(), seqlens_k_len * sizeof(int32_t),
-                                reinterpret_cast<const void *>(p->seqlens_k->data()),
-                                seqlens_k_len * sizeof(int32_t), ACL_MEMCPY_DEVICE_TO_HOST);
-    if (copy_ret != ACL_SUCCESS) {
-        throw std::runtime_error(
-            std::string("[mha_kvcache/ascend] copy seqlens_k to host failed: ") + std::to_string(copy_ret));
-    }
-
-    // Build actual_seq vectors
     std::vector<int64_t> actual_seq_q_vec(batch_size,
                                           1); // decode: always 1 query token
-    std::vector<int64_t> actual_seq_k_vec;
-    actual_seq_k_vec.reserve(batch_size);
-    for (int64_t i = 0; i < batch_size; ++i) {
-        actual_seq_k_vec.push_back(seqlens_k_host[i]);
-    }
+    auto actual_seq_k_vec = get_actual_seq_lengths_k(p, batch_size);
 
     // BNSD [batch, num_heads, 1, head_size], viewed from BSND memory.
     std::vector<int64_t> q_dims = {batch_size, num_heads, 1, head_size};
@@ -243,13 +328,43 @@ void run(void *planned_meta) {
     aclrtStream stream = static_cast<aclrtStream>(infinicore::context::getStream());
     void *workspace = nullptr;
     if (workspace_size > 0) {
-        workspace = infini::ops::ascend::GetWorkspacePool()
-                        .Ensure(stream, workspace_size, "fia")
-                        .buf;
+        if (p->graph_planned) {
+            if (!p->workspace || p->workspace->numel() < workspace_size) {
+                if (p->capturing_task_group || task_updating) {
+                    throw std::runtime_error(
+                        "[mha_kvcache/ascend] FIA workspace was not prepared "
+                        "before graph capture");
+                }
+                p->workspace = Tensor::empty(
+                    {static_cast<size_t>(workspace_size)}, DataType::U8,
+                    p->q->device());
+            }
+            workspace = p->workspace->data();
+        } else {
+            workspace = infini::ops::ascend::GetWorkspacePool()
+                            .Ensure(stream, workspace_size, "fia")
+                            .buf;
+        }
     }
 
+    if (p->capturing_task_group) {
+        check_task_api(aclmdlRICaptureTaskGrpBegin(stream),
+                       "aclmdlRICaptureTaskGrpBegin");
+    }
+    if (task_updating) {
+        check_task_api(aclmdlRICaptureTaskUpdateBegin(stream, p->task_group),
+                       "aclmdlRICaptureTaskUpdateBegin");
+    }
     ret = aclnnFusedInferAttentionScoreV4(workspace, workspace_size, executor,
                                           stream);
+    if (task_updating) {
+        check_task_api(aclmdlRICaptureTaskUpdateEnd(stream),
+                       "aclmdlRICaptureTaskUpdateEnd");
+    }
+    if (p->capturing_task_group) {
+        check_task_api(aclmdlRICaptureTaskGrpEnd(stream, &p->task_group),
+                       "aclmdlRICaptureTaskGrpEnd");
+    }
 
     // Release aclTensor/aclTensorList/aclIntArray resources
     aclDestroyTensor(query_acl);
@@ -269,8 +384,38 @@ void run(void *planned_meta) {
     }
 
     // Copy back if out was not contiguous
-    if (!p->out->is_contiguous()) {
+    if (!task_updating && !p->out->is_contiguous()) {
         p->out->copy_from(out_work);
+    }
+}
+
+void graph_replay(void *planned_meta, graph::GraphReplayStage stage) {
+    auto *p = reinterpret_cast<PlannedMeta *>(planned_meta);
+    switch (stage) {
+    case graph::GraphReplayStage::CAPTURE_BEGIN:
+        p->capturing_task_group = true;
+        return;
+    case graph::GraphReplayStage::CAPTURE_END:
+        p->capturing_task_group = false;
+        if (p->task_group == nullptr) {
+            throw std::runtime_error(
+                "[mha_kvcache/ascend] FIA task group was not captured");
+        }
+        return;
+    case graph::GraphReplayStage::UPDATE:
+        if (p->task_group == nullptr) {
+            throw std::runtime_error(
+                "[mha_kvcache/ascend] FIA task group was not captured");
+        }
+        p->updating_task_group = true;
+        try {
+            run(p);
+        } catch (...) {
+            p->updating_task_group = false;
+            throw;
+        }
+        p->updating_task_group = false;
+        return;
     }
 }
 
@@ -285,6 +430,8 @@ static bool registered = []() {
     MhaKVCache::run_dispatcher().registerDevice(Device::Type::ASCEND, &run);
     MhaKVCache::cleanup_dispatcher().registerDevice(Device::Type::ASCEND,
                                                     &cleanup);
+    mha_kvcache_graph_replay_dispatcher().registerDevice(
+        Device::Type::ASCEND, &graph_replay);
     return true;
 }();
 

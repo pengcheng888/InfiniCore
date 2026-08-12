@@ -1,6 +1,8 @@
 #pragma once
 
+#include <cstdint>
 #include <memory>
+#include <unordered_map>
 #include <vector>
 
 #include "../tensor.hpp"
@@ -8,6 +10,13 @@
 namespace infinicore::graph {
 // Forward declarations
 class GraphManager;
+
+enum class GraphReplayStage {
+    CAPTURE_BEGIN,
+    CAPTURE_END,
+    UPDATE,
+};
+using graph_replay_schema = void (*)(void *, GraphReplayStage);
 
 class GraphTensor : public Tensor {
 public:
@@ -20,20 +29,31 @@ public:
     virtual bool is_device_graph_capture_safe() const {
         return true;
     }
+    virtual bool needs_graph_replay_update() const {
+        return false;
+    }
+    virtual void graph_replay(GraphReplayStage) const {
+    }
     virtual ~GraphOperator() = default;
 };
 
 class DispatchableGraphOperator : public GraphOperator {
 public:
     void run() const override;
+    bool needs_graph_replay_update() const override;
+    void graph_replay(GraphReplayStage stage) const override;
     ~DispatchableGraphOperator() override;
 
 protected:
+    void set_graph_replay_handler(graph_replay_schema handler) {
+        graph_replay_ = handler;
+    }
     using run_schema = void (*)(void *);
     using cleanup_schema = void (*)(void **);
     void *planned_meta_;
     run_schema runner_;
     cleanup_schema deleter_;
+    graph_replay_schema graph_replay_ = nullptr;
 };
 
 class Graph {
@@ -42,6 +62,9 @@ public:
     ~Graph();
 
     void run() const;
+    void bind_host_int_array(const Tensor &device_tensor,
+                             const int32_t *values,
+                             size_t size);
 
 protected:
     void add_operator(std::shared_ptr<GraphOperator> op);
@@ -54,7 +77,10 @@ private:
     struct DeviceGraph;
     struct Segment;
     std::vector<std::unique_ptr<Segment>> segments_;
+    std::unordered_map<const void *, std::vector<int64_t>> host_int_arrays_;
 };
+
+const std::vector<int64_t> *lookup_bound_host_int_array(const Tensor &tensor);
 } // namespace infinicore::graph
 
 #define INFINICORE_GRAPH_OP_CLASS(__OP_NAME__, ...)                        \

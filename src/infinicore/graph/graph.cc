@@ -7,6 +7,27 @@
 
 namespace infinicore::graph {
 
+namespace {
+using HostIntArrayMap = std::unordered_map<const void *, std::vector<int64_t>>;
+
+thread_local const HostIntArrayMap *active_host_int_arrays = nullptr;
+
+class HostIntArrayScope {
+public:
+    explicit HostIntArrayScope(const HostIntArrayMap *host_int_arrays)
+        : previous_(active_host_int_arrays) {
+        active_host_int_arrays = host_int_arrays;
+    }
+
+    ~HostIntArrayScope() {
+        active_host_int_arrays = previous_;
+    }
+
+private:
+    const HostIntArrayMap *previous_;
+};
+} // namespace
+
 /* =========================
  * GraphTensor
  * ========================= */
@@ -20,6 +41,15 @@ GraphTensor::GraphTensor(const Tensor &tensor) : Tensor(tensor->to_blob_()) {
 
 void DispatchableGraphOperator::run() const {
     runner_(planned_meta_);
+}
+
+bool DispatchableGraphOperator::needs_graph_replay_update() const {
+    return graph_replay_ != nullptr;
+}
+
+void DispatchableGraphOperator::graph_replay(GraphReplayStage stage) const {
+    INFINICORE_ASSERT(graph_replay_ != nullptr);
+    graph_replay_(planned_meta_, stage);
 }
 
 DispatchableGraphOperator::~DispatchableGraphOperator() {
@@ -37,6 +67,7 @@ struct Graph::DeviceGraph {
     infinirtGraphExec_t exec;
     infinirtGraphNode_t node;
     std::vector<char> log_buffer;
+    std::vector<std::shared_ptr<GraphOperator>> updatable_ops;
 
     DeviceGraph() : graph(nullptr), exec(nullptr), node(nullptr) {
         log_buffer.resize(4 * 1024);
@@ -66,6 +97,9 @@ struct Graph::Segment {
 
     void run() const {
         if (device_graph) {
+            for (const auto &op : device_graph->updatable_ops) {
+                op->graph_replay(GraphReplayStage::UPDATE);
+            }
             device_graph->launch();
             return;
         }
@@ -79,6 +113,7 @@ Graph::Graph() {
 }
 
 void Graph::run() const {
+    HostIntArrayScope host_int_array_scope(&host_int_arrays_);
     if (segments_.empty()) {
         for (const auto &op : op_list_) {
             op->run();
@@ -88,6 +123,32 @@ void Graph::run() const {
     for (const auto &segment : segments_) {
         segment->run();
     }
+}
+
+void Graph::bind_host_int_array(const Tensor &device_tensor,
+                                const int32_t *values,
+                                size_t size) {
+    INFINICORE_ASSERT(device_tensor);
+    INFINICORE_ASSERT(values != nullptr || size == 0);
+
+    auto &bound = host_int_arrays_[device_tensor->data()];
+    bound.clear();
+    bound.reserve(size);
+    for (size_t i = 0; i < size; ++i) {
+        bound.push_back(values[i]);
+    }
+}
+
+const std::vector<int64_t> *lookup_bound_host_int_array(const Tensor &tensor) {
+    if (active_host_int_arrays == nullptr || !tensor) {
+        return nullptr;
+    }
+
+    const auto it = active_host_int_arrays->find(tensor->data());
+    if (it == active_host_int_arrays->end()) {
+        return nullptr;
+    }
+    return &it->second;
 }
 
 void Graph::add_operator(std::shared_ptr<GraphOperator> op) {
@@ -136,7 +197,24 @@ void Graph::instantiate() {
         }
 
         for (const auto &op : segment->ops) {
-            op->run();
+            if (!op->needs_graph_replay_update()) {
+                op->run();
+                continue;
+            }
+
+            op->graph_replay(GraphReplayStage::CAPTURE_BEGIN);
+            try {
+                op->run();
+            } catch (...) {
+                try {
+                    op->graph_replay(GraphReplayStage::CAPTURE_END);
+                } catch (...) {
+                    // Preserve the original capture failure.
+                }
+                throw;
+            }
+            op->graph_replay(GraphReplayStage::CAPTURE_END);
+            device_graph.updatable_ops.push_back(op);
         }
 
         if (infinirtStreamEndCapture(
