@@ -50,6 +50,38 @@ void linear_w8a8i8_(Tensor out,
         {N, 1},
         DataType::F32,
         input->device());
+    linear_w8a8i8_out_workspace_(
+        out,
+        input,
+        weight_packed,
+        weight_scale,
+        bias,
+        input_packed,
+        input_scale);
+}
+
+void linear_w8a8i8_out_workspace_(Tensor out,
+                                  Tensor input,
+                                  Tensor weight_packed,
+                                  Tensor weight_scale,
+                                  std::optional<Tensor> bias,
+                                  Tensor input_packed,
+                                  Tensor input_scale) {
+    auto weight_packed_shape = weight_packed->shape();
+    Size out_features = weight_packed_shape[0];
+    Size in_features = weight_packed_shape[1];
+
+    Size ndim = input->ndim();
+    assert(out->ndim() == ndim);
+
+    Size N = 1;
+    auto input_shape = input->shape();
+    for (size_t i = 0; i < ndim - 1; ++i) {
+        N *= input_shape[i];
+    }
+
+    assert(input_packed->shape() == Shape({N, in_features}));
+    assert(input_scale->shape() == Shape({N, 1}));
     op::per_channel_quant_i8_(input->view({N, in_features}), input_packed, input_scale);
     if (bias.has_value()) {
         bias = std::make_optional(bias.value()->as_strided({N, out_features}, {0, 1}));

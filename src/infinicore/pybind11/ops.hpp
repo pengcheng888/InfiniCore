@@ -67,6 +67,13 @@
 #include "ops/deepseek_v4_hash_topk.hpp"
 #include "ops/deepseek_v4_indexer_compress_norm_rope_store.hpp"
 #include "ops/deepseek_v4_linear_bf16_fp32.hpp"
+#include "ops/deepseek_v4_lightop_linear_w8a8_asm.hpp"
+#include "ops/deepseek_v4_lightop_linear_w8a8_smooth.hpp"
+#include "ops/deepseek_v4_lightop_per_token_dynamic_quant_int8.hpp"
+#include "ops/deepseek_v4_lmslim_linear_w8a8.hpp"
+#include "ops/deepseek_v4_lmslim_hipblaslt_channelwise_linear_w8a8.hpp"
+#include "ops/deepseek_v4_lmslim_rocblas_linear_w8a8.hpp"
+#include "ops/deepseek_v4_shared_experts_impl_int8_marlin.hpp"
 #include "ops/deepseek_v4_mhc.hpp"
 #include "ops/deepseek_v4_moe_align_block_size.hpp"
 #include "ops/deepseek_v4_moe_marlin_w8a8.hpp"
@@ -293,8 +300,15 @@ inline void bind(py::module &m) {
     bind_deepseek_v4_fused_rope(m);
     bind_deepseek_v4_hash_topk(m);
     bind_deepseek_v4_indexer_compress_norm_rope_store(m);
+    bind_deepseek_v4_shared_experts_impl_int8_marlin(m);
     bind_deepseek_v4_silu_and_mul_clamp(m);
     bind_deepseek_v4_linear_bf16_fp32(m);
+    bind_deepseek_v4_lightop_linear_w8a8_asm(m);
+    bind_deepseek_v4_lightop_linear_w8a8_smooth(m);
+    bind_deepseek_v4_lightop_per_token_dynamic_quant_int8(m);
+    bind_deepseek_v4_lmslim_linear_w8a8(m);
+    bind_deepseek_v4_lmslim_hipblaslt_channelwise_linear_w8a8(m);
+    bind_deepseek_v4_lmslim_rocblas_linear_w8a8(m);
     bind_deepseek_v4_mhc(m);
     bind_deepseek_v4_moe_align_block_size(m);
     bind_deepseek_v4_moe_marlin_w8a8(m);

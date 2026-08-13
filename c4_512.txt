@@ -1,0 +1,6 @@
+C4 topk_transform_512 perf: SGLang PyTorch vectorized vs InfiniCore native Hygon
+repeats=50 warmup=10 page_size=64
+decode_384_b1            batch=    1 seq=  384 torch_vec=   0.2284 ms  native=   0.0169 ms  speedup=  13.55x
+small_384_b16            batch=   16 seq=  384 torch_vec=   0.2336 ms  native=   0.0147 ms  speedup=  15.87x
+bulk_384_b256            batch=  256 seq=  384 torch_vec=   0.2358 ms  native=   0.0188 ms  speedup=  12.55x
+bulk_384_b1024           batch= 1024 seq=  384 torch_vec=   0.2342 ms  native=   0.0151 ms  speedup=  15.46x

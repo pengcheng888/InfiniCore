@@ -18,6 +18,7 @@
 namespace infinicore {
 
 PYBIND11_MODULE(_infinicore, m) {
+    // Keep this translation unit dependent on header-only op bindings.
     context::bind(m);
     device::bind(m);
     device_event::bind(m);

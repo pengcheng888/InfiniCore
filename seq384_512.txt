@@ -1,0 +1,17 @@
+deepseek_v4_topk_transform_512_sglang perf
+config: index_topk=512 c4_page_size=64 max_position_embeddings=1048576 c4_compress_ratio=4 max_c4_seq_len=262144
+repeats=40 warmup=3 page_size=64 tokens=1,2,4,8,16,32,64,128,256,512,1024,2048,4096,8192 seq_lens=384 check=True
+tok1_seq384            tokens=    1 seq=   384 page= 64 torch_avg=   0.3309 torch_med=   0.3279 old_avg=   0.0503 old_med=   0.0502 sgl_avg=   0.0433 sgl_med=   0.0426 old/sgl=   1.16x torch/sgl=   7.65x
+tok2_seq384            tokens=    2 seq=   384 page= 64 torch_avg=   0.3332 torch_med=   0.3308 old_avg=   0.0508 old_med=   0.0506 sgl_avg=   0.0432 sgl_med=   0.0426 old/sgl=   1.18x torch/sgl=   7.71x
+tok4_seq384            tokens=    4 seq=   384 page= 64 torch_avg=   0.3324 torch_med=   0.3298 old_avg=   0.0528 old_med=   0.0530 sgl_avg=   0.0433 sgl_med=   0.0428 old/sgl=   1.22x torch/sgl=   7.67x
+tok8_seq384            tokens=    8 seq=   384 page= 64 torch_avg=   0.3331 torch_med=   0.3312 old_avg=   0.0515 old_med=   0.0506 sgl_avg=   0.0427 sgl_med=   0.0426 old/sgl=   1.21x torch/sgl=   7.80x
+tok16_seq384           tokens=   16 seq=   384 page= 64 torch_avg=   0.3336 torch_med=   0.3312 old_avg=   0.0512 old_med=   0.0502 sgl_avg=   0.0425 sgl_med=   0.0426 old/sgl=   1.21x torch/sgl=   7.85x
+tok32_seq384           tokens=   32 seq=   384 page= 64 torch_avg=   0.3358 torch_med=   0.3326 old_avg=   0.0555 old_med=   0.0535 sgl_avg=   0.0423 sgl_med=   0.0423 old/sgl=   1.31x torch/sgl=   7.94x
+tok64_seq384           tokens=   64 seq=   384 page= 64 torch_avg=   0.3356 torch_med=   0.3336 old_avg=   0.0512 old_med=   0.0506 sgl_avg=   0.0431 sgl_med=   0.0431 old/sgl=   1.19x torch/sgl=   7.78x
+tok128_seq384          tokens=  128 seq=   384 page= 64 torch_avg=   0.3371 torch_med=   0.3350 old_avg=   0.0514 old_med=   0.0508 sgl_avg=   0.0429 sgl_med=   0.0431 old/sgl=   1.20x torch/sgl=   7.86x
+tok256_seq384          tokens=  256 seq=   384 page= 64 torch_avg=   0.3371 torch_med=   0.3350 old_avg=   0.0518 old_med=   0.0511 sgl_avg=   0.0417 sgl_med=   0.0416 old/sgl=   1.24x torch/sgl=   8.08x
+tok512_seq384          tokens=  512 seq=   384 page= 64 torch_avg=   0.3354 torch_med=   0.3334 old_avg=   0.0523 old_med=   0.0516 sgl_avg=   0.0423 sgl_med=   0.0421 old/sgl=   1.24x torch/sgl=   7.92x
+tok1024_seq384         tokens= 1024 seq=   384 page= 64 torch_avg=   0.3336 torch_med=   0.3317 old_avg=   0.0528 old_med=   0.0530 sgl_avg=   0.0443 sgl_med=   0.0441 old/sgl=   1.19x torch/sgl=   7.53x
+tok2048_seq384         tokens= 2048 seq=   384 page= 64 torch_avg=   0.3344 torch_med=   0.3321 old_avg=   0.0584 old_med=   0.0577 sgl_avg=   0.0484 sgl_med=   0.0483 old/sgl=   1.21x torch/sgl=   6.91x
+tok4096_seq384         tokens= 4096 seq=   384 page= 64 torch_avg=   0.3680 torch_med=   0.3842 old_avg=   0.0661 old_med=   0.0653 sgl_avg=   0.0567 sgl_med=   0.0559 old/sgl=   1.17x torch/sgl=   6.50x
+tok8192_seq384         tokens= 8192 seq=   384 page= 64 torch_avg=   0.5167 torch_med=   0.4982 old_avg=   0.0796 old_med=   0.0791 sgl_avg=   0.0697 sgl_med=   0.0696 old/sgl=   1.14x torch/sgl=   7.41x

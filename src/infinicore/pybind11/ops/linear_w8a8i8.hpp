@@ -33,6 +33,28 @@ void py_linear_w8a8i8_(Tensor out,
     op::linear_w8a8i8_(out, input, weight_packed, weight_scale, bias_tensor);
 }
 
+void py_linear_w8a8i8_out_workspace_(Tensor out,
+                                     Tensor input,
+                                     Tensor weight_packed,
+                                     Tensor weight_scale,
+                                     pybind11::object bias,
+                                     Tensor input_packed,
+                                     Tensor input_scale) {
+    std::optional<Tensor> bias_tensor = std::nullopt;
+    if (!bias.is_none()) {
+        bias_tensor = bias.cast<Tensor>();
+    }
+
+    op::linear_w8a8i8_out_workspace_(
+        out,
+        input,
+        weight_packed,
+        weight_scale,
+        bias_tensor,
+        input_packed,
+        input_scale);
+}
+
 inline void bind_linear_w8a8i8(py::module &m) {
     m.def("linear_w8a8i8",
           &ops::py_linear_w8a8i8,
@@ -49,6 +71,16 @@ inline void bind_linear_w8a8i8(py::module &m) {
           py::arg("weight_scale"),
           py::arg("bias") = py::none(),
           R"doc(linear_w8a8i8_.)doc");
+    m.def("linear_w8a8i8_out_workspace_",
+          &ops::py_linear_w8a8i8_out_workspace_,
+          py::arg("out"),
+          py::arg("input"),
+          py::arg("weight_packed"),
+          py::arg("weight_scale"),
+          py::arg("bias"),
+          py::arg("input_packed"),
+          py::arg("input_scale"),
+          R"doc(linear_w8a8i8_out_workspace_.)doc");
 }
 
 } // namespace infinicore::ops

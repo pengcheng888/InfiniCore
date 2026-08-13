@@ -95,9 +95,7 @@ __global__ void biased_topk_kernel(float *__restrict__ topk_weights,
             if (tid < stride) {
                 const float other_value = reduce_values[tid + stride];
                 const int32_t other_expert = reduce_indices[tid + stride];
-                if (other_value > reduce_values[tid] ||
-                    (other_value == reduce_values[tid] && other_expert >= 0 &&
-                     (reduce_indices[tid] < 0 || other_expert < reduce_indices[tid]))) {
+                if (other_value > reduce_values[tid] || (other_value == reduce_values[tid] && other_expert >= 0 && (reduce_indices[tid] < 0 || other_expert < reduce_indices[tid]))) {
                     reduce_values[tid] = other_value;
                     reduce_indices[tid] = other_expert;
                 }

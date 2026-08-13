@@ -1,0 +1,16 @@
+配置
+  experts: 257
+  hidden/intermediate/topk: 4096/2048/7
+  tp_size/tp_rank: 8/0
+  local_intermediate: 256
+  random int8 range: [-64, 64)
+  random scale range: [0.001, 0.02)
+  tokens: 1,4,16,64,256
+  iters/warmup: 40/1
+
+权重
+  w13_marlin: (257, 64, 32768) torch.int8
+  w2_marlin:  (257, 4, 256, 1, 4, 16, 16) torch.int8
+  w13_scale:  (257, 512, 1) torch.float32
+  w2_scale:   (257, 4096, 1) torch.float32
+

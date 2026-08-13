@@ -10,4 +10,12 @@ Tensor linear_w8a8i8(Tensor input, Tensor weight_packed, Tensor weight_scale, st
 
 void linear_w8a8i8_(Tensor out, Tensor input, Tensor weight_packed, Tensor weight_scale, std::optional<Tensor> bias);
 
+void linear_w8a8i8_out_workspace_(Tensor out,
+                                  Tensor input,
+                                  Tensor weight_packed,
+                                  Tensor weight_scale,
+                                  std::optional<Tensor> bias,
+                                  Tensor input_packed,
+                                  Tensor input_scale);
+
 } // namespace infinicore::op
