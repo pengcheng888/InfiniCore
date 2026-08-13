@@ -416,7 +416,7 @@ local function build_infiniops_external(xmake_os)
         "-DGENERATE_PYTHON_BINDINGS=OFF",
         "-DCMAKE_BUILD_TYPE=Release"
     }
-    if has_config("nv-gpu") then
+    if has_config("nv-gpu") or has_config("metax-gpu") then
         table.insert(cmake_config_args, "-DWITH_TORCH=ON")
         table.insert(cmake_config_args, "-DINFINI_OPS_TORCH_OPS=argmax")
     end
