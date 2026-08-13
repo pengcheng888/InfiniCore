@@ -3,32 +3,12 @@
 #include "../device.hpp"
 #include "../graph/graph.hpp"
 #include "common/op.hpp"
+#include "deepseek_v4_compress_fused_norm_rope.hpp"
+#include "deepseek_v4_compress_stateful.hpp"
 
 #include <optional>
 
 namespace infinicore::op {
-
-INFINICORE_GRAPH_OP_CLASS(DeepseekV4CompressFusedNormRopeKernel,
-                          Tensor,
-                          const Tensor &,
-                          float,
-                          const Tensor &,
-                          const Tensor &);
-INFINICORE_GRAPH_OP_CLASS(DeepseekV4C4CompressStatefulKernel,
-                          Tensor,
-                          const Tensor &,
-                          const Tensor &,
-                          Tensor,
-                          const Tensor &,
-                          const Tensor &,
-                          const Tensor &);
-INFINICORE_GRAPH_OP_CLASS(DeepseekV4C128CompressStatefulKernel,
-                          Tensor,
-                          const Tensor &,
-                          const Tensor &,
-                          Tensor,
-                          const Tensor &,
-                          const Tensor &);
 
 INFINICORE_GRAPH_OP_CLASS(DeepseekV4FlashMlaSparseAttentionWithMetadata,
                           const Tensor &,
@@ -77,63 +57,6 @@ INFINICORE_GRAPH_OP_CLASS(DeepseekV4FlashMlaSparseAttentionMetadata,
 
 Tensor deepseek_v4_c4_compress_prefill_naive(const Tensor &kv_score_input,
                                                  const Tensor &ape);
-
-Tensor deepseek_v4_c4_compress_stateful_naive(const Tensor &kv_score_input,
-                                                  const Tensor &ape,
-                                                  Tensor compressor_state,
-                                                  const Tensor &write_loc,
-                                                  const Tensor &extra_loc,
-                                                  const Tensor &positions);
-
-Tensor deepseek_v4_c4_compress_stateful_kernel(const Tensor &kv_score_input,
-                                               const Tensor &ape,
-                                               Tensor compressor_state,
-                                               const Tensor &write_loc,
-                                               const Tensor &extra_loc,
-                                               const Tensor &positions);
-
-Tensor deepseek_v4_c4_compress_stateful(const Tensor &kv_score_input,
-                                        const Tensor &ape,
-                                        Tensor compressor_state,
-                                        const Tensor &write_loc,
-                                        const Tensor &extra_loc,
-                                        const Tensor &positions);
-
-Tensor deepseek_v4_c128_compress_stateful_naive(const Tensor &kv_score_input,
-                                                    const Tensor &ape,
-                                                    Tensor compressor_state,
-                                                    const Tensor &write_loc,
-                                                    const Tensor &positions);
-
-Tensor deepseek_v4_c128_compress_stateful_kernel(const Tensor &kv_score_input,
-                                                 const Tensor &ape,
-                                                 Tensor compressor_state,
-                                                 const Tensor &write_loc,
-                                                 const Tensor &positions);
-
-Tensor deepseek_v4_c128_compress_stateful(const Tensor &kv_score_input,
-                                          const Tensor &ape,
-                                          Tensor compressor_state,
-                                          const Tensor &write_loc,
-                                          const Tensor &positions);
-
-void deepseek_v4_compress_fused_norm_rope_naive_(Tensor input,
-                                                     const Tensor &norm_weight,
-                                                     float epsilon,
-                                                     const Tensor &freqs_cis,
-                                                     const Tensor &positions);
-
-void deepseek_v4_compress_fused_norm_rope_kernel_(Tensor input,
-                                                  const Tensor &norm_weight,
-                                                  float epsilon,
-                                                  const Tensor &freqs_cis,
-                                                  const Tensor &positions);
-
-void deepseek_v4_compress_fused_norm_rope_(Tensor input,
-                                           const Tensor &norm_weight,
-                                           float epsilon,
-                                           const Tensor &freqs_cis,
-                                           const Tensor &positions);
 
 struct DeepseekV4FlashMLASparseAttentionSchedule {
     Tensor tile_scheduler_metadata;

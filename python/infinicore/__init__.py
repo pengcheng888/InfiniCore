@@ -140,15 +140,6 @@ from infinicore.ops.deepseek_v4_dynamic_scaled_int8_quant import deepseek_v4_dyn
 from infinicore.ops.deepseek_v4_fast_topk import deepseek_v4_fast_topk_, deepseek_v4_fast_topk_transform_fused_, deepseek_v4_fast_topk_transform_ragged_fused_
 from infinicore.ops.deepseek_v4_flashmla_cache import deepseek_v4_flashmla_cache_indexer_, deepseek_v4_fused_store_flashmla_cache_, deepseek_v4_indexer_rotate_, deepseek_v4_store_flashmla_raw_cache_, deepseek_v4_store_indexer_raw_cache_
 from infinicore.ops.deepseek_v4_fused_experts_impl_int8_marlin import deepseek_v4_fused_experts_impl_int8_marlin_, deepseek_v4_python_fused_experts_impl_int8_marlin_
-from infinicore.ops.deepseek_v4_flashmla_compute import (
-    deepseek_v4_c128_compress_stateful,
-    deepseek_v4_c4_compress_stateful,
-    deepseek_v4_compress_fused_norm_rope_,
-    deepseek_v4_flashmla_sparse_attention_,
-    deepseek_v4_flashmla_sparse_attention_metadata_,
-    deepseek_v4_flashmla_sparse_attention_out_workspace_,
-    deepseek_v4_flashmla_sparse_attention_with_metadata_,
-)
 from infinicore.ops.deepseek_v4_flashmla_cuda import (
     deepseek_v4_dense_decode_fwd,
     deepseek_v4_dense_decode_fwd_kvfp8,
@@ -374,10 +365,6 @@ __all__ = [
     "deepseek_v4_indexer_rotate_",
     "deepseek_v4_fused_experts_impl_int8_marlin_",
     "deepseek_v4_python_fused_experts_impl_int8_marlin_",
-    "deepseek_v4_flashmla_sparse_attention_",
-    "deepseek_v4_flashmla_sparse_attention_metadata_",
-    "deepseek_v4_flashmla_sparse_attention_out_workspace_",
-    "deepseek_v4_flashmla_sparse_attention_with_metadata_",
     "deepseek_v4_dense_decode_fwd",
     "deepseek_v4_dense_decode_fwd_kvfp8",
     "deepseek_v4_dense_decode_fwd_qkvfp8",
@@ -389,9 +376,6 @@ __all__ = [
     "deepseek_v4_get_mla_decoding_metadata_dense_fp8",
     "deepseek_v4_sparse_decode_fwd",
     "deepseek_v4_sparse_prefill_fwd",
-    "deepseek_v4_compress_fused_norm_rope_",
-    "deepseek_v4_c4_compress_stateful",
-    "deepseek_v4_c128_compress_stateful",
     "deepseek_v4_fused_store_flashmla_cache_",
     "deepseek_v4_store_flashmla_raw_cache_",
     "deepseek_v4_store_indexer_raw_cache_",

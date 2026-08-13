@@ -1,4 +1,6 @@
-#include "deepseek_v4_flashmla_compute_kernel.hpp"
+#include "deepseek_v4_compress_stateful_kernel.hpp"
+
+#include "../deepseek_v4_compress_common/deepseek_v4_compress_dtype.hpp"
 
 #include <cuda_bf16.h>
 #include <cuda_fp16.h>
@@ -6,12 +8,13 @@
 #include <math.h>
 #include <stdint.h>
 
-namespace infinicore::op::deepseek_v4_flashmla_compute_kernel {
+namespace infinicore::op::deepseek_v4_compress_stateful_kernel {
 namespace {
 
 constexpr float kNegInf = -1.0e20f;
 
 __device__ __forceinline__ float load_scalar(const void *__restrict__ ptr, int64_t idx, int dtype) {
+    using namespace infinicore::op::deepseek_v4_compress_common;
     if (dtype == kDsv4BF16) {
         return __bfloat162float(reinterpret_cast<const __nv_bfloat16 *>(ptr)[idx]);
     }
@@ -22,6 +25,7 @@ __device__ __forceinline__ float load_scalar(const void *__restrict__ ptr, int64
 }
 
 __device__ __forceinline__ void store_scalar(void *__restrict__ ptr, int64_t idx, int dtype, float value) {
+    using namespace infinicore::op::deepseek_v4_compress_common;
     if (dtype == kDsv4BF16) {
         reinterpret_cast<__nv_bfloat16 *>(ptr)[idx] = __float2bfloat16(value);
     } else if (dtype == kDsv4F16) {
@@ -49,62 +53,6 @@ __device__ __forceinline__ float load_ape_c4(const void *__restrict__ ape,
         return load_scalar(ape, static_cast<int64_t>(row) * 2 * dim + dim + d, ape_dtype);
     }
     return load_scalar(ape, static_cast<int64_t>(row - 4) * 2 * dim + d, ape_dtype);
-}
-
-__global__ void compress_fused_norm_rope_kernel(void *__restrict__ input,
-                                                int input_dtype,
-                                                const void *__restrict__ norm_weight,
-                                                int norm_weight_dtype,
-                                                const float *__restrict__ freqs_cis,
-                                                const void *__restrict__ positions,
-                                                bool positions_i64,
-                                                int64_t tokens,
-                                                int64_t dim,
-                                                float epsilon) {
-    const int64_t token = blockIdx.x;
-    const int lane = threadIdx.x;
-    if (token >= tokens) {
-        return;
-    }
-
-    extern __shared__ float smem[];
-    const int64_t base = token * dim;
-    float local_sum = 0.0f;
-    for (int64_t i = lane; i < dim; i += blockDim.x) {
-        const float v = load_scalar(input, base + i, input_dtype);
-        local_sum += v * v;
-    }
-    smem[lane] = local_sum;
-    __syncthreads();
-
-    for (int stride = blockDim.x >> 1; stride > 0; stride >>= 1) {
-        if (lane < stride) {
-            smem[lane] += smem[lane + stride];
-        }
-        __syncthreads();
-    }
-
-    const float inv = rsqrtf(smem[0] / static_cast<float>(dim) + epsilon);
-    const int64_t rope_start = dim - 64;
-    for (int64_t i = lane; i < rope_start; i += blockDim.x) {
-        const float w = load_scalar(norm_weight, i, norm_weight_dtype);
-        const float v = load_scalar(input, base + i, input_dtype) * inv * w;
-        store_scalar(input, base + i, input_dtype, v);
-    }
-
-    const int64_t pos = load_index(positions, token, positions_i64);
-    for (int pair = lane; pair < 32; pair += blockDim.x) {
-        const int64_t real_idx = rope_start + 2 * pair;
-        const int64_t imag_idx = real_idx + 1;
-        const float wr = load_scalar(norm_weight, real_idx, norm_weight_dtype);
-        const float wi = load_scalar(norm_weight, imag_idx, norm_weight_dtype);
-        const float xr = load_scalar(input, base + real_idx, input_dtype) * inv * wr;
-        const float xi = load_scalar(input, base + imag_idx, input_dtype) * inv * wi;
-        const float c = freqs_cis[pos * 64 + 2 * pair];
-        const float s = freqs_cis[pos * 64 + 2 * pair + 1];
-        store_scalar(input, base + real_idx, input_dtype, xr * c - xi * s);
-        store_scalar(input, base + imag_idx, input_dtype, xr * s + xi * c);
-    }
 }
 
 __global__ void c4_write_state_zero_kernel(void *__restrict__ output,
@@ -312,26 +260,6 @@ __global__ void c128_compress_boundary_kernel(void *__restrict__ output,
 
 } // namespace
 
-void launch_compress_fused_norm_rope(void *input,
-                                      int input_dtype,
-                                      const void *norm_weight,
-                                      int norm_weight_dtype,
-                                      const float *freqs_cis,
-                                      const void *positions,
-                                      bool positions_i64,
-                                      int64_t tokens,
-                                      int64_t dim,
-                                      float epsilon,
-                                      void *stream) {
-    if (tokens <= 0 || dim <= 0) {
-        return;
-    }
-    constexpr int threads = 256;
-    auto cuda_stream = reinterpret_cast<cudaStream_t>(stream);
-    compress_fused_norm_rope_kernel<<<static_cast<unsigned int>(tokens), threads, threads * sizeof(float), cuda_stream>>>(
-        input, input_dtype, norm_weight, norm_weight_dtype, freqs_cis, positions, positions_i64, tokens, dim, epsilon);
-}
-
 void launch_c4_compress_stateful(void *output,
                                   int output_dtype,
                                   const void *kv_score,
@@ -402,4 +330,5 @@ void launch_c128_compress_stateful(void *output,
         positions, positions_i64, tokens, head_dim);
 }
 
-} // namespace infinicore::op::deepseek_v4_flashmla_compute_kernel
+
+} // namespace infinicore::op::deepseek_v4_compress_stateful_kernel
