@@ -14,7 +14,9 @@ namespace {
 #ifdef ENABLE_INFINIOPS_API
 bool tryGreedyWithInfiniOps(Tensor indices, Tensor logits, int topk) {
     const auto dtype = logits->dtype();
-    if (logits->device().getType() != Device::Type::NVIDIA
+    const auto device_type = logits->device().getType();
+    if ((device_type != Device::Type::NVIDIA
+         && device_type != Device::Type::METAX)
         || topk != 1
         || logits->ndim() != 1
         || logits->numel() == 0

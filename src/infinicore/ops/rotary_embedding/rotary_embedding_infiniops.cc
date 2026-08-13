@@ -31,7 +31,7 @@ void *plan(const Tensor &positions,
            bool is_neox,
            int64_t rope_dim_offset,
            bool inverse) {
-    INFINICORE_ASSERT(query->device().getType() == Device::Type::NVIDIA);
+    INFINICORE_ASSERT(query->device().getType() == Device::Type::NVIDIA || query->device().getType() == Device::Type::METAX);
     return new PlannedMeta{
         TensorMeta(positions),
         TensorMeta(query),
@@ -77,6 +77,9 @@ static bool registered = []() {
     RotaryEmbedding::plan_dispatcher().registerDevice(Device::Type::NVIDIA, &plan);
     RotaryEmbedding::run_dispatcher().registerDevice(Device::Type::NVIDIA, &run);
     RotaryEmbedding::cleanup_dispatcher().registerDevice(Device::Type::NVIDIA, &cleanup);
+    RotaryEmbedding::plan_dispatcher().registerDevice(Device::Type::METAX, &plan);
+    RotaryEmbedding::run_dispatcher().registerDevice(Device::Type::METAX, &run);
+    RotaryEmbedding::cleanup_dispatcher().registerDevice(Device::Type::METAX, &cleanup);
     return true;
 }();
 
