@@ -124,6 +124,7 @@
 #include "ops/silu.hpp"
 #include "ops/silu_and_mul.hpp"
 #include "ops/sinh.hpp"
+#include "ops/situ_and_mul.hpp"
 #include "ops/smooth_l1_loss.hpp"
 #include "ops/softplus.hpp"
 #include "ops/softsign.hpp"
@@ -316,6 +317,7 @@ inline void bind(py::module &m) {
     bind_embedding(m);
     bind_linear_w8a8i8(m);
     bind_silu_and_mul(m);
+    bind_situ_and_mul(m);
     bind_sum(m);
     bind_var_mean(m);
     bind_var(m);

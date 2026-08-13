@@ -141,6 +141,7 @@
 #include "infiniop/ops/silu.h"
 #include "infiniop/ops/silu_and_mul.h"
 #include "infiniop/ops/sinh.h"
+#include "infiniop/ops/situ_and_mul.h"
 #include "infiniop/ops/smooth_l1_loss.h"
 #include "infiniop/ops/softmax.h"
 #include "infiniop/ops/softplus.h"
