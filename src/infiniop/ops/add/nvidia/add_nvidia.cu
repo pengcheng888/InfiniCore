@@ -48,6 +48,37 @@ infiniStatus_t launchAddKernel(
         return INFINI_STATUS_SUCCESS;
     }
 
+    dim3 block_dims(std::min(256U, static_cast<uint32_t>(internal->maxThreadsPerBlock())));
+    dim3 grid_dims(std::min(uint32_t(CEIL_DIV(output_size, block_dims.x)), static_cast<uint32_t>(internal->gridSizeX())));
+    size_t step = grid_dims.x * block_dims.x;
+    op::elementwise::nvidia::InputPointerArray<2> input_ptrs{{a, b}};
+
+    if (info.canUseContiguousFastPath()) {
+        for (size_t i = 0; i < output_size; i += step) {
+            op::elementwise::nvidia::contiguousElementwiseKernel<2, cuda::AddOp, T>
+                <<<grid_dims, block_dims, 0, stream>>>(
+                    output_size,
+                    reinterpret_cast<T *>(output),
+                    input_ptrs,
+                    i);
+        }
+        return INFINI_STATUS_SUCCESS;
+    }
+
+    if (info.canUseInlineMetaFastPath()) {
+        const auto meta = op::elementwise::nvidia::makeInlineElementwiseMeta<2>(info);
+        for (size_t i = 0; i < output_size; i += step) {
+            op::elementwise::nvidia::inlineMetaElementwiseKernel<2, cuda::AddOp, T>
+                <<<grid_dims, block_dims, 0, stream>>>(
+                    output_size,
+                    reinterpret_cast<T *>(output),
+                    input_ptrs,
+                    meta,
+                    i);
+        }
+        return INFINI_STATUS_SUCCESS;
+    }
+
     auto ndim = info.getNdim();
     auto *d_meta_start = reinterpret_cast<int8_t *>(workspace);
     CHECK_CUDA(cudaMemcpyAsync(d_meta_start, info.getMetaStart(), info.getMetaMemSize(), cudaMemcpyHostToDevice, stream));
@@ -58,10 +89,6 @@ infiniStatus_t launchAddKernel(
     auto *d_input_strides = reinterpret_cast<const ptrdiff_t *>(d_input_shapes + info.getInputSize() * ndim);
     auto *d_input_contiguous = reinterpret_cast<const bool *>(d_input_strides + info.getInputSize() * ndim);
     auto *d_input_broadcasted = reinterpret_cast<const bool *>(d_input_contiguous + info.getInputSize());
-
-    dim3 block_dims(std::min(256U, static_cast<uint32_t>(internal->maxThreadsPerBlock())));
-    dim3 grid_dims(std::min(uint32_t(CEIL_DIV(output_size, block_dims.x)), static_cast<uint32_t>(internal->gridSizeX())));
-    size_t step = grid_dims.x * block_dims.x;
 
     for (size_t i = 0; i < output_size; i += step) {
         addKernel<T><<<grid_dims, block_dims, 0, stream>>>(

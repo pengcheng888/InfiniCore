@@ -6,7 +6,66 @@
 #include "../../devices/nvidia/nvidia_kernel_common.cuh"
 #include "elementwise_nvidia_api.cuh"
 
+#include <type_traits>
+
 namespace op::elementwise::nvidia {
+
+template <size_t N>
+struct InputPointerArray {
+    const void *values[N];
+};
+
+template <size_t N>
+struct InlineElementwiseMeta {
+    size_t ndim;
+    size_t output_shape[INLINE_META_MAX_NDIM];
+    ptrdiff_t output_strides[INLINE_META_MAX_NDIM];
+    size_t input_shapes[N][INLINE_META_MAX_NDIM];
+    ptrdiff_t input_strides[N][INLINE_META_MAX_NDIM];
+};
+
+template <size_t N>
+struct InlineElementwiseOffsets {
+    ptrdiff_t output;
+    ptrdiff_t inputs[N];
+};
+
+template <size_t N>
+InlineElementwiseMeta<N> makeInlineElementwiseMeta(
+    const op::elementwise::ElementwiseInfo &info) {
+    InlineElementwiseMeta<N> meta{};
+    meta.ndim = info.getNdim();
+    for (size_t dim = 0; dim < meta.ndim; ++dim) {
+        meta.output_shape[dim] = info.getOutputShape()[dim];
+        meta.output_strides[dim] = info.getOutputStrides()[dim];
+        for (size_t input = 0; input < N; ++input) {
+            meta.input_shapes[input][dim] = info.getInputShape(input)[dim];
+            meta.input_strides[input][dim] = info.getInputStrides(input)[dim];
+        }
+    }
+    return meta;
+}
+
+template <size_t N>
+__device__ __forceinline__ InlineElementwiseOffsets<N> getInlineElementwiseOffsets(
+    size_t idx,
+    const InlineElementwiseMeta<N> &meta) {
+    InlineElementwiseOffsets<N> offsets{};
+    for (size_t dim = meta.ndim; dim-- > 0;) {
+        const size_t coordinate = idx % meta.output_shape[dim];
+        idx /= meta.output_shape[dim];
+        offsets.output += static_cast<ptrdiff_t>(coordinate) * meta.output_strides[dim];
+#pragma unroll
+        for (size_t input = 0; input < N; ++input) {
+            const size_t input_coordinate = meta.input_shapes[input][dim] == 1
+                                              ? 0
+                                              : coordinate;
+            offsets.inputs[input] += static_cast<ptrdiff_t>(input_coordinate)
+                                   * meta.input_strides[input][dim];
+        }
+    }
+    return offsets;
+}
 
 /**
  * @brief Casts an untyped device pointer to a typed pointer of type T.
@@ -136,6 +195,56 @@ INFINIOP_CUDA_KERNEL elementwiseKernel(
     }
 }
 
+template <size_t N, typename Op, typename Tdata, typename... Args>
+INFINIOP_CUDA_KERNEL contiguousElementwiseKernel(
+    size_t output_size,
+    Tdata *output,
+    InputPointerArray<N> inputs,
+    size_t offset,
+    Args... args) {
+
+    size_t idx = blockIdx.x * blockDim.x + threadIdx.x + offset;
+    if (idx < output_size) {
+        unpackInputsAndApply(
+            [&](auto... Is) {
+#if defined(ENABLE_HYGON_API)
+                output[idx] = Op{}(typedInputPtr<Tdata>(inputs.values[Is.value])[idx]..., args...);
+#else
+                output[idx] = Op{}(typedInputPtr<Tdata>(inputs.values[Is.value])[idx]..., std::forward<Args>(args)...);
+#endif
+            },
+            std::make_index_sequence<N>{});
+    }
+}
+
+template <size_t N, typename Op, typename Tdata, typename... Args>
+INFINIOP_CUDA_KERNEL inlineMetaElementwiseKernel(
+    size_t output_size,
+    Tdata *output,
+    InputPointerArray<N> inputs,
+    InlineElementwiseMeta<N> meta,
+    size_t offset,
+    Args... args) {
+
+    size_t idx = blockIdx.x * blockDim.x + threadIdx.x + offset;
+    if (idx < output_size) {
+        const auto offsets = getInlineElementwiseOffsets(idx, meta);
+        unpackInputsAndApply(
+            [&](auto... Is) {
+#if defined(ENABLE_HYGON_API)
+                output[offsets.output] = Op{}(
+                    typedInputPtr<Tdata>(inputs.values[Is.value])[offsets.inputs[Is.value]]...,
+                    args...);
+#else
+                output[offsets.output] = Op{}(
+                    typedInputPtr<Tdata>(inputs.values[Is.value])[offsets.inputs[Is.value]]...,
+                    std::forward<Args>(args)...);
+#endif
+            },
+            std::make_index_sequence<N>{});
+    }
+}
+
 /**
  * @brief CUDA kernel for performing an elementwise operation on tensors with support
  *        for broadcasting and mixed data types.
@@ -187,6 +296,44 @@ INFINIOP_CUDA_KERNEL elementwiseKernel(
     }
 }
 
+template <typename Op, typename Tout, typename... Tin>
+INFINIOP_CUDA_KERNEL contiguousElementwiseKernel(
+    size_t output_size,
+    Tout *output,
+    InputPointerArray<sizeof...(Tin)> inputs,
+    size_t offset) {
+
+    size_t idx = blockIdx.x * blockDim.x + threadIdx.x + offset;
+    if (idx < output_size) {
+        unpackInputsAndApply(
+            [&](auto... Is) {
+                output[idx] = Op{}.template operator()<Tout, Tin...>(
+                    (typedInputPtr<Tin>(inputs.values[Is.value])[idx])...);
+            },
+            std::index_sequence_for<Tin...>{});
+    }
+}
+
+template <typename Op, typename Tout, typename... Tin>
+INFINIOP_CUDA_KERNEL inlineMetaElementwiseKernel(
+    size_t output_size,
+    Tout *output,
+    InputPointerArray<sizeof...(Tin)> inputs,
+    InlineElementwiseMeta<sizeof...(Tin)> meta,
+    size_t offset) {
+
+    size_t idx = blockIdx.x * blockDim.x + threadIdx.x + offset;
+    if (idx < output_size) {
+        const auto offsets = getInlineElementwiseOffsets(idx, meta);
+        unpackInputsAndApply(
+            [&](auto... Is) {
+                output[offsets.output] = Op{}.template operator()<Tout, Tin...>(
+                    (typedInputPtr<Tin>(inputs.values[Is.value])[offsets.inputs[Is.value]])...);
+            },
+            std::index_sequence_for<Tin...>{});
+    }
+}
+
 struct DeviceImpl::Opaque {
     std::shared_ptr<device::nvidia::Handle::Internal> internal;
 
@@ -217,12 +364,30 @@ struct DeviceImpl::Opaque {
                                  const std::vector<const void *> &inputs,
                                  cudaStream_t stream,
                                  Args &&...args) {
+        if (info.canUseContiguousFastPath()) {
+            return launchContiguousElementwiseKernel<
+                BLOCK_SIZE, N, Op, Tdata, std::decay_t<Args>...>(
+                info,
+                reinterpret_cast<Tdata *>(output),
+                inputs,
+                stream,
+                std::decay_t<Args>(args)...);
+        }
+        if (info.canUseInlineMetaFastPath()) {
+            return launchInlineMetaElementwiseKernel<
+                BLOCK_SIZE, N, Op, Tdata, std::decay_t<Args>...>(
+                info,
+                reinterpret_cast<Tdata *>(output),
+                inputs,
+                stream,
+                std::decay_t<Args>(args)...);
+        }
         return launchElementwiseKernel<BLOCK_SIZE, N>(
             info, workspace,
             reinterpret_cast<Tdata *>(output), inputs,
-            elementwiseKernel<N, Op, Tdata, Args...>,
+            elementwiseKernel<N, Op, Tdata, std::decay_t<Args>...>,
             stream,
-            std::forward<Args>(args)...);
+            std::decay_t<Args>(args)...);
     }
 
     /**
@@ -251,6 +416,20 @@ struct DeviceImpl::Opaque {
                                  const std::vector<const void *> &inputs,
                                  cudaStream_t stream,
                                  Args &&...args) {
+        if (info.canUseContiguousFastPath()) {
+            return launchContiguousMixedElementwiseKernel<BLOCK_SIZE, N, Op, Tout, Tin...>(
+                info,
+                reinterpret_cast<Tout *>(output),
+                inputs,
+                stream);
+        }
+        if (info.canUseInlineMetaFastPath()) {
+            return launchInlineMetaMixedElementwiseKernel<BLOCK_SIZE, N, Op, Tout, Tin...>(
+                info,
+                reinterpret_cast<Tout *>(output),
+                inputs,
+                stream);
+        }
         return launchElementwiseKernel<BLOCK_SIZE, N>(
             info, workspace,
             reinterpret_cast<Tout *>(output), inputs,
@@ -259,6 +438,110 @@ struct DeviceImpl::Opaque {
     }
 
 private:
+    template <uint32_t BLOCK_SIZE, size_t N, typename Op, typename Tdata, typename... Args>
+    infiniStatus_t launchContiguousElementwiseKernel(
+        const op::elementwise::ElementwiseInfo &info,
+        Tdata *output,
+        const std::vector<const void *> &inputs,
+        cudaStream_t stream,
+        Args &&...args) {
+
+        auto output_size = info.getOutputSize();
+        if (output_size == 0) {
+            return INFINI_STATUS_SUCCESS;
+        }
+
+        InputPointerArray<N> input_ptrs{};
+        std::copy_n(inputs.begin(), N, input_ptrs.values);
+        dim3 block_dims(std::min(BLOCK_SIZE, static_cast<uint32_t>(internal->maxThreadsPerBlock())));
+        dim3 grid_dims(std::min(uint32_t(CEIL_DIV(output_size, block_dims.x)), static_cast<uint32_t>(internal->gridSizeX())));
+        size_t step = grid_dims.x * block_dims.x;
+
+        for (size_t i = 0; i < output_size; i += step) {
+            contiguousElementwiseKernel<N, Op, Tdata, Args...><<<grid_dims, block_dims, 0, stream>>>(
+                output_size, output, input_ptrs, i, std::forward<Args>(args)...);
+        }
+        return INFINI_STATUS_SUCCESS;
+    }
+
+    template <uint32_t BLOCK_SIZE, size_t N, typename Op, typename Tout, typename... Tin>
+    infiniStatus_t launchContiguousMixedElementwiseKernel(
+        const op::elementwise::ElementwiseInfo &info,
+        Tout *output,
+        const std::vector<const void *> &inputs,
+        cudaStream_t stream) {
+
+        auto output_size = info.getOutputSize();
+        if (output_size == 0) {
+            return INFINI_STATUS_SUCCESS;
+        }
+
+        InputPointerArray<N> input_ptrs{};
+        std::copy_n(inputs.begin(), N, input_ptrs.values);
+        dim3 block_dims(std::min(BLOCK_SIZE, static_cast<uint32_t>(internal->maxThreadsPerBlock())));
+        dim3 grid_dims(std::min(uint32_t(CEIL_DIV(output_size, block_dims.x)), static_cast<uint32_t>(internal->gridSizeX())));
+        size_t step = grid_dims.x * block_dims.x;
+
+        for (size_t i = 0; i < output_size; i += step) {
+            contiguousElementwiseKernel<Op, Tout, Tin...><<<grid_dims, block_dims, 0, stream>>>(
+                output_size, output, input_ptrs, i);
+        }
+        return INFINI_STATUS_SUCCESS;
+    }
+
+    template <uint32_t BLOCK_SIZE, size_t N, typename Op, typename Tdata, typename... Args>
+    infiniStatus_t launchInlineMetaElementwiseKernel(
+        const op::elementwise::ElementwiseInfo &info,
+        Tdata *output,
+        const std::vector<const void *> &inputs,
+        cudaStream_t stream,
+        Args &&...args) {
+
+        auto output_size = info.getOutputSize();
+        if (output_size == 0) {
+            return INFINI_STATUS_SUCCESS;
+        }
+
+        InputPointerArray<N> input_ptrs{};
+        std::copy_n(inputs.begin(), N, input_ptrs.values);
+        const auto meta = makeInlineElementwiseMeta<N>(info);
+        dim3 block_dims(std::min(BLOCK_SIZE, static_cast<uint32_t>(internal->maxThreadsPerBlock())));
+        dim3 grid_dims(std::min(uint32_t(CEIL_DIV(output_size, block_dims.x)), static_cast<uint32_t>(internal->gridSizeX())));
+        size_t step = grid_dims.x * block_dims.x;
+
+        for (size_t i = 0; i < output_size; i += step) {
+            inlineMetaElementwiseKernel<N, Op, Tdata, Args...><<<grid_dims, block_dims, 0, stream>>>(
+                output_size, output, input_ptrs, meta, i, std::forward<Args>(args)...);
+        }
+        return INFINI_STATUS_SUCCESS;
+    }
+
+    template <uint32_t BLOCK_SIZE, size_t N, typename Op, typename Tout, typename... Tin>
+    infiniStatus_t launchInlineMetaMixedElementwiseKernel(
+        const op::elementwise::ElementwiseInfo &info,
+        Tout *output,
+        const std::vector<const void *> &inputs,
+        cudaStream_t stream) {
+
+        auto output_size = info.getOutputSize();
+        if (output_size == 0) {
+            return INFINI_STATUS_SUCCESS;
+        }
+
+        InputPointerArray<N> input_ptrs{};
+        std::copy_n(inputs.begin(), N, input_ptrs.values);
+        const auto meta = makeInlineElementwiseMeta<N>(info);
+        dim3 block_dims(std::min(BLOCK_SIZE, static_cast<uint32_t>(internal->maxThreadsPerBlock())));
+        dim3 grid_dims(std::min(uint32_t(CEIL_DIV(output_size, block_dims.x)), static_cast<uint32_t>(internal->gridSizeX())));
+        size_t step = grid_dims.x * block_dims.x;
+
+        for (size_t i = 0; i < output_size; i += step) {
+            inlineMetaElementwiseKernel<Op, Tout, Tin...><<<grid_dims, block_dims, 0, stream>>>(
+                output_size, output, input_ptrs, meta, i);
+        }
+        return INFINI_STATUS_SUCCESS;
+    }
+
     /**
      * @brief Transfers elementwise operation metadata and input pointers from host to device memory.
      *

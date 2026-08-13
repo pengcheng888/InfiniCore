@@ -164,6 +164,7 @@ from infinicore.ops.scaled_mm_w4a8 import scaled_mm_w4a8
 from infinicore.ops.scaled_mm_w8a8 import scaled_mm_w8a8
 from infinicore.ops.scatter import scatter
 from infinicore.ops.sinh import sinh
+from infinicore.ops.situ_and_mul import situ_and_mul
 from infinicore.ops.squeeze import squeeze
 from infinicore.ops.sum import sum
 from infinicore.ops.swap import swap
@@ -278,6 +279,7 @@ __all__ = [
     "equal",
     "mul",
     "mul_scalar",
+    "situ_and_mul",
     "diff",
     "digamma",
     "dist",
