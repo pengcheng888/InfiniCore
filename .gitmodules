@@ -1,10 +1,6 @@
 [submodule "third_party/spdlog"]
 	path = third_party/spdlog
 	url = https://github.com/gabime/spdlog.git
-[submodule "third_party/nlohmann_json"]
-	path = third_party/nlohmann_json
-	url = https://github.com/nlohmann/json.git
-	branch = master
 [submodule "third_party/flash-attention"]
 	path = third_party/flash-attention
 	url = https://github.com/Dao-AILab/flash-attention.git

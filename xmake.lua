@@ -16,7 +16,6 @@ set_encodings("utf-8")
 
 add_includedirs("include")
 add_includedirs("third_party/spdlog/include")
-add_includedirs("third_party/nlohmann_json/single_include/")
 
 if is_mode("debug") then
     add_defines("DEBUG_MODE")
