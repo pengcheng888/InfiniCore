@@ -174,7 +174,7 @@ def _should_preload_device(device_type: str) -> bool:
     Check if preload is needed for a specific device type.
     """
     device_env_map = {
-        "METAX": ["HPCC_PATH", "INFINICORE_PRELOAD_HPCC"],  # HPCC/METAX
+        "METAX": ["MACA_PATH", "HPCC_PATH", "INFINICORE_PRELOAD_HPCC"],
         "HYGON": ["DTK_ROOT", "INFINICORE_PRELOAD_TORCH_HIP"],
         "ASCEND": ["ASCEND_HOME", "ASCEND_TOOLKIT_HOME"],
         "CAMBRICON": ["NEUWARE_HOME", "INFINICORE_PRELOAD_CAMBRICON"],
