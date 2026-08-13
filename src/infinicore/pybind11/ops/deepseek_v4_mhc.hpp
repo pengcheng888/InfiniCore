@@ -3,6 +3,7 @@
 #include <pybind11/pybind11.h>
 
 #include "infinicore/ops/deepseek_v4_hc_head.hpp"
+#include "infinicore/ops/deepseek_v4_mhc_fused_post_pre.hpp"
 #include "infinicore/ops/deepseek_v4_mhc_post.hpp"
 #include "infinicore/ops/deepseek_v4_mhc_pre.hpp"
 
@@ -67,19 +68,6 @@ inline void bind_deepseek_v4_mhc(py::module &m) {
           py::arg("hc_pre_eps"),
           py::arg("hc_sinkhorn_eps"),
           py::arg("sinkhorn_repeat"));
-    m.def("deepseek_v4_mhc_pre_kernel_v2_",
-          &op::deepseek_v4_mhc_pre_kernel_v2_,
-          py::arg("y"),
-          py::arg("post"),
-          py::arg("comb"),
-          py::arg("residual"),
-          py::arg("fn"),
-          py::arg("hc_scale"),
-          py::arg("hc_base"),
-          py::arg("rms_eps"),
-          py::arg("hc_pre_eps"),
-          py::arg("hc_sinkhorn_eps"),
-          py::arg("sinkhorn_repeat"));
     m.def("deepseek_v4_mhc_post_naive_",
           &op::deepseek_v4_mhc_post_naive_,
           py::arg("y"),
@@ -112,6 +100,66 @@ inline void bind_deepseek_v4_mhc(py::module &m) {
           py::arg("base"),
           py::arg("rms_eps"),
           py::arg("hc_eps"));
+    m.def("deepseek_v4_mhc_fused_post_pre_",
+          &op::deepseek_v4_mhc_fused_post_pre_,
+          py::arg("residual_cur"),
+          py::arg("post_mix_cur"),
+          py::arg("comb_mix_cur"),
+          py::arg("layer_input_cur"),
+          py::arg("x"),
+          py::arg("residual"),
+          py::arg("post_layer_mix"),
+          py::arg("comb_res_mix"),
+          py::arg("fn"),
+          py::arg("hc_scale"),
+          py::arg("hc_base"),
+          py::arg("rms_eps"),
+          py::arg("hc_pre_eps"),
+          py::arg("hc_sinkhorn_eps"),
+          py::arg("hc_post_mult_value"),
+          py::arg("sinkhorn_repeat"),
+          py::arg("norm_weight"),
+          py::arg("norm_eps"));
+    m.def("deepseek_v4_mhc_fused_post_pre_naive_",
+          &op::deepseek_v4_mhc_fused_post_pre_naive_,
+          py::arg("residual_cur"),
+          py::arg("post_mix_cur"),
+          py::arg("comb_mix_cur"),
+          py::arg("layer_input_cur"),
+          py::arg("x"),
+          py::arg("residual"),
+          py::arg("post_layer_mix"),
+          py::arg("comb_res_mix"),
+          py::arg("fn"),
+          py::arg("hc_scale"),
+          py::arg("hc_base"),
+          py::arg("rms_eps"),
+          py::arg("hc_pre_eps"),
+          py::arg("hc_sinkhorn_eps"),
+          py::arg("hc_post_mult_value"),
+          py::arg("sinkhorn_repeat"),
+          py::arg("norm_weight"),
+          py::arg("norm_eps"));
+    m.def("deepseek_v4_mhc_fused_post_pre_kernel_",
+          &op::deepseek_v4_mhc_fused_post_pre_kernel_,
+          py::arg("residual_cur"),
+          py::arg("post_mix_cur"),
+          py::arg("comb_mix_cur"),
+          py::arg("layer_input_cur"),
+          py::arg("x"),
+          py::arg("residual"),
+          py::arg("post_layer_mix"),
+          py::arg("comb_res_mix"),
+          py::arg("fn"),
+          py::arg("hc_scale"),
+          py::arg("hc_base"),
+          py::arg("rms_eps"),
+          py::arg("hc_pre_eps"),
+          py::arg("hc_sinkhorn_eps"),
+          py::arg("hc_post_mult_value"),
+          py::arg("sinkhorn_repeat"),
+          py::arg("norm_weight"),
+          py::arg("norm_eps"));
 
 }
 

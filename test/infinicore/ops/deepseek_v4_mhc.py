@@ -71,7 +71,7 @@ def _run_case(tokens, hc, hidden, dtype):
     ref_y, ref_post, ref_comb = _mhc_pre_ref(
         x, fn, hc_scale, hc_base, rms_eps, hc_pre_eps, hc_sinkhorn_eps, sinkhorn_repeat
     )
-    for name in ("naive", "kernel", "kernel_v2"):
+    for name in ("naive", "kernel"):
         y = torch.empty_like(ref_y)
         post = torch.empty_like(ref_post)
         comb = torch.empty_like(ref_comb)

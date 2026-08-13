@@ -2,7 +2,6 @@
 .xmake/
 build/
 python/infinicore/lib/*.so
-sglang-0.5.16/
 sglang-0.5.17/
 
 # MacOS Cache
