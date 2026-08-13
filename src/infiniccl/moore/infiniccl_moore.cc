@@ -59,6 +59,13 @@ inline mcclComm_t getMcclComm(infinicclComm_t comm) {
 
 namespace infiniccl::moore {
 
+infiniStatus_t getCommName(
+    infinicclComm_t comm,
+    char *comm_name,
+    size_t comm_name_size) {
+    return getCommNameFromHandle(comm, comm_name, comm_name_size);
+}
+
 infiniStatus_t commInitAll(
     infinicclComm_t *comms,
     int ndevice,

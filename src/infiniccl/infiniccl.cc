@@ -8,6 +8,37 @@
 #include "./metax/infiniccl_metax.h"
 #include "./moore/infiniccl_moore.h"
 
+__INFINI_C infiniStatus_t infinicclGetCommName(
+    infinicclComm_t comm,
+    char *comm_name,
+    size_t comm_name_size) {
+    if (comm == nullptr || comm_name == nullptr) {
+        return INFINI_STATUS_NULL_POINTER;
+    }
+
+#define GET_COMM_NAME(CASE_, NAMESPACE_)           \
+    case CASE_:                                    \
+        return infiniccl::NAMESPACE_::getCommName( \
+            comm, comm_name, comm_name_size)
+
+    switch (comm->device_type) {
+        GET_COMM_NAME(INFINI_DEVICE_NVIDIA, cuda);
+        GET_COMM_NAME(INFINI_DEVICE_ILUVATAR, cuda);
+        GET_COMM_NAME(INFINI_DEVICE_QY, cuda);
+        GET_COMM_NAME(INFINI_DEVICE_HYGON, cuda);
+        GET_COMM_NAME(INFINI_DEVICE_ASCEND, ascend);
+        GET_COMM_NAME(INFINI_DEVICE_CAMBRICON, cambricon);
+        GET_COMM_NAME(INFINI_DEVICE_METAX, metax);
+        GET_COMM_NAME(INFINI_DEVICE_MOORE, moore);
+        GET_COMM_NAME(INFINI_DEVICE_KUNLUN, kunlun);
+        GET_COMM_NAME(INFINI_DEVICE_ALI, cuda);
+    default:
+        return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
+    }
+
+#undef GET_COMM_NAME
+}
+
 __INFINI_C infiniStatus_t infinicclCommInitAll(
     infiniDevice_t device_type,
     infinicclComm_t *comms,
