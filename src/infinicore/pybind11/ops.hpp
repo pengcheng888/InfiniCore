@@ -83,6 +83,7 @@
 #include "ops/deepseek_v4_rmsnorm_self.hpp"
 #include "ops/deepseek_v4_rotary_embedding.hpp"
 #include "ops/deepseek_v4_sglang_jit.hpp"
+#include "ops/deepseek_v4_shared_experts_impl_int8_marlin.hpp"
 #include "ops/deepseek_v4_silu_and_mul.hpp"
 #include "ops/deepseek_v4_silu_and_mul_clamp.hpp"
 #include "ops/deepseek_v4_sparse_attn_indexer.hpp"
@@ -318,6 +319,7 @@ inline void bind(py::module &m) {
     bind_deepseek_v4_rms_norm_dynamic_per_token_quant(m);
     bind_deepseek_v4_rms_norm_per_block_quant(m);
     bind_deepseek_v4_rotary_embedding(m);
+    bind_deepseek_v4_shared_experts_impl_int8_marlin(m);
     bind_deepseek_v4_silu_and_mul(m);
     bind_deepseek_v4_sglang_jit(m);
     bind_deepseek_v4_static_scaled_int8_quant(m);

@@ -3,7 +3,8 @@
 build/
 python/infinicore/lib/*.so
 sglang-0.5.17/
-
+reference/
+reference-infinilm-deepseek_v4/
 # MacOS Cache
 .DS_Store
 

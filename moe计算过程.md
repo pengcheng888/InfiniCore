@@ -1,5 +1,5 @@
 
-> 分析下 infinicore::op::deepseek_v4_shared_experts_impl_int8_marlin_prepare_metadata_和  infinicore::op::deepseek_v4_shared_experts_impl_int8_marlin_workspace_函数内部调用过程。关系函数的输入参数，输出参数，数据类型。
+> 分析下 infinicore::op::deepseek_v4_shared_experts_impl_int8_marlin_prepare_metadata_和  infinicore::op::deepseek_v4_shared_experts_impl_int8_marlin_ 的外部 workspace 重载函数内部调用过程。关系函数的输入参数，输出参数，数据类型。
 >
 > 请分析。
 
@@ -42,7 +42,7 @@
 这两个函数是一组配套接口：
 
 - `prepare_metadata_`：只负责预生成 shared expert 的 MoE metadata。
-- `workspace_`：使用外部传入的 metadata 和 compute workspace，执行完整 shared MLP 计算。
+- `deepseek_v4_shared_experts_impl_int8_marlin_` 外部 workspace 重载：使用外部传入的 metadata 和 compute workspace，执行完整 shared MLP 计算。
 
 **1. prepare_metadata_**
 签名在 [deepseek_v4_shared_experts_impl_int8_marlin.hpp](./InfiniCore/include/infinicore/ops/deepseek_v4_shared_experts_impl_int8_marlin.hpp:52)：
@@ -80,11 +80,11 @@ void deepseek_v4_shared_experts_impl_int8_marlin_prepare_metadata_(
 
 这个函数本质上是在构造“单 shared expert、topk=1”的固定 metadata，给后面的 lightop MoE Marlin GEMM 复用。
 
-**2. workspace_**
+**2. deepseek_v4_shared_experts_impl_int8_marlin_ 外部 workspace 重载**
 签名在 [deepseek_v4_shared_experts_impl_int8_marlin.hpp](./InfiniCore/include/infinicore/ops/deepseek_v4_shared_experts_impl_int8_marlin.hpp:58)：
 
 ```cpp
-void deepseek_v4_shared_experts_impl_int8_marlin_workspace_(
+void deepseek_v4_shared_experts_impl_int8_marlin_(
     Tensor output,
     const Tensor &hidden_states,
     const Tensor &w1,
@@ -144,7 +144,7 @@ compute workspace：
 
 1. 检查 shape/dtype/contiguous。
 2. 根据 shape 选择 `gemm1_mode/gemm2_mode`。自动模式目前只支持 `hidden=4096, intermediate=256`。
-3. 因为 workspace 版本传入 `metadata_ready=true`，所以不会重新生成 metadata。
+3. 因为外部 workspace 重载传入 `metadata_ready=true`，所以不会重新生成 metadata。
 4. 调用 `launch_per_token_quant_int8_bf16`：
    ```text
    hidden_states BF16 -> q_hidden I8 + hidden_scale F32
@@ -172,14 +172,14 @@ compute workspace：
    ```
 3. 每次 forward 都调用：
    ```cpp
-   deepseek_v4_shared_experts_impl_int8_marlin_workspace_(...)
+   deepseek_v4_shared_experts_impl_int8_marlin_(...)
    ```
 
 所以设计意图是：
 
 ```text
 prepare_metadata_：低频执行，只在 tokens 变化时刷新 metadata
-workspace_：高频执行，每次 forward 复用外部 workspace 和 metadata
+deepseek_v4_shared_experts_impl_int8_marlin_ 外部 workspace 重载：高频执行，每次 forward 复用外部 workspace 和 metadata
 ```
 
 这比原始 `deepseek_v4_shared_experts_impl_int8_marlin_` 更适合推理热路径，因为避免了内部反复申请 workspace，也避免了每次重复构造固定 topk=1 metadata。
