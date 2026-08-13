@@ -1,8 +1,8 @@
 #ifndef __ADD_BANG_API_H__
 #define __ADD_BANG_API_H__
 
-#include "../../../elementwise/bang/elementwise_bang.h"
+#include "../add.h"
 
-ELEMENTWISE_DESCRIPTOR(add, bang)
+DESCRIPTOR(bang)
 
 #endif // __ADD_BANG_API_H__
