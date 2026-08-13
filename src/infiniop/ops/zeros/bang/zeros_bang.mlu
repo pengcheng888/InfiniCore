@@ -83,10 +83,9 @@ infiniStatus_t Descriptor::create(
     size_t workspace_size = 0;
 
     if (dtype == INFINI_DTYPE_F64) {
-        auto device_impl_result = op::elementwise::bang::DeviceImpl::create(handle->internal());
+        auto device_impl_result = op::elementwise::bang::DeviceImpl::create(handle->internal(), info);
         CHECK_RESULT(device_impl_result);
         device_info = device_impl_result.take();
-        workspace_size = info.getMetaMemSize() + info.getInputSize() * sizeof(void *);
     } else {
         CHECK_BANG(cnnlCreateTensorDescriptor(&value_desc));
         CHECK_BANG(cnnlCreateTensorDescriptor(&output_desc));
