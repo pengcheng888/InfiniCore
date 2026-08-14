@@ -80,28 +80,6 @@ __device__ __forceinline__ const T *typedInputPtr(const void *ptr) {
     return reinterpret_cast<const T *>(ptr);
 }
 
-template <size_t N>
-struct InputPointerArray {
-    const void *values[N];
-};
-
-/**
- * @brief Stores elementwise input pointers in device workspace.
- *
- * The pointer array is passed by value as a kernel argument. This is required
- * for CUDA Graph capture: a captured cudaMemcpyAsync from inputs.data() would
- * retain a pointer to a temporary host std::vector that is destroyed before
- * graph replay.
- */
-template <size_t N>
-INFINIOP_CUDA_KERNEL storeInputPointers(
-    const void **output,
-    InputPointerArray<N> inputs) {
-    for (size_t i = threadIdx.x; i < N; i += blockDim.x) {
-        output[i] = inputs.values[i];
-    }
-}
-
 /**
  * @brief Computes the output index in memory, accounting for strides if non-contiguous.
  *
@@ -194,23 +172,22 @@ INFINIOP_CUDA_KERNEL elementwiseKernel(
     const ptrdiff_t *__restrict__ output_strides,
     const ptrdiff_t *__restrict__ input_strides,
     Tdata *output,
-    const void *const *inputs,
+    InputPointerArray<N> inputs,
     size_t offset,
     Args... args) {
 
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x + offset;
 
     if (idx < output_size) {
-        const Tdata *const *typed_inputs = reinterpret_cast<const Tdata *const *>(inputs);
         size_t out_idx = getOutputIndex(idx, output_contiguous, ndim, output_shape, output_strides);
         InputIndexer indexer{idx, ndim, input_contiguous, input_broadcasted, input_shapes, input_strides, output_strides};
 
         unpackInputsAndApply(
             [&](auto... Is) {
 #if defined(ENABLE_HYGON_API)
-                output[out_idx] = Op{}(typed_inputs[Is.value][indexer(Is.value)]..., args...);
+                output[out_idx] = Op{}(typedInputPtr<Tdata>(inputs.values[Is.value])[indexer(Is.value)]..., args...);
 #else
-                output[out_idx] = Op{}(typed_inputs[Is.value][indexer(Is.value)]..., std::forward<Args>(args)...);
+                output[out_idx] = Op{}(typedInputPtr<Tdata>(inputs.values[Is.value])[indexer(Is.value)]..., std::forward<Args>(args)...);
 #endif
             },
             std::make_index_sequence<N>{});
@@ -300,7 +277,7 @@ INFINIOP_CUDA_KERNEL elementwiseKernel(
     const ptrdiff_t *__restrict__ output_strides,
     const ptrdiff_t *__restrict__ input_strides,
     Tout *output,
-    const void *const *__restrict__ inputs,
+    InputPointerArray<sizeof...(Tin)> inputs,
     size_t offset) {
 
     size_t idx = blockIdx.x * blockDim.x + threadIdx.x + offset;
@@ -312,7 +289,7 @@ INFINIOP_CUDA_KERNEL elementwiseKernel(
         unpackInputsAndApply(
             [&](auto... Is) {
                 output[out_idx] = Op{}.template operator()<Tout, Tin...>(
-                    (typedInputPtr<Tin>(inputs[Is.value])[indexer(Is.value)])...);
+                    (typedInputPtr<Tin>(inputs.values[Is.value])[indexer(Is.value)])...);
             },
             std::index_sequence_for<Tin...>{});
     }
@@ -358,9 +335,52 @@ INFINIOP_CUDA_KERNEL inlineMetaElementwiseKernel(
 
 struct DeviceImpl::Opaque {
     std::shared_ptr<device::nvidia::Handle::Internal> internal;
+    void *device_meta = nullptr;
+    const bool *input_contiguous = nullptr;
+    const bool *input_broadcasted = nullptr;
+    const size_t *output_shape = nullptr;
+    const ptrdiff_t *output_strides = nullptr;
+    const size_t *input_shapes = nullptr;
+    const ptrdiff_t *input_strides = nullptr;
+    infiniStatus_t init_status = INFINI_STATUS_SUCCESS;
 
-    Opaque(const std::shared_ptr<device::nvidia::Handle::Internal> &internal)
-        : internal(internal) {}
+    Opaque(const std::shared_ptr<device::nvidia::Handle::Internal> &internal_,
+           const op::elementwise::ElementwiseInfo &info)
+        : internal(internal_), init_status(initialize(info)) {}
+
+    ~Opaque() {
+        if (device_meta != nullptr) {
+            cudaFree(device_meta);
+        }
+    }
+
+    infiniStatus_t initialize(const op::elementwise::ElementwiseInfo &info) {
+        if (info.canUseContiguousFastPath() || info.canUseInlineMetaFastPath()) {
+            return INFINI_STATUS_SUCCESS;
+        }
+
+        const auto meta_size = info.getMetaMemSize();
+        if (meta_size == 0) {
+            return INFINI_STATUS_SUCCESS;
+        }
+
+        CHECK_CUDA(cudaMalloc(&device_meta, meta_size));
+        CHECK_CUDA(cudaMemcpy(device_meta,
+                              info.getMetaStart(),
+                              meta_size,
+                              cudaMemcpyHostToDevice));
+
+        const auto ndim = info.getNdim();
+        const auto input_size = info.getInputSize();
+        output_shape = reinterpret_cast<const size_t *>(device_meta);
+        output_strides = reinterpret_cast<const ptrdiff_t *>(output_shape + ndim);
+        input_shapes = reinterpret_cast<const size_t *>(output_strides + ndim);
+        input_strides = reinterpret_cast<const ptrdiff_t *>(input_shapes + input_size * ndim);
+        input_contiguous = reinterpret_cast<const bool *>(input_strides + input_size * ndim);
+        input_broadcasted = input_contiguous + input_size;
+
+        return INFINI_STATUS_SUCCESS;
+    }
 
     /**
      * @brief Executes an elementwise operation where all inputs and the output share the same data type.
@@ -565,73 +585,6 @@ private:
     }
 
     /**
-     * @brief Transfers elementwise operation metadata and input pointers from host to device memory.
-     *
-     * @tparam N                     Number of input tensors.
-     *
-     * @param info                   Elementwise operation metadata (shapes, strides, flags, etc.).
-     * @param workspace              Pointer to device workspace memory for storing metadata and input pointers.
-     * @param h_inputs_arr           Host array of input tensor pointers.
-     * @param d_inputs_arr           Input reference to device array of input tensor pointers.
-     * @param d_input_contiguous     Input reference to device array indicating whether each input is contiguous.
-     * @param d_input_broadcasted    Input reference to device array indicating whether each input is broadcasted.
-     * @param d_output_shape         Output reference to device array holding the output tensor shape.
-     * @param d_output_strides       Output reference to device array holding output tensor strides.
-     * @param d_input_shapes         Output reference to flattened input tensor shapes (N * ndim).
-     * @param d_input_strides        Output reference to flattened input tensor strides (N * ndim).
-     * @param stream                 CUDA stream used for asynchronous memory transfer.
-     * @return infiniStatus_t        Status indicating success or failure of the memory transfer and setup.
-     */
-    template <size_t N>
-    infiniStatus_t infoToDevice(
-        const op::elementwise::ElementwiseInfo &info,
-        void *workspace,
-        const void *const *h_inputs_arr,
-        const void **&d_inputs_arr,
-        const bool *&d_input_contiguous,
-        const bool *&d_input_broadcasted,
-        const size_t *&d_output_shape,
-        const ptrdiff_t *&d_output_strides,
-        const size_t *&d_input_shapes,
-        const ptrdiff_t *&d_input_strides,
-        cudaStream_t stream) const {
-
-        constexpr auto input_size = N;
-        const auto ndim = info.getNdim();
-        constexpr auto input_arr_size = N * sizeof(*h_inputs_arr);
-        const int8_t *info_meta_start = info.getMetaStart();
-        const int8_t *d_meta_start = reinterpret_cast<int8_t *>(workspace) + input_arr_size;
-
-        cudaStreamCaptureStatus capture_status = cudaStreamCaptureStatusNone;
-        CHECK_CUDA(cudaStreamIsCapturing(stream, &capture_status));
-        if (capture_status == cudaStreamCaptureStatusNone) {
-            CHECK_CUDA(cudaMemcpyAsync(workspace, h_inputs_arr, input_arr_size, cudaMemcpyHostToDevice, stream));
-        } else {
-            // A captured H2D copy from a temporary std::vector would retain an
-            // invalid host pointer for replay. Kernel arguments are stored by
-            // value in the graph node instead.
-            InputPointerArray<N> input_pointers{};
-            for (size_t i = 0; i < N; ++i) {
-                input_pointers.values[i] = h_inputs_arr[i];
-            }
-            storeInputPointers<N><<<1, N, 0, stream>>>(
-                reinterpret_cast<const void **>(workspace), input_pointers);
-        }
-        CHECK_CUDA(cudaMemcpyAsync((void *)d_meta_start, info_meta_start, info.getMetaMemSize(), cudaMemcpyHostToDevice, stream));
-
-        // offset/assign the pointers
-        d_inputs_arr = reinterpret_cast<const void **>(workspace);
-        d_output_shape = reinterpret_cast<const size_t *>(d_meta_start);
-        d_output_strides = reinterpret_cast<const ptrdiff_t *>(d_output_shape + ndim);
-        d_input_shapes = reinterpret_cast<const size_t *>(d_output_strides + ndim);
-        d_input_strides = reinterpret_cast<const ptrdiff_t *>(d_input_shapes + input_size * ndim);
-        d_input_contiguous = reinterpret_cast<const bool *>(d_input_strides + input_size * ndim);
-        d_input_broadcasted = reinterpret_cast<const bool *>(d_input_contiguous + input_size);
-
-        return INFINI_STATUS_SUCCESS;
-    }
-
-    /**
      * @brief Launches the elementwise kernel for the specified operation.
      *
      * @tparam BLOCK_SIZE   Number of threads per block.
@@ -664,19 +617,9 @@ private:
             return INFINI_STATUS_SUCCESS;
         }
 
-        // Device pointers
-        const void **d_inputs_arr = nullptr;
-        const bool *d_input_contiguous = nullptr;
-        const bool *d_input_broadcasted = nullptr;
-        const size_t *d_output_shape = nullptr;
-        const ptrdiff_t *d_output_strides = nullptr;
-        const size_t *d_input_shapes = nullptr;
-        const ptrdiff_t *d_input_strides = nullptr;
-
-        CHECK_STATUS(infoToDevice<N>(info, workspace, inputs.data(), d_inputs_arr,
-                                     d_input_contiguous, d_input_broadcasted,
-                                     d_output_shape, d_output_strides,
-                                     d_input_shapes, d_input_strides, stream));
+        (void)workspace;
+        InputPointerArray<N> input_ptrs{};
+        std::copy_n(inputs.begin(), N, input_ptrs.values);
 
         dim3 blockDims(std::min(BLOCK_SIZE, static_cast<uint32_t>(internal->maxThreadsPerBlock())));
         dim3 gridDims(std::min(uint32_t(CEIL_DIV(output_size, blockDims.x)), static_cast<uint32_t>(internal->gridSizeX())));
@@ -685,10 +628,10 @@ private:
         for (size_t i = 0; i < output_size; i += step) {
             kernel_func<<<gridDims, blockDims, 0, stream>>>(
                 output_size, info.getNdim(), info.isOutputContiguous(),
-                d_input_contiguous, d_input_broadcasted,
-                d_output_shape, d_input_shapes,
-                d_output_strides, d_input_strides,
-                output, reinterpret_cast<const void **>(d_inputs_arr),
+                input_contiguous, input_broadcasted,
+                output_shape, input_shapes,
+                output_strides, input_strides,
+                output, input_ptrs,
                 i, std::forward<Args>(args)...);
         }
 
@@ -699,6 +642,9 @@ private:
 template <typename... Args>
 utils::Result<DeviceImpl *> DeviceImpl::create(Args &&...args) {
     auto opaque = std::make_shared<Opaque>(std::forward<Args>(args)...);
+    if (opaque->init_status != INFINI_STATUS_SUCCESS) {
+        return opaque->init_status;
+    }
     return utils::Result<DeviceImpl *>(new DeviceImpl(opaque));
 }
 
