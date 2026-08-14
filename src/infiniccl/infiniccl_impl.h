@@ -3,6 +3,8 @@
 
 #include "infiniccl.h"
 
+#include <cstdio>
+
 struct InfinicclComm {
     infiniDevice_t device_type;
     int device_id; // the actual device ID, not rank number
@@ -11,8 +13,34 @@ struct InfinicclComm {
     int world_size = 1;
 };
 
+namespace infiniccl {
+inline infiniStatus_t getCommNameFromHandle(
+    infinicclComm_t comm,
+    char *comm_name,
+    size_t comm_name_size) {
+    if (comm == nullptr || comm_name == nullptr) {
+        return INFINI_STATUS_NULL_POINTER;
+    }
+    const int size = std::snprintf(
+        comm_name,
+        comm_name_size,
+        "infiniccl-%d-%p",
+        static_cast<int>(comm->device_type),
+        comm->comm);
+    if (size < 0 || static_cast<size_t>(size) >= comm_name_size) {
+        return INFINI_STATUS_BAD_PARAM;
+    }
+    return INFINI_STATUS_SUCCESS;
+}
+} // namespace infiniccl
+
 #define INFINICCL_DEVICE_API(NAMSPACE, IMPL)               \
     namespace infiniccl::NAMSPACE {                        \
+    infiniStatus_t getCommName(                            \
+        infinicclComm_t comm,                              \
+        char *comm_name,                                   \
+        size_t comm_name_size) IMPL;                       \
+                                                           \
     infiniStatus_t commInitAll(                            \
         infinicclComm_t *comms,                            \
         int ndevice,                                       \
