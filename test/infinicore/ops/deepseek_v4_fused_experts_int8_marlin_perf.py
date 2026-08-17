@@ -7,7 +7,7 @@ constructs the same Marlin packed layout used by InfiniLM, and compares:
   * torch.ops.sglang.fused_experts_impl_int8_marlin, inplace=True
   * torch.ops.sglang.fused_experts_impl_int8_marlin, inplace=False
   * torch.ops.sglang.fused_experts_impl_int8_marlin, inplace=False + copy_
-  * infinicore.deepseek_v4_fused_experts_impl_int8_marlin_
+  * _infinicore.deepseek_v4_fused_experts_impl_int8_marlin_
 
 The precision check compares InfiniCore output against SGLang inplace=True.
 
@@ -302,21 +302,33 @@ def _infinicore_call(
     shared_output: torch.Tensor | None = None,
 ) -> torch.Tensor:
     import infinicore
+    from infinicore.lib import _infinicore
 
-    return infinicore.deepseek_v4_fused_experts_impl_int8_marlin_(
-        infinicore.from_torch(output),
-        infinicore.from_torch(hidden_states),
-        infinicore.from_torch(w13_marlin),
-        infinicore.from_torch(w2_marlin),
-        infinicore.from_torch(topk_weights),
-        infinicore.from_torch(topk_ids),
-        infinicore.from_torch(w13_scale),
-        infinicore.from_torch(w2_scale),
+    output_ic = infinicore.from_torch(output)
+    hidden_states_ic = infinicore.from_torch(hidden_states)
+    w13_marlin_ic = infinicore.from_torch(w13_marlin)
+    w2_marlin_ic = infinicore.from_torch(w2_marlin)
+    topk_weights_ic = infinicore.from_torch(topk_weights)
+    topk_ids_ic = infinicore.from_torch(topk_ids)
+    w13_scale_ic = infinicore.from_torch(w13_scale)
+    w2_scale_ic = infinicore.from_torch(w2_scale)
+    shared_output_ic = infinicore.from_torch(shared_output) if shared_output is not None else None
+
+    _infinicore.deepseek_v4_fused_experts_impl_int8_marlin_(
+        output_ic._underlying,
+        hidden_states_ic._underlying,
+        w13_marlin_ic._underlying,
+        w2_marlin_ic._underlying,
+        topk_weights_ic._underlying,
+        topk_ids_ic._underlying,
+        w13_scale_ic._underlying,
+        w2_scale_ic._underlying,
         global_num_experts,
         routed_scaling_factor,
         inplace,
-        infinicore.from_torch(shared_output) if shared_output is not None else None,
+        shared_output_ic._underlying if shared_output_ic is not None else None,
     )
+    return output
 
 
 def _make_infinicore_raw_call(

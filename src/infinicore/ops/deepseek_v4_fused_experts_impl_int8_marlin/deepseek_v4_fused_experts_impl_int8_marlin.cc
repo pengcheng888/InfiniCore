@@ -45,11 +45,16 @@ void guard_device(const Tensor &tensor, const char *op_name) {
 #endif
 }
 
-struct MarlinConfig {
-    int block_size{16};
-    int gemm1_mode{54};
-    int gemm2_mode{54};
+struct MarlinGemmConfig {
+    size_t max_tokens{0};
+    int block_size_m{16};
+    int mode{54};
     int delta{1};
+};
+
+struct MarlinConfig {
+    MarlinGemmConfig gemm1;
+    MarlinGemmConfig gemm2;
     bool supported{false};
 };
 
@@ -65,6 +70,16 @@ struct FusedExpertsShape {
     MarlinConfig config;
 };
 
+template <size_t N>
+MarlinGemmConfig select_marlin_gemm_config(size_t num_tokens, const MarlinGemmConfig (&configs)[N]) {
+    for (const auto &config : configs) {
+        if (num_tokens <= config.max_tokens) {
+            return config;
+        }
+    }
+    return configs[N - 1];
+}
+
 MarlinConfig select_deepseek_v4_marlin_config(size_t num_tokens,
                                               size_t hidden_size,
                                               size_t intermediate_size,
@@ -73,36 +88,58 @@ MarlinConfig select_deepseek_v4_marlin_config(size_t num_tokens,
     if (hidden_size == 7168 && intermediate_size == 256 && top_k == 8) {
         config.supported = true;
         if (num_tokens <= 1) {
-            config.gemm1_mode = 21;
-            config.gemm2_mode = 25;
+            config.gemm1.mode = 21;
+            config.gemm2.mode = 25;
         } else if (num_tokens <= 7) {
-            config.gemm1_mode = 78;
-            config.gemm2_mode = 73;
+            config.gemm1.mode = 78;
+            config.gemm2.mode = 73;
         } else if (num_tokens <= 16) {
-            config.gemm1_mode = 29;
-            config.gemm2_mode = 12;
+            config.gemm1.mode = 29;
+            config.gemm2.mode = 12;
         } else if (num_tokens <= 75) {
-            config.gemm1_mode = 55;
-            config.gemm2_mode = 54;
+            config.gemm1.mode = 55;
+            config.gemm2.mode = 54;
         }
     } else if (hidden_size == 4096 && intermediate_size == 256 && top_k == 6) {
+        // Keep the Hygon gfx936/CU80 LightOp Marlin tuning table in C++ so the
+        // hot path does not call Python to query get_moe_cuda_marlin_config.
+        static constexpr MarlinGemmConfig gemm1_configs[] = {
+            {1, 16, 58, 1},
+            {2, 16, 19, 1},
+            {4, 16, 58, 1},
+            {8, 16, 29, 1},
+            {16, 16, 29, 1},
+            {32, 16, 29, 1},
+            {64, 16, 29, 1},
+            {128, 16, 29, 1},
+            {256, 16, 37, 1},
+            {512, 16, 51, 1},
+            {1024, 32, 1002, 1},
+            {2048, 32, 1002, 1},
+            {4096, 128, 1000, 1},
+            {6144, 128, 1000, 1},
+            {8192, 128, 1000, 1},
+        };
+        static constexpr MarlinGemmConfig gemm2_configs[] = {
+            {1, 16, 16, 1},
+            {2, 16, 76, 1},
+            {4, 16, 21, 1},
+            {8, 16, 9, 1},
+            {16, 16, 4, 1},
+            {32, 16, 12, 1},
+            {64, 16, 12, 1},
+            {128, 16, 55, 1},
+            {256, 16, 54, 1},
+            {512, 16, 57, 1},
+            {1024, 16, 94, 2},
+            {2048, 32, 568, 1},
+            {4096, 32, 568, 4},
+            {6144, 32, 568, 4},
+            {8192, 32, 568, 4},
+        };
         config.supported = true;
-        if (num_tokens <= 1) {
-            config.gemm1_mode = 58;
-            config.gemm2_mode = 16;
-        } else if (num_tokens <= 7) {
-            config.gemm1_mode = 29;
-            config.gemm2_mode = 9;
-        } else if (num_tokens <= 16) {
-            config.gemm1_mode = 29;
-            config.gemm2_mode = 4;
-        } else if (num_tokens <= 75) {
-            config.gemm1_mode = 29;
-            config.gemm2_mode = 12;
-        } else {
-            config.gemm1_mode = 37;
-            config.gemm2_mode = 54;
-        }
+        config.gemm1 = select_marlin_gemm_config(num_tokens, gemm1_configs);
+        config.gemm2 = select_marlin_gemm_config(num_tokens, gemm2_configs);
     }
     return config;
 }
@@ -124,7 +161,7 @@ FusedExpertsShape infer_fused_experts_shape(const Tensor &hidden_states,
         throw std::runtime_error("deepseek_v4_fused_experts_impl_int8_marlin_ only supports DeepSeek-V4 Marlin shapes hidden=4096/topk=6/local_intermediate=256 or hidden=7168/topk=8/local_intermediate=256.");
     }
 
-    const int block_size = shape.config.block_size;
+    const int block_size = shape.config.gemm1.block_size_m;
     shape.max_num_tokens_padded = shape.flat_topk + shape.num_experts * static_cast<size_t>(block_size - 1);
     shape.max_num_tokens_padded = ((shape.max_num_tokens_padded + static_cast<size_t>(block_size - 1)) / static_cast<size_t>(block_size)) * static_cast<size_t>(block_size);
     if (shape.flat_topk < shape.num_experts) {
@@ -220,7 +257,7 @@ FusedExpertsWorkspace make_workspace(const Tensor &hidden_states,
                                      const Tensor &topk_ids,
                                      int64_t global_num_experts) {
     const auto shape = infer_fused_experts_shape(hidden_states, w1, topk_ids, global_num_experts);
-    const int block_size = shape.config.block_size;
+    const int block_size = shape.config.gemm1.block_size_m;
 
     return FusedExpertsWorkspace(
         Tensor::empty({shape.max_num_tokens_padded}, DataType::I32, hidden_states->device()),
@@ -254,7 +291,7 @@ void deepseek_v4_fused_experts_impl_int8_marlin_impl_(Tensor output,
     }
     check_input_shapes(output, hidden_states, w1, topk_weights, topk_ids, w1_scale, w2_scale, shared_output);
     const auto shape = infer_fused_experts_shape(hidden_states, w1, topk_ids, global_num_experts);
-    const int block_size = shape.config.block_size;
+    const int block_size = shape.config.gemm1.block_size_m;
 
     // Prepare token/expert alignment.
     auto sorted_token_ids = workspace ? workspace->sorted_token_ids : Tensor::empty({shape.max_num_tokens_padded}, DataType::I32, hidden_states->device());
@@ -287,8 +324,8 @@ void deepseek_v4_fused_experts_impl_int8_marlin_impl_(Tensor output,
         expert_ids,
         num_tokens_post_pad,
         static_cast<int>(shape.top_k),
-        shape.config.gemm1_mode,
-        shape.config.delta);
+        shape.config.gemm1.mode,
+        shape.config.gemm1.delta);
 
     // Activation and dynamic quantization.
     auto q_activated = workspace ? workspace->q_activated : Tensor::empty({shape.flat_topk, shape.intermediate_size}, DataType::I8, hidden_states->device());
@@ -315,8 +352,8 @@ void deepseek_v4_fused_experts_impl_int8_marlin_impl_(Tensor output,
         expert_ids,
         num_tokens_post_pad,
         1,
-        shape.config.gemm2_mode,
-        shape.config.delta);
+        shape.config.gemm2.mode,
+        shape.config.gemm2.delta);
 
     // Reduce top-k expert outputs and optionally add shared output.
     Tensor target_output = inplace ? hidden_states : output;

@@ -139,7 +139,6 @@ from infinicore.ops.deepseek_v4_deep_gemm import deepseek_v4_deep_gemm_low_laten
 from infinicore.ops.deepseek_v4_dynamic_scaled_int8_quant import deepseek_v4_dynamic_scaled_int8_quant_
 from infinicore.ops.deepseek_v4_fast_topk import deepseek_v4_fast_topk_, deepseek_v4_fast_topk_transform_fused_, deepseek_v4_fast_topk_transform_ragged_fused_
 from infinicore.ops.deepseek_v4_flashmla_cache import deepseek_v4_flashmla_cache_indexer_, deepseek_v4_fused_store_flashmla_cache_, deepseek_v4_indexer_rotate_, deepseek_v4_store_flashmla_raw_cache_, deepseek_v4_store_indexer_raw_cache_
-from infinicore.ops.deepseek_v4_fused_experts_impl_int8_marlin import deepseek_v4_fused_experts_impl_int8_marlin_, deepseek_v4_python_fused_experts_impl_int8_marlin_
 from infinicore.ops.deepseek_v4_flashmla_cuda import (
     deepseek_v4_dense_decode_fwd,
     deepseek_v4_dense_decode_fwd_kvfp8,
@@ -363,8 +362,6 @@ __all__ = [
     "deepseek_v4_fast_topk_transform_ragged_fused_",
     "deepseek_v4_flashmla_cache_indexer_",
     "deepseek_v4_indexer_rotate_",
-    "deepseek_v4_fused_experts_impl_int8_marlin_",
-    "deepseek_v4_python_fused_experts_impl_int8_marlin_",
     "deepseek_v4_dense_decode_fwd",
     "deepseek_v4_dense_decode_fwd_kvfp8",
     "deepseek_v4_dense_decode_fwd_qkvfp8",

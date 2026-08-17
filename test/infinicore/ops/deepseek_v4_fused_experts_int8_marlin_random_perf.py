@@ -7,7 +7,7 @@ constructs the same Marlin packed layout used by InfiniLM, and compares:
   * torch.ops.sglang.fused_experts_impl_int8_marlin, inplace=True
   * torch.ops.sglang.fused_experts_impl_int8_marlin, inplace=False
   * torch.ops.sglang.fused_experts_impl_int8_marlin, inplace=False + copy_
-  * infinicore.deepseek_v4_fused_experts_impl_int8_marlin_
+  * _infinicore.deepseek_v4_fused_experts_impl_int8_marlin_
 
 The precision check compares InfiniCore output against SGLang inplace=True.
 
@@ -33,6 +33,7 @@ DEFAULT_INFINICORE_REPO = "/workspace_codex/InfiniCore"
 DEFAULT_NUM_EXPERTS = 256
 DEFAULT_HIDDEN = 4096
 DEFAULT_INTERMEDIATE = 2048
+DEFAULT_TOKENS = "1,2,4,8,16,32,64,128,256,512,1024,2048,4096"
 
 
 def _prepend(path: str | None) -> None:
@@ -254,7 +255,7 @@ def _sglang_call(
     )
 
 
-def _infinicore_call(
+def _prepare_infinicore_args(
     output: torch.Tensor,
     hidden_states: torch.Tensor,
     w13_marlin: torch.Tensor,
@@ -263,14 +264,11 @@ def _infinicore_call(
     topk_ids: torch.Tensor,
     w13_scale: torch.Tensor,
     w2_scale: torch.Tensor,
-    global_num_experts: int,
-    routed_scaling_factor: float,
-    inplace: bool = False,
     shared_output: torch.Tensor | None = None,
-) -> torch.Tensor:
+):
     import infinicore
 
-    return infinicore.deepseek_v4_fused_experts_impl_int8_marlin_(
+    tensors = [
         infinicore.from_torch(output),
         infinicore.from_torch(hidden_states),
         infinicore.from_torch(w13_marlin),
@@ -279,10 +277,37 @@ def _infinicore_call(
         infinicore.from_torch(topk_ids),
         infinicore.from_torch(w13_scale),
         infinicore.from_torch(w2_scale),
+    ]
+    shared_underlying = None
+    if shared_output is not None:
+        shared_tensor = infinicore.from_torch(shared_output)
+        tensors.append(shared_tensor)
+        shared_underlying = shared_tensor._underlying
+    return [tensor._underlying for tensor in tensors[:8]], shared_underlying, tensors
+
+
+def _call_infinicore_raw(
+    raw_args: list,
+    shared_underlying,
+    global_num_experts: int,
+    routed_scaling_factor: float,
+    inplace: bool,
+) -> None:
+    from infinicore.lib import _infinicore
+
+    _infinicore.deepseek_v4_fused_experts_impl_int8_marlin_(
+        raw_args[0],
+        raw_args[1],
+        raw_args[2],
+        raw_args[3],
+        raw_args[4],
+        raw_args[5],
+        raw_args[6],
+        raw_args[7],
         global_num_experts,
         routed_scaling_factor,
         inplace,
-        infinicore.from_torch(shared_output) if shared_output is not None else None,
+        shared_underlying,
     )
 
 
@@ -300,40 +325,25 @@ def _make_infinicore_raw_call(
     inplace: bool = False,
     shared_output: torch.Tensor | None = None,
 ):
-    import infinicore
-    from infinicore.lib import _infinicore
-
-    keepalive = [
-        infinicore.from_torch(output),
-        infinicore.from_torch(hidden_states),
-        infinicore.from_torch(w13_marlin),
-        infinicore.from_torch(w2_marlin),
-        infinicore.from_torch(topk_weights),
-        infinicore.from_torch(topk_ids),
-        infinicore.from_torch(w13_scale),
-        infinicore.from_torch(w2_scale),
-    ]
-    shared_underlying = None
-    if shared_output is not None:
-        shared_tensor = infinicore.from_torch(shared_output)
-        keepalive.append(shared_tensor)
-        shared_underlying = shared_tensor._underlying
-    raw_args = [item._underlying for item in keepalive]
+    raw_args, shared_underlying, keepalive = _prepare_infinicore_args(
+        output,
+        hidden_states,
+        w13_marlin,
+        w2_marlin,
+        topk_weights,
+        topk_ids,
+        w13_scale,
+        w2_scale,
+        shared_output,
+    )
 
     def call():
-        _infinicore.deepseek_v4_fused_experts_impl_int8_marlin_(
-            raw_args[0],
-            raw_args[1],
-            raw_args[2],
-            raw_args[3],
-            raw_args[4],
-            raw_args[5],
-            raw_args[6],
-            raw_args[7],
+        _call_infinicore_raw(
+            raw_args,
+            shared_underlying,
             global_num_experts,
             routed_scaling_factor,
             inplace,
-            shared_underlying,
         )
         return output
 
@@ -369,6 +379,15 @@ def _finite_text(name: str, tensor: torch.Tensor) -> str:
     return f"{name}: finite={finite.sum().item()}/{tensor.numel()}"
 
 
+def _parse_tokens(value: str) -> list[int]:
+    tokens = [int(item.strip()) for item in value.split(",") if item.strip()]
+    if not tokens:
+        raise ValueError("tokens must contain at least one integer")
+    if any(token <= 0 for token in tokens):
+        raise ValueError(f"tokens must be positive, got {tokens}")
+    return tokens
+
+
 def _make_inputs(tokens: int, hidden: int, topk: int, experts: int, device: str, dtype: torch.dtype):
     hidden_states = torch.randn(tokens, hidden, device=device, dtype=torch.bfloat16)
     topk_weights = torch.rand(tokens, topk, device=device, dtype=torch.float32)
@@ -389,7 +408,7 @@ def main() -> None:
     parser.add_argument("--topk", type=int, default=6)
     parser.add_argument("--tp-size", type=int, default=8)
     parser.add_argument("--tp-rank", type=int, default=0)
-    parser.add_argument("--tokens", default="1,4,16,64,256")
+    parser.add_argument("--tokens", default=DEFAULT_TOKENS)
     parser.add_argument("--iters", type=int, default=40)
     parser.add_argument("--warmup", type=int, default=1)
     parser.add_argument("--device", default="cuda")
@@ -438,7 +457,7 @@ def main() -> None:
     print(f"  w2_scale:   {tuple(w2_scale.shape)} {w2_scale.dtype}")
     print()
 
-    for tokens in [int(x.strip()) for x in args.tokens.split(",") if x.strip()]:
+    for tokens in _parse_tokens(args.tokens):
         hidden_states, topk_weights, topk_ids = _make_inputs(
             tokens, args.hidden, args.topk, num_experts, args.device, topk_dtype
         )
@@ -468,7 +487,7 @@ def main() -> None:
             args.routed_scaling_factor,
         )
         inf_out = torch.empty_like(hidden_states)
-        _infinicore_call(
+        _make_infinicore_raw_call(
             inf_out,
             hidden_states.clone(),
             w13_marlin,
@@ -480,9 +499,9 @@ def main() -> None:
             num_experts,
             args.routed_scaling_factor,
             False,
-        )
+        )()
         inf_inplace_out = hidden_states.clone()
-        _infinicore_call(
+        _make_infinicore_raw_call(
             inf_inplace_out,
             inf_inplace_out,
             w13_marlin,
@@ -494,10 +513,10 @@ def main() -> None:
             num_experts,
             args.routed_scaling_factor,
             True,
-        )
+        )()
         shared_output = torch.randn_like(hidden_states)
         inf_shared_out = torch.empty_like(hidden_states)
-        _infinicore_call(
+        _make_infinicore_raw_call(
             inf_shared_out,
             hidden_states.clone(),
             w13_marlin,
@@ -510,7 +529,7 @@ def main() -> None:
             args.routed_scaling_factor,
             False,
             shared_output,
-        )
+        )()
         expected_shared_out = inf_out + shared_output
         _sync()
 
@@ -562,9 +581,6 @@ def main() -> None:
         inplace_input = hidden_states.clone()
         false_input = hidden_states.clone()
         false_copy_dst = torch.empty_like(hidden_states)
-        inf_input = hidden_states.clone()
-        inf_output = torch.empty_like(hidden_states)
-        inf_inplace_input = hidden_states.clone()
         inf_raw_input = hidden_states.clone()
         inf_raw_output = torch.empty_like(hidden_states)
         inf_raw_inplace_input = hidden_states.clone()
@@ -647,42 +663,6 @@ def main() -> None:
             return false_copy_dst
 
         t_false_copy = _bench("SGLang inplace=False+copy", _false_copy, args.warmup, args.iters)
-        t_inf = _bench(
-            "InfiniCore op",
-            lambda: _infinicore_call(
-                inf_output,
-                inf_input,
-                w13_marlin,
-                w2_marlin,
-                topk_weights,
-                topk_ids,
-                w13_scale,
-                w2_scale,
-                num_experts,
-                args.routed_scaling_factor,
-                False,
-            ),
-            args.warmup,
-            args.iters,
-        )
-        t_inf_inplace = _bench(
-            "InfiniCore op inplace=True",
-            lambda: _infinicore_call(
-                inf_inplace_input,
-                inf_inplace_input,
-                w13_marlin,
-                w2_marlin,
-                topk_weights,
-                topk_ids,
-                w13_scale,
-                w2_scale,
-                num_experts,
-                args.routed_scaling_factor,
-                True,
-            ),
-            args.warmup,
-            args.iters,
-        )
         t_inf_raw = _bench(
             "InfiniCore raw prewrapped",
             inf_raw_call,
@@ -697,15 +677,10 @@ def main() -> None:
         )
 
         print("- 比值")
-        print(f"  SGLang false / inplace:          {t_false / t_inplace:.4f}x")
-        print(f"  SGLang false+copy / inplace:     {t_false_copy / t_inplace:.4f}x")
-        print(f"  InfiniCore / SGLang inplace:     {t_inf / t_inplace:.4f}x")
-        print(f"  InfiniCore / SGLang false+copy:  {t_inf / t_false_copy:.4f}x")
-        print(f"  InfiniCore inplace / SGLang:     {t_inf_inplace / t_inplace:.4f}x")
-        print(f"  InfiniCore raw / SGLang inplace: {t_inf_raw / t_inplace:.4f}x")
-        print(f"  InfiniCore raw inplace / SGLang: {t_inf_raw_inplace / t_inplace:.4f}x")
-        print(f"  InfiniCore py / raw:             {t_inf / t_inf_raw:.4f}x")
-        print(f"  InfiniCore py inplace / raw:     {t_inf_inplace / t_inf_raw_inplace:.4f}x")
+        print(f"  SGLang inplace / InfiniCore raw:       {t_inplace / t_inf_raw:.4f}x")
+        print(f"  SGLang false / InfiniCore raw:         {t_false / t_inf_raw:.4f}x")
+        print(f"  SGLang false+copy / InfiniCore raw:    {t_false_copy / t_inf_raw:.4f}x")
+        print(f"  SGLang inplace / InfiniCore raw inplace: {t_inplace / t_inf_raw_inplace:.4f}x")
         print()
 
 

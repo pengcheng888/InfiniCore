@@ -125,20 +125,29 @@ def _call_fused_reference(
     w2_scale: torch.Tensor,
 ) -> torch.Tensor:
     import infinicore
+    from infinicore.lib import _infinicore
 
     tokens = hidden_states.shape[0]
     topk_weights = torch.zeros((tokens, 6), device=hidden_states.device, dtype=torch.float32)
     topk_weights[:, 0] = 1.0
     topk_ids = torch.zeros((tokens, 6), device=hidden_states.device, dtype=torch.int32)
-    infinicore.deepseek_v4_fused_experts_impl_int8_marlin_(
-        infinicore.from_torch(output),
-        infinicore.from_torch(hidden_states),
-        infinicore.from_torch(w1_marlin),
-        infinicore.from_torch(w2_marlin),
-        infinicore.from_torch(topk_weights),
-        infinicore.from_torch(topk_ids),
-        infinicore.from_torch(w1_scale),
-        infinicore.from_torch(w2_scale),
+    output_ic = infinicore.from_torch(output)
+    hidden_states_ic = infinicore.from_torch(hidden_states)
+    w1_marlin_ic = infinicore.from_torch(w1_marlin)
+    w2_marlin_ic = infinicore.from_torch(w2_marlin)
+    topk_weights_ic = infinicore.from_torch(topk_weights)
+    topk_ids_ic = infinicore.from_torch(topk_ids)
+    w1_scale_ic = infinicore.from_torch(w1_scale)
+    w2_scale_ic = infinicore.from_torch(w2_scale)
+    _infinicore.deepseek_v4_fused_experts_impl_int8_marlin_(
+        output_ic._underlying,
+        hidden_states_ic._underlying,
+        w1_marlin_ic._underlying,
+        w2_marlin_ic._underlying,
+        topk_weights_ic._underlying,
+        topk_ids_ic._underlying,
+        w1_scale_ic._underlying,
+        w2_scale_ic._underlying,
         1,
         1.0,
         False,
