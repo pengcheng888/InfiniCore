@@ -80,10 +80,15 @@ MarlinGemmConfig select_marlin_gemm_config(size_t num_tokens, const MarlinGemmCo
     return configs[N - 1];
 }
 
+MarlinGemmConfig disable_asm_marlin_config(MarlinGemmConfig config, const MarlinGemmConfig &fallback) {
+    return config.mode >= 1000 ? fallback : config;
+}
+
 MarlinConfig select_deepseek_v4_marlin_config(size_t num_tokens,
                                               size_t hidden_size,
                                               size_t intermediate_size,
-                                              size_t top_k) {
+                                              size_t top_k,
+                                              bool graph_safe_config) {
     MarlinConfig config;
     if (hidden_size == 7168 && intermediate_size == 256 && top_k == 8) {
         config.supported = true;
@@ -140,6 +145,10 @@ MarlinConfig select_deepseek_v4_marlin_config(size_t num_tokens,
         config.supported = true;
         config.gemm1 = select_marlin_gemm_config(num_tokens, gemm1_configs);
         config.gemm2 = select_marlin_gemm_config(num_tokens, gemm2_configs);
+        if (graph_safe_config) {
+            config.gemm1 = disable_asm_marlin_config(config.gemm1, {0, 16, 37, 1});
+            config.gemm2 = disable_asm_marlin_config(config.gemm2, {0, 16, 54, 1});
+        }
     }
     return config;
 }
@@ -147,7 +156,8 @@ MarlinConfig select_deepseek_v4_marlin_config(size_t num_tokens,
 FusedExpertsShape infer_fused_experts_shape(const Tensor &hidden_states,
                                             const Tensor &w1,
                                             const Tensor &topk_ids,
-                                            int64_t global_num_experts) {
+                                            int64_t global_num_experts,
+                                            bool graph_safe_config = false) {
     FusedExpertsShape shape;
     shape.num_tokens = hidden_states->size(0);
     shape.hidden_size = hidden_states->size(1);
@@ -156,7 +166,12 @@ FusedExpertsShape infer_fused_experts_shape(const Tensor &hidden_states,
     shape.intermediate_size = w1->size(2) / 128;
     shape.gate_up_size = shape.intermediate_size * 2;
     shape.flat_topk = shape.num_tokens * shape.top_k;
-    shape.config = select_deepseek_v4_marlin_config(shape.num_tokens, shape.hidden_size, shape.intermediate_size, shape.top_k);
+    shape.config = select_deepseek_v4_marlin_config(
+        shape.num_tokens,
+        shape.hidden_size,
+        shape.intermediate_size,
+        shape.top_k,
+        graph_safe_config);
     if (!shape.config.supported) {
         throw std::runtime_error("deepseek_v4_fused_experts_impl_int8_marlin_ only supports DeepSeek-V4 Marlin shapes hidden=4096/topk=6/local_intermediate=256 or hidden=7168/topk=8/local_intermediate=256.");
     }
@@ -256,7 +271,7 @@ FusedExpertsWorkspace make_workspace(const Tensor &hidden_states,
                                      const Tensor &w1,
                                      const Tensor &topk_ids,
                                      int64_t global_num_experts) {
-    const auto shape = infer_fused_experts_shape(hidden_states, w1, topk_ids, global_num_experts);
+    const auto shape = infer_fused_experts_shape(hidden_states, w1, topk_ids, global_num_experts, true);
     const int block_size = shape.config.gemm1.block_size_m;
 
     return FusedExpertsWorkspace(
@@ -290,7 +305,7 @@ void deepseek_v4_fused_experts_impl_int8_marlin_impl_(Tensor output,
         guard_device(*shared_output, "deepseek_v4_fused_experts_impl_int8_marlin_");
     }
     check_input_shapes(output, hidden_states, w1, topk_weights, topk_ids, w1_scale, w2_scale, shared_output);
-    const auto shape = infer_fused_experts_shape(hidden_states, w1, topk_ids, global_num_experts);
+    const auto shape = infer_fused_experts_shape(hidden_states, w1, topk_ids, global_num_experts, workspace != nullptr);
     const int block_size = shape.config.gemm1.block_size_m;
 
     // Prepare token/expert alignment.
