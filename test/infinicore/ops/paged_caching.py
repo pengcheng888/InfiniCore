@@ -18,7 +18,9 @@ import infinicore
 # Operator-specific configuration
 # ==============================================================================
 
-# Test cases format: (num_seqs, max_seq_len, num_kv_heads, head_size, block_size, permute_dim_1_2[, value_size])
+# Test cases format: (num_seqs, max_seq_len, num_kv_heads, head_size,
+# block_size, permute_dim_1_2[, value_size[, value_cache_size
+# [, value_head_stride]]])
 _TEST_CASES_DATA = [
     (1, 128, 8, 128, 16, False),
     (1, 128, 8, 128, 16, True),
@@ -31,6 +33,10 @@ _TEST_CASES_DATA = [
     # New DeepSeek MLA wrapper case: verifies cache writes when key and
     # value head sizes differ.
     (1, 32, 1, 576, 16, False, 512),
+    # Kimi K3 MLA case: V is narrowed from a fused [K_nope, V] tensor, so
+    # consecutive V heads are separated by the fused projection width. Its
+    # 128 real values are copied into a cache padded to the 192-wide Q/K head.
+    (1, 32, 4, 192, 16, True, 128, 192, 256),
 ]
 
 # Tolerance configuration
@@ -78,10 +84,10 @@ def ref_paged_caching(
 
         if permute_dim_1_2:
             k_cache_ref[block_idx, block_offset, :, :] = key_token
-            v_cache_ref[block_idx, block_offset, :, :] = value_token
+            v_cache_ref[block_idx, block_offset, :, : value.shape[-1]] = value_token
         else:
             k_cache_ref[block_idx, :, block_offset, :] = key_token
-            v_cache_ref[block_idx, :, block_offset, :] = value_token
+            v_cache_ref[block_idx, :, block_offset, : value.shape[-1]] = value_token
 
     return k_cache_ref, v_cache_ref
 
@@ -103,6 +109,32 @@ def parse_test_cases():
                 permute_dim_1_2,
             ) = case
             value_size = head_size
+            value_cache_size = value_size
+            value_head_stride = value_size
+        elif len(case) == 7:
+            (
+                num_seqs,
+                max_seq_len,
+                num_kv_heads,
+                head_size,
+                block_size,
+                permute_dim_1_2,
+                value_size,
+            ) = case
+            value_cache_size = value_size
+            value_head_stride = value_size
+        elif len(case) == 8:
+            (
+                num_seqs,
+                max_seq_len,
+                num_kv_heads,
+                head_size,
+                block_size,
+                permute_dim_1_2,
+                value_size,
+                value_cache_size,
+            ) = case
+            value_head_stride = value_size
         else:
             (
                 num_seqs,
@@ -112,6 +144,8 @@ def parse_test_cases():
                 block_size,
                 permute_dim_1_2,
                 value_size,
+                value_cache_size,
+                value_head_stride,
             ) = case
         num_blocks = 4096  # A reasonably large cache pool for testing
 
@@ -131,9 +165,9 @@ def parse_test_cases():
             current_slot += length.item()
 
         # Ensure we don't exceed the total number of slots in the cache
-        assert (
-            current_slot <= num_blocks * block_size
-        ), "Not enough blocks in the cache pool for this test case"
+        assert current_slot <= num_blocks * block_size, (
+            "Not enough blocks in the cache pool for this test case"
+        )
 
         slot_mapping = torch.tensor(slot_mapping_list, dtype=torch.int64)
 
@@ -143,10 +177,10 @@ def parse_test_cases():
         k_shape = (ntok, num_kv_heads, head_size)
         v_shape = (ntok, num_kv_heads, value_size)
         k_cache_shape = (num_blocks, num_kv_heads, block_size, head_size)
-        v_cache_shape = (num_blocks, num_kv_heads, block_size, value_size)
+        v_cache_shape = (num_blocks, num_kv_heads, block_size, value_cache_size)
         if permute_dim_1_2:
             k_cache_shape = (num_blocks, block_size, num_kv_heads, head_size)
-            v_cache_shape = (num_blocks, block_size, num_kv_heads, value_size)
+            v_cache_shape = (num_blocks, block_size, num_kv_heads, value_cache_size)
 
         # Generate test cases for all data types
         for dtype in _TENSOR_DTYPES:
@@ -154,7 +188,12 @@ def parse_test_cases():
 
             # Create typed tensor specs
             k_spec = TensorSpec.from_tensor(k_shape, None, dtype)
-            v_spec = TensorSpec.from_tensor(v_shape, None, dtype)
+            v_strides = (
+                num_kv_heads * value_head_stride,
+                value_head_stride,
+                1,
+            )
+            v_spec = TensorSpec.from_tensor(v_shape, v_strides, dtype)
             k_cache_spec = TensorSpec.from_tensor(
                 k_cache_shape, None, dtype, init_mode=TensorInitializer.ZEROS
             )
@@ -168,7 +207,11 @@ def parse_test_cases():
                 dtype=infinicore.int64,
             )
 
-            for comparison_target in [0, 1] if value_size != head_size else [0]:
+            for comparison_target in (
+                [0, 1]
+                if value_size != head_size or value_cache_size != head_size
+                else [0]
+            ):
                 test_cases.append(
                     TestCase(
                         inputs=[
