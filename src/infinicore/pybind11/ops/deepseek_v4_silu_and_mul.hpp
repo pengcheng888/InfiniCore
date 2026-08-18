@@ -19,6 +19,12 @@ inline void bind_deepseek_v4_silu_and_mul(py::module &m) {
           py::arg("out"),
           py::arg("input"),
           R"doc(Out-variant default DeepSeek-V4 SiLU-and-mul activation.)doc");
+
+    m.def("deepseek_v4_silu_and_mul_dispatcher_",
+          &op::deepseek_v4_silu_and_mul_dispatcher_,
+          py::arg("out"),
+          py::arg("input"),
+          R"doc(SGLang dispatcher DeepSeek-V4 SiLU-and-mul activation.)doc");
 }
 
 } // namespace infinicore::ops

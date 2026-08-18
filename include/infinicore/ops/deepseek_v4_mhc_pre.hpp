@@ -6,7 +6,9 @@
 
 namespace infinicore::op {
 
-INFINICORE_GRAPH_OP_CLASS(DeepseekV4MhcPreKernel,
+namespace deepseek_v4 {
+
+INFINICORE_GRAPH_OP_CLASS(DeepseekV4MhcPre,
                           Tensor,
                           Tensor,
                           Tensor,
@@ -18,6 +20,8 @@ INFINICORE_GRAPH_OP_CLASS(DeepseekV4MhcPreKernel,
                           double,
                           double,
                           int);
+
+} // namespace deepseek_v4
 
 void deepseek_v4_mhc_pre_(Tensor y,
                           Tensor post,
@@ -31,17 +35,17 @@ void deepseek_v4_mhc_pre_(Tensor y,
                           double hc_sinkhorn_eps,
                           int sinkhorn_repeat);
 
-void deepseek_v4_mhc_pre_naive_(Tensor y,
-                                Tensor post,
-                                Tensor comb,
-                                const Tensor &residual,
-                                const Tensor &fn,
-                                const Tensor &hc_scale,
-                                const Tensor &hc_base,
-                                double rms_eps,
-                                double hc_pre_eps,
-                                double hc_sinkhorn_eps,
-                                int sinkhorn_repeat);
+void deepseek_v4_mhc_pre_aten_(Tensor y,
+                               Tensor post,
+                               Tensor comb,
+                               const Tensor &residual,
+                               const Tensor &fn,
+                               const Tensor &hc_scale,
+                               const Tensor &hc_base,
+                               double rms_eps,
+                               double hc_pre_eps,
+                               double hc_sinkhorn_eps,
+                               int sinkhorn_repeat);
 
 void deepseek_v4_mhc_pre_kernel_(Tensor y,
                                  Tensor post,

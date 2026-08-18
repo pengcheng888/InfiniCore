@@ -10,7 +10,7 @@ void deepseek_v4_topk_(Tensor topk_weights,
                        const Tensor &correction_bias,
                        bool renormalize);
 
-void deepseek_v4_topk_naive_(Tensor topk_weights,
+void deepseek_v4_topk_aten_(Tensor topk_weights,
                               Tensor topk_indices,
                               const Tensor &router_logits,
                               const Tensor &correction_bias,

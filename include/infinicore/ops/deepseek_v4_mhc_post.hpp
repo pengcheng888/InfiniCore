@@ -6,12 +6,16 @@
 
 namespace infinicore::op {
 
-INFINICORE_GRAPH_OP_CLASS(DeepseekV4MhcPostKernel,
+namespace deepseek_v4 {
+
+INFINICORE_GRAPH_OP_CLASS(DeepseekV4MhcPost,
                           Tensor,
                           const Tensor &,
                           const Tensor &,
                           const Tensor &,
                           const Tensor &);
+
+} // namespace deepseek_v4
 
 void deepseek_v4_mhc_post_(Tensor y,
                            const Tensor &x,
@@ -19,11 +23,11 @@ void deepseek_v4_mhc_post_(Tensor y,
                            const Tensor &post,
                            const Tensor &comb);
 
-void deepseek_v4_mhc_post_naive_(Tensor y,
-                                 const Tensor &x,
-                                 const Tensor &residual,
-                                 const Tensor &post,
-                                 const Tensor &comb);
+void deepseek_v4_mhc_post_aten_(Tensor y,
+                                const Tensor &x,
+                                const Tensor &residual,
+                                const Tensor &post,
+                                const Tensor &comb);
 
 void deepseek_v4_mhc_post_kernel_(Tensor y,
                                   const Tensor &x,

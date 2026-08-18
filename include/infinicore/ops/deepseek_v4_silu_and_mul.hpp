@@ -6,7 +6,11 @@
 
 namespace infinicore::op {
 
-INFINICORE_GRAPH_OP_CLASS(DeepseekV4SiluAndMulKernel, Tensor, const Tensor &);
+namespace deepseek_v4 {
+
+INFINICORE_GRAPH_OP_CLASS(SiluAndMul, Tensor, const Tensor &);
+
+} // namespace deepseek_v4
 
 Tensor deepseek_v4_silu_and_mul(const Tensor &x);
 void deepseek_v4_silu_and_mul_(Tensor out, const Tensor &x);

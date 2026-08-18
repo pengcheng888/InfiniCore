@@ -22,12 +22,12 @@ inline void bind_deepseek_v4_linear_bf16_fp32(py::module &m) {
           py::arg("weight"),
           R"doc(Out-variant default DeepSeek-V4 BF16xBF16 -> FP32 linear path.)doc");
 
-    m.def("deepseek_v4_linear_bf16_fp32_naive",
-          &op::deepseek_v4_linear_bf16_fp32_naive,
+    m.def("deepseek_v4_linear_bf16_fp32_aten",
+          &op::deepseek_v4_linear_bf16_fp32_aten,
           py::arg("input"),
           py::arg("weight"));
-    m.def("deepseek_v4_linear_bf16_fp32_naive_",
-          &op::deepseek_v4_linear_bf16_fp32_naive_,
+    m.def("deepseek_v4_linear_bf16_fp32_aten_",
+          &op::deepseek_v4_linear_bf16_fp32_aten_,
           py::arg("out"),
           py::arg("input"),
           py::arg("weight"));
@@ -37,15 +37,6 @@ inline void bind_deepseek_v4_linear_bf16_fp32(py::module &m) {
           py::arg("weight"));
     m.def("deepseek_v4_linear_bf16_fp32_kernel_",
           &op::deepseek_v4_linear_bf16_fp32_kernel_,
-          py::arg("out"),
-          py::arg("input"),
-          py::arg("weight"));
-    m.def("deepseek_v4_linear_bf16_fp32_blas",
-          &op::deepseek_v4_linear_bf16_fp32_blas,
-          py::arg("input"),
-          py::arg("weight"));
-    m.def("deepseek_v4_linear_bf16_fp32_blas_",
-          &op::deepseek_v4_linear_bf16_fp32_blas_,
           py::arg("out"),
           py::arg("input"),
           py::arg("weight"));

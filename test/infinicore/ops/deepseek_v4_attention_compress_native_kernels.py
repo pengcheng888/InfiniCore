@@ -50,24 +50,6 @@ def _bench(label, fn, iters, warmup=20):
     return ms
 
 
-def check_rmsnorm():
-    torch.manual_seed(1)
-    eps = 1e-6
-    x = torch.randn((17, 512), device="cuda", dtype=torch.bfloat16)
-    ref_core = _infinicore.deepseek_v4_rmsnorm_self_naive(_as_core(x), eps)
-    got_core = _infinicore.deepseek_v4_rmsnorm_self_kernel(_as_core(x), eps)
-    ref = _copy_to_torch(ref_core, x.shape, x.dtype)
-    got = _copy_to_torch(got_core, x.shape, x.dtype)
-    _assert_close("rmsnorm_self return", got, ref)
-
-    ref_out = torch.empty_like(x)
-    got_out = torch.empty_like(x)
-    _infinicore.deepseek_v4_rmsnorm_self_naive_(_as_core(ref_out), _as_core(x), eps)
-    _infinicore.deepseek_v4_rmsnorm_self_kernel_(_as_core(got_out), _as_core(x), eps)
-    _sync()
-    _assert_close("rmsnorm_self out", got_out, ref_out)
-
-
 def check_compress_fused_norm_rope():
     torch.manual_seed(2)
     eps = 1e-6
@@ -147,21 +129,9 @@ def check_c128_stateful():
 
 
 def benchmark(iters):
-    print("\nATen naive vs native kernel average latency")
+    print("\nATen vs native kernel average latency")
 
     eps = 1e-6
-    x = torch.randn((1, 512), device="cuda", dtype=torch.bfloat16)
-    _bench(
-        "deepseek_v4_rmsnorm_self_naive",
-        lambda: _infinicore.deepseek_v4_rmsnorm_self_naive(_as_core(x), eps),
-        iters,
-    )
-    _bench(
-        "deepseek_v4_rmsnorm_self_kernel",
-        lambda: _infinicore.deepseek_v4_rmsnorm_self_kernel(_as_core(x), eps),
-        iters,
-    )
-
     fused = torch.randn((1, 512), device="cuda", dtype=torch.bfloat16)
     weight = torch.randn((512,), device="cuda", dtype=torch.bfloat16)
     freqs = _freqs(512)
@@ -233,7 +203,6 @@ def main():
     parser.add_argument("--iters", type=int, default=100)
     args = parser.parse_args()
 
-    check_rmsnorm()
     check_compress_fused_norm_rope()
     check_c4_stateful((8, 512))
     check_c4_stateful((4, 1024))

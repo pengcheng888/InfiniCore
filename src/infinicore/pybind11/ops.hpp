@@ -38,7 +38,6 @@
 #include "ops/chunk_gated_delta_rule.hpp"
 #include "ops/conv2d.hpp"
 #include "ops/cross_entropy.hpp"
-#include "ops/deepseek_v4_add_rms_norm.hpp"
 #include "ops/deepseek_v4_assign_extend_cache_locs.hpp"
 #include "ops/deepseek_v4_assign_req_to_token_pool.hpp"
 #include "ops/deepseek_v4_biased_topk.hpp"
@@ -75,10 +74,7 @@
 #include "ops/deepseek_v4_moe_align_block_size.hpp"
 #include "ops/deepseek_v4_moe_marlin_w8a8.hpp"
 #include "ops/deepseek_v4_moe_w8a8.hpp"
-#include "ops/deepseek_v4_moe_topk_sigmoid.hpp"
-#include "ops/deepseek_v4_moe_topk_softmax.hpp"
 #include "ops/deepseek_v4_paged_mqa_logits.hpp"
-#include "ops/deepseek_v4_rms_norm.hpp"
 #include "ops/deepseek_v4_rms_norm_dynamic_per_token_quant.hpp"
 #include "ops/deepseek_v4_rms_norm_per_block_quant.hpp"
 #include "ops/deepseek_v4_rmsnorm_self.hpp"
@@ -86,7 +82,6 @@
 #include "ops/deepseek_v4_sglang_jit.hpp"
 #include "ops/deepseek_v4_shared_experts_impl_int8_marlin.hpp"
 #include "ops/deepseek_v4_silu_and_mul.hpp"
-#include "ops/deepseek_v4_silu_and_mul_clamp.hpp"
 #include "ops/deepseek_v4_sparse_attn_indexer.hpp"
 #include "ops/deepseek_v4_static_scaled_int8_quant.hpp"
 #include "ops/deepseek_v4_topk_transform_512.hpp"
@@ -273,7 +268,6 @@ inline void bind(py::module &m) {
     bind_qwen3_rotary_embedding(m);
     bind_qwen3_silu_and_mul(m);
     bind_qwen3_store_kvcache(m);
-    bind_deepseek_v4_add_rms_norm(m);
     bind_deepseek_v4_assign_extend_cache_locs(m);
     bind_deepseek_v4_assign_req_to_token_pool(m);
     bind_deepseek_v4_biased_topk(m);
@@ -302,21 +296,17 @@ inline void bind(py::module &m) {
     bind_deepseek_v4_fused_rope(m);
     bind_deepseek_v4_hash_topk(m);
     bind_deepseek_v4_indexer_compress_norm_rope_store(m);
-    bind_deepseek_v4_silu_and_mul_clamp(m);
     bind_deepseek_v4_linear_bf16_fp32(m);
     bind_deepseek_v4_mhc(m);
     bind_deepseek_v4_moe_align_block_size(m);
     bind_deepseek_v4_moe_marlin_w8a8(m);
     bind_deepseek_v4_moe_w8a8(m);
-    bind_deepseek_v4_moe_topk_sigmoid(m);
-    bind_deepseek_v4_moe_topk_softmax(m);
     bind_deepseek_v4_paged_mqa_logits(m);
     bind_deepseek_v4_c4_act_quant_fused_scale(m);
     bind_deepseek_v4_c4_paged_mqa_logits(m);
     bind_deepseek_v4_c4_paged_mqa_with_topk_transform_512(m);
     bind_deepseek_v4_sparse_attn_indexer(m);
     bind_deepseek_v4_topk_transform_512(m);
-    bind_deepseek_v4_rms_norm(m);
     bind_deepseek_v4_rmsnorm_self(m);
     bind_deepseek_v4_rms_norm_dynamic_per_token_quant(m);
     bind_deepseek_v4_rms_norm_per_block_quant(m);

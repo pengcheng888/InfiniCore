@@ -39,20 +39,21 @@ inline void bind_deepseek_v4_embedding_and_hc_expand(py::module &m) {
           py::arg("hc_mult"),
           R"doc(Out-variant native kernel DeepSeek-V4 embedding lookup plus contiguous HC expansion.)doc");
 
-    m.def("deepseek_v4_embedding_and_hc_expand_naive",
-          &op::deepseek_v4_embedding_and_hc_expand_naive,
+    m.def("deepseek_v4_embedding_and_hc_expand_aten",
+          &op::deepseek_v4_embedding_and_hc_expand_aten,
           py::arg("input"),
           py::arg("weight"),
           py::arg("hc_mult"),
           R"doc(ATen reference DeepSeek-V4 embedding lookup plus contiguous HC expansion.)doc");
 
-    m.def("deepseek_v4_embedding_and_hc_expand_naive_",
-          &op::deepseek_v4_embedding_and_hc_expand_naive_,
+    m.def("deepseek_v4_embedding_and_hc_expand_aten_",
+          &op::deepseek_v4_embedding_and_hc_expand_aten_,
           py::arg("out"),
           py::arg("input"),
           py::arg("weight"),
           py::arg("hc_mult"),
           R"doc(Out-variant ATen reference DeepSeek-V4 embedding lookup plus contiguous HC expansion.)doc");
+
 }
 
 } // namespace infinicore::ops

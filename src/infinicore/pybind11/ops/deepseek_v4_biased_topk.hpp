@@ -16,8 +16,8 @@ inline void bind_deepseek_v4_biased_topk(py::module &m) {
           py::arg("router_logits"),
           py::arg("correction_bias"),
           py::arg("renormalize"));
-    m.def("deepseek_v4_topk_naive_",
-          &op::deepseek_v4_topk_naive_,
+    m.def("deepseek_v4_topk_aten_",
+          &op::deepseek_v4_topk_aten_,
           py::arg("topk_weights"),
           py::arg("topk_indices"),
           py::arg("router_logits"),

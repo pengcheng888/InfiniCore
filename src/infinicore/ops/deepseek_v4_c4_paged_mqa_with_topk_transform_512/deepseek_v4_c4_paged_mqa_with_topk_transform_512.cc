@@ -1,6 +1,6 @@
 #include "infinicore/ops/deepseek_v4_c4_paged_mqa_with_topk_transform_512.hpp"
 
-#include "../deepseek_v4_topk_transform_512/deepseek_v4_topk_transform_512_kernel.hpp"
+#include "../../deepseek_v4_ops/deepseek_v4_topk_transform_512/kernel/deepseek_v4_topk_transform_512_kernel.hpp"
 
 #include "infinicore/context/context.hpp"
 #include "infinicore/device.hpp"

@@ -16,7 +16,7 @@ void deepseek_v4_hash_topk_(Tensor topk_weights,
                             float routed_scaling_factor,
                             const std::string &scoring_func);
 
-void deepseek_v4_hash_topk_naive_(Tensor topk_weights,
+void deepseek_v4_hash_topk_aten_(Tensor topk_weights,
                                   Tensor topk_indices,
                                   const Tensor &router_logits,
                                   const Tensor &input_ids,

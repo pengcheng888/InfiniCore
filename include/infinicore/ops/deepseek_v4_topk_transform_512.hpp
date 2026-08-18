@@ -20,6 +20,12 @@ INFINICORE_GRAPH_OP_CLASS(DeepseekV4TopkTransform512SglangKernel,
                           Tensor,
                           int);
 
+void deepseek_v4_topk_transform_512_(const Tensor &scores,
+                                     const Tensor &seq_lens,
+                                     const Tensor &page_table,
+                                     Tensor out_page_indices,
+                                     int page_size);
+
 void deepseek_v4_topk_transform_512_kernel_(const Tensor &scores,
                                             const Tensor &seq_lens,
                                             const Tensor &page_table,

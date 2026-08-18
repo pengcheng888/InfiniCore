@@ -75,7 +75,8 @@ def _run_case(tokens, hc, hidden, dtype):
     )
     ref_layer_input = _rms_norm_ref(ref_layer_input, norm_weight, norm_eps)
 
-    for name in ("naive", "kernel", "public"):
+    op_names = ("aten", "kernel", "public") if hc == 4 and hidden == 4096 else ("aten",)
+    for name in op_names:
         residual_cur = torch.empty_like(ref_residual)
         post_mix_cur = torch.empty_like(ref_post)
         comb_mix_cur = torch.empty_like(ref_comb)

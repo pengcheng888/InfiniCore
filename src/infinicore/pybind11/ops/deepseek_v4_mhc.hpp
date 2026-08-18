@@ -42,8 +42,8 @@ inline void bind_deepseek_v4_mhc(py::module &m) {
           py::arg("rms_eps"),
           py::arg("hc_eps"));
 
-    m.def("deepseek_v4_mhc_pre_naive_",
-          &op::deepseek_v4_mhc_pre_naive_,
+    m.def("deepseek_v4_mhc_pre_aten_",
+          &op::deepseek_v4_mhc_pre_aten_,
           py::arg("y"),
           py::arg("post"),
           py::arg("comb"),
@@ -68,8 +68,8 @@ inline void bind_deepseek_v4_mhc(py::module &m) {
           py::arg("hc_pre_eps"),
           py::arg("hc_sinkhorn_eps"),
           py::arg("sinkhorn_repeat"));
-    m.def("deepseek_v4_mhc_post_naive_",
-          &op::deepseek_v4_mhc_post_naive_,
+    m.def("deepseek_v4_mhc_post_aten_",
+          &op::deepseek_v4_mhc_post_aten_,
           py::arg("y"),
           py::arg("x"),
           py::arg("residual"),
@@ -82,6 +82,15 @@ inline void bind_deepseek_v4_mhc(py::module &m) {
           py::arg("residual"),
           py::arg("post"),
           py::arg("comb"));
+    m.def("deepseek_v4_hc_head_aten_",
+          &op::deepseek_v4_hc_head_aten_,
+          py::arg("y"),
+          py::arg("x"),
+          py::arg("fn"),
+          py::arg("scale"),
+          py::arg("base"),
+          py::arg("rms_eps"),
+          py::arg("hc_eps"));
     m.def("deepseek_v4_hc_head_naive_",
           &op::deepseek_v4_hc_head_naive_,
           py::arg("y"),
@@ -120,8 +129,8 @@ inline void bind_deepseek_v4_mhc(py::module &m) {
           py::arg("sinkhorn_repeat"),
           py::arg("norm_weight"),
           py::arg("norm_eps"));
-    m.def("deepseek_v4_mhc_fused_post_pre_naive_",
-          &op::deepseek_v4_mhc_fused_post_pre_naive_,
+    m.def("deepseek_v4_mhc_fused_post_pre_aten_",
+          &op::deepseek_v4_mhc_fused_post_pre_aten_,
           py::arg("residual_cur"),
           py::arg("post_mix_cur"),
           py::arg("comb_mix_cur"),
