@@ -38,6 +38,8 @@ __device__ void pagedCachingKernel(
     // ----- Stride Information -----
     const ptrdiff_t k_src_stride,         // Stride between tokens in the source K tensor
     const ptrdiff_t v_src_stride,         // Stride between tokens in the source V tensor
+    const ptrdiff_t k_src_head_stride,    // Stride between heads in the source K tensor
+    const ptrdiff_t v_src_head_stride,    // Stride between heads in the source V tensor
     const ptrdiff_t k_cache_block_stride, // Stride between blocks in the K cache pool
     const ptrdiff_t v_cache_block_stride, // Stride between blocks in the V cache pool
     const ptrdiff_t k_cache_head_stride,  // Stride between heads in the K cache pool
@@ -66,8 +68,8 @@ __device__ void pagedCachingKernel(
     const int64_t block_offset = slot_idx % block_size;
 
     // Calculate base pointers for source and destination for this specific token.
-    const Tdata *k_src_head_ptr = k_ptr + token_idx * k_src_stride + head_idx * head_size;
-    const Tdata *v_src_head_ptr = v_ptr + token_idx * v_src_stride + head_idx * v_head_size;
+    const Tdata *k_src_head_ptr = k_ptr + token_idx * k_src_stride + head_idx * k_src_head_stride;
+    const Tdata *v_src_head_ptr = v_ptr + token_idx * v_src_stride + head_idx * v_src_head_stride;
 
     // Destination pointer calculation assumes a [num_blocks, block_size, num_heads, head_size] layout.
     // We point to the beginning of the memory region for this token's slot.

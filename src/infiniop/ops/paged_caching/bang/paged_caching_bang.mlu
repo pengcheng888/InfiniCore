@@ -17,9 +17,12 @@ __mlu_global__ void pagedCachingKernel(
     size_t num_tokens,
     size_t num_kv_heads,
     size_t head_size,
+    size_t v_head_size,
     size_t block_size,
     ptrdiff_t k_src_stride,
     ptrdiff_t v_src_stride,
+    ptrdiff_t k_src_head_stride,
+    ptrdiff_t v_src_head_stride,
     ptrdiff_t k_cache_block_stride,
     ptrdiff_t v_cache_block_stride,
     ptrdiff_t k_cache_head_stride,
@@ -41,8 +44,8 @@ __mlu_global__ void pagedCachingKernel(
         const int64_t physical_block = slot_idx / static_cast<int64_t>(block_size);
         const int64_t block_offset = slot_idx - physical_block * static_cast<int64_t>(block_size);
 
-        const Tdata *k_src = k + token_idx * k_src_stride + head_idx * head_size;
-        const Tdata *v_src = v + token_idx * v_src_stride + head_idx * head_size;
+        const Tdata *k_src = k + token_idx * k_src_stride + head_idx * k_src_head_stride;
+        const Tdata *v_src = v + token_idx * v_src_stride + head_idx * v_src_head_stride;
         Tdata *k_dst = k_cache + physical_block * k_cache_block_stride
                      + head_idx * k_cache_head_stride
                      + block_offset * k_cache_slot_stride;
@@ -53,9 +56,9 @@ __mlu_global__ void pagedCachingKernel(
         char *nram_base = reinterpret_cast<char *>(((reinterpret_cast<size_t>(paged_caching_nram_buffer) + ALIGN_SIZE - 1) / ALIGN_SIZE) * ALIGN_SIZE);
         Tdata *tmp = reinterpret_cast<Tdata *>(nram_base);
         __memcpy(tmp, k_src, head_size * sizeof(Tdata), GDRAM2NRAM);
-        __memcpy(tmp + head_size, v_src, head_size * sizeof(Tdata), GDRAM2NRAM);
+        __memcpy(tmp + head_size, v_src, v_head_size * sizeof(Tdata), GDRAM2NRAM);
         __memcpy(k_dst, tmp, head_size * sizeof(Tdata), NRAM2GDRAM);
-        __memcpy(v_dst, tmp + head_size, head_size * sizeof(Tdata), NRAM2GDRAM);
+        __memcpy(v_dst, tmp + head_size, v_head_size * sizeof(Tdata), NRAM2GDRAM);
     }
 }
 
@@ -85,9 +88,12 @@ infiniStatus_t launchPagedCaching(
         info.num_tokens,
         info.num_kv_heads,
         info.head_size,
+        info.v_head_size,
         info.block_size,
         info.k_src_stride,
         info.v_src_stride,
+        info.k_src_head_stride,
+        info.v_src_head_stride,
         info.k_cache_block_stride,
         info.v_cache_block_stride,
         info.k_cache_head_stride,

@@ -15,9 +15,12 @@ public:
         GM_ADDR slot_mapping,
         size_t num_kv_heads,
         size_t head_size,
+        size_t v_head_size,
         size_t block_size,
         ptrdiff_t k_src_stride,
         ptrdiff_t v_src_stride,
+        ptrdiff_t k_src_head_stride,
+        ptrdiff_t v_src_head_stride,
         ptrdiff_t k_cache_block_stride,
         ptrdiff_t v_cache_block_stride,
         ptrdiff_t k_cache_head_stride,
@@ -26,9 +29,12 @@ public:
         ptrdiff_t v_cache_slot_stride) {
         _num_kv_heads = num_kv_heads;
         _head_size = head_size;
+        _v_head_size = v_head_size;
         _block_size = block_size;
         _k_src_stride = k_src_stride;
         _v_src_stride = v_src_stride;
+        _k_src_head_stride = k_src_head_stride;
+        _v_src_head_stride = v_src_head_stride;
         _k_cache_block_stride = k_cache_block_stride;
         _v_cache_block_stride = v_cache_block_stride;
         _k_cache_head_stride = k_cache_head_stride;
@@ -57,9 +63,9 @@ public:
         const int64_t block_offset = slot_idx % static_cast<int64_t>(_block_size);
 
         const ptrdiff_t k_src_base = static_cast<ptrdiff_t>(token_idx) * _k_src_stride
-                                   + static_cast<ptrdiff_t>(head_idx * _head_size);
+                                   + static_cast<ptrdiff_t>(head_idx) * _k_src_head_stride;
         const ptrdiff_t v_src_base = static_cast<ptrdiff_t>(token_idx) * _v_src_stride
-                                   + static_cast<ptrdiff_t>(head_idx * _head_size);
+                                   + static_cast<ptrdiff_t>(head_idx) * _v_src_head_stride;
         const ptrdiff_t k_dst_base = static_cast<ptrdiff_t>(physical_block_idx) * _k_cache_block_stride
                                    + static_cast<ptrdiff_t>(head_idx) * _k_cache_head_stride
                                    + static_cast<ptrdiff_t>(block_offset) * _k_cache_slot_stride;
@@ -69,6 +75,8 @@ public:
 
         for (size_t d = 0; d < _head_size; ++d) {
             _k_cache_gm.SetValue(k_dst_base + static_cast<ptrdiff_t>(d), _k_gm.GetValue(k_src_base + static_cast<ptrdiff_t>(d)));
+        }
+        for (size_t d = 0; d < _v_head_size; ++d) {
             _v_cache_gm.SetValue(v_dst_base + static_cast<ptrdiff_t>(d), _v_gm.GetValue(v_src_base + static_cast<ptrdiff_t>(d)));
         }
     }
@@ -82,9 +90,12 @@ private:
 
     size_t _num_kv_heads;
     size_t _head_size;
+    size_t _v_head_size;
     size_t _block_size;
     ptrdiff_t _k_src_stride;
     ptrdiff_t _v_src_stride;
+    ptrdiff_t _k_src_head_stride;
+    ptrdiff_t _v_src_head_stride;
     ptrdiff_t _k_cache_block_stride;
     ptrdiff_t _v_cache_block_stride;
     ptrdiff_t _k_cache_head_stride;
@@ -97,14 +108,16 @@ private:
     extern "C" __global__ __aicore__ void KERNEL_NAME(                 \
         GM_ADDR k_cache, GM_ADDR v_cache, GM_ADDR k, GM_ADDR v,        \
         GM_ADDR slot_mapping, size_t num_kv_heads, size_t head_size,   \
-        size_t block_size, ptrdiff_t k_src_stride,                     \
-        ptrdiff_t v_src_stride, ptrdiff_t k_cache_block_stride,        \
+        size_t v_head_size, size_t block_size, ptrdiff_t k_src_stride, \
+        ptrdiff_t v_src_stride, ptrdiff_t k_src_head_stride,           \
+        ptrdiff_t v_src_head_stride, ptrdiff_t k_cache_block_stride,   \
         ptrdiff_t v_cache_block_stride, ptrdiff_t k_cache_head_stride, \
         ptrdiff_t v_cache_head_stride, ptrdiff_t k_cache_slot_stride,  \
         ptrdiff_t v_cache_slot_stride) {                               \
         PagedCachingKernel<TYPE> op;                                   \
         op.init(k_cache, v_cache, k, v, slot_mapping, num_kv_heads,    \
-                head_size, block_size, k_src_stride, v_src_stride,     \
+                head_size, v_head_size, block_size, k_src_stride,      \
+                v_src_stride, k_src_head_stride, v_src_head_stride,    \
                 k_cache_block_stride, v_cache_block_stride,            \
                 k_cache_head_stride, v_cache_head_stride,              \
                 k_cache_slot_stride, v_cache_slot_stride);             \
@@ -127,9 +140,12 @@ extern "C" infiniStatus_t paged_caching_kernel_launch(
     size_t num_tokens,
     size_t num_kv_heads,
     size_t head_size,
+    size_t v_head_size,
     size_t block_size,
     ptrdiff_t k_src_stride,
     ptrdiff_t v_src_stride,
+    ptrdiff_t k_src_head_stride,
+    ptrdiff_t v_src_head_stride,
     ptrdiff_t k_cache_block_stride,
     ptrdiff_t v_cache_block_stride,
     ptrdiff_t k_cache_head_stride,
@@ -147,7 +163,8 @@ extern "C" infiniStatus_t paged_caching_kernel_launch(
         KERNEL_NAME<<<block_dim, nullptr, stream>>>(                        \
             k_cache, v_cache, const_cast<void *>(k), const_cast<void *>(v), \
             const_cast<void *>(slot_mapping), num_kv_heads, head_size,      \
-            block_size, k_src_stride, v_src_stride,                         \
+            v_head_size, block_size, k_src_stride, v_src_stride,            \
+            k_src_head_stride, v_src_head_stride,                           \
             k_cache_block_stride, v_cache_block_stride,                     \
             k_cache_head_stride, v_cache_head_stride,                       \
             k_cache_slot_stride, v_cache_slot_stride);                      \

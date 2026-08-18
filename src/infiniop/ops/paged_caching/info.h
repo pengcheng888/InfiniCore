@@ -25,6 +25,8 @@ public:
     // --- Strides for Memory Layout ---
     ptrdiff_t k_src_stride;
     ptrdiff_t v_src_stride;
+    ptrdiff_t k_src_head_stride;
+    ptrdiff_t v_src_head_stride;
     ptrdiff_t k_cache_block_stride;
     ptrdiff_t v_cache_block_stride;
     ptrdiff_t k_cache_head_stride;
@@ -75,13 +77,17 @@ public:
         if (v_cache_shape[0] != k_cache_shape[0] || v_cache_shape[1] != num_kv_heads || v_cache_shape[2] != block_size) {
             return INFINI_STATUS_BAD_TENSOR_SHAPE;
         }
-        if (k_cache_shape[1] != num_kv_heads || k_cache_shape[3] != head_size || v_cache_shape[3] != v_head_size) {
+        // The V cache may be wider than the incoming V. This is used by models
+        // that pad V to the Q/K head width for the attention backend.
+        if (k_cache_shape[1] != num_kv_heads || k_cache_shape[3] != head_size || v_cache_shape[3] < v_head_size) {
             return INFINI_STATUS_BAD_TENSOR_SHAPE;
         }
 
         // --- Extract strides for memory access ---
         ptrdiff_t k_src_stride = k_desc->stride(0);
         ptrdiff_t v_src_stride = v_desc->stride(0);
+        ptrdiff_t k_src_head_stride = k_desc->stride(1);
+        ptrdiff_t v_src_head_stride = v_desc->stride(1);
         ptrdiff_t k_cache_block_stride = k_cache_desc->stride(0);
         ptrdiff_t v_cache_block_stride = v_cache_desc->stride(0);
         ptrdiff_t k_cache_head_stride = k_cache_desc->stride(1);
@@ -98,6 +104,8 @@ public:
             block_size,
             k_src_stride,
             v_src_stride,
+            k_src_head_stride,
+            v_src_head_stride,
             k_cache_block_stride,
             v_cache_block_stride,
             k_cache_head_stride,
