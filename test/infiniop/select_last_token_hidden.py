@@ -14,6 +14,7 @@ from libinfiniop import (
     infiniopHandle_t,
     infiniopOperatorDescriptor_t,
     infiniopTensorDescriptor_t,
+    profile_operation,
     test_operator,
 )
 
@@ -45,6 +46,10 @@ _TEST_CASES = [
     (4, 2048, 6144, (0, 512, 1024, 1536, 2048)),
 ]
 _TENSOR_DTYPES = [InfiniDtype.BF16, InfiniDtype.F16, InfiniDtype.F32]
+
+PROFILE = False
+NUM_PRERUN = 10
+NUM_ITERATIONS = 1000
 
 
 def test(handle, device, num_requests, total_tokens, hidden_size, offsets, dtype, sync):
@@ -87,15 +92,28 @@ def test(handle, device, num_requests, total_tokens, hidden_size, offsets, dtype
     hidden.destroy_desc()
     input_offsets.destroy_desc()
 
-    check_error(
-        LIBINFINIOP.infiniopSelectLastTokenHidden(
-            descriptor,
-            output.data(),
-            hidden.data(),
-            input_offsets.data(),
-            None,
+    def lib_select_last_token_hidden():
+        check_error(
+            LIBINFINIOP.infiniopSelectLastTokenHidden(
+                descriptor,
+                output.data(),
+                hidden.data(),
+                input_offsets.data(),
+                None,
+            )
         )
-    )
+
+    lib_select_last_token_hidden()
+
+    if PROFILE:
+        profile_operation(
+            "    lib",
+            lib_select_last_token_hidden,
+            device,
+            NUM_PRERUN,
+            NUM_ITERATIONS,
+        )
+
     if sync is not None:
         sync()
     assert torch.equal(output.actual_tensor(), output.torch_tensor())
@@ -104,6 +122,9 @@ def test(handle, device, num_requests, total_tokens, hidden_size, offsets, dtype
 
 if __name__ == "__main__":
     args = get_args()
+    PROFILE = args.profile
+    NUM_PRERUN = args.num_prerun
+    NUM_ITERATIONS = args.num_iterations
     for device in get_test_devices(args):
         test_operator(device, test, _TEST_CASES, _TENSOR_DTYPES)
     print("\033[92mTest passed!\033[0m")

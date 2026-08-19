@@ -14,6 +14,9 @@
 #ifdef ENABLE_MOORE_API
 #include "moore/select_last_token_hidden_moore.h"
 #endif
+#ifdef ENABLE_CAMBRICON_API
+#include "bang/select_last_token_hidden_bang.h"
+#endif
 
 __INFINI_C infiniStatus_t infiniopCreateSelectLastTokenHiddenDescriptor(
     infiniopHandle_t handle,
@@ -53,6 +56,9 @@ __INFINI_C infiniStatus_t infiniopCreateSelectLastTokenHiddenDescriptor(
 #endif
 #ifdef ENABLE_MOORE_API
         CREATE(INFINI_DEVICE_MOORE, moore);
+#endif
+#ifdef ENABLE_CAMBRICON_API
+        CREATE(INFINI_DEVICE_CAMBRICON, bang);
 #endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
@@ -98,6 +104,9 @@ __INFINI_C infiniStatus_t infiniopSelectLastTokenHidden(
 #ifdef ENABLE_MOORE_API
         CALCULATE(INFINI_DEVICE_MOORE, moore);
 #endif
+#ifdef ENABLE_CAMBRICON_API
+        CALCULATE(INFINI_DEVICE_CAMBRICON, bang);
+#endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
@@ -137,6 +146,9 @@ __INFINI_C infiniStatus_t infiniopDestroySelectLastTokenHiddenDescriptor(
 #endif
 #ifdef ENABLE_MOORE_API
         DESTROY(INFINI_DEVICE_MOORE, moore);
+#endif
+#ifdef ENABLE_CAMBRICON_API
+        DESTROY(INFINI_DEVICE_CAMBRICON, bang);
 #endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
