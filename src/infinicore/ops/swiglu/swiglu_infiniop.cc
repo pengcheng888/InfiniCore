@@ -1,4 +1,3 @@
-#include "swiglu_infiniop.hpp"
 #include "infinicore/ops/swiglu.hpp"
 
 #include "../infiniop_impl.hpp"
