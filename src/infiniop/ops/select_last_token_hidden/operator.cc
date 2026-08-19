@@ -17,6 +17,9 @@
 #ifdef ENABLE_CAMBRICON_API
 #include "bang/select_last_token_hidden_bang.h"
 #endif
+#ifdef ENABLE_ASCEND_API
+#include "ascend/select_last_token_hidden_ascend.h"
+#endif
 
 __INFINI_C infiniStatus_t infiniopCreateSelectLastTokenHiddenDescriptor(
     infiniopHandle_t handle,
@@ -59,6 +62,9 @@ __INFINI_C infiniStatus_t infiniopCreateSelectLastTokenHiddenDescriptor(
 #endif
 #ifdef ENABLE_CAMBRICON_API
         CREATE(INFINI_DEVICE_CAMBRICON, bang);
+#endif
+#ifdef ENABLE_ASCEND_API
+        CREATE(INFINI_DEVICE_ASCEND, ascend);
 #endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
@@ -107,6 +113,9 @@ __INFINI_C infiniStatus_t infiniopSelectLastTokenHidden(
 #ifdef ENABLE_CAMBRICON_API
         CALCULATE(INFINI_DEVICE_CAMBRICON, bang);
 #endif
+#ifdef ENABLE_ASCEND_API
+        CALCULATE(INFINI_DEVICE_ASCEND, ascend);
+#endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
@@ -149,6 +158,9 @@ __INFINI_C infiniStatus_t infiniopDestroySelectLastTokenHiddenDescriptor(
 #endif
 #ifdef ENABLE_CAMBRICON_API
         DESTROY(INFINI_DEVICE_CAMBRICON, bang);
+#endif
+#ifdef ENABLE_ASCEND_API
+        DESTROY(INFINI_DEVICE_ASCEND, ascend);
 #endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;

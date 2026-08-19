@@ -8,6 +8,8 @@
 
 namespace op::select_last_token_hidden::cpu {
 
+Descriptor::~Descriptor() {}
+
 infiniStatus_t Descriptor::create(
     infiniopHandle_t handle,
     Descriptor **desc_ptr,
@@ -42,6 +44,7 @@ infiniStatus_t Descriptor::create(
         num_requests,
         total_tokens,
         hidden_shape[2] * infiniSizeOf(hidden_dtype),
+        nullptr,
         handle->device,
         handle->device_id);
     return INFINI_STATUS_SUCCESS;

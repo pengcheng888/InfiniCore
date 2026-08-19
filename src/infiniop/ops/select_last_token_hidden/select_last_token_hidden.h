@@ -7,6 +7,8 @@
 #define DESCRIPTOR(NAMESPACE)                               \
     namespace op::select_last_token_hidden::NAMESPACE {     \
     class Descriptor final : public InfiniopDescriptor {    \
+        struct Opaque;                                      \
+        Opaque *_opaque;                                    \
         size_t _num_requests;                               \
         size_t _total_tokens;                               \
         size_t _row_bytes;                                  \
@@ -17,11 +19,13 @@
             size_t num_requests,                            \
             size_t total_tokens,                            \
             size_t row_bytes,                               \
+            Opaque *opaque,                                 \
             infiniDevice_t device_type,                     \
             int device_id,                                  \
             size_t kernel_dim_x = 1,                        \
             size_t kernel_dim_y = 1)                        \
             : InfiniopDescriptor{device_type, device_id},   \
+              _opaque(opaque),                              \
               _num_requests(num_requests),                  \
               _total_tokens(total_tokens),                  \
               _row_bytes(row_bytes),                        \
@@ -29,6 +33,8 @@
               _kernel_dim_y(kernel_dim_y) {}                \
                                                             \
     public:                                                 \
+        ~Descriptor();                                      \
+                                                            \
         static infiniStatus_t create(                       \
             infiniopHandle_t handle,                        \
             Descriptor **desc_ptr,                          \
