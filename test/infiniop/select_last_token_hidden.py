@@ -43,6 +43,7 @@ LIBINFINIOP.infiniopDestroySelectLastTokenHiddenDescriptor.argtypes = [
 _TEST_CASES = [
     (3, 17, 65, (0, 2, 8, 17)),
     (4, 25, 64, (0, 3, 11, 18, 25)),
+    (3, 10, 63, (0, 2, 6, 10)),
     (4, 2048, 6144, (0, 512, 1024, 1536, 2048)),
 ]
 _TENSOR_DTYPES = [InfiniDtype.BF16, InfiniDtype.F16, InfiniDtype.F32]
