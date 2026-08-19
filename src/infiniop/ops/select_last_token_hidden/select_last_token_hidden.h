@@ -10,17 +10,23 @@
         size_t _num_requests;                               \
         size_t _total_tokens;                               \
         size_t _row_bytes;                                  \
+        size_t _kernel_dim_x;                               \
+        size_t _kernel_dim_y;                               \
                                                             \
         Descriptor(                                         \
             size_t num_requests,                            \
             size_t total_tokens,                            \
             size_t row_bytes,                               \
             infiniDevice_t device_type,                     \
-            int device_id)                                  \
+            int device_id,                                  \
+            size_t kernel_dim_x = 1,                        \
+            size_t kernel_dim_y = 1)                        \
             : InfiniopDescriptor{device_type, device_id},   \
               _num_requests(num_requests),                  \
               _total_tokens(total_tokens),                  \
-              _row_bytes(row_bytes) {}                      \
+              _row_bytes(row_bytes),                        \
+              _kernel_dim_x(kernel_dim_x),                  \
+              _kernel_dim_y(kernel_dim_y) {}                \
                                                             \
     public:                                                 \
         static infiniStatus_t create(                       \
