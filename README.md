@@ -185,6 +185,14 @@ python scripts/install.py [XMAKE_CONFIG_FLAGS]
 
   ```
 
+##### 试验功能 -- 使用昇腾平台 Flash Attention 能力
+
+  ```shell
+  # 昇腾平台的 Flash Attention 能力依赖 ATen。
+  # 同时启用 InfiniCCL 通信库和 Graph 接口：
+  xmake f --ascend-npu=true --aten=y --flash-attn=y --ccl=y --graph=y -cv
+  ```
+
 ##### 试验功能 -- 使用寒武纪平台预编译 Flash Attention 能力
 
   ~~~shell
