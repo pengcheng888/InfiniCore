@@ -11,6 +11,9 @@
 #ifdef ENABLE_METAX_API
 #include "metax/select_last_token_hidden_metax.cuh"
 #endif
+#ifdef ENABLE_MOORE_API
+#include "moore/select_last_token_hidden_moore.h"
+#endif
 
 __INFINI_C infiniStatus_t infiniopCreateSelectLastTokenHiddenDescriptor(
     infiniopHandle_t handle,
@@ -47,6 +50,9 @@ __INFINI_C infiniStatus_t infiniopCreateSelectLastTokenHiddenDescriptor(
 #endif
 #ifdef ENABLE_METAX_API
         CREATE(INFINI_DEVICE_METAX, metax);
+#endif
+#ifdef ENABLE_MOORE_API
+        CREATE(INFINI_DEVICE_MOORE, moore);
 #endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
@@ -89,6 +95,9 @@ __INFINI_C infiniStatus_t infiniopSelectLastTokenHidden(
 #ifdef ENABLE_METAX_API
         CALCULATE(INFINI_DEVICE_METAX, metax);
 #endif
+#ifdef ENABLE_MOORE_API
+        CALCULATE(INFINI_DEVICE_MOORE, moore);
+#endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
@@ -125,6 +134,9 @@ __INFINI_C infiniStatus_t infiniopDestroySelectLastTokenHiddenDescriptor(
 #endif
 #ifdef ENABLE_METAX_API
         DESTROY(INFINI_DEVICE_METAX, metax);
+#endif
+#ifdef ENABLE_MOORE_API
+        DESTROY(INFINI_DEVICE_MOORE, moore);
 #endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
