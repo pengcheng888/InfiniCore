@@ -1,7 +1,5 @@
 #include "deepseek_v4_compress_fused_norm_rope_kernel.hpp"
 
-#include "../deepseek_v4_compress_common/deepseek_v4_compress_dtype.hpp"
-
 #include <cuda_bf16.h>
 #include <cuda_fp16.h>
 #include <cuda_runtime.h>
@@ -11,8 +9,11 @@
 namespace infinicore::op::deepseek_v4_compress_fused_norm_rope_kernel {
 namespace {
 
+constexpr int kDsv4BF16 = 0;
+constexpr int kDsv4F16 = 1;
+constexpr int kDsv4F32 = 2;
+
 __device__ __forceinline__ float load_scalar(const void *__restrict__ ptr, int64_t idx, int dtype) {
-    using namespace infinicore::op::deepseek_v4_compress_common;
     if (dtype == kDsv4BF16) {
         return __bfloat162float(reinterpret_cast<const __nv_bfloat16 *>(ptr)[idx]);
     }
@@ -23,7 +24,6 @@ __device__ __forceinline__ float load_scalar(const void *__restrict__ ptr, int64
 }
 
 __device__ __forceinline__ void store_scalar(void *__restrict__ ptr, int64_t idx, int dtype, float value) {
-    using namespace infinicore::op::deepseek_v4_compress_common;
     if (dtype == kDsv4BF16) {
         reinterpret_cast<__nv_bfloat16 *>(ptr)[idx] = __float2bfloat16(value);
     } else if (dtype == kDsv4F16) {

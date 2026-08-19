@@ -6,6 +6,8 @@
 
 namespace infinicore::op {
 
+namespace deepseek_v4 {
+
 INFINICORE_GRAPH_OP_CLASS(DeepseekV4C4CompressSglangStatefulKernel,
                           Tensor,
                           const Tensor &,
@@ -21,6 +23,8 @@ INFINICORE_GRAPH_OP_CLASS(DeepseekV4C128CompressSglangStatefulKernel,
                           Tensor,
                           const Tensor &,
                           const Tensor &);
+
+} // namespace deepseek_v4
 
 Tensor deepseek_v4_c4_compress_sglang_stateful_kernel(const Tensor &kv_score_input,
                                                       const Tensor &ape,

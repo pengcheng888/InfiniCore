@@ -6,6 +6,8 @@
 
 namespace infinicore::op {
 
+namespace deepseek_v4 {
+
 INFINICORE_GRAPH_OP_CLASS(DeepseekV4IndexerCompressNormRopeStoreKernel,
                           const Tensor &,
                           const Tensor &,
@@ -15,6 +17,8 @@ INFINICORE_GRAPH_OP_CLASS(DeepseekV4IndexerCompressNormRopeStoreKernel,
                           const Tensor &,
                           Tensor,
                           int);
+
+} // namespace deepseek_v4
 
 void deepseek_v4_indexer_compress_norm_rope_store_kernel_(const Tensor &kv,
                                                           const Tensor &norm_weight,

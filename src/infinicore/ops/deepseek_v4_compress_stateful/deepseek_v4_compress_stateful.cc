@@ -1,7 +1,6 @@
 #include "infinicore/ops/deepseek_v4_compress_stateful.hpp"
 
 #include "deepseek_v4_compress_stateful_kernel.hpp"
-#include "../deepseek_v4_compress_common/deepseek_v4_compress_dtype.hpp"
 
 #include "infinicore/context/context.hpp"
 #include "infinicore/device.hpp"
@@ -16,6 +15,9 @@ namespace infinicore::op {
 namespace {
 
 constexpr int64_t kDsv4FlashMlaQDim = 512;
+constexpr int kDsv4BF16 = 0;
+constexpr int kDsv4F16 = 1;
+constexpr int kDsv4F32 = 2;
 
 void check_hygon_or_nvidia_tensor(const Tensor &tensor, const char *op_name) {
 #if defined(ENABLE_HYGON_API)
@@ -34,13 +36,13 @@ void check_hygon_or_nvidia_tensor(const Tensor &tensor, const char *op_name) {
 
 int dsv4_scalar_type_for_kernel(const Tensor &tensor, const char *op_name) {
     if (tensor->dtype() == DataType::BF16) {
-        return deepseek_v4_compress_common::kDsv4BF16;
+        return kDsv4BF16;
     }
     if (tensor->dtype() == DataType::F16) {
-        return deepseek_v4_compress_common::kDsv4F16;
+        return kDsv4F16;
     }
     if (tensor->dtype() == DataType::F32) {
-        return deepseek_v4_compress_common::kDsv4F32;
+        return kDsv4F32;
     }
     throw std::runtime_error(std::string(op_name) + " supports bf16/fp16/fp32 tensors only.");
 }

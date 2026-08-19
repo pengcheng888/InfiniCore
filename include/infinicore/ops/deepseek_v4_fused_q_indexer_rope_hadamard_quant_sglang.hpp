@@ -6,6 +6,8 @@
 
 namespace infinicore::op {
 
+namespace deepseek_v4 {
+
 INFINICORE_GRAPH_OP_CLASS(DeepseekV4FusedQIndexerRopeHadamardQuantSglangKernel,
                           const Tensor &,
                           Tensor,
@@ -14,6 +16,8 @@ INFINICORE_GRAPH_OP_CLASS(DeepseekV4FusedQIndexerRopeHadamardQuantSglangKernel,
                           float,
                           const Tensor &,
                           const Tensor &);
+
+} // namespace deepseek_v4
 
 void deepseek_v4_fused_q_indexer_rope_hadamard_quant_sglang_(const Tensor &q_input,
                                                              Tensor q_fp8,

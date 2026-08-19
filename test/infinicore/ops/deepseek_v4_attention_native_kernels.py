@@ -249,7 +249,6 @@ def _check_c4_indexer_split_chain_case(device, pages):
     fused_weights = torch.empty(batch, heads, device=device, dtype=torch.float32)
     logits = torch.empty_like(ref_logits)
     indices = torch.empty_like(ref_indices)
-    fused_indices = torch.empty_like(ref_indices)
     _infinicore.deepseek_v4_c4_act_quant_fused_scale_kernel_(
         _as_core(q),
         _as_core(weights),
@@ -276,22 +275,10 @@ def _check_c4_indexer_split_chain_case(device, pages):
         _as_core(indices),
         page_size,
     )
-    _infinicore.deepseek_v4_c4_paged_mqa_with_topk_transform_512_(
-        _as_core(q_fp8),
-        _as_core(fused_weights),
-        _as_core(cache_raw),
-        _as_core(seq_lens),
-        _as_core(page_table),
-        _as_core(fused_indices),
-        max_c4_seq_len,
-        page_size,
-        False,
-    )
     _sync()
     for row, seq_len in enumerate(seq_lens.cpu().tolist()):
         assert torch.equal(logits[row, :seq_len], ref_logits[row, :seq_len]), f"split C4 paged logits mismatch pages={pages} row={row}"
     assert torch.equal(indices, ref_indices), f"split C4 sparse indices mismatch pages={pages}"
-    assert torch.equal(fused_indices, indices), f"fused C4 paged mqa with topk indices mismatch pages={pages}"
 
 
 def _run_correctness(device):

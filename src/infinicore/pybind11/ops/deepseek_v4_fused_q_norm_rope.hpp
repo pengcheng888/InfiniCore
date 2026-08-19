@@ -23,8 +23,8 @@ inline void bind_deepseek_v4_fused_q_norm_rope(py::module &m) {
           py::arg("epsilon"),
           py::arg("freqs_cis"),
           py::arg("positions"));
-    m.def("deepseek_v4_fused_q_norm_rope_naive_",
-          &op::deepseek_v4_fused_q_norm_rope_naive_,
+    m.def("deepseek_v4_fused_q_norm_rope_aten_",
+          &op::deepseek_v4_fused_q_norm_rope_aten_,
           py::arg("q_out"),
           py::arg("q_input"),
           py::arg("epsilon"),

@@ -25,7 +25,6 @@
 #include "ops/conv2d.hpp"
 #include "ops/cross_entropy.hpp"
 #include "ops/deepseek_moe.hpp"
-#include "ops/deepseek_v4_compressor_kv_score.hpp"
 #include "ops/deepseek_v4_fused_k_norm_rope_flashmla.hpp"
 #include "ops/deepseek_v4_fused_norm_rope_inplace.hpp"
 #include "ops/deepseek_v4_fused_q_indexer_rope_hadamard_quant.hpp"
