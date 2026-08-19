@@ -8,6 +8,9 @@
 #if defined(ENABLE_NVIDIA_API) || defined(ENABLE_ILUVATAR_API) || defined(ENABLE_QY_API) || defined(ENABLE_HYGON_API) || defined(ENABLE_ALI_API)
 #include "nvidia/select_last_token_hidden_nvidia.cuh"
 #endif
+#ifdef ENABLE_METAX_API
+#include "metax/select_last_token_hidden_metax.cuh"
+#endif
 
 __INFINI_C infiniStatus_t infiniopCreateSelectLastTokenHiddenDescriptor(
     infiniopHandle_t handle,
@@ -41,6 +44,9 @@ __INFINI_C infiniStatus_t infiniopCreateSelectLastTokenHiddenDescriptor(
 #endif
 #ifdef ENABLE_ALI_API
         CREATE(INFINI_DEVICE_ALI, nvidia);
+#endif
+#ifdef ENABLE_METAX_API
+        CREATE(INFINI_DEVICE_METAX, metax);
 #endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
@@ -80,6 +86,9 @@ __INFINI_C infiniStatus_t infiniopSelectLastTokenHidden(
 #ifdef ENABLE_ALI_API
         CALCULATE(INFINI_DEVICE_ALI, nvidia);
 #endif
+#ifdef ENABLE_METAX_API
+        CALCULATE(INFINI_DEVICE_METAX, metax);
+#endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
@@ -113,6 +122,9 @@ __INFINI_C infiniStatus_t infiniopDestroySelectLastTokenHiddenDescriptor(
 #endif
 #ifdef ENABLE_ALI_API
         DESTROY(INFINI_DEVICE_ALI, nvidia);
+#endif
+#ifdef ENABLE_METAX_API
+        DESTROY(INFINI_DEVICE_METAX, metax);
 #endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
