@@ -269,7 +269,6 @@ inline void bind_deepseek_v4_flashmla_compute(py::module &m) {
           py::arg("extra_topk") = -1,
           R"doc(Refresh caller-owned DeepSeek-V4 sparse FlashMLA decode scheduler metadata.)doc");
 
-    bind_deepseek_v4_flashmla_cuda_entry(m, "deepseek_v4_dense_decode_fwd", "dense_decode_fwd");
     bind_deepseek_v4_flashmla_cuda_entry(m, "deepseek_v4_dense_decode_fwd_kvfp8", "dense_decode_fwd_kvfp8");
     bind_deepseek_v4_flashmla_cuda_entry(m, "deepseek_v4_dense_decode_fwd_qkvfp8", "dense_decode_fwd_qkvfp8");
     bind_deepseek_v4_flashmla_cuda_entry(m, "deepseek_v4_fwd_kvcache_mla_fp8", "fwd_kvcache_mla_fp8");
@@ -278,7 +277,6 @@ inline void bind_deepseek_v4_flashmla_compute(py::module &m) {
     bind_deepseek_v4_flashmla_cuda_entry(m, "deepseek_v4_fwd_kvcache_quantization_mla", "fwd_kvcache_quantization_mla");
     bind_deepseek_v4_flashmla_cuda_entry(m, "deepseek_v4_fwd_kvcache_quantization_q_nope_pe_mla", "fwd_kvcache_quantization_q_nope_pe_mla");
     bind_deepseek_v4_flashmla_cuda_entry(m, "deepseek_v4_get_mla_decoding_metadata_dense_fp8", "get_mla_decoding_metadata_dense_fp8");
-    bind_deepseek_v4_flashmla_cuda_entry(m, "deepseek_v4_sparse_decode_fwd", "sparse_decode_fwd");
     bind_deepseek_v4_flashmla_cuda_entry(m, "deepseek_v4_sparse_prefill_fwd", "sparse_prefill_fwd");
 }
 

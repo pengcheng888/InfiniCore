@@ -1469,7 +1469,7 @@ using deepseek_v4_flashmla_sparse_attention_graph_impl::to_graph_optional;
 using deepseek_v4_flashmla_sparse_attention_graph_impl::to_tensor_optional;
 
 struct PlannedMeta {
-    graph::GraphTensor q;
+    graph::GraphTensor q; // [ntokens, num_attention_heads , head_dim]
     graph::GraphTensor raw_cache;
     graph::GraphTensor indices;
     graph::GraphTensor topk_lengths;

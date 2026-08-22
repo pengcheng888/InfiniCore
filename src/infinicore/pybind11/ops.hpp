@@ -52,11 +52,13 @@
 #include "ops/deepseek_v4_create_flashmla_kv_indices.hpp"
 #include "ops/deepseek_v4_dcu_cache_alloc.hpp"
 #include "ops/deepseek_v4_deep_gemm.hpp"
+#include "ops/flash_mla_dense_decode_fwd.hpp"
 #include "ops/deepseek_v4_dynamic_scaled_int8_quant.hpp"
 #include "ops/deepseek_v4_embedding_and_hc_expand.hpp"
 #include "ops/deepseek_v4_fast_topk.hpp"
 #include "ops/deepseek_v4_flashmla_cache.hpp"
 #include "ops/deepseek_v4_flashmla_compute.hpp"
+#include "ops/flash_mla_sparse_decode_fwd.hpp"
 #include "ops/deepseek_v4_fused_experts_impl_int8_marlin.hpp"
 #include "ops/deepseek_v4_fused_k_norm_rope_flashmla.hpp"
 #include "ops/deepseek_v4_fused_norm_rope_inplace.hpp"
@@ -284,6 +286,8 @@ inline void bind(py::module &m) {
     bind_deepseek_v4_flashmla_cache(m);
     bind_deepseek_v4_fused_experts_impl_int8_marlin(m);
     bind_deepseek_v4_flashmla_compute(m);
+    bind_flash_mla_dense_decode_fwd(m);
+    bind_flash_mla_sparse_decode_fwd(m);
     bind_deepseek_v4_fused_k_norm_rope_flashmla(m);
     bind_deepseek_v4_fused_norm_rope_inplace(m);
     bind_deepseek_v4_fused_q_indexer_rope_hadamard_quant(m);
