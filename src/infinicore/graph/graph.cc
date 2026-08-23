@@ -2,6 +2,7 @@
 
 #include "../utils.hpp"
 #include "infinicore/context/context.hpp"
+#include <cstdio>
 #include <cstdlib>
 #include <infinirt.h>
 
@@ -26,6 +27,13 @@ public:
 private:
     const HostIntArrayMap *previous_;
 };
+bool graph_debug_enabled() {
+    static const bool enabled = []() {
+        const char *value = std::getenv("INFINICORE_GRAPH_DEBUG");
+        return value != nullptr && value[0] != '\0' && value[0] != '0';
+    }();
+    return enabled;
+}
 } // namespace
 
 /* =========================
@@ -63,9 +71,9 @@ DispatchableGraphOperator::~DispatchableGraphOperator() {
  * ========================= */
 
 struct Graph::DeviceGraph {
-    infinirtGraph_t graph;
-    infinirtGraphExec_t exec;
-    infinirtGraphNode_t node;
+    infinirtGraph_t graph = nullptr;
+    infinirtGraphExec_t exec = nullptr;
+    infinirtGraphNode_t node = nullptr;
     std::vector<char> log_buffer;
     std::vector<std::shared_ptr<GraphOperator>> updatable_ops;
 
@@ -114,9 +122,21 @@ Graph::Graph() {
 
 void Graph::run() const {
     HostIntArrayScope host_int_array_scope(&host_int_arrays_);
-    if (segments_.empty()) {
-        for (const auto &op : op_list_) {
-            op->run();
+
+    if (device_graph_ != nullptr && device_graph_.get()->exec != nullptr) {
+        if (graph_debug_enabled()) {
+            std::fprintf(stderr, "[infinicore graph] run device_graph ops=%zu\n", op_list_.size());
+        }
+        device_graph_.get()->launch();
+    } else {
+        if (graph_debug_enabled()) {
+            std::fprintf(stderr, "[infinicore graph] run op_list ops=%zu\n", op_list_.size());
+        }
+        if (segments_.empty()) {
+
+            for (auto &op : op_list_) {
+                op->run();
+            }
         }
         return;
     }
@@ -152,11 +172,36 @@ const std::vector<int64_t> *lookup_bound_host_int_array(const Tensor &tensor) {
 }
 
 void Graph::add_operator(std::shared_ptr<GraphOperator> op) {
+    if (graph_debug_enabled()) {
+        std::fprintf(stderr,
+                     "[infinicore graph] add_operator supports_device_graph_capture=%d\n",
+                     op->supports_device_graph_capture() ? 1 : 0);
+    }
     op_list_.push_back(op);
 }
 
 void Graph::instantiate() {
     segments_.clear();
+    if (graph_debug_enabled()) {
+        std::fprintf(stderr, "[infinicore graph] instantiate ops=%zu\n", op_list_.size());
+    }
+    if (op_list_.empty()) {
+        device_graph_.reset();
+        return;
+    }
+
+    for (auto &op : op_list_) {
+        if (!op->supports_device_graph_capture()) {
+            if (graph_debug_enabled()) {
+                std::fprintf(stderr, "[infinicore graph] skip device graph capture\n");
+            }
+            device_graph_.reset();
+            return;
+        }
+    }
+
+    // Reset device graph
+    device_graph_ = std::make_unique<DeviceGraph>();
 
     // Warm the complete op list before splitting it into replay segments.
     for (size_t iter = 0; iter < 5; ++iter) {

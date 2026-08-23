@@ -1,0 +1,26 @@
+#pragma once
+
+#include <cstdint>
+
+namespace infinicore::op::deepseek_v4_c4_compress_sglang_stateful_kernel_impl {
+
+void launch_c4_compress_stateful_sglang(void *output,
+                                        int output_dtype,
+                                        const void *kv_score,
+                                        int kv_score_dtype,
+                                        void *compressor_state,
+                                        int state_dtype,
+                                        const void *ape,
+                                        int ape_dtype,
+                                        const void *write_loc,
+                                        bool write_loc_i64,
+                                        const void *extra_loc,
+                                        bool extra_loc_i64,
+                                        int64_t extra_cols,
+                                        const void *positions,
+                                        bool positions_i64,
+                                        int64_t tokens,
+                                        int64_t head_dim,
+                                        void *stream);
+
+} // namespace infinicore::op::deepseek_v4_c4_compress_sglang_stateful_kernel_impl

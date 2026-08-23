@@ -33,6 +33,12 @@ inline at::ScalarType to_at_dtype(DataType dtype) {
         return at::kFloat;
     case DataType::F16:
         return at::kHalf;
+    case DataType::F8:
+#if defined(ENABLE_HYGON_API)
+        return at::kFloat8_e4m3fnuz;
+#else
+        return at::kFloat8_e4m3fn;
+#endif
     case DataType::BF16:
         return at::kBFloat16;
     case DataType::I8:
@@ -43,8 +49,10 @@ inline at::ScalarType to_at_dtype(DataType dtype) {
         return at::kInt;
     case DataType::I64:
         return at::kLong;
+    case DataType::U8:
+        return at::kByte;
     default:
-        throw std::runtime_error("Unsupported dtype for ATen");
+        throw std::runtime_error(std::string("Unsupported dtype for ATen: ") + infinicore::toString(dtype) + " (" + std::to_string(static_cast<int>(dtype)) + ")");
     }
 }
 
@@ -82,6 +90,7 @@ inline at::Device to_at_device(const Device &device) {
 }
 
 at::Tensor to_aten_tensor(const infinicore::Tensor &t);
+Tensor from_aten_tensor(const at::Tensor &t);
 
 #if defined(ENABLE_HYGON_API)
 c10::hip::HIPStream get_hip_stream();

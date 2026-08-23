@@ -34,6 +34,7 @@ public:
     }
     virtual void graph_replay(GraphReplayStage) const {
     }
+    virtual bool supports_device_graph_capture() const { return true; }
     virtual ~GraphOperator() = default;
 };
 
@@ -42,6 +43,7 @@ public:
     void run() const override;
     bool needs_graph_replay_update() const override;
     void graph_replay(GraphReplayStage stage) const override;
+    bool supports_device_graph_capture() const override { return device_graph_capture_supported_; }
     ~DispatchableGraphOperator() override;
 
 protected:
@@ -54,6 +56,7 @@ protected:
     run_schema runner_;
     cleanup_schema deleter_;
     graph_replay_schema graph_replay_ = nullptr;
+    bool device_graph_capture_supported_ = true;
 };
 
 class Graph {

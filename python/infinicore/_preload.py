@@ -83,6 +83,10 @@ def preload_torch_hip() -> None:
     spec = importlib.util.find_spec("torch")
     if spec is None or not spec.origin:
         return
+    try:
+        __import__("torch")
+    except Exception:
+        return
     torch_dir = os.path.dirname(spec.origin)
     torch_libdir = os.path.join(torch_dir, "lib")
     if not os.path.isdir(torch_libdir):
@@ -104,6 +108,168 @@ def preload_torch_hip() -> None:
             except OSError:
                 # Best-effort preload, continue on errors.
                 pass
+
+
+def preload_torch_cuda() -> None:
+    """
+    Best-effort preload of torch CUDA Python runtime libs with RTLD_GLOBAL.
+
+    ATen-enabled NVIDIA builds can need libtorch_python before torch has been
+    imported by the caller. Loading it by absolute path avoids relying on
+    transitive RUNPATH resolution during extension import.
+    """
+    spec = importlib.util.find_spec("torch")
+    if spec is None or not spec.origin:
+        return
+    torch_dir = os.path.dirname(spec.origin)
+    torch_libdir = os.path.join(torch_dir, "lib")
+    if not os.path.isdir(torch_libdir):
+        return
+
+    libs = [
+        "libtorch_global_deps.so",
+        "libc10.so",
+        "libc10_cuda.so",
+        "libtorch_cpu.so",
+        "libtorch_cuda.so",
+        "libtorch.so",
+        "libtorch_python.so",
+    ]
+    for lib in libs:
+        full = os.path.join(torch_libdir, lib)
+        if os.path.exists(full):
+            try:
+                ctypes.CDLL(full, mode=ctypes.RTLD_GLOBAL)
+            except OSError:
+                # Best-effort preload, continue on errors.
+                pass
+
+    # Importing sgl_kernel registers its torch custom-op schemas and loads the
+    # architecture-specific common_ops SO used by Qwen3 bridge operators.
+    try:
+        __import__("sgl_kernel")
+    except Exception:
+        pass
+
+
+_deepseek_v4_lightop_lib = None
+
+
+def register_deepseek_v4_lightop_ops() -> None:
+    """Register stable torch dispatcher wrappers for lightop pybind SO ops."""
+    global _deepseek_v4_lightop_lib
+    if _deepseek_v4_lightop_lib is not None:
+        return
+    try:
+        import torch
+        from lightop import op as lightop_op
+    except Exception:
+        return
+
+    try:
+        lib = torch.library.Library("infinicore_deepseek_v4", "FRAGMENT")
+        lib.define(
+            "lightop_moe_gemm_marlin_w8a8(Tensor input, Tensor b_qweight, Tensor(a!) output, "
+            "Tensor a_scale, Tensor b_scale, Tensor? topk_weights, Tensor sorted_token_ids, "
+            "Tensor expert_ids, Tensor num_tokens_post_pad, int top_k, int mode, int delta) -> Tensor(a!)"
+        )
+        lib.define(
+            "lightop_fuse_silu_mul_quant(Tensor input, Tensor(a!) output, Tensor(b!) scales, "
+            "Tensor? num_local_tokens_tensor, int topk, int expect_m, Tensor? expert_ids) -> (Tensor(a!), Tensor(b!))"
+        )
+        lib.define(
+            "lightop_moe_sum(Tensor input, Tensor(a!) output, Tensor? bias, Tensor? expert_mask, "
+            "Tensor? num_local_tokens, float factor, int expect_m) -> Tensor(a!)"
+        )
+        lib.define(
+            "lightop_moe_align_block_size(Tensor topk_ids, int num_experts, int block_size, "
+            "Tensor(a!) sorted_token_ids, Tensor(b!) expert_ids, Tensor(c!) num_tokens_post_pad, "
+            "Tensor? expert_map, Tensor? expert_mask, Tensor? num_local_tokens, bool is_ep, "
+            "bool is_fuse_fill) -> (Tensor(a!), Tensor(b!), Tensor(c!))"
+        )
+
+        def _moe_gemm(input, b_qweight, output, a_scale, b_scale, topk_weights,
+                      sorted_token_ids, expert_ids, num_tokens_post_pad, top_k: int,
+                      mode: int, delta: int):
+            if mode < 1000:
+                lightop_op.moe_gemm_marlin_w8a8(
+                    input, b_qweight, output, a_scale, b_scale, topk_weights,
+                    sorted_token_ids, expert_ids, num_tokens_post_pad, top_k, mode, delta)
+            else:
+                lightop_op.moe_marlin_w8a8_asm(
+                    input, b_qweight, output, a_scale, b_scale, topk_weights,
+                    sorted_token_ids, expert_ids, num_tokens_post_pad, top_k, mode, delta)
+            return output
+
+        def _fuse_silu_mul_quant(input, output, scales, num_local_tokens_tensor=None,
+                                 topk: int = 1, expect_m: int = -1, expert_ids=None):
+            lightop_op.fuse_silu_mul_quant(
+                input, output, scales, num_local_tokens_tensor, topk, expect_m, expert_ids)
+            return output, scales
+
+        def _moe_sum(input, output, bias=None, expert_mask=None, num_local_tokens=None,
+                     factor: float = 1.0, expect_m: int = -1):
+            lightop_op.moe_sum(input, output, bias, expert_mask, num_local_tokens, factor, expect_m)
+            return output
+
+        def _moe_align(topk_ids, num_experts: int, block_size: int, sorted_token_ids,
+                       expert_ids, num_tokens_post_pad, expert_map=None, expert_mask=None,
+                       num_local_tokens=None, is_ep: bool = False, is_fuse_fill: bool = True):
+            lightop_op.moe_align_block_size(
+                topk_ids,
+                num_experts,
+                block_size,
+                sorted_token_ids,
+                expert_ids,
+                num_tokens_post_pad,
+                expert_map=expert_map,
+                expert_mask=expert_mask,
+                num_local_tokens=num_local_tokens,
+                Is_EP=is_ep,
+                Is_fuse_fill=is_fuse_fill,
+            )
+            return sorted_token_ids, expert_ids, num_tokens_post_pad
+
+        lib.impl("lightop_moe_gemm_marlin_w8a8", _moe_gemm, "CUDA")
+        lib.impl("lightop_fuse_silu_mul_quant", _fuse_silu_mul_quant, "CUDA")
+        lib.impl("lightop_moe_sum", _moe_sum, "CUDA")
+        lib.impl("lightop_moe_align_block_size", _moe_align, "CUDA")
+        _deepseek_v4_lightop_lib = lib
+    except Exception:
+        _deepseek_v4_lightop_lib = None
+
+def _prefer_rocm_vllm_platform() -> None:
+    """Avoid vLLM cuda/rocm double-plugin activation in mixed Hygon envs."""
+    try:
+        import vllm.platforms as platforms
+
+        platforms.builtin_platform_plugins["cuda"] = lambda: None
+    except Exception:
+        pass
+
+
+def preload_deepseek_v4_extensions() -> None:
+    """
+    Best-effort import of Hygon DeepSeek-V4 extension modules.
+
+    Importing these modules registers their torch custom-op schemas. InfiniCore
+    C++ bridge operators resolve the schemas through c10::Dispatcher at call
+    time, so InfiniLM must preload them before running C++ forward. Import
+    vllm._C directly; vllm._custom_ops can activate conflicting platform
+    plugins in this mixed CUDA/ROCm environment.
+    """
+    _prefer_rocm_vllm_platform()
+    for module_name in (
+        "sgl_kernel",
+        "aiter",
+        "vllm._C",
+        "sglang.srt.layers.quantization.compressed_tensors.compressed_tensors_moe_marlin",
+    ):
+        try:
+            __import__(module_name)
+        except Exception:
+            pass
+    register_deepseek_v4_lightop_ops()
 
 
 def preload_flash_attn() -> None:
@@ -178,6 +344,7 @@ def _should_preload_device(device_type: str) -> bool:
         "HYGON": ["DTK_ROOT", "INFINICORE_PRELOAD_TORCH_HIP"],
         "ASCEND": ["ASCEND_HOME", "ASCEND_TOOLKIT_HOME"],
         "CAMBRICON": ["NEUWARE_HOME", "INFINICORE_PRELOAD_CAMBRICON"],
+        "NVIDIA": ["CUDA_HOME", "CUDA_PATH", "INFINICORE_PRELOAD_TORCH_CUDA"],
         # Add other device types here as needed:
     }
 
@@ -207,9 +374,12 @@ def preload_device(device_type: str) -> None:
     elif device_type == "HYGON":
         preload_torch()
         preload_torch_hip()
+        preload_deepseek_v4_extensions()
         preload_flash_attn()
     elif device_type == "ASCEND":
         preload_torch()
+    elif device_type == "NVIDIA":
+        preload_torch_cuda()
     # Add other device preload functions here as needed:
     elif device_type == "CAMBRICON":
         preload_cambricon()
@@ -231,6 +401,7 @@ def preload() -> None:
         "HYGON",
         "ASCEND",
         "CAMBRICON",
+        "NVIDIA",
         # Add other device types here as they are implemented:
         # etc.
     ]

@@ -1,6 +1,6 @@
 add_rules("mode.debug", "mode.release")
 add_requires("boost", {configs = {stacktrace = true}})
-add_requires("pybind11")
+add_requires("pybind11 2.13.6", {system = false})
 
 -- Define color codes
 local GREEN = '\27[0;32m'
@@ -699,6 +699,88 @@ target("infinicore_cpp_api")
     set_languages("cxx17")
     set_symbols("visibility")
 
+    if has_config("hygon-dcu") and has_config("aten") then
+        set_toolchains("hygon.toolchain")
+        add_rules("hygon.env")
+        set_values("cuda.rdc", false)
+        local dtk_root = os.getenv("DTK_ROOT") or "/opt/dtk"
+        local hygon_cuda_root = os.getenv("HYGON_CUDA_HOME") or get_config("cuda") or path.join(dtk_root, "cuda", "cuda")
+        add_includedirs(path.join(hygon_cuda_root, "include"))
+        add_includedirs(path.join(hygon_cuda_root, "targets", "x86_64-linux", "include"))
+        add_includedirs(path.join(hygon_cuda_root, "extras", "clang_internal_header"))
+        add_includedirs(path.join(dtk_root, "include"))
+        add_linkdirs(path.join(hygon_cuda_root, "lib64"))
+        add_linkdirs(path.join(hygon_cuda_root, "targets", "x86_64-linux", "lib"))
+        add_linkdirs(path.join(dtk_root, "lib"))
+        add_links("cudart", "hipblas")
+        add_cuflags("-D__HIP_PLATFORM_AMD__", {force = true})
+        add_cuflags("-arch=" .. (get_config("hygon-arch") or os.getenv("HYGON_ARCH") or "gfx936"), {force = true})
+        add_cuflags("-fPIC", "-std=c++17", "-Wno-error=macro-redefined", "-Wno-error=ignored-attributes", "-Wno-error=unused-variable", "-Wno-error=unused-function", {force = true})
+        add_files("src/infinicore/deepseek_v4_ops/deepseek_v4_mhc_pre/kernel/*.cu")
+        add_files("src/infinicore/deepseek_v4_ops/deepseek_v4_mhc_post/kernel/*.cu")
+        add_files("src/infinicore/deepseek_v4_ops/deepseek_v4_mhc_fused_post_pre/kernel/*.cu")
+        add_files("src/infinicore/deepseek_v4_ops/deepseek_v4_hc_head/kernel/*.cu")
+        add_files("src/infinicore/deepseek_v4_ops/deepseek_v4_linear_bf16_fp32/kernel/*.cu")
+        add_files("src/infinicore/deepseek_v4_ops/deepseek_v4_embedding_and_hc_expand/kernel/*.cu")
+        add_files("src/infinicore/ops/deepseek_v4_fused_experts_impl_int8_marlin/*.cu")
+        add_files("src/infinicore/ops/deepseek_v4_shared_experts_impl_int8_marlin/*.cu")
+        add_files("src/infinicore/deepseek_v4_ops/deepseek_v4_hash_topk/kernel/*.cu")
+        add_files("src/infinicore/deepseek_v4_ops/deepseek_v4_hash_topk/kernel_sglang/*.cu")
+        add_files("src/infinicore/deepseek_v4_ops/deepseek_v4_biased_topk/kernel/*.cu")
+        add_files("src/infinicore/deepseek_v4_ops/deepseek_v4_silu_and_mul/kernel/*.cu")
+        add_files("src/infinicore/ops/deepseek_v4_flashmla_cache/*.cu")
+        add_files("src/infinicore/ops/deepseek_v4_compress_stateful/*.cu")
+        add_files("src/infinicore/deepseek_v4_ops/deepseek_v4_compress_sglang_stateful/kernel/*.cu")
+        add_files("src/infinicore/ops/deepseek_v4_compress_fused_norm_rope/*.cu")
+        add_files("src/infinicore/deepseek_v4_ops/deepseek_v4_compress_norm_rope_store/kernel/*.cu")
+        add_files("src/infinicore/deepseek_v4_ops/deepseek_v4_indexer_compress_norm_rope_store/kernel/*.cu")
+        add_files("src/infinicore/ops/deepseek_v4_c4_act_quant_fused_scale/*.cu")
+        add_files("src/infinicore/ops/deepseek_v4_fused_q_indexer_rope_hadamard_quant/*.cu")
+        add_files("src/infinicore/deepseek_v4_ops/deepseek_v4_fused_q_indexer_rope_hadamard_quant_sglang/kernel/*.cu")
+        add_files("src/infinicore/ops/deepseek_v4_sparse_attn_indexer/*.cu")
+        add_files("src/infinicore/deepseek_v4_ops/deepseek_v4_topk_transform_512/kernel/*.cu")
+        add_files("src/infinicore/deepseek_v4_ops/deepseek_v4_topk_transform_512/kernel_sglang/*.cu")
+        add_files("src/infinicore/deepseek_v4_ops/deepseek_v4_rmsnorm_self/kernel/*.cu")
+        add_files("src/infinicore/deepseek_v4_ops/deepseek_v4_fused_rope/kernel/*.cu")
+        add_files("src/infinicore/ops/deepseek_v4_fused_norm_rope_inplace/*.cu")
+        add_files("src/infinicore/deepseek_v4_ops/deepseek_v4_fused_q_norm_rope/kernel/*.cu")
+        add_files("src/infinicore/deepseek_v4_ops/deepseek_v4_fused_k_norm_rope_flashmla/kernel/*.cu")
+        add_files("src/infinicore/ops/distributed/*.cu")
+    elseif has_config("nv-gpu") and has_config("aten") then
+        set_toolchains("cuda")
+        add_links("cudart", "cublas")
+        add_files("src/infinicore/deepseek_v4_ops/deepseek_v4_mhc_pre/kernel/*.cu")
+        add_files("src/infinicore/deepseek_v4_ops/deepseek_v4_mhc_post/kernel/*.cu")
+        add_files("src/infinicore/deepseek_v4_ops/deepseek_v4_mhc_fused_post_pre/kernel/*.cu")
+        add_files("src/infinicore/deepseek_v4_ops/deepseek_v4_hc_head/kernel/*.cu")
+        add_files("src/infinicore/deepseek_v4_ops/deepseek_v4_linear_bf16_fp32/kernel/*.cu")
+        add_files("src/infinicore/deepseek_v4_ops/deepseek_v4_embedding_and_hc_expand/kernel/*.cu")
+        add_files("src/infinicore/ops/deepseek_v4_fused_experts_impl_int8_marlin/*.cu")
+        add_files("src/infinicore/ops/deepseek_v4_shared_experts_impl_int8_marlin/*.cu")
+        add_files("src/infinicore/deepseek_v4_ops/deepseek_v4_hash_topk/kernel/*.cu")
+        add_files("src/infinicore/deepseek_v4_ops/deepseek_v4_hash_topk/kernel_sglang/*.cu")
+        add_files("src/infinicore/deepseek_v4_ops/deepseek_v4_biased_topk/kernel/*.cu")
+        add_files("src/infinicore/deepseek_v4_ops/deepseek_v4_silu_and_mul/kernel/*.cu")
+        add_files("src/infinicore/ops/deepseek_v4_flashmla_cache/*.cu")
+        add_files("src/infinicore/ops/deepseek_v4_compress_stateful/*.cu")
+        add_files("src/infinicore/deepseek_v4_ops/deepseek_v4_compress_sglang_stateful/kernel/*.cu")
+        add_files("src/infinicore/ops/deepseek_v4_compress_fused_norm_rope/*.cu")
+        add_files("src/infinicore/deepseek_v4_ops/deepseek_v4_compress_norm_rope_store/kernel/*.cu")
+        add_files("src/infinicore/deepseek_v4_ops/deepseek_v4_indexer_compress_norm_rope_store/kernel/*.cu")
+        add_files("src/infinicore/ops/deepseek_v4_c4_act_quant_fused_scale/*.cu")
+        add_files("src/infinicore/ops/deepseek_v4_fused_q_indexer_rope_hadamard_quant/*.cu")
+        add_files("src/infinicore/deepseek_v4_ops/deepseek_v4_fused_q_indexer_rope_hadamard_quant_sglang/kernel/*.cu")
+        add_files("src/infinicore/ops/deepseek_v4_sparse_attn_indexer/*.cu")
+        add_files("src/infinicore/deepseek_v4_ops/deepseek_v4_topk_transform_512/kernel/*.cu")
+        add_files("src/infinicore/deepseek_v4_ops/deepseek_v4_topk_transform_512/kernel_sglang/*.cu")
+        add_files("src/infinicore/deepseek_v4_ops/deepseek_v4_rmsnorm_self/kernel/*.cu")
+        add_files("src/infinicore/deepseek_v4_ops/deepseek_v4_fused_rope/kernel/*.cu")
+        add_files("src/infinicore/ops/deepseek_v4_fused_norm_rope_inplace/*.cu")
+        add_files("src/infinicore/deepseek_v4_ops/deepseek_v4_fused_q_norm_rope/kernel/*.cu")
+        add_files("src/infinicore/deepseek_v4_ops/deepseek_v4_fused_k_norm_rope_flashmla/kernel/*.cu")
+        add_files("src/infinicore/ops/distributed/*.cu")
+    end
+
     local INFINI_ROOT = os.getenv("INFINI_ROOT") or (os.getenv(is_host("windows") and "HOMEPATH" or "HOME") .. "/.infini")
 
     add_includedirs("include")
@@ -777,6 +859,7 @@ target("infinicore_cpp_api")
     end
 
     add_linkdirs(INFINI_ROOT.."/lib")
+    add_rpathdirs(INFINI_ROOT.."/lib")
     add_links("infiniop", "infinirt", "infiniccl")
 
     if get_config("flash-attn") and get_config("flash-attn") ~= "" then
@@ -852,6 +935,18 @@ target("infinicore_cpp_api")
                 "linkdirs",
                 path.join(TORCH_DIR, "lib"),
                 { public = true }
+            )
+            target:add(
+                "rpathdirs",
+                path.join(TORCH_DIR, "lib"),
+                { public = true }
+            )
+            target:add(
+                "shflags",
+                "-Wl,--disable-new-dtags",
+                "-Wl,-rpath," .. INFINI_ROOT .. "/lib",
+                "-Wl,-rpath," .. path.join(TORCH_DIR, "lib"),
+                { force = true }
             )
 
             -- Moore mate: link torch_musa instead of torch_cuda/c10_cuda
@@ -1000,6 +1095,9 @@ target("infinicore_cpp_api")
     add_files("src/infinicore/ops/*/*.cc")
     add_files("src/infinicore/ops/*/*/*.cc")
     add_files("src/infinicore/ops/*/*/*/*.cc")
+    add_files("src/infinicore/deepseek_v4_ops/*/*.cc")
+    add_files("src/infinicore/deepseek_v4_ops/*/*/*.cc")
+    add_files("src/infinicore/deepseek_v4_ops/*/*/*/*.cc")
     -- Platform-private Hygon sources are guarded and only kept in Hygon builds.
     if has_config("hygon-dcu") and get_config("flash-attn") and get_config("flash-attn") ~= "" then
         -- Hygon links against a prebuilt flash-attn extension with a different ABI.
@@ -1046,7 +1144,42 @@ target("_infinicore")
     add_includedirs(INFINI_ROOT.."/include", { public = true })
 
     add_linkdirs(INFINI_ROOT.."/lib")
+    add_rpathdirs(INFINI_ROOT.."/lib")
     add_links("infiniop", "infinirt", "infiniccl")
+
+    on_load(function (target)
+        if has_config("aten") then
+            if has_config("hygon-dcu") then
+                target:add("defines", "__HIP_PLATFORM_AMD__", { public = true })
+            end
+            local torch_dir = os.iorunv("python", {"-c", "import torch, os; print(os.path.dirname(torch.__file__))"}):trim()
+            target:add("includedirs", path.join(torch_dir, "include"), path.join(torch_dir, "include/torch/csrc/api/include"), { public = true })
+            target:add("linkdirs", path.join(torch_dir, "lib"), { public = true })
+            target:add("rpathdirs", path.join(torch_dir, "lib"), { public = true })
+            target:add(
+                "shflags",
+                "-Wl,--disable-new-dtags",
+                "-Wl,-rpath," .. INFINI_ROOT .. "/lib",
+                "-Wl,-rpath," .. path.join(torch_dir, "lib"),
+                { force = true }
+            )
+        end
+    end)
+
+    if has_config("nv-gpu") and has_config("aten") then
+        before_link(function (target)
+            local torch_dir = os.iorunv("python", {"-c", "import torch, os; print(os.path.dirname(torch.__file__))"}):trim()
+            local torch_lib = path.join(torch_dir, "lib")
+            target:add(
+                "shflags",
+                "-Wl,--no-as-needed",
+                "-L" .. torch_lib,
+                "-ltorch_python",
+                "-Wl,--as-needed",
+                { force = true }
+            )
+        end)
+    end
 
     add_files("src/infinicore/pybind11/**.cc")
 

@@ -69,6 +69,12 @@ public:
                             const DataType &dtype,
                             const Device &device);
 
+    static Tensor from_blob(void *raw_ptr,
+                            const Shape &shape,
+                            const DataType &dtype,
+                            const Device &device,
+                            Memory::Deleter deleter);
+
     static Tensor strided_from_blob(void *raw_ptr,
                                     const Shape &shape,
                                     const Strides &strides,
@@ -314,6 +320,13 @@ protected:
         const Shape &shape,
         const DataType &dtype,
         const Device &device);
+
+    static std::shared_ptr<TensorImpl> from_blob(
+        void *raw_ptr,
+        const Shape &shape,
+        const DataType &dtype,
+        const Device &device,
+        Memory::Deleter deleter);
 
     static std::shared_ptr<TensorImpl> strided_from_blob(
         void *raw_ptr,

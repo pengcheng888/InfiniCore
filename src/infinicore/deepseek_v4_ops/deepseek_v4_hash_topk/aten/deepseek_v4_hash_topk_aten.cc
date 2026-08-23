@@ -1,0 +1,135 @@
+#include "infinicore/ops/deepseek_v4_hash_topk.hpp"
+
+#include "infinicore/device.hpp"
+
+#ifdef ENABLE_ATEN
+#include "infinicore/adaptor/aten_adaptor.hpp"
+#include <ATen/ATen.h>
+#if defined(ENABLE_HYGON_API)
+#include <c10/hip/HIPGuard.h>
+#elif defined(ENABLE_NVIDIA_API)
+#include <c10/cuda/CUDAGuard.h>
+#endif
+#endif
+
+#include <stdexcept>
+#include <string>
+
+namespace infinicore::op {
+namespace {
+
+void check_accelerator_tensor(const Tensor &tensor, const char *op_name) {
+#if defined(ENABLE_HYGON_API)
+    if (tensor->device().getType() != Device::Type::HYGON) {
+        throw std::runtime_error(std::string(op_name) + " expects HYGON tensors in this build.");
+    }
+#elif defined(ENABLE_NVIDIA_API)
+    if (tensor->device().getType() != Device::Type::NVIDIA) {
+        throw std::runtime_error(std::string(op_name) + " expects NVIDIA tensors in this build.");
+    }
+#else
+    (void)tensor;
+    (void)op_name;
+#endif
+}
+
+void check_shapes(const Tensor &topk_weights,
+                  const Tensor &topk_indices,
+                  const Tensor &router_logits,
+                  const Tensor &input_ids,
+                  const Tensor &tid2eid,
+                  int64_t num_fused_shared_experts) {
+    if (router_logits->ndim() != 2) {
+        throw std::runtime_error("deepseek_v4_hash_topk_aten_ expects router_logits to be 2-D.");
+    }
+    if (input_ids->ndim() != 1) {
+        throw std::runtime_error("deepseek_v4_hash_topk_aten_ expects input_ids to be 1-D.");
+    }
+    if (tid2eid->ndim() != 2) {
+        throw std::runtime_error("deepseek_v4_hash_topk_aten_ expects tid2eid to be 2-D.");
+    }
+    if (topk_weights->shape() != topk_indices->shape()) {
+        throw std::runtime_error("deepseek_v4_hash_topk_aten_ topk weight/index shape mismatch.");
+    }
+    if (num_fused_shared_experts < 0) {
+        throw std::runtime_error("deepseek_v4_hash_topk_aten_ expects num_fused_shared_experts >= 0.");
+    }
+    if (topk_weights->shape() != Shape{router_logits->size(0), tid2eid->size(1) + num_fused_shared_experts}) {
+        throw std::runtime_error("deepseek_v4_hash_topk_aten_ output shape mismatch.");
+    }
+    if (input_ids->size(0) != router_logits->size(0)) {
+        throw std::runtime_error("deepseek_v4_hash_topk_aten_ input_ids/router token count mismatch.");
+    }
+}
+
+void check_scoring_config(float routed_scaling_factor, const std::string &scoring_func) {
+    if (scoring_func != "sqrtsoftplus") {
+        throw std::runtime_error("deepseek_v4_hash_topk_aten_ only supports scoring_func='sqrtsoftplus'.");
+    }
+    if (routed_scaling_factor == 0.0f) {
+        throw std::runtime_error("deepseek_v4_hash_topk_aten_ expects routed_scaling_factor != 0.");
+    }
+}
+
+} // namespace
+
+void deepseek_v4_hash_topk_aten_(Tensor topk_weights,
+                                  Tensor topk_indices,
+                                  const Tensor &router_logits,
+                                  const Tensor &input_ids,
+                                  const Tensor &tid2eid,
+                                  int64_t num_fused_shared_experts,
+                                  float routed_scaling_factor,
+                                  const std::string &scoring_func) {
+#if defined(ENABLE_ATEN) && (defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API))
+    check_accelerator_tensor(router_logits, "deepseek_v4_hash_topk_aten_");
+#if defined(ENABLE_HYGON_API)
+    c10::hip::HIPStreamGuard guard(infinicore::adaptor::get_hip_stream());
+#else
+    c10::cuda::CUDAStreamGuard guard(infinicore::adaptor::get_cuda_stream());
+#endif
+
+    check_scoring_config(routed_scaling_factor, scoring_func);
+    check_shapes(topk_weights, topk_indices, router_logits, input_ids, tid2eid, num_fused_shared_experts);
+
+    auto weights_at = infinicore::adaptor::to_aten_tensor(topk_weights);
+    auto indices_at = infinicore::adaptor::to_aten_tensor(topk_indices);
+    auto logits_at = infinicore::adaptor::to_aten_tensor(router_logits);
+    auto input_ids_at = infinicore::adaptor::to_aten_tensor(input_ids).to(at::kLong);
+    auto tid2eid_at = infinicore::adaptor::to_aten_tensor(tid2eid).to(at::kLong);
+
+    auto selected = tid2eid_at.index_select(0, input_ids_at);
+    auto scores = at::sqrt(at::softplus(logits_at.to(at::kFloat)));
+    auto gathered = scores.gather(1, selected);
+    auto out_weights = gathered / gathered.sum(-1, true);
+    auto out_indices = selected;
+    if (num_fused_shared_experts > 0) {
+        auto shared_indices = at::arange(
+                                  logits_at.size(1),
+                                  logits_at.size(1) + num_fused_shared_experts,
+                                  selected.options())
+                                  .unsqueeze(0)
+                                  .expand({logits_at.size(0), num_fused_shared_experts});
+        auto shared_weights = at::full(
+            {logits_at.size(0), num_fused_shared_experts},
+            1.0f / routed_scaling_factor,
+            logits_at.options().dtype(at::kFloat));
+        out_weights = at::cat({out_weights, shared_weights}, 1);
+        out_indices = at::cat({out_indices, shared_indices}, 1);
+    }
+    weights_at.copy_(out_weights.to(weights_at.scalar_type()));
+    indices_at.copy_(out_indices.to(indices_at.scalar_type()));
+#else
+    (void)topk_weights;
+    (void)topk_indices;
+    (void)router_logits;
+    (void)input_ids;
+    (void)tid2eid;
+    (void)num_fused_shared_experts;
+    (void)routed_scaling_factor;
+    (void)scoring_func;
+    throw std::runtime_error("deepseek_v4_hash_topk_aten_ requires an ATen-enabled HYGON/NVIDIA build.");
+#endif
+}
+
+} // namespace infinicore::op

@@ -2,7 +2,9 @@
 .xmake/
 build/
 python/infinicore/lib/*.so
-
+sglang-0.5.17/
+reference/
+reference-infinilm-deepseek_v4/
 # MacOS Cache
 .DS_Store
 
@@ -32,3 +34,5 @@ cache/
 *.gz
 *.zip
 *.tar
+reference_modeling_deepseek_v4.py
+aaa.txt

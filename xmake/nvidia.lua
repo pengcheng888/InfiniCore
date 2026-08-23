@@ -308,6 +308,9 @@ target("flash-attn-nvidia")
 
             -- Link libraries
             target:add("linkdirs", TORCH_DIR .. "/lib", PYTHON_LIB_DIR)
+            target:add("rpathdirs", TORCH_DIR .. "/lib", "/usr/local/cuda/lib64")
+            target:add("ldflags", "-Wl,-rpath," .. TORCH_DIR .. "/lib", "-Wl,-rpath,/usr/local/cuda/lib64", {force = true})
+            target:add("shflags", "-Wl,-rpath," .. TORCH_DIR .. "/lib", "-Wl,-rpath,/usr/local/cuda/lib64", {force = true})
             target:add("links", "torch", "torch_cuda", "torch_cpu", "c10", "c10_cuda", "torch_python", LIB_PYTHON)
         end)
 
