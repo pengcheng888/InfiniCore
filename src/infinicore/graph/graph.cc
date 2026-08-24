@@ -123,22 +123,18 @@ Graph::Graph() {
 void Graph::run() const {
     HostIntArrayScope host_int_array_scope(&host_int_arrays_);
 
-    if (device_graph_ != nullptr && device_graph_.get()->exec != nullptr) {
-        if (graph_debug_enabled()) {
-            std::fprintf(stderr, "[infinicore graph] run device_graph ops=%zu\n", op_list_.size());
-        }
-        device_graph_.get()->launch();
-    } else {
+    if (segments_.empty()) {
         if (graph_debug_enabled()) {
             std::fprintf(stderr, "[infinicore graph] run op_list ops=%zu\n", op_list_.size());
         }
-        if (segments_.empty()) {
-
-            for (auto &op : op_list_) {
-                op->run();
-            }
+        for (auto &op : op_list_) {
+            op->run();
         }
         return;
+    }
+
+    if (graph_debug_enabled()) {
+        std::fprintf(stderr, "[infinicore graph] run segmented ops=%zu segments=%zu\n", op_list_.size(), segments_.size());
     }
     for (const auto &segment : segments_) {
         segment->run();
@@ -186,7 +182,6 @@ void Graph::instantiate() {
         std::fprintf(stderr, "[infinicore graph] instantiate ops=%zu\n", op_list_.size());
     }
     if (op_list_.empty()) {
-        device_graph_.reset();
         return;
     }
 
@@ -195,13 +190,9 @@ void Graph::instantiate() {
             if (graph_debug_enabled()) {
                 std::fprintf(stderr, "[infinicore graph] skip device graph capture\n");
             }
-            device_graph_.reset();
             return;
         }
     }
-
-    // Reset device graph
-    device_graph_ = std::make_unique<DeviceGraph>();
 
     // Warm the complete op list before splitting it into replay segments.
     for (size_t iter = 0; iter < 5; ++iter) {
