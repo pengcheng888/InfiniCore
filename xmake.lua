@@ -790,6 +790,10 @@ target("infinicore_cpp_api")
         local cuda_root = os.getenv("CUDA_HOME") or os.getenv("CUDA_PATH") or get_config("cuda") or "/usr/local/cuda"
         add_includedirs(cuda_root .. "/include")
     end
+    if has_config("moore-gpu") then
+        local musa_root = os.getenv("MUSA_ROOT") or os.getenv("MUSA_HOME") or os.getenv("MUSA_PATH") or "/usr/local/musa"
+        add_includedirs(path.join(musa_root, "include"))
+    end
     if has_config("ascend-npu") then
         local ASCEND_HOME = os.getenv("ASCEND_HOME") or os.getenv("ASCEND_TOOLKIT_HOME")
         add_includedirs(ASCEND_HOME .. "/include")
