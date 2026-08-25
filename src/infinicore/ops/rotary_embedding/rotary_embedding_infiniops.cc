@@ -35,6 +35,7 @@ void *plan(const Tensor &positions,
     INFINICORE_ASSERT(device_type == Device::Type::NVIDIA
                       || device_type == Device::Type::METAX
                       || device_type == Device::Type::ILUVATAR
+                      || device_type == Device::Type::CAMBRICON
                       || device_type == Device::Type::HYGON);
     return new PlannedMeta{
         TensorMeta(positions),
@@ -87,6 +88,9 @@ static bool registered = []() {
     RotaryEmbedding::plan_dispatcher().registerDevice(Device::Type::ILUVATAR, &plan);
     RotaryEmbedding::run_dispatcher().registerDevice(Device::Type::ILUVATAR, &run);
     RotaryEmbedding::cleanup_dispatcher().registerDevice(Device::Type::ILUVATAR, &cleanup);
+    RotaryEmbedding::plan_dispatcher().registerDevice(Device::Type::CAMBRICON, &plan);
+    RotaryEmbedding::run_dispatcher().registerDevice(Device::Type::CAMBRICON, &run);
+    RotaryEmbedding::cleanup_dispatcher().registerDevice(Device::Type::CAMBRICON, &cleanup);
     RotaryEmbedding::plan_dispatcher().registerDevice(Device::Type::HYGON, &plan);
     RotaryEmbedding::run_dispatcher().registerDevice(Device::Type::HYGON, &run);
     RotaryEmbedding::cleanup_dispatcher().registerDevice(Device::Type::HYGON, &cleanup);
