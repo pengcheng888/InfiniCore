@@ -2,7 +2,7 @@
 
 #include "deepseek_v4_flashmla_cache_kernel.hpp"
 
-#include "infinicore/ops/deepseek_v4_concat_and_cache_mla.hpp"
+#include "infinicore/ops/concat_and_cache_mla.hpp"
 #include "infinicore/ops/deepseek_v4_create_flashmla_kv_indices.hpp"
 
 #include "infinicore/context/context.hpp"
@@ -158,12 +158,12 @@ void deepseek_v4_fused_store_flashmla_cache_(const Tensor &kv_c,
                                              const Tensor &slot_mapping,
                                              const std::string &kv_cache_dtype,
                                              const Tensor &scale) {
-    deepseek_v4_concat_and_cache_mla_(kv_c,
-                                      k_pe,
-                                      kv_cache,
-                                      slot_mapping,
-                                      kv_cache_dtype,
-                                      scale);
+    concat_and_cache_mla_(kv_c,
+                          k_pe,
+                          kv_cache,
+                          slot_mapping,
+                          kv_cache_dtype,
+                          scale);
 }
 
 

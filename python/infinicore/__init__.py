@@ -153,17 +153,8 @@ from infinicore.ops.paged_attention import paged_attention
 from infinicore.ops.paged_attention_mla import paged_attention_mla_
 from infinicore.ops.paged_attention_prefill import paged_attention_prefill
 from infinicore.ops.paged_caching import paged_caching
-from infinicore.ops.qwen3_add_rms_norm import qwen3_add_rms_norm, qwen3_add_rms_norm_inplace
-from infinicore.ops.qwen3_fused_qk_norm_rope import qwen3_fused_qk_norm_rope, qwen3_fused_qk_norm_rope_
-from infinicore.ops.qwen3_mha_kvcache import qwen3_mha_kvcache
-from infinicore.ops.qwen3_mha_varlen import qwen3_mha_varlen
-from infinicore.ops.qwen3_rms_norm import qwen3_rms_norm
-from infinicore.ops.qwen3_rotary_embedding import qwen3_rotary_embedding, qwen3_rotary_embedding_
-from infinicore.ops.qwen3_silu_and_mul import qwen3_silu_and_mul
-from infinicore.ops.qwen3_store_kvcache import qwen3_store_kvcache, qwen3_store_kvcache_
 from infinicore.ops.deepseek_v4_assign_extend_cache_locs import deepseek_v4_assign_extend_cache_locs_
 from infinicore.ops.deepseek_v4_assign_req_to_token_pool import deepseek_v4_assign_req_to_token_pool_
-from infinicore.ops.deepseek_v4_concat_and_cache_mla import deepseek_v4_concat_and_cache_mla_
 from infinicore.ops.deepseek_v4_create_chunked_prefix_cache_kv_indices import deepseek_v4_create_chunked_prefix_cache_kv_indices_
 from infinicore.ops.deepseek_v4_create_flashmla_kv_indices import deepseek_v4_create_flashmla_kv_indices_
 from infinicore.ops.deepseek_v4_dcu_cache_alloc import deepseek_v4_dcu_alloc_decode_kernel_, deepseek_v4_dcu_alloc_extend_kernel_
@@ -371,21 +362,8 @@ __all__ = [
     "paged_caching",
     "paged_attention",
     "paged_attention_prefill",
-    "qwen3_add_rms_norm",
-    "qwen3_add_rms_norm_inplace",
-    "qwen3_fused_qk_norm_rope",
-    "qwen3_fused_qk_norm_rope_",
-    "qwen3_mha_kvcache",
-    "qwen3_mha_varlen",
-    "qwen3_rms_norm",
-    "qwen3_rotary_embedding",
-    "qwen3_rotary_embedding_",
-    "qwen3_silu_and_mul",
-    "qwen3_store_kvcache",
-    "qwen3_store_kvcache_",
     "deepseek_v4_assign_extend_cache_locs_",
     "deepseek_v4_assign_req_to_token_pool_",
-    "deepseek_v4_concat_and_cache_mla_",
     "deepseek_v4_create_chunked_prefix_cache_kv_indices_",
     "deepseek_v4_create_flashmla_kv_indices_",
     "deepseek_v4_dcu_alloc_decode_kernel_",

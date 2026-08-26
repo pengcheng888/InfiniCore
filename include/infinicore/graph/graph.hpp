@@ -41,6 +41,7 @@ public:
 class DispatchableGraphOperator : public GraphOperator {
 public:
     void run() const override;
+    bool is_device_graph_capture_safe() const override { return device_graph_capture_safe_; }
     bool needs_graph_replay_update() const override;
     void graph_replay(GraphReplayStage stage) const override;
     bool supports_device_graph_capture() const override { return device_graph_capture_supported_; }
@@ -56,6 +57,7 @@ protected:
     run_schema runner_;
     cleanup_schema deleter_;
     graph_replay_schema graph_replay_ = nullptr;
+    bool device_graph_capture_safe_ = true;
     bool device_graph_capture_supported_ = true;
 };
 

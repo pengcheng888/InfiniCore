@@ -1,9 +1,9 @@
 #include "infinicore/ops/concat_and_cache_mla.hpp"
 #include "../../utils.hpp"
 
-#include <stdexcept>
+#include "infinicore/context/context.hpp"
 
-#include "../vendor_ops/vendor_ops_dispatch.hpp"
+#include <stdexcept>
 
 namespace infinicore::op {
 
@@ -57,6 +57,39 @@ void validate_concat_and_cache_mla(const Tensor &kv_c,
 
 } // namespace
 
+INFINICORE_GRAPH_OP_DISPATCHERS_IMPL(ConcatAndCacheMla);
+
+ConcatAndCacheMla::ConcatAndCacheMla(const Tensor &kv_c,
+                                     const Tensor &k_pe,
+                                     Tensor kv_cache,
+                                     const Tensor &slot_mapping,
+                                     const std::string &kv_cache_dtype,
+                                     Tensor scale) {
+    device_graph_capture_safe_ = false; //
+    INFINICORE_GRAPH_OP_DISPATCH(kv_cache->device().getType(),
+                                 kv_c,
+                                 k_pe,
+                                 kv_cache,
+                                 slot_mapping,
+                                 kv_cache_dtype,
+                                 scale);
+}
+
+void ConcatAndCacheMla::execute(const Tensor &kv_c,
+                                const Tensor &k_pe,
+                                Tensor kv_cache,
+                                const Tensor &slot_mapping,
+                                const std::string &kv_cache_dtype,
+                                Tensor scale) {
+    INFINICORE_GRAPH_OP_RECORD_OR_RUN(ConcatAndCacheMla,
+                                      kv_c,
+                                      k_pe,
+                                      kv_cache,
+                                      slot_mapping,
+                                      kv_cache_dtype,
+                                      scale);
+}
+
 void concat_and_cache_mla_(const Tensor &kv_c,
                            const Tensor &k_pe,
                            Tensor kv_cache,
@@ -64,12 +97,7 @@ void concat_and_cache_mla_(const Tensor &kv_c,
                            const std::string &kv_cache_dtype,
                            Tensor scale) {
     validate_concat_and_cache_mla(kv_c, k_pe, kv_cache, slot_mapping, kv_cache_dtype, scale);
-
-    auto kernel = vendor_ops::lookup(
-        vendor_ops::concat_and_cache_mla_dispatcher(),
-        kv_cache->device().getType(),
-        "concat_and_cache_mla");
-    kernel(kv_c, k_pe, kv_cache, slot_mapping, kv_cache_dtype, scale);
+    ConcatAndCacheMla::execute(kv_c, k_pe, kv_cache, slot_mapping, kv_cache_dtype, scale);
 }
 
 } // namespace infinicore::op
