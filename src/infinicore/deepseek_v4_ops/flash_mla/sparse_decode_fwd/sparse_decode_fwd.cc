@@ -1,5 +1,6 @@
 #include "infinicore/ops/flash_mla/sparse_decode_fwd.hpp"
 
+#include "infinicore/context/context.hpp"
 #include "infinicore/dtype.hpp"
 
 #include "../../../utils.hpp"
@@ -41,11 +42,37 @@ void check_sparse_decode_common(const Tensor &out,
     INFINICORE_ASSERT_TENSORS_SAME_DEVICE(out, lse, q, k_cache, indices);
 }
 
+void check_sparse_decode_graph_scheduler_metadata(const std::optional<Tensor> &tile_scheduler_metadata,
+                                                  const std::optional<Tensor> &num_splits,
+                                                  const Tensor &q,
+                                                  const char *op_name) {
+    if (!tile_scheduler_metadata.has_value() || !tile_scheduler_metadata.value() || !num_splits.has_value() || !num_splits.value()) {
+        throw std::runtime_error(std::string(op_name) + " graph path requires precomputed scheduler metadata.");
+    }
+    const auto &tile = tile_scheduler_metadata.value();
+    const auto &splits = num_splits.value();
+    if (tile->ndim() != 2 || tile->size(1) != 8 || splits->ndim() != 1 || splits->size(0) != q->size(0) * q->size(1) + 1) {
+        throw std::runtime_error(std::string(op_name) + " graph scheduler metadata shape mismatch.");
+    }
+    if (tile->dtype() != DataType::I32 || splits->dtype() != DataType::I32) {
+        throw std::runtime_error(std::string(op_name) + " graph scheduler metadata must be int32.");
+    }
+    if (!tile->is_contiguous() || !splits->is_contiguous()) {
+        throw std::runtime_error(std::string(op_name) + " graph scheduler metadata must be contiguous.");
+    }
+    INFINICORE_ASSERT_TENSORS_SAME_DEVICE(tile, splits, q);
+}
+
 } // namespace
 
 namespace flash_mla {
 
 INFINICORE_GRAPH_OP_DISPATCHERS_IMPL(SparseDecodeFwd);
+
+common::OpDispatcher<SparseDecodeFwdImplSchema> &sparse_decode_fwd_impl_dispatcher() {
+    static common::OpDispatcher<SparseDecodeFwdImplSchema> dispatcher_;
+    return dispatcher_;
+}
 
 SparseDecodeFwd::SparseDecodeFwd(
     Tensor out,
@@ -55,6 +82,8 @@ SparseDecodeFwd::SparseDecodeFwd(
     const Tensor &indices,
     std::optional<Tensor> topk_length,
     std::optional<Tensor> attn_sink,
+    std::optional<Tensor> tile_scheduler_metadata,
+    std::optional<Tensor> num_splits,
     std::optional<Tensor> extra_k_cache,
     std::optional<Tensor> extra_indices_in_kvcache,
     std::optional<Tensor> extra_topk_length,
@@ -68,6 +97,8 @@ SparseDecodeFwd::SparseDecodeFwd(
                                  indices,
                                  topk_length,
                                  attn_sink,
+                                 tile_scheduler_metadata,
+                                 num_splits,
                                  extra_k_cache,
                                  extra_indices_in_kvcache,
                                  extra_topk_length,
@@ -83,6 +114,8 @@ void SparseDecodeFwd::execute(
     const Tensor &indices,
     std::optional<Tensor> topk_length,
     std::optional<Tensor> attn_sink,
+    std::optional<Tensor> tile_scheduler_metadata,
+    std::optional<Tensor> num_splits,
     std::optional<Tensor> extra_k_cache,
     std::optional<Tensor> extra_indices_in_kvcache,
     std::optional<Tensor> extra_topk_length,
@@ -96,6 +129,8 @@ void SparseDecodeFwd::execute(
                                       indices,
                                       topk_length,
                                       attn_sink,
+                                      tile_scheduler_metadata,
+                                      num_splits,
                                       extra_k_cache,
                                       extra_indices_in_kvcache,
                                       extra_topk_length,
@@ -137,36 +172,27 @@ std::tuple<Tensor, Tensor, Tensor, Tensor> sparse_decode_fwd(
     Tensor lse = Tensor::empty({q->size(0), q->size(2), q->size(1)},
                                DataType::F32,
                                q->device());
-    Tensor new_tile_scheduler_metadata;
-    Tensor new_num_splits;
-
-    sparse_decode_fwd_(out,
-                       lse,
-                       new_tile_scheduler_metadata,
-                       new_num_splits,
-                       q,
-                       k_cache,
-                       indices,
-                       topk_length,
-                       attn_sink,
-                       std::nullopt,
-                       std::nullopt,
-                       extra_k_cache,
-                       extra_indices_in_kvcache,
-                       extra_topk_length,
-                       head_dim_v,
-                       softmax_scale);
-    (void)tile_scheduler_metadata;
-    (void)num_splits;
+    auto [new_tile_scheduler_metadata, new_num_splits] = sparse_decode_fwd_(out,
+                                                                            lse,
+                                                                            q,
+                                                                            k_cache,
+                                                                            indices,
+                                                                            topk_length,
+                                                                            attn_sink,
+                                                                            tile_scheduler_metadata,
+                                                                            num_splits,
+                                                                            extra_k_cache,
+                                                                            extra_indices_in_kvcache,
+                                                                            extra_topk_length,
+                                                                            head_dim_v,
+                                                                            softmax_scale);
 
     return {out, lse, new_tile_scheduler_metadata, new_num_splits};
 }
 
-void sparse_decode_fwd_(
+std::tuple<Tensor, Tensor> sparse_decode_fwd_(
     Tensor &out,
     Tensor &lse,
-    Tensor &new_tile_scheduler_metadata,
-    Tensor &new_num_splits,
     const Tensor &q,
     const Tensor &k_cache,
     const Tensor &indices,
@@ -188,22 +214,57 @@ void sparse_decode_fwd_(
     if (head_dim_v <= 0 || out->size(3) != static_cast<size_t>(head_dim_v)) {
         throw std::runtime_error("sparse_decode_fwd_ output head_dim_v mismatch.");
     }
-    SparseDecodeFwd::execute(out,
-                             lse,
-                             q,
-                             k_cache,
-                             indices,
-                             topk_length,
-                             attn_sink,
-                             extra_k_cache,
-                             extra_indices_in_kvcache,
-                             extra_topk_length,
-                             head_dim_v,
-                             softmax_scale);
-    (void)new_tile_scheduler_metadata;
-    (void)new_num_splits;
-    (void)tile_scheduler_metadata;
-    (void)num_splits;
+    if (context::isGraphRecording()) {
+        check_sparse_decode_graph_scheduler_metadata(tile_scheduler_metadata, num_splits, q, "sparse_decode_fwd_");
+
+        SparseDecodeFwd::execute(out,
+                                 lse,
+                                 q,
+                                 k_cache,
+                                 indices,
+                                 topk_length,
+                                 attn_sink,
+                                 tile_scheduler_metadata,
+                                 num_splits,
+                                 extra_k_cache,
+                                 extra_indices_in_kvcache,
+                                 extra_topk_length,
+                                 head_dim_v,
+                                 softmax_scale);
+
+        Tensor new_tile_scheduler_metadata = tile_scheduler_metadata.value();
+        Tensor new_num_splits = num_splits.value();
+        return {new_tile_scheduler_metadata, new_num_splits};
+    }
+
+    auto [scheduler_metadata, scheduler_num_splits] = sparse_decode_fwd_impl_dispatcher().lookup(q->device().getType())(out,
+                                                                                                                        lse,
+                                                                                                                        q,
+                                                                                                                        k_cache,
+                                                                                                                        indices,
+                                                                                                                        topk_length,
+                                                                                                                        attn_sink,
+                                                                                                                        tile_scheduler_metadata,
+                                                                                                                        num_splits,
+                                                                                                                        extra_k_cache,
+                                                                                                                        extra_indices_in_kvcache,
+                                                                                                                        extra_topk_length,
+                                                                                                                        head_dim_v,
+                                                                                                                        softmax_scale);
+    if (!scheduler_metadata || !scheduler_num_splits) {
+        throw std::runtime_error("sparse_decode_fwd_ expects non-empty scheduler metadata from sparse_decode_fwd_impl.");
+    }
+
+    Tensor new_tile_scheduler_metadata = Tensor::empty(scheduler_metadata->shape(),
+                                                       scheduler_metadata->dtype(),
+                                                       scheduler_metadata->device());
+    Tensor new_num_splits = Tensor::empty(scheduler_num_splits->shape(),
+                                          scheduler_num_splits->dtype(),
+                                          scheduler_num_splits->device());
+    new_tile_scheduler_metadata->copy_from(scheduler_metadata);
+    new_num_splits->copy_from(scheduler_num_splits);
+
+    return {new_tile_scheduler_metadata, new_num_splits};
 }
 
 } // namespace flash_mla

@@ -3,6 +3,8 @@
 build/
 python/infinicore/lib/*.so
 sglang-0.5.17/
+sglang-0.5.18/
+vllm-0.27.1/
 reference/
 reference-infinilm-deepseek_v4/
 # MacOS Cache

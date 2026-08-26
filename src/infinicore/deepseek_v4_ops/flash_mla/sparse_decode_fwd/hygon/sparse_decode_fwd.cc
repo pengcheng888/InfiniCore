@@ -19,6 +19,7 @@
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <tuple>
 #include <vector>
 
 namespace infinicore::op {
@@ -158,11 +159,9 @@ std::optional<at::Tensor> to_optional_aten_for_flashmla(const std::optional<Tens
 #if defined(ENABLE_ATEN) && defined(ENABLE_HYGON_API)
 namespace flash_mla::sparse_decode_fwd_hygon {
 
-void sparse_decode_fwd_impl(
+std::tuple<Tensor, Tensor> sparse_decode_fwd_impl(
     Tensor &out,
     Tensor &lse,
-    Tensor &new_tile_scheduler_metadata_tensor,
-    Tensor &new_num_splits_tensor,
     const Tensor &q,
     const Tensor &k_cache,
     const Tensor &indices,
@@ -184,6 +183,8 @@ struct PlannedMeta {
     graph::GraphTensor indices;
     std::optional<graph::GraphTensor> topk_length;
     std::optional<graph::GraphTensor> attn_sink;
+    std::optional<graph::GraphTensor> tile_scheduler_metadata;
+    std::optional<graph::GraphTensor> num_splits;
     std::optional<graph::GraphTensor> extra_k_cache;
     std::optional<graph::GraphTensor> extra_indices_in_kvcache;
     std::optional<graph::GraphTensor> extra_topk_length;
@@ -205,6 +206,8 @@ void *plan(Tensor out,
            const Tensor &indices,
            std::optional<Tensor> topk_length,
            std::optional<Tensor> attn_sink,
+           std::optional<Tensor> tile_scheduler_metadata,
+           std::optional<Tensor> num_splits,
            std::optional<Tensor> extra_k_cache,
            std::optional<Tensor> extra_indices_in_kvcache,
            std::optional<Tensor> extra_topk_length,
@@ -218,6 +221,8 @@ void *plan(Tensor out,
         graph::GraphTensor(indices),
         make_optional_graph_tensor(topk_length),
         make_optional_graph_tensor(attn_sink),
+        make_optional_graph_tensor(tile_scheduler_metadata),
+        make_optional_graph_tensor(num_splits),
         make_optional_graph_tensor(extra_k_cache),
         make_optional_graph_tensor(extra_indices_in_kvcache),
         make_optional_graph_tensor(extra_topk_length),
@@ -227,24 +232,20 @@ void *plan(Tensor out,
 
 void run(void *planned_meta) {
     auto *planned = reinterpret_cast<PlannedMeta *>(planned_meta);
-    Tensor new_tile_scheduler_metadata;
-    Tensor new_num_splits;
-    sparse_decode_fwd_impl(planned->out,
-                           planned->lse,
-                           new_tile_scheduler_metadata,
-                           new_num_splits,
-                           planned->q,
-                           planned->k_cache,
-                           planned->indices,
-                           planned->topk_length,
-                           planned->attn_sink,
-                           std::nullopt,
-                           std::nullopt,
-                           planned->extra_k_cache,
-                           planned->extra_indices_in_kvcache,
-                           planned->extra_topk_length,
-                           planned->head_dim_v,
-                           planned->softmax_scale);
+    (void)sparse_decode_fwd_impl(planned->out,
+                                 planned->lse,
+                                 planned->q,
+                                 planned->k_cache,
+                                 planned->indices,
+                                 planned->topk_length,
+                                 planned->attn_sink,
+                                 planned->tile_scheduler_metadata,
+                                 planned->num_splits,
+                                 planned->extra_k_cache,
+                                 planned->extra_indices_in_kvcache,
+                                 planned->extra_topk_length,
+                                 planned->head_dim_v,
+                                 planned->softmax_scale);
 }
 
 void cleanup(void **planned_meta_ptr) {
@@ -256,26 +257,24 @@ static bool registered = []() {
     ::infinicore::op::flash_mla::SparseDecodeFwd::plan_dispatcher().registerDevice(Device::Type::HYGON, &plan);
     ::infinicore::op::flash_mla::SparseDecodeFwd::run_dispatcher().registerDevice(Device::Type::HYGON, &run);
     ::infinicore::op::flash_mla::SparseDecodeFwd::cleanup_dispatcher().registerDevice(Device::Type::HYGON, &cleanup);
+    ::infinicore::op::flash_mla::sparse_decode_fwd_impl_dispatcher().registerDevice(Device::Type::HYGON, &sparse_decode_fwd_impl);
     return true;
 }();
 
-void sparse_decode_fwd_impl(
-    Tensor &out,
-    Tensor &lse,
-    Tensor &new_tile_scheduler_metadata_tensor,
-    Tensor &new_num_splits_tensor,
-    const Tensor &q,
-    const Tensor &k_cache,
-    const Tensor &indices,
-    std::optional<Tensor> topk_length,
-    std::optional<Tensor> attn_sink,
-    std::optional<Tensor> tile_scheduler_metadata,
-    std::optional<Tensor> num_splits,
-    std::optional<Tensor> extra_k_cache,
-    std::optional<Tensor> extra_indices_in_kvcache,
-    std::optional<Tensor> extra_topk_length,
-    int64_t head_dim_v,
-    double softmax_scale) {
+std::tuple<Tensor, Tensor> sparse_decode_fwd_impl(Tensor &out,
+                                                  Tensor &lse,
+                                                  const Tensor &q,
+                                                  const Tensor &k_cache,
+                                                  const Tensor &indices,
+                                                  std::optional<Tensor> topk_length,
+                                                  std::optional<Tensor> attn_sink,
+                                                  std::optional<Tensor> tile_scheduler_metadata,
+                                                  std::optional<Tensor> num_splits,
+                                                  std::optional<Tensor> extra_k_cache,
+                                                  std::optional<Tensor> extra_indices_in_kvcache,
+                                                  std::optional<Tensor> extra_topk_length,
+                                                  int64_t head_dim_v,
+                                                  double softmax_scale) {
 #if defined(ENABLE_ATEN) && (defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API))
     constexpr const char *op_name = "sparse_decode_fwd_impl";
     check_device(q, op_name);
@@ -321,19 +320,17 @@ void sparse_decode_fwd_impl(
                                                                                                                         static_cast<float>(softmax_scale));
     copy_flashmla_return_tensor_exact(out, flash_out_at, "out");
     copy_flashmla_return_tensor_exact(lse, flash_lse_at, "softmax_lse");
-    (void)new_tile_scheduler_metadata_tensor;
-    (void)new_num_splits_tensor;
-    (void)new_tile_scheduler_metadata;
-    (void)new_num_splits;
-    return;
+    if (!new_tile_scheduler_metadata.has_value() || !new_num_splits.has_value()) {
+        throw std::runtime_error("sparse_decode_fwd_impl: FlashMLA returned None scheduler metadata.");
+    }
+    return {infinicore::adaptor::from_aten_tensor(new_tile_scheduler_metadata.value().contiguous()),
+            infinicore::adaptor::from_aten_tensor(new_num_splits.value().contiguous())};
 #endif
 
     throw std::runtime_error("sparse_decode_fwd_impl only supports HYGON FlashMLA sparse decode.");
 #endif
     (void)out;
     (void)lse;
-    (void)new_tile_scheduler_metadata_tensor;
-    (void)new_num_splits_tensor;
     (void)q;
     (void)k_cache;
     (void)indices;

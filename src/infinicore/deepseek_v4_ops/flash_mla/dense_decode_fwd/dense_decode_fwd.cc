@@ -1,5 +1,6 @@
 #include "infinicore/ops/flash_mla/dense_decode_fwd.hpp"
 
+#include "infinicore/context/context.hpp"
 #include "infinicore/dtype.hpp"
 
 #include "../../../utils.hpp"
@@ -42,11 +43,37 @@ void check_dense_decode_common(const Tensor &out,
     INFINICORE_ASSERT_TENSORS_SAME_DEVICE(out, lse, q, k_cache, cache_seqlens, block_table);
 }
 
+void check_dense_decode_graph_scheduler_metadata(const std::optional<Tensor> &tile_scheduler_metadata,
+                                                 const std::optional<Tensor> &num_splits,
+                                                 const Tensor &q,
+                                                 const char *op_name) {
+    if (!tile_scheduler_metadata.has_value() || !tile_scheduler_metadata.value() || !num_splits.has_value() || !num_splits.value()) {
+        throw std::runtime_error(std::string(op_name) + " graph path requires precomputed scheduler metadata.");
+    }
+    const auto &tile = tile_scheduler_metadata.value();
+    const auto &splits = num_splits.value();
+    if (tile->ndim() != 2 || tile->size(1) != 8 || splits->ndim() != 1 || splits->size(0) != q->size(0) + 1) {
+        throw std::runtime_error(std::string(op_name) + " graph scheduler metadata shape mismatch.");
+    }
+    if (tile->dtype() != DataType::I32 || splits->dtype() != DataType::I32) {
+        throw std::runtime_error(std::string(op_name) + " graph scheduler metadata must be int32.");
+    }
+    if (!tile->is_contiguous() || !splits->is_contiguous()) {
+        throw std::runtime_error(std::string(op_name) + " graph scheduler metadata must be contiguous.");
+    }
+    INFINICORE_ASSERT_TENSORS_SAME_DEVICE(tile, splits, q);
+}
+
 } // namespace
 
 namespace flash_mla {
 
 INFINICORE_GRAPH_OP_DISPATCHERS_IMPL(DenseDecodeFwd);
+
+common::OpDispatcher<DenseDecodeFwdImplSchema> &dense_decode_fwd_impl_dispatcher() {
+    static common::OpDispatcher<DenseDecodeFwdImplSchema> dispatcher_;
+    return dispatcher_;
+}
 
 DenseDecodeFwd::DenseDecodeFwd(
     Tensor out,
@@ -100,16 +127,15 @@ void DenseDecodeFwd::execute(
                                       num_splits);
 }
 
-std::tuple<Tensor, Tensor, Tensor, Tensor> dense_decode_fwd(
-    const Tensor &q,
-    const Tensor &k_cache,
-    int64_t head_dim_v,
-    const Tensor &cache_seqlens,
-    const Tensor &block_table,
-    double softmax_scale,
-    bool causal,
-    std::optional<Tensor> tile_scheduler_metadata,
-    std::optional<Tensor> num_splits) {
+std::tuple<Tensor, Tensor, Tensor, Tensor> dense_decode_fwd(const Tensor &q,
+                                                            const Tensor &k_cache,
+                                                            int64_t head_dim_v,
+                                                            const Tensor &cache_seqlens,
+                                                            const Tensor &block_table,
+                                                            double softmax_scale,
+                                                            bool causal,
+                                                            std::optional<Tensor> tile_scheduler_metadata,
+                                                            std::optional<Tensor> num_splits) {
     if (q->ndim() != 4) {
         throw std::runtime_error("dense_decode_fwd expects q shape [batch, seq_q, heads, head_dim].");
     }
@@ -123,84 +149,84 @@ std::tuple<Tensor, Tensor, Tensor, Tensor> dense_decode_fwd(
     Tensor lse = Tensor::empty({q->size(0), q->size(2), q->size(1)},
                                DataType::F32,
                                q->device());
-    Tensor new_tile_scheduler_metadata;
-    Tensor new_num_splits;
-
-    dense_decode_fwd_(out,
-                      lse,
-                      new_tile_scheduler_metadata,
-                      new_num_splits,
-                      q,
-                      k_cache,
-                      head_dim_v,
-                      cache_seqlens,
-                      block_table,
-                      softmax_scale,
-                      causal,
-                      tile_scheduler_metadata,
-                      num_splits);
+    auto [new_tile_scheduler_metadata, new_num_splits] = dense_decode_fwd_(out,
+                                                                           lse,
+                                                                           q,
+                                                                           k_cache,
+                                                                           head_dim_v,
+                                                                           cache_seqlens,
+                                                                           block_table,
+                                                                           softmax_scale,
+                                                                           causal,
+                                                                           tile_scheduler_metadata,
+                                                                           num_splits);
 
     return {out, lse, new_tile_scheduler_metadata, new_num_splits};
 }
 
-std::tuple<Tensor, Tensor, Tensor, Tensor> dense_decode_fwd_(
-    const Tensor &q,
-    const Tensor &k_cache,
-    int64_t head_dim_v,
-    const Tensor &cache_seqlens,
-    const Tensor &block_table,
-    double softmax_scale,
-    bool causal,
-    std::optional<Tensor> tile_scheduler_metadata,
-    std::optional<Tensor> num_splits) {
-    return dense_decode_fwd(q,
-                            k_cache,
-                            head_dim_v,
-                            cache_seqlens,
-                            block_table,
-                            softmax_scale,
-                            causal,
-                            tile_scheduler_metadata,
-                            num_splits);
-}
+std::tuple<Tensor, Tensor> dense_decode_fwd_(Tensor &out,
+                                             Tensor &lse,
+                                             const Tensor &q,
+                                             const Tensor &k_cache,
+                                             int64_t head_dim_v,
+                                             const Tensor &cache_seqlens,
+                                             const Tensor &block_table,
+                                             double softmax_scale,
+                                             bool causal,
+                                             std::optional<Tensor> tile_scheduler_metadata,
+                                             std::optional<Tensor> num_splits) {
 
-void dense_decode_fwd_(
-    Tensor &out,
-    Tensor &lse,
-    Tensor &new_tile_scheduler_metadata,
-    Tensor &new_num_splits,
-    const Tensor &q,
-    const Tensor &k_cache,
-    int64_t head_dim_v,
-    const Tensor &cache_seqlens,
-    const Tensor &block_table,
-    double softmax_scale,
-    bool causal,
-    std::optional<Tensor> tile_scheduler_metadata,
-    std::optional<Tensor> num_splits) {
-    check_dense_decode_common(out,
-                              lse,
-                              q,
-                              k_cache,
-                              cache_seqlens,
-                              block_table,
-                              "dense_decode_fwd_");
+    check_dense_decode_common(out, lse, q, k_cache, cache_seqlens, block_table, "dense_decode_fwd_");
+
     if (head_dim_v <= 0 || out->size(3) != static_cast<size_t>(head_dim_v)) {
         throw std::runtime_error("dense_decode_fwd_ output head_dim_v mismatch.");
     }
-    DenseDecodeFwd::execute(out,
-                            lse,
-                            q,
-                            k_cache,
-                            head_dim_v,
-                            cache_seqlens,
-                            block_table,
-                            softmax_scale,
-                            causal,
-                            tile_scheduler_metadata,
-                            num_splits);
-    (void)new_tile_scheduler_metadata;
-    (void)new_num_splits;
+
+    if (context::isGraphRecording()) {
+        check_dense_decode_graph_scheduler_metadata(tile_scheduler_metadata, num_splits, q, "dense_decode_fwd_");
+
+        DenseDecodeFwd::execute(out,
+                                lse,
+                                q,
+                                k_cache,
+                                head_dim_v,
+                                cache_seqlens,
+                                block_table,
+                                softmax_scale,
+                                causal,
+                                tile_scheduler_metadata,
+                                num_splits);
+
+        Tensor new_tile_scheduler_metadata = tile_scheduler_metadata.value();
+        Tensor new_num_splits = num_splits.value();
+        return {new_tile_scheduler_metadata, new_num_splits};
+    }
+
+    auto [scheduler_metadata, scheduler_num_splits] = dense_decode_fwd_impl_dispatcher().lookup(q->device().getType())(out,
+                                                                                                                       lse,
+                                                                                                                       q,
+                                                                                                                       k_cache,
+                                                                                                                       head_dim_v,
+                                                                                                                       cache_seqlens,
+                                                                                                                       block_table,
+                                                                                                                       softmax_scale,
+                                                                                                                       causal,
+                                                                                                                       tile_scheduler_metadata,
+                                                                                                                       num_splits);
+    if (!scheduler_metadata || !scheduler_num_splits) {
+        throw std::runtime_error("dense_decode_fwd_ expects non-empty scheduler metadata from dense_decode_fwd_impl.");
+    }
+
+    Tensor new_tile_scheduler_metadata = Tensor::empty(scheduler_metadata->shape(),
+                                                       scheduler_metadata->dtype(),
+                                                       scheduler_metadata->device());
+    Tensor new_num_splits = Tensor::empty(scheduler_num_splits->shape(),
+                                          scheduler_num_splits->dtype(),
+                                          scheduler_num_splits->device());
+    new_tile_scheduler_metadata->copy_from(scheduler_metadata);
+    new_num_splits->copy_from(scheduler_num_splits);
+
+    return {new_tile_scheduler_metadata, new_num_splits};
 }
 
 } // namespace flash_mla

@@ -1,6 +1,7 @@
 #include "infinicore/ops/flash_mla/dense_decode_fwd.hpp"
 
 #include "dense_decode_symbol.hpp"
+#include "infinicore/context/context.hpp"
 
 #include "infinicore/device.hpp"
 #include "infinicore/dtype.hpp"
@@ -19,6 +20,7 @@
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <tuple>
 #include <vector>
 
 namespace infinicore::op {
@@ -104,7 +106,8 @@ void copy_flashmla_return_tensor_exact(Tensor &dst, at::Tensor src, const char *
     const auto expected_dtype = from_at_scalar_type_for_dense_decode(src.scalar_type());
     const auto expected_device = from_at_device_for_dense_decode(src.device());
     if (!dst) {
-        dst = Tensor::empty(expected_shape, expected_dtype, expected_device);
+        dst = infinicore::adaptor::from_aten_tensor(src);
+        return;
     }
     if (dst->shape() != expected_shape) {
         throw std::runtime_error(std::string("dense_decode_fwd_impl: ") + name + " shape mismatch.");
@@ -158,11 +161,9 @@ std::optional<at::Tensor> to_optional_aten_for_flashmla(const std::optional<Tens
 #if defined(ENABLE_ATEN) && defined(ENABLE_HYGON_API)
 namespace flash_mla::dense_decode_fwd_hygon {
 
-void dense_decode_fwd_impl(
+std::tuple<Tensor, Tensor> dense_decode_fwd_impl(
     Tensor &out,
     Tensor &lse,
-    Tensor &new_tile_scheduler_metadata_tensor,
-    Tensor &new_num_splits_tensor,
     const Tensor &q,
     const Tensor &k_cache,
     int64_t head_dim_v,
@@ -183,16 +184,9 @@ struct PlannedMeta {
     graph::GraphTensor block_table;
     double softmax_scale;
     bool causal;
-    std::optional<graph::GraphTensor> tile_scheduler_metadata;
-    std::optional<graph::GraphTensor> num_splits;
+    graph::GraphTensor tile_scheduler_metadata;
+    graph::GraphTensor num_splits;
 };
-
-std::optional<graph::GraphTensor> make_optional_graph_tensor(std::optional<Tensor> tensor) {
-    if (!tensor.has_value() || !tensor.value()) {
-        return std::nullopt;
-    }
-    return graph::GraphTensor(tensor.value());
-}
 
 void *plan(Tensor out,
            Tensor lse,
@@ -215,27 +209,23 @@ void *plan(Tensor out,
         graph::GraphTensor(block_table),
         softmax_scale,
         causal,
-        make_optional_graph_tensor(tile_scheduler_metadata),
-        make_optional_graph_tensor(num_splits)};
+        graph::GraphTensor(tile_scheduler_metadata.value()),
+        graph::GraphTensor(num_splits.value())};
 }
 
 void run(void *planned_meta) {
     auto *planned = reinterpret_cast<PlannedMeta *>(planned_meta);
-    Tensor new_tile_scheduler_metadata;
-    Tensor new_num_splits;
-    dense_decode_fwd_impl(planned->out,
-                          planned->lse,
-                          new_tile_scheduler_metadata,
-                          new_num_splits,
-                          planned->q,
-                          planned->k_cache,
-                          planned->head_dim_v,
-                          planned->cache_seqlens,
-                          planned->block_table,
-                          planned->softmax_scale,
-                          planned->causal,
-                          planned->tile_scheduler_metadata,
-                          planned->num_splits);
+    (void)dense_decode_fwd_impl(planned->out,
+                                planned->lse,
+                                planned->q,
+                                planned->k_cache,
+                                planned->head_dim_v,
+                                planned->cache_seqlens,
+                                planned->block_table,
+                                planned->softmax_scale,
+                                planned->causal,
+                                std::optional<Tensor>(planned->tile_scheduler_metadata),
+                                std::optional<Tensor>(planned->num_splits));
 }
 
 void cleanup(void **planned_meta_ptr) {
@@ -247,14 +237,13 @@ static bool registered = []() {
     ::infinicore::op::flash_mla::DenseDecodeFwd::plan_dispatcher().registerDevice(Device::Type::HYGON, &plan);
     ::infinicore::op::flash_mla::DenseDecodeFwd::run_dispatcher().registerDevice(Device::Type::HYGON, &run);
     ::infinicore::op::flash_mla::DenseDecodeFwd::cleanup_dispatcher().registerDevice(Device::Type::HYGON, &cleanup);
+    ::infinicore::op::flash_mla::dense_decode_fwd_impl_dispatcher().registerDevice(Device::Type::HYGON, &dense_decode_fwd_impl);
     return true;
 }();
 
-void dense_decode_fwd_impl(
+std::tuple<Tensor, Tensor> dense_decode_fwd_impl(
     Tensor &out,
     Tensor &lse,
-    Tensor &new_tile_scheduler_metadata_tensor,
-    Tensor &new_num_splits_tensor,
     const Tensor &q,
     const Tensor &k_cache,
     int64_t head_dim_v,
@@ -297,19 +286,17 @@ void dense_decode_fwd_impl(
                                                                                                                        num_splits_flash_at);
     copy_flashmla_return_tensor_exact(out, flash_out_at, "out");
     copy_flashmla_return_tensor_exact(lse, flash_lse_at, "softmax_lse");
-    (void)new_tile_scheduler_metadata_tensor;
-    (void)new_num_splits_tensor;
-    (void)new_tile_scheduler_metadata;
-    (void)new_num_splits;
-    return;
+    if (!new_tile_scheduler_metadata.has_value() || !new_num_splits.has_value()) {
+        throw std::runtime_error("dense_decode_fwd_impl: FlashMLA returned None scheduler metadata.");
+    }
+    return {infinicore::adaptor::from_aten_tensor(new_tile_scheduler_metadata.value().contiguous()),
+            infinicore::adaptor::from_aten_tensor(new_num_splits.value().contiguous())};
 #endif
 
     throw std::runtime_error("dense_decode_fwd_impl only supports HYGON FlashMLA dense decode.");
 #endif
     (void)out;
     (void)lse;
-    (void)new_tile_scheduler_metadata_tensor;
-    (void)new_num_splits_tensor;
     (void)q;
     (void)k_cache;
     (void)head_dim_v;
