@@ -1021,7 +1021,7 @@ target("infinicore_cpp_api")
     end)
 
     -- Moore mate: force link torch_python to bypass --as-needed
-    if has_config("moore-gpu") and has_config("aten") and has_config("flash-attn") then
+    if has_config("moore-gpu") and has_config("aten") then
         before_link(function (target)
             local torch_dir = os.iorunv(PYTHON, {"-c",
                 "import torch, os; print(os.path.dirname(torch.__file__))"}):trim()
