@@ -43,13 +43,19 @@ void check_dense_decode_common(const Tensor &out,
     INFINICORE_ASSERT_TENSORS_SAME_DEVICE(out, lse, q, k_cache, cache_seqlens, block_table);
 }
 
-void check_dense_decode_graph_scheduler_metadata(const std::optional<Tensor> &tile_scheduler_metadata,
-                                                 const std::optional<Tensor> &num_splits,
-                                                 const Tensor &q,
-                                                 const char *op_name) {
-    if (!tile_scheduler_metadata.has_value() || !tile_scheduler_metadata.value() || !num_splits.has_value() || !num_splits.value()) {
-        throw std::runtime_error(std::string(op_name) + " graph path requires precomputed scheduler metadata.");
+void check_dense_decode_optional_scheduler_metadata(const std::optional<Tensor> &tile_scheduler_metadata,
+                                                    const std::optional<Tensor> &num_splits,
+                                                    const Tensor &q,
+                                                    const char *op_name) {
+    const bool has_tile = tile_scheduler_metadata.has_value() && tile_scheduler_metadata.value();
+    const bool has_splits = num_splits.has_value() && num_splits.value();
+    if (has_tile != has_splits) {
+        throw std::runtime_error(std::string(op_name) + " scheduler metadata must be both set or both empty.");
     }
+    if (!has_tile) {
+        return;
+    }
+
     const auto &tile = tile_scheduler_metadata.value();
     const auto &splits = num_splits.value();
     if (tile->ndim() != 2 || tile->size(1) != 8 || splits->ndim() != 1 || splits->size(0) != q->size(0) + 1) {
@@ -113,6 +119,8 @@ void DenseDecodeFwd::execute(
     bool causal,
     std::optional<Tensor> tile_scheduler_metadata,
     std::optional<Tensor> num_splits) {
+    check_dense_decode_optional_scheduler_metadata(tile_scheduler_metadata, num_splits, q, "DenseDecodeFwd::execute");
+
     INFINICORE_GRAPH_OP_RECORD_OR_RUN(DenseDecodeFwd,
                                       out,
                                       lse,
@@ -183,7 +191,7 @@ std::tuple<Tensor, Tensor> dense_decode_fwd_(Tensor &out,
     }
 
     if (context::isGraphRecording()) {
-        check_dense_decode_graph_scheduler_metadata(tile_scheduler_metadata, num_splits, q, "dense_decode_fwd_");
+        check_dense_decode_optional_scheduler_metadata(tile_scheduler_metadata, num_splits, q, "dense_decode_fwd_");
 
         DenseDecodeFwd::execute(out,
                                 lse,
@@ -197,9 +205,12 @@ std::tuple<Tensor, Tensor> dense_decode_fwd_(Tensor &out,
                                 tile_scheduler_metadata,
                                 num_splits);
 
-        Tensor new_tile_scheduler_metadata = tile_scheduler_metadata.value();
-        Tensor new_num_splits = num_splits.value();
-        return {new_tile_scheduler_metadata, new_num_splits};
+        // if (tile_scheduler_metadata.has_value() && tile_scheduler_metadata.value()) {
+        //     Tensor new_tile_scheduler_metadata = tile_scheduler_metadata.value();
+        //     Tensor new_num_splits = num_splits.value();
+        //     return {new_tile_scheduler_metadata, new_num_splits};
+        // }
+        return {Tensor(), Tensor()};
     }
 
     auto [scheduler_metadata, scheduler_num_splits] = dense_decode_fwd_impl_dispatcher().lookup(q->device().getType())(out,

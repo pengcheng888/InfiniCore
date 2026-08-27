@@ -184,9 +184,16 @@ struct PlannedMeta {
     graph::GraphTensor block_table;
     double softmax_scale;
     bool causal;
-    graph::GraphTensor tile_scheduler_metadata;
-    graph::GraphTensor num_splits;
+    std::optional<graph::GraphTensor> tile_scheduler_metadata;
+    std::optional<graph::GraphTensor> num_splits;
 };
+
+std::optional<graph::GraphTensor> to_optional_graph_tensor(const std::optional<Tensor> &tensor) {
+    if (!tensor.has_value() || !tensor.value()) {
+        return std::nullopt;
+    }
+    return graph::GraphTensor(tensor.value());
+}
 
 void *plan(Tensor out,
            Tensor lse,
@@ -209,12 +216,21 @@ void *plan(Tensor out,
         graph::GraphTensor(block_table),
         softmax_scale,
         causal,
-        graph::GraphTensor(tile_scheduler_metadata.value()),
-        graph::GraphTensor(num_splits.value())};
+        to_optional_graph_tensor(tile_scheduler_metadata),
+        to_optional_graph_tensor(num_splits)};
 }
 
 void run(void *planned_meta) {
     auto *planned = reinterpret_cast<PlannedMeta *>(planned_meta);
+    std::optional<Tensor> tile_scheduler_metadata =
+        planned->tile_scheduler_metadata.has_value()
+            ? std::optional<Tensor>(planned->tile_scheduler_metadata.value())
+            : std::nullopt;
+    std::optional<Tensor> num_splits =
+        planned->num_splits.has_value()
+            ? std::optional<Tensor>(planned->num_splits.value())
+            : std::nullopt;
+
     (void)dense_decode_fwd_impl(planned->out,
                                 planned->lse,
                                 planned->q,
@@ -224,8 +240,8 @@ void run(void *planned_meta) {
                                 planned->block_table,
                                 planned->softmax_scale,
                                 planned->causal,
-                                std::optional<Tensor>(planned->tile_scheduler_metadata),
-                                std::optional<Tensor>(planned->num_splits));
+                                tile_scheduler_metadata,
+                                num_splits);
 }
 
 void cleanup(void **planned_meta_ptr) {
