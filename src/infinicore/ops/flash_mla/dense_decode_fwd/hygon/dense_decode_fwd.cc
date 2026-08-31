@@ -20,7 +20,6 @@
 #include <optional>
 #include <stdexcept>
 #include <string>
-#include <tuple>
 #include <vector>
 
 namespace infinicore::op {
@@ -161,9 +160,11 @@ std::optional<at::Tensor> to_optional_aten_for_flashmla(const std::optional<Tens
 #if defined(ENABLE_ATEN) && defined(ENABLE_HYGON_API)
 namespace flash_mla::dense_decode_fwd_hygon {
 
-std::tuple<Tensor, Tensor> dense_decode_fwd_impl(
+void dense_decode_fwd_impl(
     Tensor &out,
     Tensor &lse,
+    std::optional<Tensor> &new_tile_scheduler_metadata,
+    std::optional<Tensor> &new_num_splits,
     const Tensor &q,
     const Tensor &k_cache,
     int64_t head_dim_v,
@@ -177,6 +178,8 @@ std::tuple<Tensor, Tensor> dense_decode_fwd_impl(
 struct PlannedMeta {
     graph::GraphTensor out;
     graph::GraphTensor lse;
+    std::optional<graph::GraphTensor> new_tile_scheduler_metadata;
+    std::optional<graph::GraphTensor> new_num_splits;
     graph::GraphTensor q;
     graph::GraphTensor k_cache;
     int64_t head_dim_v;
@@ -197,6 +200,8 @@ std::optional<graph::GraphTensor> to_optional_graph_tensor(const std::optional<T
 
 void *plan(Tensor out,
            Tensor lse,
+           std::optional<Tensor> new_tile_scheduler_metadata,
+           std::optional<Tensor> new_num_splits,
            const Tensor &q,
            const Tensor &k_cache,
            int64_t head_dim_v,
@@ -209,6 +214,8 @@ void *plan(Tensor out,
     return new PlannedMeta{
         graph::GraphTensor(out),
         graph::GraphTensor(lse),
+        to_optional_graph_tensor(new_tile_scheduler_metadata),
+        to_optional_graph_tensor(new_num_splits),
         graph::GraphTensor(q),
         graph::GraphTensor(k_cache),
         head_dim_v,
@@ -222,26 +229,32 @@ void *plan(Tensor out,
 
 void run(void *planned_meta) {
     auto *planned = reinterpret_cast<PlannedMeta *>(planned_meta);
-    std::optional<Tensor> tile_scheduler_metadata =
-        planned->tile_scheduler_metadata.has_value()
-            ? std::optional<Tensor>(planned->tile_scheduler_metadata.value())
-            : std::nullopt;
-    std::optional<Tensor> num_splits =
-        planned->num_splits.has_value()
-            ? std::optional<Tensor>(planned->num_splits.value())
-            : std::nullopt;
+    std::optional<Tensor> new_tile_scheduler_metadata = planned->new_tile_scheduler_metadata.has_value()
+                                                          ? std::optional<Tensor>(planned->new_tile_scheduler_metadata.value())
+                                                          : std::nullopt;
+    std::optional<Tensor> new_num_splits = planned->new_num_splits.has_value()
+                                             ? std::optional<Tensor>(planned->new_num_splits.value())
+                                             : std::nullopt;
+    std::optional<Tensor> tile_scheduler_metadata = planned->tile_scheduler_metadata.has_value()
+                                                      ? std::optional<Tensor>(planned->tile_scheduler_metadata.value())
+                                                      : std::nullopt;
+    std::optional<Tensor> num_splits = planned->num_splits.has_value()
+                                         ? std::optional<Tensor>(planned->num_splits.value())
+                                         : std::nullopt;
 
-    (void)dense_decode_fwd_impl(planned->out,
-                                planned->lse,
-                                planned->q,
-                                planned->k_cache,
-                                planned->head_dim_v,
-                                planned->cache_seqlens,
-                                planned->block_table,
-                                planned->softmax_scale,
-                                planned->causal,
-                                tile_scheduler_metadata,
-                                num_splits);
+    dense_decode_fwd_impl(planned->out,
+                          planned->lse,
+                          new_tile_scheduler_metadata,
+                          new_num_splits,
+                          planned->q,
+                          planned->k_cache,
+                          planned->head_dim_v,
+                          planned->cache_seqlens,
+                          planned->block_table,
+                          planned->softmax_scale,
+                          planned->causal,
+                          tile_scheduler_metadata,
+                          num_splits);
 }
 
 void cleanup(void **planned_meta_ptr) {
@@ -257,9 +270,11 @@ static bool registered = []() {
     return true;
 }();
 
-std::tuple<Tensor, Tensor> dense_decode_fwd_impl(
+void dense_decode_fwd_impl(
     Tensor &out,
     Tensor &lse,
+    std::optional<Tensor> &new_tile_scheduler_metadata_out,
+    std::optional<Tensor> &new_num_splits_out,
     const Tensor &q,
     const Tensor &k_cache,
     int64_t head_dim_v,
@@ -275,6 +290,8 @@ std::tuple<Tensor, Tensor> dense_decode_fwd_impl(
     check_device(k_cache, op_name);
     check_device(cache_seqlens, op_name);
     check_device(block_table, op_name);
+    check_optional_device(new_tile_scheduler_metadata_out, op_name);
+    check_optional_device(new_num_splits_out, op_name);
     check_optional_device(tile_scheduler_metadata, op_name);
     check_optional_device(num_splits, op_name);
 
@@ -305,14 +322,33 @@ std::tuple<Tensor, Tensor> dense_decode_fwd_impl(
     if (!new_tile_scheduler_metadata.has_value() || !new_num_splits.has_value()) {
         throw std::runtime_error("dense_decode_fwd_impl: FlashMLA returned None scheduler metadata.");
     }
-    return {infinicore::adaptor::from_aten_tensor(new_tile_scheduler_metadata.value().contiguous()),
-            infinicore::adaptor::from_aten_tensor(new_num_splits.value().contiguous())};
+    if (!new_tile_scheduler_metadata_out.has_value() || !new_tile_scheduler_metadata_out.value()) {
+        at::Tensor src = new_tile_scheduler_metadata.value().contiguous();
+        new_tile_scheduler_metadata_out = Tensor::empty(shape_from_at_tensor_for_dense_decode(src),
+                                                        from_at_scalar_type_for_dense_decode(src.scalar_type()),
+                                                        from_at_device_for_dense_decode(src.device()));
+    }
+    if (!new_num_splits_out.has_value() || !new_num_splits_out.value()) {
+        at::Tensor src = new_num_splits.value().contiguous();
+        new_num_splits_out = Tensor::empty(shape_from_at_tensor_for_dense_decode(src),
+                                           from_at_scalar_type_for_dense_decode(src.scalar_type()),
+                                           from_at_device_for_dense_decode(src.device()));
+    }
+    copy_flashmla_return_tensor_exact(new_tile_scheduler_metadata_out.value(),
+                                      new_tile_scheduler_metadata.value(),
+                                      "new_tile_scheduler_metadata");
+    copy_flashmla_return_tensor_exact(new_num_splits_out.value(),
+                                      new_num_splits.value(),
+                                      "new_num_splits");
+    return;
 #endif
 
     throw std::runtime_error("dense_decode_fwd_impl only supports HYGON FlashMLA dense decode.");
 #endif
     (void)out;
     (void)lse;
+    (void)new_tile_scheduler_metadata_out;
+    (void)new_num_splits_out;
     (void)q;
     (void)k_cache;
     (void)head_dim_v;

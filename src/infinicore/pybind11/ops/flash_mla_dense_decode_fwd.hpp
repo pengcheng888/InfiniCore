@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdexcept>
+
 #include <pybind11/pybind11.h>
 
 #ifdef ENABLE_ATEN
@@ -7,6 +9,7 @@
 #include <torch/csrc/utils/pybind.h>
 #endif
 
+#include "infinicore/dtype.hpp"
 #include "infinicore/ops/flash_mla/dense_decode_fwd.hpp"
 
 namespace py = pybind11;
@@ -30,11 +33,11 @@ inline py::object to_py_torch_tensor_for_dense_decode_fwd(const Tensor &tensor) 
     return py::cast(infinicore::adaptor::to_aten_tensor(tensor));
 }
 
-inline py::tuple dense_decode_result_to_py_tuple(const std::tuple<Tensor, Tensor, Tensor, Tensor> &result) {
-    return py::make_tuple(to_py_torch_tensor_for_dense_decode_fwd(std::get<0>(result)),
-                          to_py_torch_tensor_for_dense_decode_fwd(std::get<1>(result)),
-                          to_py_torch_tensor_for_dense_decode_fwd(std::get<2>(result)),
-                          to_py_torch_tensor_for_dense_decode_fwd(std::get<3>(result)));
+inline py::object to_py_torch_tensor_for_dense_decode_fwd(const std::optional<Tensor> &tensor) {
+    if (!tensor.has_value()) {
+        return py::none();
+    }
+    return to_py_torch_tensor_for_dense_decode_fwd(tensor.value());
 }
 
 } // namespace
@@ -50,16 +53,37 @@ inline py::object py_flash_mla_dense_decode_fwd(Tensor q,
                                                   py::object tile_scheduler_metadata,
                                                   py::object num_splits) {
 #ifdef ENABLE_ATEN
-    auto result = op::flash_mla::dense_decode_fwd(q,
-                                                  k_cache,
-                                                  head_dim_v,
-                                                  cache_seqlens,
-                                                  block_table,
-                                                  softmax_scale,
-                                                  causal,
-                                                  py_optional_tensor_for_dense_decode_fwd(tile_scheduler_metadata),
-                                                  py_optional_tensor_for_dense_decode_fwd(num_splits));
-    return dense_decode_result_to_py_tuple(result);
+    if (q->ndim() != 4) {
+        throw std::runtime_error("flash_mla_dense_decode_fwd expects q shape [batch, seq_q, heads, head_dim].");
+    }
+    if (head_dim_v <= 0) {
+        throw std::runtime_error("flash_mla_dense_decode_fwd expects positive head_dim_v.");
+    }
+    Tensor out = Tensor::empty({q->size(0), q->size(1), q->size(2), static_cast<size_t>(head_dim_v)},
+                               q->dtype(),
+                               q->device());
+    Tensor lse = Tensor::empty({q->size(0), q->size(2), q->size(1)},
+                               DataType::F32,
+                               q->device());
+    std::optional<Tensor> new_tile_scheduler_metadata;
+    std::optional<Tensor> new_num_splits;
+    op::flash_mla::dense_decode_fwd_(out,
+                                     lse,
+                                     new_tile_scheduler_metadata,
+                                     new_num_splits,
+                                     q,
+                                     k_cache,
+                                     head_dim_v,
+                                     cache_seqlens,
+                                     block_table,
+                                     softmax_scale,
+                                     causal,
+                                     py_optional_tensor_for_dense_decode_fwd(tile_scheduler_metadata),
+                                     py_optional_tensor_for_dense_decode_fwd(num_splits));
+    return py::make_tuple(to_py_torch_tensor_for_dense_decode_fwd(out),
+                          to_py_torch_tensor_for_dense_decode_fwd(lse),
+                          to_py_torch_tensor_for_dense_decode_fwd(new_tile_scheduler_metadata),
+                          to_py_torch_tensor_for_dense_decode_fwd(new_num_splits));
 #endif
     (void)q;
     (void)k_cache;
