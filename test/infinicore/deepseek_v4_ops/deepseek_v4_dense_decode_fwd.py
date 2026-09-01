@@ -34,17 +34,37 @@ def _make_inputs(args, device):
 
 
 def _run_flash_mla_ref(tensors, args, flash_mla_cuda):
-    out, lse, _, _ = flash_mla_cuda.dense_decode_fwd(
-        tensors["q"],
-        tensors["k_cache"],
-        args.head_size_v,
-        tensors["cache_seqlens"],
-        tensors["block_table"],
-        args.softmax_scale,
-        args.causal,
-        None,
-        None,
-    )
+    if hasattr(flash_mla_cuda, "dense_decode_fwd"):
+        out, lse, _, _ = flash_mla_cuda.dense_decode_fwd(
+            tensors["q"],
+            tensors["k_cache"],
+            args.head_size_v,
+            tensors["cache_seqlens"],
+            tensors["block_table"],
+            args.softmax_scale,
+            args.causal,
+            None,
+            None,
+        )
+    else:
+        num_heads_per_head_k = args.seq_q * args.q_heads // args.kv_heads
+        tile_scheduler_metadata, num_splits = flash_mla_cuda.get_mla_metadata(
+            tensors["cache_seqlens"],
+            num_heads_per_head_k,
+            args.kv_heads,
+        )
+        out, lse = flash_mla_cuda.fwd_kvcache_mla(
+            tensors["q"],
+            tensors["k_cache"],
+            None,
+            args.head_size_v,
+            tensors["cache_seqlens"],
+            tensors["block_table"],
+            args.softmax_scale,
+            args.causal,
+            tile_scheduler_metadata,
+            num_splits,
+        )
     tensors["ref_out"].copy_(out)
     tensors["ref_lse"].copy_(lse)
     return tensors["ref_out"], tensors["ref_lse"]
@@ -95,6 +115,7 @@ def main():
     parser = argparse.ArgumentParser(description="Test DeepSeek-V4 FlashMLA dense_decode_fwd bridge.")
     parser.add_argument("--hygon", action="store_true")
     parser.add_argument("--nvidia", action="store_true")
+    parser.add_argument("--metax", action="store_true")
     parser.add_argument("--batch", type=int, default=1)
     parser.add_argument("--seq-q", type=int, default=1)
     parser.add_argument("--q-heads", type=int, default=64)
@@ -112,7 +133,10 @@ def main():
     parser.add_argument("--rtol", type=float, default=0.0)
     args = parser.parse_args()
 
-    import flash_mla.cuda as flash_mla_cuda
+    try:
+        import flash_mla.cuda as flash_mla_cuda
+    except ImportError:
+        import flash_mla_cuda
 
     device = torch.device("cuda")
     tensors = _make_inputs(args, device)

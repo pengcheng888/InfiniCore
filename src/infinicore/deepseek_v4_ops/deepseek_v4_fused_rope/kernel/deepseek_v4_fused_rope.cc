@@ -160,6 +160,7 @@ void run_one(PlannedTensorMeta &meta,
              const graph::GraphTensor &positions,
              bool positions_i64,
              bool inverse) {
+#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API)
     deepseek_v4_fused_rope_kernel::launch_fused_rope(meta.tensor->data(),
                                                      meta.dtype,
                                                      freqs_cis->data(),
@@ -171,6 +172,14 @@ void run_one(PlannedTensorMeta &meta,
                                                      meta.stride_head,
                                                      inverse,
                                                      context::getStream());
+#else
+    (void)meta;
+    (void)freqs_cis;
+    (void)positions;
+    (void)positions_i64;
+    (void)inverse;
+    throw std::runtime_error("deepseek_v4_fused_rope_kernel_ requires a HYGON/NVIDIA build.");
+#endif
 }
 
 void run(void *planned_meta) {

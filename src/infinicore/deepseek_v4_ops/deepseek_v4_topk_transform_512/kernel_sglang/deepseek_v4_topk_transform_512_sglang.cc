@@ -58,6 +58,7 @@ void deepseek_v4_topk_transform_512_sglang_kernel_impl(const Tensor &scores,
         throw std::runtime_error("deepseek_v4_topk_transform_512_sglang_kernel_ max_seq_len exceeds int32 range.");
     }
 
+#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API)
     deepseek_v4_topk_transform_512::launch_topk_transform_512_sglang(
         reinterpret_cast<const float *>(scores->data()),
         scores->stride(0),
@@ -70,6 +71,9 @@ void deepseek_v4_topk_transform_512_sglang_kernel_impl(const Tensor &scores,
         scores->size(1),
         page_size,
         context::getStream());
+#else
+    throw std::runtime_error("deepseek_v4_topk_transform_512_sglang_kernel_ requires a HYGON/NVIDIA build.");
+#endif
 }
 
 } // namespace

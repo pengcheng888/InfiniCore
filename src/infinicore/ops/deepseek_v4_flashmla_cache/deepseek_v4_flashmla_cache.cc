@@ -122,7 +122,7 @@ void check_indexer_raw_store_shapes(const Tensor &input, const Tensor &cache, co
     }
 }
 
-#if defined(ENABLE_ATEN) && (defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API))
+#if defined(ENABLE_ATEN) && (defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API) || defined(ENABLE_METAX_API))
 at::Tensor arange_like_cols(int64_t cols, const at::Tensor &ref) {
     return at::arange(cols, ref.options().dtype(at::kLong));
 }

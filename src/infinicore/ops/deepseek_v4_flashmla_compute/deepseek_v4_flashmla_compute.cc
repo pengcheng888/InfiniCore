@@ -121,6 +121,24 @@ void check_sparse_attention_shapes(const Tensor &q,
     }
 }
 
+struct FlashMlaSparseCaptureOwners {
+#if defined(ENABLE_ATEN) && defined(ENABLE_HYGON_API)
+    at::Tensor q;
+    at::Tensor q_flash;
+    at::Tensor k_cache;
+    at::Tensor indices;
+    at::Tensor topk_lengths;
+    at::Tensor attn_sink;
+    at::Tensor tile_scheduler_metadata;
+    at::Tensor num_splits;
+    at::Tensor extra_k_cache;
+    at::Tensor extra_indices;
+    at::Tensor extra_topk_lengths;
+    at::Tensor out;
+    at::Tensor lse;
+#endif
+};
+
 #if defined(ENABLE_ATEN) && defined(ENABLE_HYGON_API)
 constexpr const char *kFlashMlaSparseDecodeInterfaceSymbol = "_ZL28sparse_attn_decode_interfaceRKN2at6TensorES2_S2_RKSt8optionalIS0_ES6_RS4_S7_S6_S6_S6_if";
 constexpr const char *kFlashMlaSparseDecodeModel1H16Symbol = "_ZN5gfx936decode10sparse_fp839run_flash_splitkv_mla_fp8_sparse_kernelIL9ModelType1ELi16EEEvRK22SparseAttnDecodeParams";
@@ -270,22 +288,6 @@ struct FlashMlaSparseDecodeOutWorkspaceFns {
     FlashMlaSparseDecodeKernelFn v32_h64;
     FlashMlaSparseDecodeKernelFn v32_h128;
     FlashMlaCombineBf16Fn combine_bf16;
-};
-
-struct FlashMlaSparseCaptureOwners {
-    at::Tensor q;
-    at::Tensor q_flash;
-    at::Tensor k_cache;
-    at::Tensor indices;
-    at::Tensor topk_lengths;
-    at::Tensor attn_sink;
-    at::Tensor tile_scheduler_metadata;
-    at::Tensor num_splits;
-    at::Tensor extra_k_cache;
-    at::Tensor extra_indices;
-    at::Tensor extra_topk_lengths;
-    at::Tensor out;
-    at::Tensor lse;
 };
 
 std::optional<at::Tensor> optional_i32_aten_tensor(std::optional<Tensor> tensor,
@@ -657,6 +659,7 @@ DeepseekV4FlashMLASparseAttentionSchedule deepseek_v4_flashmla_sparse_attention_
     (void)extra_indices;
     (void)extra_topk_lengths;
     (void)extra_page_size;
+    (void)capture_owners;
     throw std::runtime_error("deepseek_v4_flashmla_sparse_attention_ requires an ATen-enabled HYGON/NVIDIA build.");
 #endif
 }

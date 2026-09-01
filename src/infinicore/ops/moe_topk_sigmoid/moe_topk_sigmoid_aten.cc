@@ -7,7 +7,7 @@
 #include <ATen/ATen.h>
 #if defined(ENABLE_HYGON_API)
 #include <c10/hip/HIPGuard.h>
-#elif defined(ENABLE_NVIDIA_API)
+#elif defined(ENABLE_NVIDIA_API) || defined(ENABLE_METAX_API)
 #include <c10/cuda/CUDAGuard.h>
 #endif
 #endif
@@ -43,7 +43,7 @@ void *plan(Tensor topk_weights,
 }
 
 void run(void *planned_meta) {
-#if defined(ENABLE_ATEN) && (defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API))
+#if defined(ENABLE_ATEN) && (defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API) || defined(ENABLE_METAX_API))
     auto planned = reinterpret_cast<PlannedMeta *>(planned_meta);
 #if defined(ENABLE_HYGON_API)
     c10::hip::HIPStreamGuard guard(infinicore::adaptor::get_hip_stream());
@@ -67,7 +67,7 @@ void run(void *planned_meta) {
     topk_indices.copy_(indices.to(topk_indices.scalar_type()));
 #else
     (void)planned_meta;
-    throw std::runtime_error("moe_topk_sigmoid ATen fallback requires an ATen-enabled HYGON/NVIDIA build.");
+    throw std::runtime_error("moe_topk_sigmoid ATen fallback requires an ATen-enabled HYGON/NVIDIA/METAX build.");
 #endif
 }
 
@@ -77,9 +77,16 @@ void cleanup(void **planned_meta_ptr) {
 }
 
 static bool registered = []() {
+#if defined(ENABLE_HYGON_API)
     MoeTopkSigmoid::plan_dispatcher().registerDevice(Device::Type::HYGON, &plan);
     MoeTopkSigmoid::run_dispatcher().registerDevice(Device::Type::HYGON, &run);
     MoeTopkSigmoid::cleanup_dispatcher().registerDevice(Device::Type::HYGON, &cleanup);
+#endif
+#if defined(ENABLE_METAX_API)
+    MoeTopkSigmoid::plan_dispatcher().registerDevice(Device::Type::METAX, &plan);
+    MoeTopkSigmoid::run_dispatcher().registerDevice(Device::Type::METAX, &run);
+    MoeTopkSigmoid::cleanup_dispatcher().registerDevice(Device::Type::METAX, &cleanup);
+#endif
     return true;
 }();
 

@@ -226,6 +226,7 @@ void lmslim_per_token_quant_int8_bf16_(Tensor output, Tensor scale, const Tensor
     if (output->dtype() != DataType::I8 || output->shape() != input->shape() || scale->dtype() != DataType::F32 || scale->numel() != static_cast<size_t>(rows)) {
         throw std::runtime_error("deepseek_v4_fused_experts_impl_int8_marlin_ native quant unexpected output/scale shape.");
     }
+#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API)
     deepseek_v4_fused_experts_impl_int8_marlin::launch_per_token_quant_int8_bf16(
         output->data(),
         reinterpret_cast<float *>(scale->data()),
@@ -233,6 +234,9 @@ void lmslim_per_token_quant_int8_bf16_(Tensor output, Tensor scale, const Tensor
         rows,
         cols,
         context::getStream());
+#else
+    throw std::runtime_error("deepseek_v4_fused_experts_impl_int8_marlin_ native quant requires a HYGON/NVIDIA build.");
+#endif
 }
 
 struct FusedExpertsWorkspace {
@@ -376,6 +380,7 @@ void deepseek_v4_fused_experts_impl_int8_marlin_impl_(Tensor output,
         if (hidden_states->dtype() != DataType::BF16) {
             throw std::runtime_error("deepseek_v4_fused_experts_impl_int8_marlin_ shared_output path currently expects BF16 hidden states.");
         }
+#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API)
         deepseek_v4_fused_experts_impl_int8_marlin::launch_moe_sum_scale_add_bf16(
             target_output->data(),
             down->data(),
@@ -385,6 +390,9 @@ void deepseek_v4_fused_experts_impl_int8_marlin_impl_(Tensor output,
             static_cast<int64_t>(shape.hidden_size),
             static_cast<float>(routed_scaling_factor),
             context::getStream());
+#else
+        throw std::runtime_error("deepseek_v4_fused_experts_impl_int8_marlin_ shared_output path requires a HYGON/NVIDIA build.");
+#endif
     } else {
         deepseek_v4_lightop_moe_sum_(
             target_output,

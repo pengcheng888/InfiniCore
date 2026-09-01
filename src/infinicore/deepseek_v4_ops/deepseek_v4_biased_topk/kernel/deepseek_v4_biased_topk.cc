@@ -51,7 +51,7 @@ void check_shapes(const Tensor &topk_weights,
 }
 
 
-#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API)
+#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API) || defined(ENABLE_METAX_API)
 void check_kernel_tensors(const Tensor &topk_weights,
                           const Tensor &topk_indices,
                           const Tensor &router_logits,

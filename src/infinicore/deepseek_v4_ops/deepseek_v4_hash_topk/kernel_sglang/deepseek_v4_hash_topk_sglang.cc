@@ -78,7 +78,7 @@ constexpr int64_t sglang_hash_topk_warp_size_limit() {
 #endif
 }
 
-#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API)
+#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API) || defined(ENABLE_METAX_API)
 void check_kernel_tensors(const Tensor &topk_weights,
                           const Tensor &topk_indices,
                           const Tensor &router_logits,

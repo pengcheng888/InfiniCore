@@ -7,6 +7,12 @@ void deepseek_v4_fused_rope_(Tensor query,
                              const Tensor &freqs_cis,
                              const Tensor &positions,
                              bool inverse) {
+#if defined(ENABLE_ATEN) && defined(ENABLE_METAX_API)
+    if (query->device().getType() == Device::Type::METAX) {
+        deepseek_v4_fused_rope_aten_(query, key, freqs_cis, positions, inverse);
+        return;
+    }
+#endif
     deepseek_v4_fused_rope_kernel_(query, key, freqs_cis, positions, inverse);
 }
 

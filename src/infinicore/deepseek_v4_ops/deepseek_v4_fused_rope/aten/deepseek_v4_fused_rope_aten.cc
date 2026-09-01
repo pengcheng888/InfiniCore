@@ -8,7 +8,7 @@
 #include <ATen/ATen.h>
 #if defined(ENABLE_HYGON_API)
 #include <c10/hip/HIPGuard.h>
-#elif defined(ENABLE_NVIDIA_API)
+#elif defined(ENABLE_NVIDIA_API) || defined(ENABLE_METAX_API)
 #include <c10/cuda/CUDAGuard.h>
 #endif
 #endif
@@ -50,7 +50,7 @@ void check_rope_tensor(const Tensor &tensor, const char *name) {
     }
 }
 
-#if defined(ENABLE_ATEN) && (defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API))
+#if defined(ENABLE_ATEN) && (defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API) || defined(ENABLE_METAX_API))
 void apply_rope_aten_(at::Tensor x, const at::Tensor &freqs_cis, const at::Tensor &positions, bool inverse) {
     if (x.dim() != 2 && x.dim() != 3) {
         throw std::runtime_error("deepseek_v4_fused_rope_aten_ ATen tensor rank must be 2 or 3.");
@@ -108,7 +108,7 @@ void deepseek_v4_fused_rope_aten_(Tensor query,
                                   const Tensor &freqs_cis,
                                   const Tensor &positions,
                                   bool inverse) {
-#if defined(ENABLE_ATEN) && (defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API))
+#if defined(ENABLE_ATEN) && (defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API) || defined(ENABLE_METAX_API))
 #if defined(ENABLE_HYGON_API)
     c10::hip::HIPStreamGuard guard(infinicore::adaptor::get_hip_stream());
 #else
@@ -144,7 +144,7 @@ void deepseek_v4_fused_rope_aten_(Tensor query,
     (void)freqs_cis;
     (void)positions;
     (void)inverse;
-    throw std::runtime_error("deepseek_v4_fused_rope_aten_ requires an ATen-enabled HYGON/NVIDIA build.");
+    throw std::runtime_error("deepseek_v4_fused_rope_aten_ requires an ATen-enabled HYGON/NVIDIA/METAX build.");
 #endif
 }
 

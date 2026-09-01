@@ -165,6 +165,7 @@ void quant_bf16_to_int8_(Tensor output, Tensor scale, const Tensor &input, const
     }
     const int64_t cols = static_cast<int64_t>(input->size(input->ndim() - 1));
     const int64_t rows = static_cast<int64_t>(input->numel() / static_cast<size_t>(cols));
+#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API)
     deepseek_v4_fused_experts_impl_int8_marlin::launch_per_token_quant_int8_bf16(
         output->data(),
         reinterpret_cast<float *>(scale->data()),
@@ -172,6 +173,9 @@ void quant_bf16_to_int8_(Tensor output, Tensor scale, const Tensor &input, const
         rows,
         cols,
         context::getStream());
+#else
+    throw std::runtime_error(std::string(op_name) + " native quant requires a HYGON/NVIDIA build.");
+#endif
 }
 
 void fill_single_expert_metadata_(Tensor sorted_token_ids,
@@ -179,6 +183,7 @@ void fill_single_expert_metadata_(Tensor sorted_token_ids,
                                   Tensor num_tokens_post_pad,
                                   Tensor topk_weights,
                                   size_t tokens) {
+#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API)
     deepseek_v4_shared_experts_impl_int8_marlin::launch_fill_single_expert_metadata(
         sorted_token_ids->data(),
         expert_ids->data(),
@@ -188,6 +193,14 @@ void fill_single_expert_metadata_(Tensor sorted_token_ids,
         kSharedExpertTopK,
         kBlockSize,
         context::getStream());
+#else
+    (void)sorted_token_ids;
+    (void)expert_ids;
+    (void)num_tokens_post_pad;
+    (void)topk_weights;
+    (void)tokens;
+    throw std::runtime_error("deepseek_v4_shared_experts_impl_int8_marlin_ metadata fill requires a HYGON/NVIDIA build.");
+#endif
 }
 
 struct SharedExpertsWorkspace {
