@@ -908,14 +908,19 @@ target("infinicore_cpp_api")
             if os.isfile(version_txt) then
                 local content = os.iorunv("cat", {version_txt}) or ""
                 content = content:trim()
-                local major_str = content:match("Version:(%d+)") or content:match("^(%d+)")
-                if major_str and major_str ~= "" then
-                    local major = tonumber(major_str)
-                    if major then
-                        local define = "INFINICORE_HPCC_VERSION_MAJOR=" .. tostring(major)
-                        target:add("defines", define)
-                        target:add("cxflags", "-D" .. define)
-                        target:add("cxxflags", "-D" .. define)
+                local function add_hpcc_version_define(define)
+                    target:add("defines", define)
+                    target:add("cxflags", "-D" .. define)
+                    target:add("cxxflags", "-D" .. define)
+                end
+                local version = content:match("Version:%s*([%d%.]+)") or content:match("^%s*([%d%.]+)")
+                if version then
+                    local major_str, minor_str = version:match("^(%d+)%.?(%d*)")
+                    if major_str then
+                        add_hpcc_version_define("INFINICORE_HPCC_VERSION_MAJOR=" .. major_str)
+                        if minor_str ~= "" then
+                            add_hpcc_version_define("INFINICORE_HPCC_VERSION_MINOR=" .. minor_str)
+                        end
                     end
                 end
             end

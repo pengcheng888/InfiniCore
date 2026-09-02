@@ -11,7 +11,7 @@ end
 
 -- Resolve MetaX flash-attn .so path (used only from this file: `before_link` sandbox cannot see globals from `xmake.lua`).
 local FLASH_ATTN_METAX_CUDA_SO_CONTAINER_DEFAULT =
-    "/opt/conda/lib/python3.10/site-packages/flash_attn_2_cuda.cpython-310-x86_64-linux-gnu.so"
+    "/opt/conda/lib/python3.12/site-packages/flash_attn_2_cuda.cpython-312-x86_64-linux-gnu.so"
 
 local function metax_flash_attn_cuda_so_path()
     -- Highest priority: override the exact `.so` file to link.
