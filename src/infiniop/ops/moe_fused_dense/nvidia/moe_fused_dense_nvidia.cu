@@ -1,4 +1,4 @@
-#ifdef ENABLE_NVIDIA_API
+#if defined(ENABLE_NVIDIA_API) || defined(ENABLE_ALI_API)
 
 #include "moe_fused_dense_nvidia.cuh"
 

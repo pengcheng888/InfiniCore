@@ -95,9 +95,14 @@ if CUDNN_ROOT ~= nil then
 end
 
 local CUTLASS_ROOT = os.getenv("CUTLASS_ROOT") or os.getenv("CUTLASS_HOME") or os.getenv("CUTLASS_PATH")
+if CUTLASS_ROOT == nil and os.isfile(path.join(os.projectdir(), "third_party/cutlass/include/cutlass/cutlass.h")) then
+    CUTLASS_ROOT = path.join(os.projectdir(), "third_party/cutlass")
+end
 
 if CUTLASS_ROOT ~= nil then
-    add_includedirs(CUTLASS_ROOT)
+    add_defines("ENABLE_CUTLASS_API")
+    add_includedirs(
+        CUTLASS_ROOT, CUTLASS_ROOT .. "/include", CUTLASS_ROOT .. "/tools/util/include")
 end
 
 target("infiniop-ali")

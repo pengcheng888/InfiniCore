@@ -7,7 +7,7 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
-#ifdef ENABLE_NVIDIA_API
+#if defined(ENABLE_NVIDIA_API) || defined(ENABLE_ALI_API)
 
 #include "moe_align_nvidia.cuh"
 
