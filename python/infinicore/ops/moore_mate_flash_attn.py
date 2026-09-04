@@ -40,6 +40,7 @@ def _check_mate_available():
     global flash_attn_with_kvcache
     global get_scheduler_metadata
     global flash_attn_varlen_func
+    global mate_flash_attn_varlen_func
 
     if not _MATE_VERSION_SUPPORTED:
         installed = _MATE_VERSION or "not installed"
@@ -57,6 +58,9 @@ def _check_mate_available():
             flash_attn_with_kvcache as _flash_attn_with_kvcache,
         )
         from flash_attn import get_scheduler_metadata as _get_scheduler_metadata
+        from mate import (
+            flash_attn_varlen_func as _mate_flash_attn_varlen_func,
+        )
     except (ImportError, OSError) as exc:
         raise RuntimeError(
             f"mate {_MATE_VERSION} is installed, but flash_attn could not be imported."
@@ -65,6 +69,7 @@ def _check_mate_available():
     flash_attn_with_kvcache = _flash_attn_with_kvcache
     get_scheduler_metadata = _get_scheduler_metadata
     flash_attn_varlen_func = _flash_attn_varlen_func
+    mate_flash_attn_varlen_func = _mate_flash_attn_varlen_func
     _MATE_LOADED = True
 
 
@@ -92,6 +97,22 @@ def moore_mate_flash_attn_dense(
     num_kv_heads = k.shape[2]
     if num_heads % num_kv_heads != 0:
         raise RuntimeError("query head count must be divisible by key/value head count")
+
+    # Mate's precompiled MUBIN kernel is reliable for its native 64/128 head
+    # dimensions. Other dense shapes, including Qwen3.5 vision's head_dim=72,
+    # must use Mate's Mutlass backend to avoid out-of-bounds MUBIN accesses.
+    if q.shape[-1] not in (64, 128) or v.shape[-1] not in (64, 128):
+        return mate_flash_attn_varlen_func(
+            q=q,
+            k=k,
+            v=v,
+            softmax_scale=scale,
+            causal=causal,
+            num_splits=-1,
+            pack_gqa=num_heads != num_kv_heads,
+            return_softmax_lse=False,
+            backend="mutlass",
+        )
 
     return flash_attn_varlen_func(
         q=q,
