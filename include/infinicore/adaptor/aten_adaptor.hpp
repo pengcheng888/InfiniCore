@@ -26,6 +26,16 @@
 #include <c10/musa/MUSAStream.h>
 #endif
 
+#if defined(ENABLE_HYGON_API)
+#if __has_include(<torch/version.h>)
+#include <torch/version.h>
+#define INFINICORE_TORCH_VERSION_GE_2_11 \
+    (TORCH_VERSION_MAJOR > 2 || (TORCH_VERSION_MAJOR == 2 && TORCH_VERSION_MINOR >= 11))
+#else
+#define INFINICORE_TORCH_VERSION_GE_2_11 0
+#endif
+#endif
+
 namespace infinicore::adaptor {
 inline at::ScalarType to_at_dtype(DataType dtype) {
     switch (dtype) {
@@ -84,7 +94,11 @@ inline at::Device to_at_device(const Device &device) {
 at::Tensor to_aten_tensor(const infinicore::Tensor &t);
 
 #if defined(ENABLE_HYGON_API)
+#if INFINICORE_TORCH_VERSION_GE_2_11
+c10::cuda::CUDAStream get_hip_stream();
+#else
 c10::hip::HIPStream get_hip_stream();
+#endif
 #elif defined(ENABLE_NVIDIA_API) || defined(ENABLE_METAX_API) || defined(ENABLE_QY_API) || defined(ENABLE_ALI_API)
 c10::cuda::CUDAStream get_cuda_stream();
 #endif
