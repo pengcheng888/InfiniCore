@@ -191,6 +191,10 @@ def _should_preload_device(device_type: str) -> bool:
             return True
     if device_type == "CAMBRICON":
         return importlib.util.find_spec("torch_mlu") is not None
+    if device_type == "ILUVATAR":
+        return importlib.util.find_spec("vllm_iluvatar") is not None or os.path.isdir(
+            "/usr/local/corex"
+        )
     return False
 
 
@@ -213,6 +217,9 @@ def preload_device(device_type: str) -> None:
     # Add other device preload functions here as needed:
     elif device_type == "CAMBRICON":
         preload_cambricon()
+    elif device_type == "ILUVATAR":
+        preload_torch()
+        preload_flash_attn()
     # etc.
 
 
@@ -231,6 +238,7 @@ def preload() -> None:
         "HYGON",
         "ASCEND",
         "CAMBRICON",
+        "ILUVATAR",
         # Add other device types here as they are implemented:
         # etc.
     ]

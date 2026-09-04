@@ -4,7 +4,7 @@
 #include "../../handle.h"
 #include "infiniop/ops/chunk_gated_delta_rule.h"
 
-#if defined(ENABLE_NVIDIA_API) || defined(ENABLE_ALI_API)
+#if defined(ENABLE_NVIDIA_API) || defined(ENABLE_ALI_API) || defined(ENABLE_ILUVATAR_API)
 #include "nvidia/chunk_gated_delta_rule_nvidia.cuh"
 #endif
 #ifdef ENABLE_METAX_API
@@ -50,6 +50,9 @@ __INFINI_C infiniStatus_t infiniopCreateChunkGatedDeltaRuleDescriptor(
 #ifdef ENABLE_ALI_API
         CREATE(INFINI_DEVICE_ALI, nvidia)
 #endif
+#ifdef ENABLE_ILUVATAR_API
+        CREATE(INFINI_DEVICE_ILUVATAR, nvidia)
+#endif
 #ifdef ENABLE_METAX_API
         CREATE(INFINI_DEVICE_METAX, metax)
 #endif
@@ -78,6 +81,9 @@ __INFINI_C infiniStatus_t infiniopGetChunkGatedDeltaRuleWorkspaceSize(
 #endif
 #ifdef ENABLE_ALI_API
         GET(INFINI_DEVICE_ALI, nvidia)
+#endif
+#ifdef ENABLE_ILUVATAR_API
+        GET(INFINI_DEVICE_ILUVATAR, nvidia)
 #endif
 #ifdef ENABLE_METAX_API
         GET(INFINI_DEVICE_METAX, metax)
@@ -115,6 +121,9 @@ __INFINI_C infiniStatus_t infiniopChunkGatedDeltaRule(
 #ifdef ENABLE_ALI_API
         CALCULATE(INFINI_DEVICE_ALI, nvidia)
 #endif
+#ifdef ENABLE_ILUVATAR_API
+        CALCULATE(INFINI_DEVICE_ILUVATAR, nvidia)
+#endif
 #ifdef ENABLE_METAX_API
         CALCULATE(INFINI_DEVICE_METAX, metax)
 #endif
@@ -142,6 +151,9 @@ __INFINI_C infiniStatus_t infiniopDestroyChunkGatedDeltaRuleDescriptor(
 #endif
 #ifdef ENABLE_ALI_API
         DESTROY(INFINI_DEVICE_ALI, nvidia)
+#endif
+#ifdef ENABLE_ILUVATAR_API
+        DESTROY(INFINI_DEVICE_ILUVATAR, nvidia)
 #endif
 #ifdef ENABLE_METAX_API
         DESTROY(INFINI_DEVICE_METAX, metax)
