@@ -81,9 +81,7 @@ infiniStatus_t calculateMulScalar(
         return launchMulScalarKernel<T>(info.numel(), output, input, alpha, stream);
     }
 
-    if (workspace_size < info.elementwise_info.getMetaMemSize() + sizeof(void *)) {
-        return INFINI_STATUS_INSUFFICIENT_WORKSPACE;
-    }
+    (void)workspace_size;
 
     return device_info->calculate<256, MulScalarOp, T>(
         info.elementwise_info,
@@ -111,8 +109,8 @@ infiniStatus_t Descriptor::create(
     CHECK_RESULT(result);
 
     auto info = result.take();
-    auto workspace_size = info.elementwise_info.getMetaMemSize() + sizeof(void *);
-    auto device_impl_result = op::elementwise::metax::DeviceImpl::create(handle->internal());
+    size_t workspace_size = 0;
+    auto device_impl_result = op::elementwise::metax::DeviceImpl::create(handle->internal(), info.elementwise_info);
     CHECK_RESULT(device_impl_result);
 
     *desc_ptr = new Descriptor(
