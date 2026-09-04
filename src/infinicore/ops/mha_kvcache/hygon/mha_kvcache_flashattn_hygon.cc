@@ -40,7 +40,11 @@ void *plan(Tensor out,
 }
 
 void run(void *planned_meta) {
+#if INFINICORE_TORCH_VERSION_GE_2_11
+    c10::cuda::CUDAStreamGuard guard(infinicore::adaptor::get_hip_stream());
+#else
     c10::hip::HIPStreamGuard guard(infinicore::adaptor::get_hip_stream());
+#endif
     auto *p = reinterpret_cast<PlannedMeta *>(planned_meta);
 
     // Paged KV caches must be contiguous for flash-attn; avoid extra copies for q/metadata when already dense.

@@ -121,10 +121,17 @@ at::Tensor to_aten_tensor(const infinicore::Tensor &t) {
 }
 
 #if defined(ENABLE_HYGON_API)
+#if INFINICORE_TORCH_VERSION_GE_2_11
+c10::cuda::CUDAStream get_hip_stream() {
+    return c10::cuda::getStreamFromExternal(
+        hipStream_t(infinicore::context::getStream()), infinicore::context::getDevice().getIndex());
+}
+#else
 c10::hip::HIPStream get_hip_stream() {
     return c10::hip::getStreamFromExternal(
         hipStream_t(infinicore::context::getStream()), infinicore::context::getDevice().getIndex());
 }
+#endif
 #elif defined(ENABLE_NVIDIA_API) || defined(ENABLE_METAX_API) || defined(ENABLE_QY_API) || defined(ENABLE_ALI_API)
 c10::cuda::CUDAStream get_cuda_stream() {
     return c10::cuda::getStreamFromExternal(
@@ -151,7 +158,11 @@ void set_aten_stream_to_infinicore() {
             + std::to_string(error));
     }
 #elif defined(ENABLE_HYGON_API)
+#if INFINICORE_TORCH_VERSION_GE_2_11
+    c10::cuda::setCurrentCUDAStream(get_hip_stream());
+#else
     c10::hip::setCurrentHIPStream(get_hip_stream());
+#endif
 #elif defined(ENABLE_MOORE_API)
     c10::musa::setCurrentMUSAStream(get_musa_stream());
 #elif defined(ENABLE_CAMBRICON_API)
