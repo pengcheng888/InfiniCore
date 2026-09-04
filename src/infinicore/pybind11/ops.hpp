@@ -54,6 +54,8 @@
 #include "ops/deepseek_v4_dcu_cache_alloc.hpp"
 #include "ops/deepseek_v4_deep_gemm.hpp"
 #include "ops/flash_mla_dense_decode_fwd.hpp"
+#include "ops/flash_mla_fwd_kvcache_mla.hpp"
+#include "ops/flash_mla_get_mla_decoding_metadata.hpp"
 #include "ops/deepseek_v4_dynamic_scaled_int8_quant.hpp"
 #include "ops/deepseek_v4_embedding_and_hc_expand.hpp"
 #include "ops/deepseek_v4_fast_topk.hpp"
@@ -337,6 +339,8 @@ inline void bind(py::module &m) {
     bind_deepseek_v4_fused_experts_impl_int8_marlin(m);
     bind_deepseek_v4_flashmla_compute(m);
     bind_flash_mla_dense_decode_fwd(m);
+    bind_flash_mla_fwd_kvcache_mla(m);
+    bind_flash_mla_get_mla_decoding_metadata(m);
     bind_flash_mla_sparse_decode_fwd(m);
     bind_deepseek_v4_fused_k_norm_rope_flashmla(m);
     bind_deepseek_v4_fused_norm_rope_inplace(m);

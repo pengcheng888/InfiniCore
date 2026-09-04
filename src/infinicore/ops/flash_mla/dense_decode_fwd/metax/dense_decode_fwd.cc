@@ -1,20 +1,17 @@
 #include "infinicore/ops/flash_mla/dense_decode_fwd.hpp"
 
-#include "dense_decode_symbol.hpp"
-#include "infinicore/context/context.hpp"
+#include "../../fwd_kvcache_mla/metax/fwd_kvcache_mla.hpp"
+#include "../../get_mla_decoding_metadata/metax/get_mla_decoding_metadata.hpp"
 #include "infinicore/device.hpp"
 #include "infinicore/dtype.hpp"
 
 #ifdef ENABLE_ATEN
 #include "infinicore/adaptor/aten_adaptor.hpp"
-#include <ATen/ATen.h>
-#include <c10/cuda/CUDAGuard.h>
 #endif
 
 #include <optional>
 #include <stdexcept>
 #include <string>
-#include <vector>
 
 namespace infinicore::op {
 
@@ -22,7 +19,7 @@ namespace infinicore::op {
 namespace {
 
 void check_device(const Tensor &tensor, const char *op_name) {
-    if (tensor->device().getType() != Device::Type::METAX) {
+    if (!tensor || tensor->device().getType() != Device::Type::METAX) {
         throw std::runtime_error(std::string(op_name) + " expects METAX tensors in this build.");
     }
 }
@@ -33,74 +30,25 @@ void check_optional_device(const std::optional<Tensor> &tensor, const char *op_n
     }
 }
 
-DataType from_at_scalar_type_for_dense_decode(at::ScalarType dtype) {
-    switch (dtype) {
-    case at::kFloat:
-        return DataType::F32;
-    case at::kHalf:
-        return DataType::F16;
-    case at::kBFloat16:
-        return DataType::BF16;
-    case at::kChar:
-        return DataType::I8;
-    case at::kInt:
-        return DataType::I32;
-    case at::kLong:
-        return DataType::I64;
-    case at::kByte:
-        return DataType::U8;
-    case at::kFloat8_e4m3fn:
-        return DataType::F8;
-    default:
-        throw std::runtime_error("dense_decode_fwd_impl: unsupported FlashMLA return dtype.");
+void copy_tensor_exact(Tensor &dst, const Tensor &src, const char *name) {
+    if (!dst || !src) {
+        throw std::runtime_error(std::string("dense_decode_fwd_impl: ") + name + " expects non-empty tensors.");
     }
-}
-
-Device from_at_device_for_dense_decode(const at::Device &device) {
-    if (device.is_cpu()) {
-        return Device(Device::Type::CPU, 0);
-    }
-    if (!device.is_cuda()) {
-        throw std::runtime_error("dense_decode_fwd_impl: unsupported FlashMLA return device.");
-    }
-    return Device(Device::Type::METAX, static_cast<Device::Index>(device.index()));
-}
-
-Shape shape_from_at_tensor_for_dense_decode(const at::Tensor &tensor) {
-    Shape shape;
-    shape.reserve(static_cast<size_t>(tensor.dim()));
-    for (const auto dim : tensor.sizes()) {
-        shape.push_back(static_cast<size_t>(dim));
-    }
-    return shape;
-}
-
-void copy_flashmla_return_tensor_exact(Tensor &dst, at::Tensor src, const char *name) {
-    if (!src.defined()) {
-        throw std::runtime_error(std::string("dense_decode_fwd_impl: FlashMLA returned undefined ") + name + ".");
-    }
-    src = src.contiguous();
-    const auto expected_shape = shape_from_at_tensor_for_dense_decode(src);
-    const auto expected_dtype = from_at_scalar_type_for_dense_decode(src.scalar_type());
-    const auto expected_device = from_at_device_for_dense_decode(src.device());
-    if (!dst) {
-        dst = infinicore::adaptor::from_aten_tensor(src);
-        return;
-    }
-    if (dst->shape() != expected_shape) {
+    if (dst->shape() != src->shape()) {
         throw std::runtime_error(std::string("dense_decode_fwd_impl: ") + name + " shape mismatch.");
     }
-    if (dst->dtype() != expected_dtype) {
+    if (dst->dtype() != src->dtype()) {
         throw std::runtime_error(std::string("dense_decode_fwd_impl: ") + name + " dtype mismatch.");
     }
-    if (dst->device() != expected_device) {
+    if (dst->device() != src->device()) {
         throw std::runtime_error(std::string("dense_decode_fwd_impl: ") + name + " device mismatch.");
     }
-    if (!dst->is_contiguous()) {
+    if (!dst->is_contiguous() || !src->is_contiguous()) {
         throw std::runtime_error(std::string("dense_decode_fwd_impl: ") + name + " must be contiguous.");
     }
     auto dst_at = infinicore::adaptor::to_aten_tensor(dst);
-    dst_at.copy_(src);
+    auto src_at = infinicore::adaptor::to_aten_tensor(src);
+    dst_at.copy_(src_at);
 }
 
 std::optional<graph::GraphTensor> to_optional_graph_tensor(const std::optional<Tensor> &tensor) {
@@ -257,68 +205,70 @@ void dense_decode_fwd_impl(
     if (total_q_heads % kv_heads != 0) {
         throw std::runtime_error("dense_decode_fwd_impl: q heads must be divisible by kv_heads.");
     }
-    const int64_t num_heads_per_head_k = total_q_heads / kv_heads;
+    const int64_t num_q_tokens_per_head_k = total_q_heads / kv_heads;
 
-    c10::cuda::CUDAStreamGuard guard(infinicore::adaptor::get_cuda_stream());
+    const bool has_metadata = tile_scheduler_metadata.has_value() && tile_scheduler_metadata.value()
+                           && num_splits.has_value() && num_splits.value();
+    if ((tile_scheduler_metadata.has_value() && tile_scheduler_metadata.value())
+        != (num_splits.has_value() && num_splits.value())) {
+        throw std::runtime_error("dense_decode_fwd_impl: scheduler metadata inputs must be both set or both empty.");
+    }
 
-    auto q_at = infinicore::adaptor::to_aten_tensor(q);
-    auto k_cache_at = infinicore::adaptor::to_aten_tensor(k_cache);
-    auto cache_seqlens_at = infinicore::adaptor::to_aten_tensor(cache_seqlens);
-    auto block_table_at = infinicore::adaptor::to_aten_tensor(block_table);
-
-    std::vector<at::Tensor> metadata;
-    at::Tensor tile_scheduler_metadata_at;
-    at::Tensor num_splits_at;
-    if (tile_scheduler_metadata.has_value() && tile_scheduler_metadata.value()
-        && num_splits.has_value() && num_splits.value()) {
-        tile_scheduler_metadata_at = infinicore::adaptor::to_aten_tensor(tile_scheduler_metadata.value());
-        num_splits_at = infinicore::adaptor::to_aten_tensor(num_splits.value());
+    if (!has_metadata) {
+        Tensor new_tile_scheduler_metadata = new_tile_scheduler_metadata_out.has_value()
+                                               ? new_tile_scheduler_metadata_out.value()
+                                               : Tensor{};
+        Tensor new_num_splits = new_num_splits_out.has_value()
+                                  ? new_num_splits_out.value()
+                                  : Tensor{};
+        get_mla_decoding_metadata_metax::get_mla_decoding_metadata_impl(
+            new_tile_scheduler_metadata,
+            new_num_splits,
+            cache_seqlens,
+            num_q_tokens_per_head_k,
+            kv_heads,
+            std::nullopt,
+            false,
+            std::nullopt);
+        new_tile_scheduler_metadata_out = new_tile_scheduler_metadata;
+        new_num_splits_out = new_num_splits;
+        tile_scheduler_metadata = new_tile_scheduler_metadata_out;
+        num_splits = new_num_splits_out;
     } else {
-        metadata = flashmla_metadata_fn(op_name)(cache_seqlens_at,
-                                                 static_cast<int>(num_heads_per_head_k),
-                                                 static_cast<int>(kv_heads));
-        if (metadata.size() != 2) {
-            throw std::runtime_error("dense_decode_fwd_impl: flash_mla_cuda.get_mla_metadata must return two tensors.");
+        if (!new_tile_scheduler_metadata_out.has_value() || !new_tile_scheduler_metadata_out.value()) {
+            new_tile_scheduler_metadata_out = tile_scheduler_metadata.value();
+        } else {
+            copy_tensor_exact(new_tile_scheduler_metadata_out.value(),
+                              tile_scheduler_metadata.value(),
+                              "new_tile_scheduler_metadata");
         }
-        tile_scheduler_metadata_at = metadata[0].contiguous();
-        num_splits_at = metadata[1].contiguous();
+        if (!new_num_splits_out.has_value() || !new_num_splits_out.value()) {
+            new_num_splits_out = num_splits.value();
+        } else {
+            copy_tensor_exact(new_num_splits_out.value(),
+                              num_splits.value(),
+                              "new_num_splits");
+        }
     }
 
-    std::optional<const at::Tensor> none;
-    auto flash_out = flashmla_dense_decode_fn(op_name)(q_at,
-                                                       k_cache_at,
-                                                       none,
-                                                       static_cast<int>(head_dim_v),
-                                                       cache_seqlens_at,
-                                                       block_table_at,
-                                                       static_cast<float>(softmax_scale),
-                                                       causal,
-                                                       tile_scheduler_metadata_at,
-                                                       num_splits_at);
-    if (flash_out.size() != 2) {
-        throw std::runtime_error("dense_decode_fwd_impl: flash_mla_cuda.fwd_kvcache_mla must return two tensors.");
-    }
-    copy_flashmla_return_tensor_exact(out, flash_out[0], "out");
-    copy_flashmla_return_tensor_exact(lse, flash_out[1], "softmax_lse");
-
-    if (!new_tile_scheduler_metadata_out.has_value() || !new_tile_scheduler_metadata_out.value()) {
-        at::Tensor src = tile_scheduler_metadata_at.contiguous();
-        new_tile_scheduler_metadata_out = Tensor::empty(shape_from_at_tensor_for_dense_decode(src),
-                                                        from_at_scalar_type_for_dense_decode(src.scalar_type()),
-                                                        from_at_device_for_dense_decode(src.device()));
-    }
-    if (!new_num_splits_out.has_value() || !new_num_splits_out.value()) {
-        at::Tensor src = num_splits_at.contiguous();
-        new_num_splits_out = Tensor::empty(shape_from_at_tensor_for_dense_decode(src),
-                                           from_at_scalar_type_for_dense_decode(src.scalar_type()),
-                                           from_at_device_for_dense_decode(src.device()));
-    }
-    copy_flashmla_return_tensor_exact(new_tile_scheduler_metadata_out.value(),
-                                      tile_scheduler_metadata_at,
-                                      "new_tile_scheduler_metadata");
-    copy_flashmla_return_tensor_exact(new_num_splits_out.value(),
-                                      num_splits_at,
-                                      "new_num_splits");
+    fwd_kvcache_mla_metax::fwd_kvcache_mla_impl(out,
+                                                lse,
+                                                q,
+                                                k_cache,
+                                                std::nullopt,
+                                                head_dim_v,
+                                                cache_seqlens,
+                                                block_table,
+                                                softmax_scale,
+                                                causal,
+                                                tile_scheduler_metadata.value(),
+                                                num_splits.value(),
+                                                false,
+                                                std::nullopt,
+                                                std::nullopt,
+                                                1,
+                                                0,
+                                                std::nullopt);
 }
 
 } // namespace flash_mla::dense_decode_fwd_metax

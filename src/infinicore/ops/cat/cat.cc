@@ -14,6 +14,7 @@ bool use_slice_copy_cat(Device::Type device_type, int dim, int ndim) {
         && (device_type == Device::Type::NVIDIA
             || device_type == Device::Type::HYGON
             || device_type == Device::Type::ILUVATAR
+            || device_type == Device::Type::METAX
             || device_type == Device::Type::ALI);
 }
 

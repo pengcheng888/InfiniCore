@@ -52,6 +52,9 @@ def _run_flash_mla_ref(tensors, args, flash_mla_cuda):
             tensors["cache_seqlens"],
             num_heads_per_head_k,
             args.kv_heads,
+            None,
+            False,
+            None,
         )
         out, lse = flash_mla_cuda.fwd_kvcache_mla(
             tensors["q"],
@@ -64,6 +67,12 @@ def _run_flash_mla_ref(tensors, args, flash_mla_cuda):
             args.causal,
             tile_scheduler_metadata,
             num_splits,
+            False,
+            None,
+            None,
+            1,
+            0,
+            None,
         )
     tensors["ref_out"].copy_(out)
     tensors["ref_lse"].copy_(lse)
