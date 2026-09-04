@@ -87,9 +87,6 @@ void run(void *planned_meta) {
 
     const int64_t block_size = k_cache.size(1);
 
-    int max_seqlen_q_bound = static_cast<int>(q_tensor.size(0));
-    int max_seqlen_k_bound = static_cast<int>(q_tensor.size(0));
-
     try {
         py::gil_scoped_acquire gil;
         py::module_ wrapper = py::module_::import("infinicore.ops.moore_mate_flash_attn");
@@ -109,8 +106,8 @@ void run(void *planned_meta) {
             py_cuk,
             py_blk,
             p->scale,
-            max_seqlen_q_bound,
-            max_seqlen_k_bound,
+            p->max_seqlen_q,
+            p->max_seqlen_k,
             block_size,
             true);
 
