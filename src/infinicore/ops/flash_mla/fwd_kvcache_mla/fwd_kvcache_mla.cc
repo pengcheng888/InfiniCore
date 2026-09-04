@@ -1,6 +1,7 @@
 #include "infinicore/ops/flash_mla/fwd_kvcache_mla.hpp"
 
 #include "infinicore/context/context.hpp"
+#include "infinicore/device.hpp"
 #include "infinicore/dtype.hpp"
 
 #include "../../../utils.hpp"
@@ -115,6 +116,9 @@ FwdKvcacheMla::FwdKvcacheMla(
     int64_t cp_world_size,
     int64_t cp_rank,
     std::optional<Tensor> cp_tot_seqused_k) {
+    if (q->device().getType() == Device::Type::METAX) {
+        device_graph_capture_safe_ = false;
+    }
     INFINICORE_GRAPH_OP_DISPATCH(q->device().getType(),
                                  out,
                                  lse,

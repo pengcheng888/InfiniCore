@@ -3,6 +3,7 @@
 #if defined(ENABLE_ATEN) && defined(ENABLE_METAX_API)
 
 #include "infinicore/adaptor/aten_adaptor.hpp"
+#include "infinicore/context/context.hpp"
 #include "infinicore/device.hpp"
 #include "infinicore/dtype.hpp"
 
@@ -172,6 +173,33 @@ std::optional<Tensor> to_optional_tensor(const std::optional<graph::GraphTensor>
     return tensor.value();
 }
 
+void refresh_cache_seqlens_from_graph_binding(const Tensor &cache_seqlens) {
+    const auto *bound = graph::lookup_bound_host_int_array(cache_seqlens);
+    if (bound == nullptr) {
+        return;
+    }
+    if (cache_seqlens->dtype() != DataType::I32
+        || cache_seqlens->shape().size() != 1
+        || bound->size() != cache_seqlens->shape()[0]) {
+        throw std::runtime_error("fwd_kvcache_mla_impl: bound cache_seqlens shape mismatch.");
+    }
+
+    std::vector<int32_t> values;
+    values.reserve(bound->size());
+    for (int64_t value : *bound) {
+        if (value < static_cast<int64_t>(std::numeric_limits<int32_t>::min())
+            || value > static_cast<int64_t>(std::numeric_limits<int32_t>::max())) {
+            throw std::runtime_error("fwd_kvcache_mla_impl: bound cache_seqlens value is out of int32 range.");
+        }
+        values.push_back(static_cast<int32_t>(value));
+    }
+    context::memcpyH2D(
+        const_cast<std::byte *>(cache_seqlens->data()),
+        values.data(),
+        values.size() * sizeof(int32_t),
+        false);
+}
+
 } // namespace
 
 void fwd_kvcache_mla_impl(
@@ -209,6 +237,7 @@ void fwd_kvcache_mla_impl(
         throw std::runtime_error("fwd_kvcache_mla_impl received invalid scalar parameters.");
     }
 
+    refresh_cache_seqlens_from_graph_binding(cache_seqlens);
     c10::cuda::CUDAStreamGuard guard(infinicore::adaptor::get_cuda_stream());
 
     auto q_at = infinicore::adaptor::to_aten_tensor(q);

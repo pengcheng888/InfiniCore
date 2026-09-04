@@ -5,9 +5,15 @@
 #include "../../devices/metax/metax_common.h"
 #include "../../devices/metax/metax_kernel_common.h"
 #include "elementwise_metax_api.h"
+#include <algorithm>
 #include <cstdint>
 
 namespace op::elementwise::metax {
+template <size_t N>
+struct InputPointerArray {
+    const void *values[N];
+};
+
 template <typename T>
 __device__ __forceinline__ const T *typedInputPtr(const void *ptr) {
     return reinterpret_cast<const T *>(ptr);
@@ -124,10 +130,14 @@ template <size_t N, typename Op, typename Tdata, typename VecT, int V, typename.
 INFINIOP_METAX_KERNEL elementwiseVecKernel(
     size_t output_size,
     Tdata *__restrict__ output,
-    const void *const *__restrict__ inputs,
+    InputPointerArray<N> inputs,
     Args... args) {
 
-    const Tdata *const *typed_inputs = reinterpret_cast<const Tdata *const *>(inputs);
+    const Tdata *typed_inputs[N];
+#pragma unroll
+    for (size_t i = 0; i < N; ++i) {
+        typed_inputs[i] = reinterpret_cast<const Tdata *>(inputs.values[i]);
+    }
     const size_t num_packs = output_size / V;
     const size_t tail_start = num_packs * V;
     const size_t tid = blockIdx.x * blockDim.x + threadIdx.x;
@@ -283,9 +293,8 @@ private:
             return INFINI_STATUS_SUCCESS;
         }
 
-        CHECK_METAX(hcMemcpyAsync(workspace, inputs.data(), N * sizeof(*inputs.data()),
-                                  hcMemcpyHostToDevice, stream));
-        const void **d_inputs_arr = reinterpret_cast<const void **>(workspace);
+        InputPointerArray<N> input_ptrs{};
+        std::copy_n(inputs.begin(), N, input_ptrs.values);
 
         dim3 blockDims(std::min(BLOCK_SIZE, static_cast<uint32_t>(internal->maxThreadsPerBlock())));
         const size_t num_packs = output_size / V;
@@ -299,7 +308,7 @@ private:
 
         elementwiseVecKernel<N, Op, Tdata, VecT, V, Args...>
             <<<gridDims, blockDims, 0, stream>>>(
-                output_size, output, d_inputs_arr, std::forward<Args>(args)...);
+                output_size, output, input_ptrs, std::forward<Args>(args)...);
 
         return INFINI_STATUS_SUCCESS;
     }

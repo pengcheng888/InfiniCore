@@ -183,12 +183,23 @@ void run_one(PlannedTensorMeta &meta,
 }
 
 void run(void *planned_meta) {
-#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API)
     auto *planned = reinterpret_cast<PlannedMeta *>(planned_meta);
+#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API)
     run_one(planned->query, planned->freqs_cis, planned->positions, planned->positions_i64, planned->inverse);
     if (planned->key.has_value()) {
         run_one(planned->key.value(), planned->freqs_cis, planned->positions, planned->positions_i64, planned->inverse);
     }
+#elif defined(ENABLE_ATEN) && defined(ENABLE_METAX_API)
+    std::optional<Tensor> key = std::nullopt;
+    if (planned->key.has_value()) {
+        key = planned->key.value().tensor;
+    }
+    deepseek_v4_fused_rope_aten_(
+        planned->query.tensor,
+        key,
+        planned->freqs_cis,
+        planned->positions,
+        planned->inverse);
 #else
     (void)planned_meta;
     throw std::runtime_error("deepseek_v4_fused_rope_kernel_ requires a HYGON/NVIDIA build.");

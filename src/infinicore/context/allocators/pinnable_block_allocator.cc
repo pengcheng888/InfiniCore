@@ -11,6 +11,45 @@
 namespace infinicore {
 
 // ------------------- Helper functions -------------------
+namespace {
+
+#if defined(ENABLE_METAX_API)
+std::mutex &metax_allocator_mutex() {
+    static std::mutex mutex;
+    return mutex;
+}
+#endif
+
+void malloc_device(Device device, void **ptr, size_t size) {
+#if defined(ENABLE_METAX_API)
+    if (device.getType() == Device::Type::METAX) {
+        std::lock_guard<std::mutex> lock(metax_allocator_mutex());
+        INFINICORE_CHECK_ERROR(infinirtMalloc(ptr, size));
+        return;
+    }
+#else
+    (void)device;
+#endif
+    INFINICORE_CHECK_ERROR(infinirtMalloc(ptr, size));
+}
+
+void free_device(Device device, void *ptr) {
+    if (ptr == nullptr) {
+        return;
+    }
+#if defined(ENABLE_METAX_API)
+    if (device.getType() == Device::Type::METAX) {
+        std::lock_guard<std::mutex> lock(metax_allocator_mutex());
+        INFINICORE_CHECK_ERROR(infinirtFree(ptr));
+        return;
+    }
+#else
+    (void)device;
+#endif
+    INFINICORE_CHECK_ERROR(infinirtFree(ptr));
+}
+
+} // namespace
 
 // Round up size to nearest multiple of alignment
 inline size_t align_up(size_t size, size_t alignment) {
@@ -52,7 +91,7 @@ std::byte *PinnableBlockAllocator::allocate(size_t size) {
         if (size <= cls.block_size) {
             if (!cls.free_blocks.empty()) {
                 block = cls.free_blocks.back();
-                while (block != nullptr && block->in_use) {
+                while (block != nullptr && (block->in_use || block->frozen)) {
                     cls.free_blocks.pop_back();
                     if (cls.free_blocks.empty()) {
                         block = nullptr;
@@ -74,7 +113,7 @@ std::byte *PinnableBlockAllocator::allocate(size_t size) {
             block->in_use = true;
             block->use_count = 1;
 
-            INFINICORE_CHECK_ERROR(infinirtMalloc(&block->ptr, block->size));
+            malloc_device(device_, &block->ptr, block->size);
 
             all_blocks_[block->ptr] = block;
             return reinterpret_cast<std::byte *>(block->ptr);
@@ -84,7 +123,9 @@ std::byte *PinnableBlockAllocator::allocate(size_t size) {
     // 2. Large block allocation
     // Try to reuse a frozen or free large block
     auto it = std::find_if(large_blocks_.begin(), large_blocks_.end(),
-                           [size](const std::shared_ptr<Block> &b) { return b->size >= size && !b->in_use; });
+                           [size](const std::shared_ptr<Block> &b) {
+                               return b->size >= size && !b->in_use && !b->frozen;
+                           });
 
     if (it != large_blocks_.end()) {
         block = *it;
@@ -101,7 +142,7 @@ std::byte *PinnableBlockAllocator::allocate(size_t size) {
     block->in_use = true;
     block->use_count = 1;
 
-    INFINICORE_CHECK_ERROR(infinirtMalloc(&block->ptr, block->size));
+    malloc_device(device_, &block->ptr, block->size);
 
     large_blocks_.push_back(block);
     all_blocks_[block->ptr] = block;
@@ -167,7 +208,7 @@ void PinnableBlockAllocator::trim() {
     for (auto &cls : size_classes_) {
         for (auto it = cls.free_blocks.begin(); it != cls.free_blocks.end();) {
             if (!(*it)->frozen) {
-                INFINICORE_CHECK_ERROR(infinirtFree((*it)->ptr));
+                free_device(device_, (*it)->ptr);
                 all_blocks_.erase((*it)->ptr);
                 it = cls.free_blocks.erase(it);
             } else {
@@ -178,7 +219,7 @@ void PinnableBlockAllocator::trim() {
     // Free non-frozen large blocks
     for (auto it = large_blocks_.begin(); it != large_blocks_.end();) {
         if (!(*it)->frozen && !(*it)->in_use) {
-            INFINICORE_CHECK_ERROR(infinirtFree((*it)->ptr));
+            free_device(device_, (*it)->ptr);
             all_blocks_.erase((*it)->ptr);
             it = large_blocks_.erase(it);
         } else {
@@ -192,7 +233,7 @@ PinnableBlockAllocator::~PinnableBlockAllocator() {
     std::lock_guard<std::mutex> lock(mutex_);
     for (auto &p : all_blocks_) {
         if (p.second->ptr) {
-            infinirtFree(p.second->ptr);
+            free_device(device_, p.second->ptr);
         }
     }
     all_blocks_.clear();

@@ -1,5 +1,7 @@
 #include "infinicore/ops/deepseek_v4_fused_rope.hpp"
 
+#include "infinicore/context/context.hpp"
+
 namespace infinicore::op {
 
 void deepseek_v4_fused_rope_(Tensor query,
@@ -9,6 +11,10 @@ void deepseek_v4_fused_rope_(Tensor query,
                              bool inverse) {
 #if defined(ENABLE_ATEN) && defined(ENABLE_METAX_API)
     if (query->device().getType() == Device::Type::METAX) {
+        if (context::isGraphRecording()) {
+            deepseek_v4::FusedRope::execute(query, key, freqs_cis, positions, inverse);
+            return;
+        }
         deepseek_v4_fused_rope_aten_(query, key, freqs_cis, positions, inverse);
         return;
     }

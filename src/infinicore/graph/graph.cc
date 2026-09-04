@@ -194,18 +194,18 @@ void Graph::instantiate() {
         }
     }
 
-    // Warm the complete op list before splitting it into replay segments.
-    for (size_t iter = 0; iter < 5; ++iter) {
-        this->run();
-    }
-    infinicore::context::syncStream();
-
     // Diagnostic escape hatch: keep GraphTensor/operator replay semantics but
     // bypass device-graph capture, including segmented PP capture.
     if (std::getenv("INFINICORE_DISABLE_DEVICE_GRAPH_SEGMENTS") != nullptr) {
         spdlog::info("device graph segments disabled; replaying recorded operators");
         return;
     }
+
+    // Warm the complete op list before splitting it into replay segments.
+    for (size_t iter = 0; iter < 5; ++iter) {
+        this->run();
+    }
+    infinicore::context::syncStream();
 
     for (const auto &op : op_list_) {
         const bool capture_safe = op->is_device_graph_capture_safe();

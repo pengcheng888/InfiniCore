@@ -3,6 +3,7 @@
 #if defined(ENABLE_ATEN) && defined(ENABLE_METAX_API)
 
 #include "infinicore/adaptor/aten_adaptor.hpp"
+#include "infinicore/context/context.hpp"
 #include "infinicore/device.hpp"
 #include "infinicore/dtype.hpp"
 
@@ -146,6 +147,33 @@ std::optional<int> to_optional_int(std::optional<int64_t> value, const char *nam
     return static_cast<int>(value.value());
 }
 
+void refresh_cache_seqlens_from_graph_binding(const Tensor &cache_seqlens) {
+    const auto *bound = graph::lookup_bound_host_int_array(cache_seqlens);
+    if (bound == nullptr) {
+        return;
+    }
+    if (cache_seqlens->dtype() != DataType::I32
+        || cache_seqlens->shape().size() != 1
+        || bound->size() != cache_seqlens->shape()[0]) {
+        throw std::runtime_error("get_mla_decoding_metadata_impl: bound cache_seqlens shape mismatch.");
+    }
+
+    std::vector<int32_t> values;
+    values.reserve(bound->size());
+    for (int64_t value : *bound) {
+        if (value < static_cast<int64_t>(std::numeric_limits<int32_t>::min())
+            || value > static_cast<int64_t>(std::numeric_limits<int32_t>::max())) {
+            throw std::runtime_error("get_mla_decoding_metadata_impl: bound cache_seqlens value is out of int32 range.");
+        }
+        values.push_back(static_cast<int32_t>(value));
+    }
+    context::memcpyH2D(
+        const_cast<std::byte *>(cache_seqlens->data()),
+        values.data(),
+        values.size() * sizeof(int32_t),
+        false);
+}
+
 } // namespace
 
 void get_mla_decoding_metadata_impl(
@@ -165,6 +193,8 @@ void get_mla_decoding_metadata_impl(
     if (num_q_tokens_per_head_k <= 0 || num_heads_k <= 0) {
         throw std::runtime_error("get_mla_decoding_metadata_impl expects positive head counts.");
     }
+
+    refresh_cache_seqlens_from_graph_binding(cache_seqlens);
 
     c10::cuda::CUDAStreamGuard guard(infinicore::adaptor::get_cuda_stream());
     auto cache_seqlens_at = infinicore::adaptor::to_aten_tensor(cache_seqlens);
