@@ -108,6 +108,7 @@ from infinicore.ops.flipud import flipud
 from infinicore.ops.float_power import float_power
 from infinicore.ops.floor import floor
 from infinicore.ops.floor_divide import floor_divide
+from infinicore.ops.flash_mla_with_kvcache import FlashMLASchedMeta, flash_mla_with_kvcache
 from infinicore.ops.fmin import fmin
 from infinicore.ops.fmod import fmod
 from infinicore.ops.fused_rotary_embedding import fused_rotary_embedding_
@@ -359,6 +360,7 @@ with contextlib.suppress(ImportError, ModuleNotFoundError):
     use_ntops = True
 
 __all__ += [
+    "FlashMLASchedMeta",
     "add_rms_norm_inplace",
     "concat_and_cache_mla",
     "concat_and_cache_mla_int8",
@@ -373,6 +375,7 @@ __all__ += [
     "sparse_flash_mla_",
     "topk_indices_context_lens_",
     "dynamic_scaled_int8_quant",
+    "flash_mla_with_kvcache",
     "fused_rotary_embedding_",
     "grouped_topk_vendor",
     "moe_argsort_bincount_with_inv_pos_",

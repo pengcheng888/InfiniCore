@@ -31,6 +31,7 @@
 #include "ops/distributed/send_recv.hpp"
 #include "ops/embedding.hpp"
 #include "ops/flash_attention.hpp"
+#include "ops/flash_mla/flash_mla_with_kvcache.hpp"
 #include "ops/fmin.hpp"
 #include "ops/fmod.hpp"
 #include "ops/fp8_indexer_logits.hpp"

@@ -46,6 +46,7 @@
 #include "ops/embedding.hpp"
 #include "ops/equal.hpp"
 #include "ops/flash_attention.hpp"
+#include "ops/flash_mla/flash_mla_with_kvcache.hpp"
 #include "ops/flipud.hpp"
 #include "ops/float_power.hpp"
 #include "ops/floor.hpp"
@@ -226,6 +227,7 @@ inline void bind(py::module &m) {
     bind_digamma(m);
     bind_dist(m);
     bind_flash_attention(m);
+    bind_flash_mla_with_kvcache(m);
     bind_hinge_embedding_loss(m);
     bind_kv_caching(m);
     bind_kimi_delta_attention(m);
