@@ -158,6 +158,25 @@ def preload_flash_attn() -> None:
             continue
 
 
+def _prefer_rocm_vllm_platform() -> None:
+    """Avoid vLLM CUDA/ROCm double-plugin activation in mixed Hygon environments."""
+    try:
+        import vllm.platforms as platforms
+
+        platforms.builtin_platform_plugins["cuda"] = lambda: None
+    except Exception:
+        pass
+
+
+def preload_hygon_cache_ops() -> None:
+    """Best-effort registration of Hygon vLLM cache operator schemas."""
+    _prefer_rocm_vllm_platform()
+    try:
+        __import__("vllm._C")
+    except Exception:
+        pass
+
+
 def preload_cambricon() -> None:
     """Import torch and torch_mlu for shared-library and backend setup."""
     preload_torch()
@@ -212,6 +231,7 @@ def preload_device(device_type: str) -> None:
         preload_torch()
         preload_torch_hip()
         preload_flash_attn()
+        preload_hygon_cache_ops()
     elif device_type == "ASCEND":
         preload_torch()
     # Add other device preload functions here as needed:
