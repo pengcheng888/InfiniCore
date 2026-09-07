@@ -34,6 +34,10 @@ mha_fwd(at::Tensor &q,                   // batch_size x seqlen_q x num_heads x 
         // MetaX/Mars `flash_attn_2_cuda` (e.g. 2.6.x+mars) appends this argument vs upstream Dao-AILab flash-attn.
         ,
         std::optional<at::Tensor> &flash_attn_mars_ext_
+#if defined(INFINICORE_HPCC_VERSION_MINOR) && (INFINICORE_HPCC_VERSION_MINOR == 7)
+        ,
+        const bool return_max_logit
+#endif
 #endif
 );
 
@@ -63,6 +67,10 @@ mha_varlen_fwd(at::Tensor &q,                               // total_q x num_hea
                // MetaX/Mars `flash_attn_2_cuda` (e.g. 2.6.x+mars) appends this argument vs upstream Dao-AILab flash-attn.
                ,
                std::optional<at::Tensor> &flash_attn_mars_ext_
+#if defined(INFINICORE_HPCC_VERSION_MINOR) && (INFINICORE_HPCC_VERSION_MINOR == 7)
+               ,
+               const bool return_max_logit
+#endif
 #endif
 );
 
