@@ -39,6 +39,7 @@ void check_fwd_inputs(const Tensor &out,
                       int64_t head_dim_v,
                       flash_mla::FlashMLASchedMeta &tile_scheduler_metadata,
                       const std::optional<Tensor> &num_splits,
+                      bool is_fp8_kvcache,
                       const std::optional<Tensor> &indices,
                       const std::optional<Tensor> &attn_sink,
                       const std::optional<Tensor> &extra_k_cache,
@@ -86,12 +87,24 @@ void check_fwd_inputs(const Tensor &out,
         && (sched_tile_metadata->dtype() != DataType::I32 || sched_num_splits->dtype() != DataType::I32)) {
         throw std::runtime_error(std::string(op_name) + " scheduler metadata tensors must be int32.");
     }
-    if (has_tile_scheduler_metadata
+    const bool sparse_fp8_decode = is_fp8_kvcache && has_optional_tensor(indices);
+    const size_t expected_num_splits = sparse_fp8_decode ? q->size(0) * q->size(1) + 1 : q->size(0) + 1;
+    if (tile_scheduler_metadata.has_valid_sched_meta()
         && (sched_tile_metadata->ndim() != 2 || sched_tile_metadata->size(1) != 8
-            || sched_num_splits->ndim() != 1 || sched_num_splits->size(0) != q->size(0) + 1)) {
+            || sched_num_splits->ndim() != 1 || sched_num_splits->size(0) != expected_num_splits)) {
         throw std::runtime_error(std::string(op_name) + " scheduler metadata shape mismatch.");
     }
-    if (!out->is_contiguous() || !lse->is_contiguous() || !q->is_contiguous() || !k_cache->is_contiguous()
+    if ((has_optional_tensor(indices) && indices.value()->dtype() != DataType::I32)
+        || (has_optional_tensor(topk_length) && topk_length.value()->dtype() != DataType::I32)
+        || (has_optional_tensor(extra_indices_in_kvcache) && extra_indices_in_kvcache.value()->dtype() != DataType::I32)
+        || (has_optional_tensor(extra_topk_length) && extra_topk_length.value()->dtype() != DataType::I32)) {
+        throw std::runtime_error(std::string(op_name) + " sparse metadata tensors must be int32.");
+    }
+    if (has_optional_tensor(attn_sink) && attn_sink.value()->dtype() != DataType::F32) {
+        throw std::runtime_error(std::string(op_name) + " attn_sink must be float32.");
+    }
+    if (!out->is_contiguous() || !lse->is_contiguous() || !q->is_contiguous()
+        || (!sparse_fp8_decode && !k_cache->is_contiguous())
         || (has_tile_scheduler_metadata && (!sched_tile_metadata->is_contiguous() || !sched_num_splits->is_contiguous()))) {
         throw std::runtime_error(std::string(op_name) + " expects contiguous tensors.");
     }
@@ -189,6 +202,7 @@ void FlashMlaWithKvcache::execute(Tensor out,
                      head_dim_v,
                      tile_scheduler_metadata,
                      num_splits,
+                     is_fp8_kvcache,
                      indices,
                      attn_sink,
                      extra_k_cache,
@@ -270,6 +284,7 @@ std::pair<Tensor, Tensor> flash_mla_with_kvcache(
                      head_dim_v,
                      tile_scheduler_metadata,
                      num_splits,
+                     is_fp8_kvcache,
                      indices,
                      attn_sink,
                      extra_k_cache,
