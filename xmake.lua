@@ -726,6 +726,26 @@ target("infinicore_cpp_api")
     set_languages("cxx17")
     set_symbols("visibility")
 
+    if has_config("hygon-dcu") and has_config("aten") then
+        set_toolchains("hygon.toolchain")
+        add_rules("hygon.env")
+        set_values("cuda.rdc", false)
+        local dtk_root = os.getenv("DTK_ROOT") or "/opt/dtk"
+        local hygon_cuda_root = os.getenv("HYGON_CUDA_HOME") or get_config("cuda") or path.join(dtk_root, "cuda", "cuda")
+        add_includedirs(path.join(hygon_cuda_root, "include"))
+        add_includedirs(path.join(hygon_cuda_root, "targets", "x86_64-linux", "include"))
+        add_includedirs(path.join(hygon_cuda_root, "extras", "clang_internal_header"))
+        add_includedirs(path.join(dtk_root, "include"))
+        add_linkdirs(path.join(hygon_cuda_root, "lib64"))
+        add_linkdirs(path.join(hygon_cuda_root, "targets", "x86_64-linux", "lib"))
+        add_linkdirs(path.join(dtk_root, "lib"))
+        add_links("cudart", "hipblas")
+        add_cuflags("-D__HIP_PLATFORM_AMD__", {force = true})
+        add_cuflags("-arch=" .. (get_config("hygon-arch") or os.getenv("HYGON_ARCH") or "gfx936"), {force = true})
+        add_cuflags("-fPIC", "-std=c++17", "-Wno-error=macro-redefined", "-Wno-error=ignored-attributes", "-Wno-error=unused-variable", "-Wno-error=unused-function", {force = true})
+        add_files("src/infinicore/ops/deepseek_v4/*/kernel/*.cu")
+    end
+
     local INFINI_ROOT = os.getenv("INFINI_ROOT") or (os.getenv(is_host("windows") and "HOMEPATH" or "HOME") .. "/.infini")
 
     add_includedirs("include")
