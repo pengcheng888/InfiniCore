@@ -1,0 +1,89 @@
+#include "infinicore/ops/deepseek_v4/hc_head.hpp"
+
+#include "../../aten_utils.hpp"
+
+#include "infinicore/device.hpp"
+
+#ifdef ENABLE_ATEN
+#include "infinicore/adaptor/aten_adaptor.hpp"
+#include <ATen/ATen.h>
+#if defined(ENABLE_HYGON_API)
+#include <c10/hip/HIPGuard.h>
+#elif defined(ENABLE_NVIDIA_API)
+#include <c10/cuda/CUDAGuard.h>
+#endif
+#endif
+
+#include <stdexcept>
+#include <string>
+
+namespace infinicore::op::deepseek_v4 {
+namespace {
+
+void check_accelerator_tensor(const Tensor &tensor, const char *op_name) {
+    detail::check_build_device(tensor, op_name);
+}
+
+#if defined(ENABLE_ATEN) && defined(INFINICORE_DSV4_ACCELERATOR_API)
+at::Tensor unweighted_rmsnorm(const at::Tensor &x, double eps) {
+    return x * at::rsqrt(x.square().mean(-1, true) + eps);
+}
+#endif
+
+} // namespace
+
+void hc_head_aten_(Tensor y,
+                   const Tensor &x,
+                   const Tensor &fn,
+                   const Tensor &scale,
+                   const Tensor &base,
+                   double rms_eps,
+                   double hc_eps) {
+#if defined(ENABLE_ATEN) && defined(INFINICORE_DSV4_ACCELERATOR_API)
+    check_accelerator_tensor(x, "hc_head_aten_");
+    detail::prepare_aten_call(x, "hc_head_aten_");
+
+    if (x->ndim() != 3 || fn->ndim() != 2 || scale->ndim() != 1 || base->ndim() != 1) {
+        throw std::runtime_error("hc_head_aten_ unexpected input rank.");
+    }
+    const int64_t tokens = static_cast<int64_t>(x->size(0));
+    const int64_t hc = static_cast<int64_t>(x->size(1));
+    const int64_t hidden = static_cast<int64_t>(x->size(2));
+    if (fn->shape() != Shape{static_cast<size_t>(hc), static_cast<size_t>(hc * hidden)} || base->size(0) != static_cast<size_t>(hc) || scale->size(0) != 1 || y->shape() != Shape{static_cast<size_t>(tokens), static_cast<size_t>(hidden)}) {
+        throw std::runtime_error("hc_head_aten_ shape mismatch.");
+    }
+
+    auto y_at = infinicore::adaptor::to_aten_tensor(y);
+    auto x_at = infinicore::adaptor::to_aten_tensor(x);
+    auto fn_at = infinicore::adaptor::to_aten_tensor(fn).to(at::kFloat);
+    auto scale_at = infinicore::adaptor::to_aten_tensor(scale).to(at::kFloat);
+    auto base_at = infinicore::adaptor::to_aten_tensor(base).to(at::kFloat);
+    auto x_flat = x_at.reshape({tokens, hc * hidden}).to(at::kFloat);
+    auto flat = unweighted_rmsnorm(x_flat, rms_eps);
+    auto mixes = at::matmul(flat, fn_at.transpose(0, 1));
+    auto pre = at::sigmoid(mixes * scale_at[0] + base_at) + hc_eps;
+    auto result = (pre.unsqueeze(-1) * x_at.to(at::kFloat)).sum(1);
+    y_at.copy_(result.to(y_at.scalar_type()));
+#else
+    (void)y;
+    (void)x;
+    (void)fn;
+    (void)scale;
+    (void)base;
+    (void)rms_eps;
+    (void)hc_eps;
+    throw std::runtime_error("hc_head_aten_ requires an ATen-enabled HYGON/NVIDIA/METAX/ILUVATAR build.");
+#endif
+}
+
+void hc_head_naive_(Tensor y,
+                    const Tensor &x,
+                    const Tensor &fn,
+                    const Tensor &scale,
+                    const Tensor &base,
+                    double rms_eps,
+                    double hc_eps) {
+    hc_head_aten_(y, x, fn, scale, base, rms_eps, hc_eps);
+}
+
+} // namespace infinicore::op::deepseek_v4
