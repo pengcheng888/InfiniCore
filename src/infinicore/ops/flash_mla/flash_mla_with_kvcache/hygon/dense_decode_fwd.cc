@@ -1,7 +1,7 @@
 #include "infinicore/ops/flash_mla/flash_mla_with_kvcache.hpp"
 
-#include "dense_decode_symbol.hpp"
-#include "sparse_decode_symbol.hpp"
+#include "../../../../adaptor/flashmla/hygon/flashmla_hygon.hpp"
+#include "flash_mla_with_kvcache_helper.hpp"
 #include "infinicore/context/context.hpp"
 
 #include "infinicore/device.hpp"
@@ -26,256 +26,22 @@
 namespace infinicore::op {
 
 #if defined(ENABLE_ATEN) && defined(ENABLE_HYGON_API)
-namespace {
-
-void check_device(const Tensor &tensor, const char *op_name) {
-    if (!tensor || tensor->device().getType() != Device::Type::HYGON) {
-        throw std::runtime_error(std::string(op_name) + " expects HYGON tensors.");
-    }
-}
-
-void check_optional_device(const std::optional<Tensor> &tensor, const char *op_name) {
-    if (tensor.has_value() && tensor.value()) {
-        check_device(*tensor, op_name);
-    }
-}
-
-bool has_tensor(const std::optional<Tensor> &tensor) {
-    return tensor.has_value() && tensor.value();
-}
-
-void check_hygon_dense_decode_options(const std::optional<Tensor> &block_table,
-                                      const std::optional<Tensor> &cache_seqlens,
-                                      const std::optional<Tensor> &num_splits,
-                                      bool is_fp8_kvcache,
-                                      const std::optional<Tensor> &indices,
-                                      const std::optional<Tensor> &attn_sink,
-                                      const std::optional<Tensor> &extra_k_cache,
-                                      const std::optional<Tensor> &extra_indices_in_kvcache,
-                                      const std::optional<Tensor> &topk_length,
-                                      const std::optional<Tensor> &extra_topk_length,
-                                      const char *op_name) {
-    if (!has_tensor(block_table) || !has_tensor(cache_seqlens)) {
-        throw std::runtime_error(std::string(op_name) + " requires block_table and cache_seqlens on HYGON dense decode.");
-    }
-    if (is_fp8_kvcache) {
-        throw std::runtime_error(std::string(op_name) + " does not support is_fp8_kvcache=true on HYGON dense decode.");
-    }
-    if (has_tensor(num_splits)) {
-        throw std::runtime_error(std::string(op_name) + " does not support the num_splits override on HYGON dense decode.");
-    }
-    if (has_tensor(indices) || has_tensor(attn_sink) || has_tensor(extra_k_cache)
-        || has_tensor(extra_indices_in_kvcache) || has_tensor(topk_length) || has_tensor(extra_topk_length)) {
-        throw std::runtime_error(std::string(op_name) + " currently supports dense attention only on HYGON.");
-    }
-}
-
-bool use_sparse_decode(const std::optional<Tensor> &indices) {
-    return has_tensor(indices);
-}
-
-void check_hygon_sparse_decode_options(const std::optional<Tensor> &block_table,
-                                       const std::optional<Tensor> &cache_seqlens,
-                                       const std::optional<Tensor> &num_splits,
-                                       bool is_fp8_kvcache,
-                                       const std::optional<Tensor> &indices,
-                                       const std::optional<Tensor> &topk_length,
-                                       const char *op_name) {
-    if (has_tensor(block_table) || has_tensor(cache_seqlens)) {
-        throw std::runtime_error(std::string(op_name) + " does not take block_table/cache_seqlens on HYGON sparse decode.");
-    }
-    if (has_tensor(num_splits)) {
-        throw std::runtime_error(std::string(op_name) + " does not support the num_splits override on HYGON sparse decode.");
-    }
-    if (!is_fp8_kvcache) {
-        throw std::runtime_error(std::string(op_name) + " requires is_fp8_kvcache=true on HYGON sparse decode.");
-    }
-    if (!has_tensor(indices) || !has_tensor(topk_length)) {
-        throw std::runtime_error(std::string(op_name) + " requires indices and topk_length on HYGON sparse decode.");
-    }
-}
-
-void check_hygon_decode_options(const std::optional<Tensor> &block_table,
-                                const std::optional<Tensor> &cache_seqlens,
-                                const std::optional<Tensor> &num_splits,
-                                bool is_fp8_kvcache,
-                                const std::optional<Tensor> &indices,
-                                const std::optional<Tensor> &attn_sink,
-                                const std::optional<Tensor> &extra_k_cache,
-                                const std::optional<Tensor> &extra_indices_in_kvcache,
-                                const std::optional<Tensor> &topk_length,
-                                const std::optional<Tensor> &extra_topk_length,
-                                const char *op_name) {
-    if (use_sparse_decode(indices)) {
-        check_hygon_sparse_decode_options(block_table,
-                                          cache_seqlens,
-                                          num_splits,
-                                          is_fp8_kvcache,
-                                          indices,
-                                          topk_length,
-                                          op_name);
-        return;
-    }
-    check_hygon_dense_decode_options(block_table,
-                                     cache_seqlens,
-                                     num_splits,
-                                     is_fp8_kvcache,
-                                     indices,
-                                     attn_sink,
-                                     extra_k_cache,
-                                     extra_indices_in_kvcache,
-                                     topk_length,
-                                     extra_topk_length,
-                                     op_name);
-}
-
-double resolve_softmax_scale(const Tensor &q,
-                             const std::optional<double> &softmax_scale,
-                             const char *op_name) {
-    if (softmax_scale.has_value()) {
-        return softmax_scale.value();
-    }
-    if (!q || q->ndim() == 0 || q->size(q->ndim() - 1) == 0) {
-        throw std::runtime_error(std::string(op_name) + " cannot infer softmax_scale from q.");
-    }
-    return 1.0 / std::sqrt(static_cast<double>(q->size(q->ndim() - 1)));
-}
-
-DataType from_at_scalar_type_for_dense_decode(at::ScalarType dtype) {
-    switch (dtype) {
-    case at::kFloat:
-        return DataType::F32;
-    case at::kHalf:
-        return DataType::F16;
-    case at::kBFloat16:
-        return DataType::BF16;
-    case at::kChar:
-        return DataType::I8;
-    case at::kInt:
-        return DataType::I32;
-    case at::kLong:
-        return DataType::I64;
-    case at::kByte:
-        return DataType::U8;
-    case at::kFloat8_e4m3fnuz:
-        return DataType::F8;
-    default:
-        throw std::runtime_error("flash_mla_with_kvcache_impl: unsupported FlashMLA return dtype.");
-    }
-}
-
-Device from_at_device_for_dense_decode(const at::Device &device) {
-    if (device.is_cpu()) {
-        return Device(Device::Type::CPU, 0);
-    }
-    if (!device.is_cuda()) {
-        throw std::runtime_error("flash_mla_with_kvcache_impl: unsupported FlashMLA return device.");
-    }
-    return Device(Device::Type::HYGON, static_cast<Device::Index>(device.index()));
-}
-
-Shape shape_from_at_tensor_for_dense_decode(const at::Tensor &tensor) {
-    Shape shape;
-    shape.reserve(static_cast<size_t>(tensor.dim()));
-    for (const auto dim : tensor.sizes()) {
-        shape.push_back(static_cast<size_t>(dim));
-    }
-    return shape;
-}
-
-Tensor empty_like(const at::Tensor &src,
-                  std::optional<DataType> dtype = std::nullopt,
-                  std::optional<Device> device = std::nullopt) {
-    return Tensor::empty(shape_from_at_tensor_for_dense_decode(src),
-                         dtype.has_value()
-                             ? dtype.value()
-                             : from_at_scalar_type_for_dense_decode(src.scalar_type()),
-                         device.has_value()
-                             ? device.value()
-                             : from_at_device_for_dense_decode(src.device()));
-}
-
-void copy_flashmla_tensor_exact(Tensor &dst, at::Tensor src, const char *name) {
-    if (!src.defined()) {
-        throw std::runtime_error(std::string("flash_mla_with_kvcache_impl: FlashMLA returned undefined ") + name + ".");
-    }
-    src = src.contiguous();
-    const auto expected_shape = shape_from_at_tensor_for_dense_decode(src);
-    const auto expected_dtype = from_at_scalar_type_for_dense_decode(src.scalar_type());
-    const auto expected_device = from_at_device_for_dense_decode(src.device());
-    if (!dst) {
-        throw std::runtime_error(std::string("flash_mla_with_kvcache_impl: ") + name + " output must be preallocated.");
-    }
-    if (dst->shape() != expected_shape) {
-        throw std::runtime_error(std::string("flash_mla_with_kvcache_impl: ") + name + " shape mismatch.");
-    }
-    if (dst->dtype() != expected_dtype) {
-        throw std::runtime_error(std::string("flash_mla_with_kvcache_impl: ") + name + " dtype mismatch.");
-    }
-    if (dst->device() != expected_device) {
-        throw std::runtime_error(std::string("flash_mla_with_kvcache_impl: ") + name + " device mismatch.");
-    }
-    if (!dst->is_contiguous()) {
-        throw std::runtime_error(std::string("flash_mla_with_kvcache_impl: ") + name + " must be contiguous.");
-    }
-    auto dst_at = infinicore::adaptor::to_aten_tensor(dst);
-    dst_at.copy_(src);
-}
-
-bool matches_flashmla_return_tensor(const Tensor &dst,
-                                    const at::Tensor &src,
-                                    DataType dtype,
-                                    const Device &device) {
-    return dst
-        && dst->shape() == shape_from_at_tensor_for_dense_decode(src)
-        && dst->dtype() == dtype
-        && dst->device() == device
-        && dst->is_contiguous();
-}
-
-at::Tensor to_aten_tensor_for_flashmla(const Tensor &tensor) {
-    if (tensor->dtype() == DataType::F8) {
-        std::vector<int64_t> sizes(tensor->shape().begin(), tensor->shape().end());
-        std::vector<int64_t> strides(tensor->strides().begin(), tensor->strides().end());
-        auto options = at::TensorOptions()
-                           .dtype(at::ScalarType::Float8_e4m3fn)
-                           .device(infinicore::adaptor::to_at_device(tensor->device()))
-                           .requires_grad(false);
-        auto *data = const_cast<std::byte *>(tensor->data());
-        return at::from_blob(
-            data,
-            sizes,
-            strides,
-            [](void *) {},
-            options);
-    }
-    return infinicore::adaptor::to_aten_tensor(tensor);
-}
-
-std::optional<graph::GraphTensor> to_optional_graph_tensor(const std::optional<Tensor> &tensor) {
-    if (!has_tensor(tensor)) {
-        return std::nullopt;
-    }
-    return graph::GraphTensor(tensor.value());
-}
-
-std::optional<Tensor> to_optional_tensor(const std::optional<graph::GraphTensor> &tensor) {
-    if (!tensor.has_value()) {
-        return std::nullopt;
-    }
-    return tensor.value();
-}
-
-std::optional<at::Tensor> to_optional_aten_for_flashmla(const std::optional<Tensor> &tensor) {
-    if (!has_tensor(tensor)) {
-        return std::nullopt;
-    }
-    return to_aten_tensor_for_flashmla(tensor.value());
-}
-
-} // namespace
 
 namespace flash_mla::flash_mla_with_kvcache_hygon {
+
+using detail::check_device;
+using detail::check_hygon_decode_options;
+using detail::check_optional_device;
+using detail::copy_flashmla_tensor_exact;
+using detail::empty_like;
+using detail::has_tensor;
+using detail::can_reuse_as_output_buffer;
+using detail::resolve_softmax_scale;
+using detail::to_aten_tensor_for_flashmla;
+using detail::to_optional_aten_for_flashmla;
+using detail::to_optional_graph_tensor;
+using detail::to_optional_tensor;
+using detail::use_sparse_decode;
 
 namespace {
 
@@ -327,7 +93,6 @@ void flash_mla_with_kvcache_impl_internal(
     std::optional<Tensor> extra_indices_in_kvcache,
     std::optional<Tensor> topk_length,
     std::optional<Tensor> extra_topk_length,
-    bool update_sched_meta,
     std::optional<bool> use_sched_meta_override,
     bool update_sched_meta_state);
 
@@ -429,7 +194,6 @@ void run(void *planned_meta) {
                                          to_optional_tensor(planned->extra_indices_in_kvcache),
                                          to_optional_tensor(planned->topk_length),
                                          to_optional_tensor(planned->extra_topk_length),
-                                         true,
                                          planned->use_sched_meta,
                                          false);
 }
@@ -484,7 +248,6 @@ void flash_mla_with_kvcache_impl(
                                          extra_indices_in_kvcache,
                                          topk_length,
                                          extra_topk_length,
-                                         true,
                                          std::nullopt,
                                          true);
 }
@@ -508,7 +271,6 @@ void flash_mla_with_kvcache_impl_internal(
     std::optional<Tensor> extra_indices_in_kvcache,
     std::optional<Tensor> topk_length,
     std::optional<Tensor> extra_topk_length,
-    bool update_sched_meta,
     std::optional<bool> use_sched_meta_override,
     bool update_sched_meta_state) {
     constexpr const char *op_name = "flash_mla_with_kvcache_impl";
@@ -525,20 +287,13 @@ void flash_mla_with_kvcache_impl_internal(
                                extra_topk_length,
                                op_name);
     const bool has_sched_buffer = tile_scheduler_metadata.has_sched_buffer();
-    if (static_cast<bool>(tile_scheduler_metadata.tile_scheduler_metadata)
-        != static_cast<bool>(tile_scheduler_metadata.num_splits)) {
+    if (static_cast<bool>(tile_scheduler_metadata.tile_scheduler_metadata) != static_cast<bool>(tile_scheduler_metadata.num_splits)) {
         throw std::runtime_error(std::string(op_name) + " expects scheduler metadata and scheduler num_splits to both be set or both be empty.");
     }
-    const bool use_sched_meta = use_sched_meta_override.has_value()
-                                  ? use_sched_meta_override.value()
-                                  : tile_scheduler_metadata.has_valid_sched_meta();
+    const bool use_sched_meta = use_sched_meta_override.has_value() ? use_sched_meta_override.value() : tile_scheduler_metadata.has_valid_sched_meta();
     const Tensor empty_sched_tensor;
-    const Tensor &sched_tile_metadata = use_sched_meta
-                                          ? tile_scheduler_metadata.tile_scheduler_metadata
-                                          : empty_sched_tensor;
-    const Tensor &sched_num_splits = use_sched_meta
-                                       ? tile_scheduler_metadata.num_splits
-                                       : empty_sched_tensor;
+    const Tensor &sched_tile_metadata = use_sched_meta ? tile_scheduler_metadata.tile_scheduler_metadata : empty_sched_tensor;
+    const Tensor &sched_num_splits = use_sched_meta ? tile_scheduler_metadata.num_splits : empty_sched_tensor;
 
     const double scale = resolve_softmax_scale(q, softmax_scale, op_name);
 
@@ -561,7 +316,11 @@ void flash_mla_with_kvcache_impl_internal(
     check_optional_device(topk_length, op_name);
     check_optional_device(extra_topk_length, op_name);
 
+#if INFINICORE_TORCH_VERSION_GE_2_11
+    c10::cuda::CUDAStreamGuard guard(infinicore::adaptor::get_hip_stream());
+#else
     c10::hip::HIPStreamGuard guard(infinicore::adaptor::get_hip_stream());
+#endif
 
     auto q_flash_at = to_aten_tensor_for_flashmla(q);
     auto k_cache_flash_at = to_aten_tensor_for_flashmla(k_cache);
@@ -583,67 +342,63 @@ void flash_mla_with_kvcache_impl_internal(
         auto topk_length_flash_at = to_optional_aten_for_flashmla(topk_length);
         auto extra_topk_length_flash_at = to_optional_aten_for_flashmla(extra_topk_length);
         std::tie(flash_out_at, flash_lse_at, new_tile_scheduler_metadata, new_num_splits)
-            = flashmla_sparse_decode_fn(op_name)(q_flash_at,
-                                                 k_cache_flash_at,
-                                                 indices_flash_at,
-                                                 topk_length_flash_at,
-                                                 attn_sink_flash_at,
-                                                 tile_scheduler_metadata_flash_at,
-                                                 num_splits_flash_at,
-                                                 extra_k_cache_flash_at,
-                                                 extra_indices_flash_at,
-                                                 extra_topk_length_flash_at,
-                                                 static_cast<int>(head_dim_v),
-                                                 static_cast<float>(scale));
+            = infinicore::adaptor::flashmla::hygon::flashmla_sparse_decode_fn(op_name)(
+                q_flash_at,
+                k_cache_flash_at,
+                indices_flash_at,
+                topk_length_flash_at,
+                attn_sink_flash_at,
+                tile_scheduler_metadata_flash_at,
+                num_splits_flash_at,
+                extra_k_cache_flash_at,
+                extra_indices_flash_at,
+                extra_topk_length_flash_at,
+                static_cast<int>(head_dim_v),
+                static_cast<float>(scale));
     } else {
         auto cache_seqlens_flash_at = to_aten_tensor_for_flashmla(cache_seqlens.value());
         auto block_table_flash_at = to_aten_tensor_for_flashmla(block_table.value());
         std::tie(flash_out_at, flash_lse_at, new_tile_scheduler_metadata, new_num_splits)
-            = flashmla_dense_decode_fn(op_name)(q_flash_at,
-                                                k_cache_flash_at,
-                                                static_cast<int>(head_dim_v),
-                                                cache_seqlens_flash_at,
-                                                block_table_flash_at,
-                                                static_cast<float>(scale),
-                                                causal,
-                                                tile_scheduler_metadata_flash_at,
-                                                num_splits_flash_at);
+            = infinicore::adaptor::flashmla::hygon::flashmla_dense_decode_fn(op_name)(
+                q_flash_at,
+                k_cache_flash_at,
+                static_cast<int>(head_dim_v),
+                cache_seqlens_flash_at,
+                block_table_flash_at,
+                static_cast<float>(scale),
+                causal,
+                tile_scheduler_metadata_flash_at,
+                num_splits_flash_at);
     }
     const bool has_new_tile_scheduler_metadata = new_tile_scheduler_metadata.has_value() && new_tile_scheduler_metadata.value().defined();
     const bool has_new_num_splits = new_num_splits.has_value() && new_num_splits.value().defined();
 
-    if (update_sched_meta && has_new_tile_scheduler_metadata != has_new_num_splits) {
+    if (has_new_tile_scheduler_metadata != has_new_num_splits) {
         throw std::runtime_error(std::string(op_name) + " expects vendor returned scheduler metadata and num_splits to both be set or both be empty.");
     }
 
-    if (update_sched_meta && has_new_tile_scheduler_metadata) {
+    if (has_new_tile_scheduler_metadata) {
         auto new_tile_scheduler_metadata_at = new_tile_scheduler_metadata.value().contiguous();
         auto new_num_splits_at = new_num_splits.value().contiguous();
         Tensor new_tile_scheduler_metadata_tensor;
         Tensor new_num_splits_tensor;
-        if (matches_flashmla_return_tensor(tile_scheduler_metadata.tile_scheduler_metadata,
-                                           new_tile_scheduler_metadata_at,
-                                           DataType::I32,
-                                           q->device())
-            && matches_flashmla_return_tensor(tile_scheduler_metadata.num_splits,
-                                              new_num_splits_at,
-                                              DataType::I32,
-                                              q->device())) {
+        if (can_reuse_as_output_buffer(tile_scheduler_metadata.tile_scheduler_metadata,
+                                       new_tile_scheduler_metadata_at,
+                                       DataType::I32,
+                                       q->device())
+            && can_reuse_as_output_buffer(tile_scheduler_metadata.num_splits,
+                                          new_num_splits_at,
+                                          DataType::I32,
+                                          q->device())) {
             new_tile_scheduler_metadata_tensor = tile_scheduler_metadata.tile_scheduler_metadata;
             new_num_splits_tensor = tile_scheduler_metadata.num_splits;
         } else {
-            new_tile_scheduler_metadata_tensor = ::infinicore::op::empty_like(
-                new_tile_scheduler_metadata_at, DataType::I32, q->device());
-            new_num_splits_tensor = ::infinicore::op::empty_like(
-                new_num_splits_at, DataType::I32, q->device());
+            new_tile_scheduler_metadata_tensor = empty_like(new_tile_scheduler_metadata_at, DataType::I32, q->device());
+            new_num_splits_tensor = empty_like(new_num_splits_at, DataType::I32, q->device());
         }
 
-        copy_flashmla_tensor_exact(new_tile_scheduler_metadata_tensor,
-                                   new_tile_scheduler_metadata_at,
-                                   "tile_scheduler_metadata");
-        copy_flashmla_tensor_exact(new_num_splits_tensor,
-                                   new_num_splits_at,
-                                   "num_splits");
+        copy_flashmla_tensor_exact(new_tile_scheduler_metadata_tensor, new_tile_scheduler_metadata_at, "tile_scheduler_metadata");
+        copy_flashmla_tensor_exact(new_num_splits_tensor, new_num_splits_at, "num_splits");
 
         if (new_tile_scheduler_metadata_tensor->dtype() != DataType::I32 || new_num_splits_tensor->dtype() != DataType::I32) {
             throw std::runtime_error(std::string(op_name) + " expects vendor returned scheduler metadata tensors to be int32.");
@@ -657,25 +412,19 @@ void flash_mla_with_kvcache_impl_internal(
             throw std::runtime_error(std::string(op_name) + " vendor returned scheduler metadata shape mismatch.");
         }
 
-        FlashMLASchedMeta::Config new_config;
-        new_config.b = q->size(0);
-        new_config.s_q = q->size(1);
-        new_config.h_q = q->size(2);
-        new_config.page_block_size = k_cache->size(1);
-        new_config.h_k = k_cache->size(2);
-        new_config.causal = causal;
-        new_config.is_fp8_kvcache = is_fp8_kvcache;
-        new_config.topk = sparse_decode
-                             ? std::make_optional(indices.value()->size(indices.value()->ndim() - 1))
-                             : std::nullopt;
-        new_config.extra_page_block_size = has_tensor(extra_k_cache)
-                                             ? std::make_optional(extra_k_cache.value()->size(1))
-                                             : std::nullopt;
-        new_config.extra_topk = has_tensor(extra_indices_in_kvcache)
-                                  ? std::make_optional(extra_indices_in_kvcache.value()->size(extra_indices_in_kvcache.value()->ndim() - 1))
-                                  : std::nullopt;
-
         if (update_sched_meta_state) {
+            FlashMLASchedMeta::Config new_config;
+            new_config.b = q->size(0);
+            new_config.s_q = q->size(1);
+            new_config.h_q = q->size(2);
+            new_config.page_block_size = k_cache->size(1);
+            new_config.h_k = k_cache->size(2);
+            new_config.causal = causal;
+            new_config.is_fp8_kvcache = is_fp8_kvcache;
+            new_config.topk = sparse_decode ? std::make_optional(indices.value()->size(indices.value()->ndim() - 1)) : std::nullopt;
+            new_config.extra_page_block_size = has_tensor(extra_k_cache) ? std::make_optional(extra_k_cache.value()->size(1)) : std::nullopt;
+            new_config.extra_topk = has_tensor(extra_indices_in_kvcache) ? std::make_optional(extra_indices_in_kvcache.value()->size(extra_indices_in_kvcache.value()->ndim() - 1)) : std::nullopt;
+
             tile_scheduler_metadata.tile_scheduler_metadata = new_tile_scheduler_metadata_tensor;
             tile_scheduler_metadata.num_splits = new_num_splits_tensor;
             tile_scheduler_metadata.config = new_config;

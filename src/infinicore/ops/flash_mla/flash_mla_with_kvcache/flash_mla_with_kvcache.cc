@@ -127,12 +127,12 @@ void check_fwd_inputs(const Tensor &out,
 
 namespace flash_mla {
 
-INFINICORE_GRAPH_OP_DISPATCHERS_IMPL(FlashMlaWithKvcache);
-
 common::OpDispatcher<FlashMlaWithKvcacheImplSchema> &flash_mla_with_kvcache_impl_dispatcher() {
     static common::OpDispatcher<FlashMlaWithKvcacheImplSchema> dispatcher_;
     return dispatcher_;
 }
+
+INFINICORE_GRAPH_OP_DISPATCHERS_IMPL(FlashMlaWithKvcache);
 
 FlashMlaWithKvcache::FlashMlaWithKvcache(Tensor out,
                                          Tensor lse,
@@ -193,6 +193,7 @@ void FlashMlaWithKvcache::execute(Tensor out,
                                   std::optional<Tensor> topk_length,
                                   std::optional<Tensor> extra_topk_length) {
 
+    // execute is a public graph entry point and must validate its own inputs.
     check_fwd_inputs(out,
                      lse,
                      q,
@@ -275,24 +276,6 @@ std::pair<Tensor, Tensor> flash_mla_with_kvcache(
     auto out = Tensor::empty({q->size(0), q->size(1), q->size(2), static_cast<size_t>(head_dim_v)}, q->dtype(), q->device());
     auto lse = Tensor::empty({q->size(0), q->size(2), q->size(1)}, DataType::F32, q->device());
 
-    check_fwd_inputs(out,
-                     lse,
-                     q,
-                     k_cache,
-                     block_table,
-                     cache_seqlens,
-                     head_dim_v,
-                     tile_scheduler_metadata,
-                     num_splits,
-                     is_fp8_kvcache,
-                     indices,
-                     attn_sink,
-                     extra_k_cache,
-                     extra_indices_in_kvcache,
-                     topk_length,
-                     extra_topk_length,
-                     op_name);
-
     if (context::isGraphRecording()) {
         FlashMlaWithKvcache::execute(out,
                                      lse,
@@ -313,6 +296,23 @@ std::pair<Tensor, Tensor> flash_mla_with_kvcache(
                                      topk_length,
                                      extra_topk_length);
     } else {
+        check_fwd_inputs(out,
+                         lse,
+                         q,
+                         k_cache,
+                         block_table,
+                         cache_seqlens,
+                         head_dim_v,
+                         tile_scheduler_metadata,
+                         num_splits,
+                         is_fp8_kvcache,
+                         indices,
+                         attn_sink,
+                         extra_k_cache,
+                         extra_indices_in_kvcache,
+                         topk_length,
+                         extra_topk_length,
+                         op_name);
         flash_mla_with_kvcache_impl_dispatcher().lookup(q->device().getType())(out,
                                                                                lse,
                                                                                q,

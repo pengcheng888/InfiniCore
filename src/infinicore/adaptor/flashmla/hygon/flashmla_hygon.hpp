@@ -1,15 +1,27 @@
-#pragma once
+#ifndef INFINICORE_ADAPTOR_FLASHMLA_HYGON_FLASHMLA_HYGON_HPP
+#define INFINICORE_ADAPTOR_FLASHMLA_HYGON_FLASHMLA_HYGON_HPP
 
-#ifdef ENABLE_ATEN
+#if defined(ENABLE_ATEN) && defined(ENABLE_HYGON_API)
+
 #include <ATen/ATen.h>
-#endif
 
 #include <optional>
 #include <tuple>
 
-namespace infinicore::op::flash_mla::flash_mla_with_kvcache_hygon {
+namespace infinicore::adaptor::flashmla::hygon {
 
-#if defined(ENABLE_ATEN) && defined(ENABLE_HYGON_API)
+using FlashMlaDenseDecodeFn = std::tuple<at::Tensor,
+                                         at::Tensor,
+                                         std::optional<at::Tensor>,
+                                         std::optional<at::Tensor>> (*)(at::Tensor &,
+                                                                        const at::Tensor &,
+                                                                        int,
+                                                                        const at::Tensor &,
+                                                                        const at::Tensor &,
+                                                                        float,
+                                                                        bool,
+                                                                        std::optional<at::Tensor> &,
+                                                                        std::optional<at::Tensor> &);
 
 using FlashMlaSparseDecodeFn = std::tuple<at::Tensor,
                                           at::Tensor,
@@ -27,8 +39,13 @@ using FlashMlaSparseDecodeFn = std::tuple<at::Tensor,
                                                                          int,
                                                                          float);
 
+FlashMlaDenseDecodeFn flashmla_dense_decode_fn(const char *op_name);
 FlashMlaSparseDecodeFn flashmla_sparse_decode_fn(const char *op_name);
+bool flashmla_dense_decode_available();
+bool flashmla_sparse_decode_available();
+
+} // namespace infinicore::adaptor::flashmla::hygon
 
 #endif
 
-} // namespace infinicore::op::flash_mla::flash_mla_with_kvcache_hygon
+#endif

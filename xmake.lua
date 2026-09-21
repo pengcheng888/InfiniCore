@@ -1081,6 +1081,9 @@ target("infinicore_cpp_api")
     add_files("src/infinicore/ops/*/*.cc")
     add_files("src/infinicore/ops/*/*/*.cc")
     add_files("src/infinicore/ops/*/*/*/*.cc")
+    if has_config("hygon-dcu") and has_config("aten") then
+        add_files("src/infinicore/adaptor/flashmla/hygon/*.cc")
+    end
     -- Platform-private Hygon sources are guarded and only kept in Hygon builds.
     if has_config("hygon-dcu") and get_config("flash-attn") and get_config("flash-attn") ~= "" then
         -- Hygon links against a prebuilt flash-attn extension with a different ABI.
