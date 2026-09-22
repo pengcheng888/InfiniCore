@@ -8,6 +8,9 @@
 #if defined(ENABLE_MOORE_API)
 #include "moore/per_channel_quant_int8_moore.h"
 #endif
+#ifdef ENABLE_METAX_API
+#include "metax/per_channel_quant_int8_metax.h"
+#endif
 
 __INFINI_C infiniStatus_t infiniopCreatePerChannelQuantI8Descriptor(infiniopHandle_t handle,
                                                                     infiniopPerChannelQuantI8Descriptor_t *desc_ptr,
@@ -37,6 +40,9 @@ __INFINI_C infiniStatus_t infiniopCreatePerChannelQuantI8Descriptor(infiniopHand
 #ifdef ENABLE_MOORE_API
         CREATE(INFINI_DEVICE_MOORE, moore)
 #endif
+#ifdef ENABLE_METAX_API
+        CREATE(INFINI_DEVICE_METAX, metax)
+#endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
@@ -60,6 +66,9 @@ __INFINI_C infiniStatus_t infiniopGetPerChannelQuantI8WorkspaceSize(infiniopPerC
 #endif
 #ifdef ENABLE_MOORE_API
         GET(INFINI_DEVICE_MOORE, moore)
+#endif
+#ifdef ENABLE_METAX_API
+        GET(INFINI_DEVICE_METAX, metax)
 #endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
@@ -93,6 +102,9 @@ __INFINI_C infiniStatus_t infiniopPerChannelQuantI8(infiniopPerChannelQuantI8Des
 #ifdef ENABLE_MOORE_API
         QUANT(INFINI_DEVICE_MOORE, moore)
 #endif
+#ifdef ENABLE_METAX_API
+        QUANT(INFINI_DEVICE_METAX, metax)
+#endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
@@ -117,6 +129,9 @@ __INFINI_C infiniStatus_t infiniopDestroyPerChannelQuantI8Descriptor(infiniopPer
 #endif
 #ifdef ENABLE_MOORE_API
         DESTROY(INFINI_DEVICE_MOORE, moore)
+#endif
+#ifdef ENABLE_METAX_API
+        DESTROY(INFINI_DEVICE_METAX, metax)
 #endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;

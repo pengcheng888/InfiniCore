@@ -12,7 +12,7 @@ void hash_topk_(Tensor topk_weights,
                 int64_t num_fused_shared_experts,
                 float routed_scaling_factor,
                 const std::string &scoring_func) {
-#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API)
+#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API) || defined(ENABLE_METAX_API)
     if (scoring_func == "sqrtsoftplus") {
         hash_topk_kernel_(topk_weights,
                           topk_indices,

@@ -10,7 +10,7 @@ void topk_(Tensor topk_weights,
            const Tensor &correction_bias,
            bool renormalize,
            const std::string &scoring_func) {
-#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API)
+#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API) || defined(ENABLE_METAX_API)
     if (scoring_func == "sqrtsoftplus") {
         topk_kernel_(topk_weights,
                      topk_indices,

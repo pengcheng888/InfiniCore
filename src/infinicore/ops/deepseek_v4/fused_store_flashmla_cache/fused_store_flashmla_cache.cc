@@ -10,6 +10,8 @@
 #include "infinicore/device.hpp"
 #include "infinicore/dtype.hpp"
 #include "infinicore/graph/graph.hpp"
+#include "infinicore/ops/cat.hpp"
+#include "infinicore/ops/index_copy.hpp"
 
 #include "../../../utils.hpp"
 
@@ -27,13 +29,40 @@ int input_scalar_type(const Tensor &input) {
                                             : fused_store_flashmla_cache::F16;
 }
 
+void check_bf16_cache_store_inputs(const Tensor &input,
+                                   const Tensor &cache,
+                                   const Tensor &indices,
+                                   size_t rope_dim) {
+    if (!input || !cache || !indices) {
+        throw std::runtime_error("store_flash_mla_bf16_cache_ expects non-empty input/cache/indices.");
+    }
+    if (input->ndim() != 2 || input->dtype() != DataType::BF16 || rope_dim == 0
+            || rope_dim >= input->size(1)) {
+        throw std::runtime_error("store_flash_mla_bf16_cache_ expects BF16 input [tokens, head_dim].");
+    }
+    if (cache->ndim() != 4 || cache->size(2) != 1
+            || cache->dtype() != DataType::BF16
+            || cache->size(3) != input->size(1) + rope_dim) {
+        throw std::runtime_error("store_flash_mla_bf16_cache_ expects BF16 cache [blocks, page_size, 1, head_dim].");
+    }
+    if (indices->ndim() != 1 || indices->size(0) != input->size(0)
+            || (indices->dtype() != DataType::I32 && indices->dtype() != DataType::I64)) {
+        throw std::runtime_error("store_flash_mla_bf16_cache_ expects indices [tokens].");
+    }
+    INFINICORE_ASSERT_TENSORS_SAME_DEVICE(input, cache);
+    INFINICORE_ASSERT_TENSORS_SAME_DEVICE(input, indices);
+    if (!input->is_contiguous() || !cache->is_contiguous() || !indices->is_contiguous()) {
+        throw std::runtime_error("store_flash_mla_bf16_cache_ expects contiguous tensors.");
+    }
+}
+
 } // namespace
 
 void fused_store_flashmla_cache_(const Tensor &input,
                                  Tensor cache,
                                  const Tensor &indices,
                                  int page_size) {
-#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API)
+#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API) || defined(ENABLE_METAX_API)
     fused_store_flashmla_cache_kernel_(input, cache, indices, page_size);
 #elif defined(ENABLE_ATEN) && (defined(ENABLE_METAX_API) || defined(ENABLE_ILUVATAR_API))
     auto input_graph = graph::GraphTensor(input);
@@ -53,6 +82,29 @@ void fused_store_flashmla_cache_(const Tensor &input,
         "fused_store_flashmla_cache_ requires an ATen-enabled "
         "HYGON/NVIDIA/METAX/ILUVATAR build.");
 #endif
+}
+
+void store_flash_mla_bf16_cache_(const Tensor &input,
+                                 Tensor cache,
+                                 const Tensor &indices,
+                                 size_t rope_dim) {
+    check_bf16_cache_store_inputs(input, cache, indices, rope_dim);
+
+    // BF16 cache appends a rope copy. Keep this as a host graph segment so the
+    // store runs on every replay instead of only once during graph recording.
+    auto input_graph = graph::GraphTensor(input);
+    auto cache_graph = graph::GraphTensor(cache);
+    auto indices_graph = graph::GraphTensor(indices);
+    detail::record_or_run_host_graph_op(
+        [input_graph, cache_graph, indices_graph, rope_dim]() mutable {
+            const auto rope = input_graph->narrow(
+                {{1, input_graph->size(1) - rope_dim, rope_dim}});
+            auto expanded_input = ::infinicore::op::cat({input_graph, rope}, 1);
+            auto flat_cache = cache_graph->view(
+                {cache_graph->size(0) * cache_graph->size(1), cache_graph->size(3)});
+            ::infinicore::op::index_copy_(
+                flat_cache, flat_cache, 0, indices_graph, expanded_input);
+        });
 }
 
 FusedStoreFlashMlaCacheKernel::FusedStoreFlashMlaCacheKernel(const Tensor &input,
@@ -97,7 +149,7 @@ void *plan(const Tensor &input, Tensor cache, const Tensor &indices, int page_si
 }
 
 void run(void *planned_meta) {
-#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API)
+#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API) || defined(ENABLE_METAX_API)
     auto *planned = reinterpret_cast<PlannedMeta *>(planned_meta);
     fused_store_flashmla_cache::launch_fused_store_flashmla_cache(
         planned->input->data(),
@@ -111,7 +163,7 @@ void run(void *planned_meta) {
         context::getStream());
 #else
     (void)planned_meta;
-    throw std::runtime_error("fused_store_flashmla_cache_kernel_ requires a HYGON/NVIDIA build.");
+    throw std::runtime_error("fused_store_flashmla_cache_kernel_ requires a HYGON/NVIDIA/METAX build.");
 #endif
 }
 
@@ -134,7 +186,7 @@ void fused_store_flashmla_cache_kernel_(const Tensor &input,
                                         Tensor cache,
                                         const Tensor &indices,
                                         int page_size) {
-#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API)
+#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API) || defined(ENABLE_METAX_API)
     fused_store_flashmla_cache_detail::check_shapes(input, cache, indices, page_size);
     detail::check_build_device(input, "fused_store_flashmla_cache_kernel_");
     FusedStoreFlashMlaCacheKernel::execute(input, cache, indices, page_size);
@@ -143,7 +195,7 @@ void fused_store_flashmla_cache_kernel_(const Tensor &input,
     (void)cache;
     (void)indices;
     (void)page_size;
-    throw std::runtime_error("fused_store_flashmla_cache_kernel_ requires a HYGON/NVIDIA build.");
+    throw std::runtime_error("fused_store_flashmla_cache_kernel_ requires a HYGON/NVIDIA/METAX build.");
 #endif
 }
 

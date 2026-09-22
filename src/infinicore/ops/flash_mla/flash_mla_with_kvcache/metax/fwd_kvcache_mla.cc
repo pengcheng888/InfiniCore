@@ -61,6 +61,71 @@ void check_optional_device(const std::optional<Tensor> &tensor,
     }
 }
 
+bool use_sparse_decode(const std::optional<Tensor> &indices) {
+    return has_tensor(indices);
+}
+
+void check_metax_dense_options(const std::optional<Tensor> &block_table,
+                               const std::optional<Tensor> &cache_seqlens,
+                               const std::optional<Tensor> &num_splits,
+                               const std::optional<Tensor> &indices,
+                               const std::optional<Tensor> &attn_sink,
+                               const std::optional<Tensor> &extra_k_cache,
+                               const std::optional<Tensor> &extra_indices_in_kvcache,
+                               const std::optional<Tensor> &topk_length,
+                               const std::optional<Tensor> &extra_topk_length,
+                               const char *op_name) {
+    if (!has_tensor(block_table) || !has_tensor(cache_seqlens)) {
+        throw std::runtime_error(
+            std::string(op_name)
+            + " requires block_table and cache_seqlens on METAX.");
+    }
+    if (has_tensor(num_splits)) {
+        throw std::runtime_error(
+            std::string(op_name)
+            + " does not support the num_splits override on METAX.");
+    }
+    if (has_tensor(indices) || has_tensor(attn_sink) || has_tensor(extra_k_cache)
+        || has_tensor(extra_indices_in_kvcache) || has_tensor(topk_length)
+        || has_tensor(extra_topk_length)) {
+        throw std::runtime_error(
+            std::string(op_name)
+            + " does not take sparse-attention inputs on METAX dense decode.");
+    }
+}
+
+void check_metax_sparse_options(const std::optional<Tensor> &block_table,
+                                const std::optional<Tensor> &cache_seqlens,
+                                const std::optional<Tensor> &num_splits,
+                                bool causal,
+                                const std::optional<Tensor> &indices,
+                                const std::optional<Tensor> &topk_length,
+                                const char *op_name) {
+    if (has_tensor(block_table) != has_tensor(cache_seqlens)) {
+        throw std::runtime_error(
+            std::string(op_name)
+            + " requires block_table and cache_seqlens to be provided together on METAX.");
+    }
+    if (has_tensor(num_splits)) {
+        throw std::runtime_error(
+            std::string(op_name)
+            + " does not support the num_splits override on METAX sparse decode.");
+    }
+    if (causal) {
+        throw std::runtime_error(
+            std::string(op_name) + " requires causal=false on METAX sparse decode.");
+    }
+    if (!has_tensor(indices)) {
+        throw std::runtime_error(
+            std::string(op_name) + " requires indices on METAX sparse decode.");
+    }
+    if (!has_tensor(cache_seqlens) && !has_tensor(topk_length)) {
+        throw std::runtime_error(
+            std::string(op_name)
+            + " requires topk_length when paged-KV metadata is omitted on METAX sparse decode.");
+    }
+}
+
 void check_metax_options(const std::optional<Tensor> &block_table,
                          const std::optional<Tensor> &cache_seqlens,
                          const std::optional<Tensor> &num_splits,
@@ -72,28 +137,33 @@ void check_metax_options(const std::optional<Tensor> &block_table,
                          const std::optional<Tensor> &topk_length,
                          const std::optional<Tensor> &extra_topk_length,
                          const char *op_name) {
-    if (!has_tensor(block_table) || !has_tensor(cache_seqlens)) {
-        throw std::runtime_error(
-            std::string(op_name)
-            + " requires block_table and cache_seqlens on METAX.");
+    if (use_sparse_decode(indices)) {
+        if (has_tensor(extra_k_cache)
+            || has_tensor(extra_indices_in_kvcache)
+            || has_tensor(extra_topk_length)) {
+            throw std::runtime_error(
+                std::string(op_name)
+                + " does not support extended KV-cache inputs on METAX sparse decode.");
+        }
+        check_metax_sparse_options(block_table,
+                                   cache_seqlens,
+                                   num_splits,
+                                   causal,
+                                   indices,
+                                   topk_length,
+                                   op_name);
+        return;
     }
-    if (has_tensor(num_splits)) {
-        throw std::runtime_error(
-            std::string(op_name)
-            + " does not support the num_splits override on METAX.");
-    }
-    if (has_tensor(indices) && causal) {
-        throw std::runtime_error(
-            std::string(op_name)
-            + " requires causal=false when sparse indices are provided on METAX.");
-    }
-    if (has_tensor(attn_sink) || has_tensor(extra_k_cache)
-        || has_tensor(extra_indices_in_kvcache) || has_tensor(topk_length)
-        || has_tensor(extra_topk_length)) {
-        throw std::runtime_error(
-            std::string(op_name)
-            + " does not support attn_sink or extended KV-cache inputs on METAX.");
-    }
+    check_metax_dense_options(block_table,
+                              cache_seqlens,
+                              num_splits,
+                              indices,
+                              attn_sink,
+                              extra_k_cache,
+                              extra_indices_in_kvcache,
+                              topk_length,
+                              extra_topk_length,
+                              op_name);
 }
 
 double resolve_softmax_scale(const Tensor &q,
@@ -265,19 +335,29 @@ void validate_inputs(const Tensor &out,
                      const Tensor &lse,
                      const Tensor &q,
                      const Tensor &k_cache,
-                     const Tensor &block_table,
-                     const Tensor &cache_seqlens,
+                     const std::optional<Tensor> &block_table,
+                     const std::optional<Tensor> &cache_seqlens,
                      int64_t head_dim_v,
                      const FlashMLASchedMeta &sched_meta,
                      const std::optional<Tensor> &indices,
+                     const std::optional<Tensor> &attn_sink,
+                     const std::optional<Tensor> &extra_k_cache,
+                     const std::optional<Tensor> &extra_indices_in_kvcache,
+                     const std::optional<Tensor> &topk_length,
+                     const std::optional<Tensor> &extra_topk_length,
                      const char *op_name) {
     check_device(out, op_name);
     check_device(lse, op_name);
     check_device(q, op_name);
     check_device(k_cache, op_name);
-    check_device(block_table, op_name);
-    check_device(cache_seqlens, op_name);
+    check_optional_device(block_table, op_name);
+    check_optional_device(cache_seqlens, op_name);
     check_optional_device(indices, op_name);
+    check_optional_device(attn_sink, op_name);
+    check_optional_device(extra_k_cache, op_name);
+    check_optional_device(extra_indices_in_kvcache, op_name);
+    check_optional_device(topk_length, op_name);
+    check_optional_device(extra_topk_length, op_name);
     if (!sched_meta.has_valid_sched_meta()) {
         throw std::runtime_error(
             std::string(op_name)
@@ -296,18 +376,21 @@ void validate_inputs(const Tensor &out,
             std::string(op_name) + " expects non-zero batch, sequence, and head dimensions.");
     }
     checked_int(head_dim_v, "head_dim_v", op_name);
-    if (cache_seqlens->dtype() != DataType::I32
-        || block_table->dtype() != DataType::I32
-        || cache_seqlens->ndim() != 1
-        || cache_seqlens->size(0) != q->size(0)
-        || block_table->ndim() != 2
-        || block_table->size(0) != q->size(0)) {
+    if (!use_sparse_decode(indices)
+        && (cache_seqlens.value()->dtype() != DataType::I32
+            || block_table.value()->dtype() != DataType::I32
+            || cache_seqlens.value()->ndim() != 1
+            || cache_seqlens.value()->size(0) != q->size(0)
+            || block_table.value()->ndim() != 2
+            || block_table.value()->size(0) != q->size(0))) {
         throw std::runtime_error(
             std::string(op_name)
             + " expects int32 cache_seqlens [batch] and block_table [batch, blocks].");
     }
     if (!q->is_contiguous() || !k_cache->is_contiguous()
-        || !cache_seqlens->is_contiguous() || !block_table->is_contiguous()) {
+        || (!use_sparse_decode(indices)
+            && (!cache_seqlens.value()->is_contiguous()
+                || !block_table.value()->is_contiguous()))) {
         throw std::runtime_error(
             std::string(op_name)
             + " expects contiguous q, k_cache, cache_seqlens, and block_table.");
@@ -372,50 +455,88 @@ void fwd_kvcache_mla_impl_internal(
                         extra_topk_length,
                         op_name);
 
-    const Tensor &block_table_tensor = block_table.value();
-    const Tensor &cache_seqlens_tensor = cache_seqlens.value();
     validate_inputs(out,
                     lse,
                     q,
                     k_cache,
-                    block_table_tensor,
-                    cache_seqlens_tensor,
+                    block_table,
+                    cache_seqlens,
                     head_dim_v,
                     tile_scheduler_metadata,
                     indices,
+                    attn_sink,
+                    extra_k_cache,
+                    extra_indices_in_kvcache,
+                    topk_length,
+                    extra_topk_length,
                     op_name);
     c10::cuda::CUDAStreamGuard guard(infinicore::adaptor::get_cuda_stream());
 
     auto q_at = infinicore::adaptor::to_aten_tensor(q);
     auto k_cache_at = infinicore::adaptor::to_aten_tensor(k_cache);
-    auto cache_seqlens_at = infinicore::adaptor::to_aten_tensor(cache_seqlens_tensor);
-    auto block_table_at = infinicore::adaptor::to_aten_tensor(block_table_tensor);
     auto tile_scheduler_metadata_at = infinicore::adaptor::to_aten_tensor(tile_scheduler_metadata.tile_scheduler_metadata);
     auto scheduler_num_splits_at = infinicore::adaptor::to_aten_tensor(tile_scheduler_metadata.num_splits);
 
+    const bool sparse = use_sparse_decode(indices);
+    at::Tensor cache_seqlens_at;
+    at::Tensor block_table_at;
+    if (has_tensor(cache_seqlens)) {
+        cache_seqlens_at = infinicore::adaptor::to_aten_tensor(cache_seqlens.value());
+        block_table_at = infinicore::adaptor::to_aten_tensor(block_table.value());
+    } else {
+        const auto num_blocks = checked_int(
+            static_cast<int64_t>(k_cache->size(0)), "num_blocks", op_name);
+        const auto cache_capacity = checked_int(
+            static_cast<int64_t>(k_cache->size(0) * k_cache->size(1)),
+            "cache_capacity",
+            op_name);
+        auto int_options = q_at.options().dtype(at::kInt);
+        cache_seqlens_at = at::full({q_at.size(0)}, cache_capacity, int_options);
+        block_table_at = at::arange(num_blocks, int_options)
+                             .unsqueeze(0)
+                             .expand({q_at.size(0), num_blocks})
+                             .contiguous();
+    }
     std::optional<const at::Tensor> k_cache_scale_at = std::nullopt;
     std::optional<const at::Tensor> indices_at = to_optional_const_aten(indices);
     std::optional<const at::Tensor> indices_all_valid_per_q_at = std::nullopt;
     std::optional<const at::Tensor> cp_tot_seqlen_k_at = std::nullopt;
+    if (sparse) {
+        indices_all_valid_per_q_at.emplace(at::zeros(
+            {q_at.size(0), q_at.size(1), 1},
+            q_at.options().dtype(at::kBool)));
+    }
 
-    auto flash_out = flashmla_fwd_kvcache_mla_fn(op_name)(q_at,
-                                                          k_cache_at,
-                                                          k_cache_scale_at,
-                                                          checked_int(head_dim_v, "head_dim_v", op_name),
-                                                          cache_seqlens_at,
-                                                          block_table_at,
-                                                          static_cast<float>(resolve_softmax_scale(q, softmax_scale, op_name)),
-                                                          causal,
-                                                          tile_scheduler_metadata_at,
-                                                          scheduler_num_splits_at,
-                                                          is_fp8_kvcache,
-                                                          indices_at,
-                                                          indices_all_valid_per_q_at,
-                                                          1,
-                                                          0,
-                                                          cp_tot_seqlen_k_at);
+    auto flash_out = flashmla_fwd_kvcache_mla_fn(op_name)(
+        q_at,
+        k_cache_at,
+        k_cache_scale_at,
+        checked_int(head_dim_v, "head_dim_v", op_name),
+        cache_seqlens_at,
+        block_table_at,
+        static_cast<float>(resolve_softmax_scale(q, softmax_scale, op_name)),
+        causal,
+        tile_scheduler_metadata_at,
+        scheduler_num_splits_at,
+        is_fp8_kvcache,
+        indices_at,
+        indices_all_valid_per_q_at,
+        1,
+        0,
+        cp_tot_seqlen_k_at);
     if (flash_out.size() != 2) {
-        throw std::runtime_error(std::string(op_name) + ": flash_mla_cuda.fwd_kvcache_mla must return two tensors.");
+        throw std::runtime_error(
+            std::string(op_name)
+            + ": flash_mla_cuda.fwd_kvcache_mla must return two tensors.");
+    }
+    if (sparse && has_tensor(attn_sink)) {
+        auto sink_at = infinicore::adaptor::to_aten_tensor(attn_sink.value())
+                           .view({1, -1, 1});
+        auto output_scale = at::sigmoid(flash_out[1] - sink_at)
+                                .transpose(1, 2)
+                                .unsqueeze(-1);
+        flash_out[0] = flash_out[0] * output_scale.to(flash_out[0].scalar_type());
+        flash_out[1] = at::logaddexp(flash_out[1], sink_at);
     }
     copy_flashmla_tensor_exact(out, flash_out[0], "out", false);
     copy_flashmla_tensor_exact(lse, flash_out[1], "lse", false);

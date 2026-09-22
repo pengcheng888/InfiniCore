@@ -94,7 +94,7 @@ void *plan(Tensor out, const Tensor &x, float epsilon) {
 }
 
 void run(void *planned_meta) {
-#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API)
+#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API) || defined(ENABLE_METAX_API)
     auto *planned = reinterpret_cast<PlannedMeta *>(planned_meta);
     rmsnorm_self_native::launch_rmsnorm_self(planned->out->data(),
                                              planned->x->data(),
@@ -134,7 +134,7 @@ Tensor rmsnorm_self_kernel(const Tensor &x, float epsilon) {
 }
 
 void rmsnorm_self_kernel_(Tensor out, const Tensor &x, float epsilon) {
-#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API) \
+#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API) || defined(ENABLE_METAX_API) \
     || (defined(ENABLE_ATEN) && (defined(ENABLE_METAX_API) || defined(ENABLE_ILUVATAR_API)))
     check_device_and_guard(out, x, "rmsnorm_self_kernel_");
     check_shapes(out, x);

@@ -39,10 +39,11 @@ public:
         size_t M = x_desc->dim(0);
         size_t K = x_desc->dim(1);
 
+        CHECK_DTYPE(x_scale_desc->dtype(), INFINI_DTYPE_F32);
         CHECK_OR_RETURN(M == x_packed_desc->dim(0)
-                            || K == x_packed_desc->dim(1)
-                            || M == x_scale_desc->dim(0)
-                            || 1 == x_scale_desc->dim(1),
+                            && K == x_packed_desc->dim(1)
+                            && M == x_scale_desc->dim(0)
+                            && 1 == x_scale_desc->dim(1),
                         INFINI_STATUS_BAD_TENSOR_SHAPE);
 
         return utils::Result<PerChannelQuantI8Info>(PerChannelQuantI8Info{

@@ -148,7 +148,7 @@ void *plan_head(Tensor y,
 }
 
 void run_head(void *planned_meta) {
-#if defined(ENABLE_ATEN) && (defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API))
+#if defined(ENABLE_ATEN) && (defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API) || defined(ENABLE_METAX_API))
     auto *planned = reinterpret_cast<HcHeadPlannedMeta *>(planned_meta);
     hc_head::launch_kernel(
         planned->y->data(),

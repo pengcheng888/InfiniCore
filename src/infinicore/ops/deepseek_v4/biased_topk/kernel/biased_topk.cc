@@ -110,7 +110,7 @@ void *plan_dsv4(Tensor topk_weights,
 }
 
 void run_dsv4(void *planned_meta) {
-#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API)
+#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API) || defined(ENABLE_METAX_API)
     auto *planned = reinterpret_cast<Dsv4PlannedMeta *>(planned_meta);
     biased_topk::launch_biased_topk_dsv4(
         reinterpret_cast<float *>(planned->topk_weights->data()),
@@ -121,7 +121,7 @@ void run_dsv4(void *planned_meta) {
         context::getStream());
 #else
     (void)planned_meta;
-    throw std::runtime_error("TopkDsv4Kernel requires a HYGON/NVIDIA build.");
+    throw std::runtime_error("TopkDsv4Kernel requires a HYGON/NVIDIA/METAX build.");
 #endif
 }
 
@@ -157,7 +157,7 @@ void topk_kernel_(Tensor topk_weights,
                               const Tensor &router_logits,
                               const Tensor &correction_bias,
                               bool renormalize) {
-#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API)
+#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API) || defined(ENABLE_METAX_API)
     check_accelerator_tensor(router_logits, "topk_kernel_");
 
     check_shapes(topk_weights, topk_indices, router_logits, correction_bias);
@@ -188,7 +188,7 @@ void topk_kernel_(Tensor topk_weights,
     (void)router_logits;
     (void)correction_bias;
     (void)renormalize;
-    throw std::runtime_error("topk_kernel_ requires a HYGON/NVIDIA build.");
+    throw std::runtime_error("topk_kernel_ requires a HYGON/NVIDIA/METAX build.");
 #endif
 }
 
@@ -198,7 +198,7 @@ void topk_generic_kernel_(Tensor topk_weights,
                                       const Tensor &router_logits,
                                       const Tensor &correction_bias,
                                       bool renormalize) {
-#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API)
+#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API) || defined(ENABLE_METAX_API)
     check_accelerator_tensor(router_logits, "topk_generic_kernel_");
 
     check_shapes(topk_weights, topk_indices, router_logits, correction_bias);
@@ -223,7 +223,7 @@ void topk_generic_kernel_(Tensor topk_weights,
     (void)router_logits;
     (void)correction_bias;
     (void)renormalize;
-    throw std::runtime_error("topk_generic_kernel_ requires a HYGON/NVIDIA build.");
+    throw std::runtime_error("topk_generic_kernel_ requires a HYGON/NVIDIA/METAX build.");
 #endif
 }
 

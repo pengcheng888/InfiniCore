@@ -135,7 +135,7 @@ void *plan_post(Tensor y,
 }
 
 void run_post(void *planned_meta) {
-#if defined(ENABLE_ATEN) && (defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API))
+#if defined(ENABLE_ATEN) && (defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API) || defined(ENABLE_METAX_API))
     auto *planned = reinterpret_cast<MhcPostPlannedMeta *>(planned_meta);
     mhc_post::launch_kernel(
         planned->y->data(),

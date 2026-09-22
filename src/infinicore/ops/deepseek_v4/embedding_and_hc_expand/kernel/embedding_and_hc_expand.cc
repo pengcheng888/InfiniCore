@@ -95,7 +95,7 @@ void *plan(Tensor out, const Tensor &input, const Tensor &weight, int64_t hc_mul
 }
 
 void run(void *planned_meta) {
-#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API)
+#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API) || defined(ENABLE_METAX_API)
     auto *planned = reinterpret_cast<PlannedMeta *>(planned_meta);
     embedding_and_hc_expand_kernel_impl::launch_embedding(
         planned->out->data(),
@@ -114,7 +114,7 @@ void run(void *planned_meta) {
         planned->out, planned->input, planned->weight, planned->hc_mult);
 #else
     (void)planned_meta;
-    throw std::runtime_error("embedding_and_hc_expand_kernel_ requires a HYGON/NVIDIA build.");
+    throw std::runtime_error("embedding_and_hc_expand_kernel_ requires a HYGON/NVIDIA/METAX build.");
 #endif
 }
 
@@ -140,7 +140,7 @@ Tensor embedding_and_hc_expand_kernel(const Tensor &input, const Tensor &weight,
 }
 
 void embedding_and_hc_expand_kernel_(Tensor out, const Tensor &input, const Tensor &weight, int64_t hc_mult) {
-#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API) \
+#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API) || defined(ENABLE_METAX_API) \
     || (defined(ENABLE_ATEN) && (defined(ENABLE_METAX_API) || defined(ENABLE_ILUVATAR_API)))
     check_kernel_tensors(out, input, weight, hc_mult, "embedding_and_hc_expand_kernel_");
     EmbeddingAndHcExpand::execute(out, input, weight, hc_mult);

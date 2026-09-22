@@ -161,7 +161,7 @@ void *plan_hash_topk(Tensor topk_weights,
 }
 
 void run_hash_topk(void *planned_meta) {
-#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API)
+#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API) || defined(ENABLE_METAX_API)
     auto *planned = reinterpret_cast<HashTopkPlannedMeta *>(planned_meta);
     auto *topk_weights = reinterpret_cast<float *>(planned->topk_weights->data());
     auto *topk_indices = reinterpret_cast<int32_t *>(planned->topk_indices->data());
@@ -183,7 +183,7 @@ void run_hash_topk(void *planned_meta) {
         context::getStream());
 #else
     (void)planned_meta;
-    throw std::runtime_error("HashTopkKernel requires a HYGON/NVIDIA build.");
+    throw std::runtime_error("HashTopkKernel requires a HYGON/NVIDIA/METAX build.");
 #endif
 }
 
@@ -210,7 +210,7 @@ void hash_topk_kernel_(Tensor topk_weights,
                                    int64_t num_fused_shared_experts,
                                    float routed_scaling_factor,
                                    const std::string &scoring_func) {
-#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API)
+#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API) || defined(ENABLE_METAX_API)
     check_scoring_config(routed_scaling_factor, scoring_func);
     HashTopkKernel::execute(topk_weights,
                                       topk_indices,
@@ -228,7 +228,7 @@ void hash_topk_kernel_(Tensor topk_weights,
     (void)num_fused_shared_experts;
     (void)routed_scaling_factor;
     (void)scoring_func;
-    throw std::runtime_error("hash_topk_kernel_ requires a HYGON/NVIDIA build.");
+    throw std::runtime_error("hash_topk_kernel_ requires a HYGON/NVIDIA/METAX build.");
 #endif
 }
 
@@ -240,7 +240,7 @@ void hash_topk_generic_kernel_(Tensor topk_weights,
                                            int64_t num_fused_shared_experts,
                                            float routed_scaling_factor,
                                            const std::string &scoring_func) {
-#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API)
+#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API) || defined(ENABLE_METAX_API)
     check_accelerator_tensor(router_logits, "hash_topk_generic_kernel_");
 
     check_scoring_config(routed_scaling_factor, scoring_func);
@@ -272,7 +272,7 @@ void hash_topk_generic_kernel_(Tensor topk_weights,
     (void)num_fused_shared_experts;
     (void)routed_scaling_factor;
     (void)scoring_func;
-    throw std::runtime_error("hash_topk_generic_kernel_ requires a HYGON/NVIDIA build.");
+    throw std::runtime_error("hash_topk_generic_kernel_ requires a HYGON/NVIDIA/METAX build.");
 #endif
 }
 

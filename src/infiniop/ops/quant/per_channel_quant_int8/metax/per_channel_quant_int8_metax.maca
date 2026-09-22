@@ -1,0 +1,192 @@
+#include "per_channel_quant_int8_metax.h"
+
+#include "../../../../devices/metax/metax_common.h"
+#include "../../../../devices/metax/metax_handle.h"
+#include "../../../../devices/metax/metax_kernel_common.h"
+
+#include <cmath>
+#include <cfloat>
+#include <cstdint>
+#include <limits>
+#include <memory>
+
+namespace op::per_channel_quant_int8::metax {
+namespace {
+
+constexpr int kMaxQuantThreads = 1024;
+
+__forceinline__ __device__ float roundHalfAwayFromZero(float value) {
+    const float magnitude = fabsf(value);
+    const float rounded = floorf(magnitude + 0.5f);
+    return value >= 0.0f ? rounded : -rounded;
+}
+
+template <typename Tdata, unsigned int BLOCK_SIZE>
+__launch_bounds__(BLOCK_SIZE) INFINIOP_METAX_KERNEL perChannelQuantSymmetric(
+    int8_t *x_packed,
+    float *x_scale,
+    float *x_zero,
+    const Tdata *x,
+    int K) {
+    __shared__ float max_reduction[BLOCK_SIZE];
+    __shared__ float min_reduction[BLOCK_SIZE];
+    const int row = blockIdx.x;
+    const Tdata *input = x + static_cast<size_t>(row) * K;
+    int8_t *output = x_packed + static_cast<size_t>(row) * K;
+
+    float local_max = -FLT_MAX;
+    float local_min = FLT_MAX;
+    if (x_zero == nullptr) {
+        local_max = 0.0f;
+    }
+    for (int col = threadIdx.x; col < K; col += BLOCK_SIZE) {
+        const float value = static_cast<float>(input[col]);
+        if (x_zero == nullptr) {
+            local_max = fmaxf(local_max, fabsf(value));
+        } else {
+            local_max = fmaxf(local_max, value);
+            local_min = fminf(local_min, value);
+        }
+    }
+    max_reduction[threadIdx.x] = local_max;
+    min_reduction[threadIdx.x] = local_min;
+    __syncthreads();
+
+    for (unsigned int stride = BLOCK_SIZE / 2; stride > 0; stride >>= 1) {
+        if (threadIdx.x < stride) {
+            max_reduction[threadIdx.x] = fmaxf(
+                max_reduction[threadIdx.x],
+                max_reduction[threadIdx.x + stride]);
+            if (x_zero != nullptr) {
+                min_reduction[threadIdx.x] = fminf(
+                    min_reduction[threadIdx.x],
+                    min_reduction[threadIdx.x + stride]);
+            }
+        }
+        __syncthreads();
+    }
+
+    const float max_value = max_reduction[0];
+    const float min_value = x_zero == nullptr ? -max_value : min_reduction[0];
+    const float raw_scale =
+        x_zero == nullptr ? max_value / 127.0f : (max_value - min_value) / 255.0f;
+    const float scale = fmaxf(raw_scale, 1.0e-8f);
+    const float inverse_scale = 1.0f / scale;
+    const float zero =
+        x_zero == nullptr ? 0.0f : -min_value * inverse_scale - 128.0f;
+    if (threadIdx.x == 0) {
+        x_scale[row] = scale;
+        if (x_zero != nullptr) {
+            x_zero[row] = zero;
+        }
+    }
+    for (int col = threadIdx.x; col < K; col += BLOCK_SIZE) {
+        const float quantized_float =
+            static_cast<float>(input[col]) * inverse_scale + zero;
+        const int quantized = static_cast<int>(
+            roundHalfAwayFromZero(quantized_float));
+        const int lower_bound = x_zero == nullptr ? -127 : -128;
+        output[col] = static_cast<int8_t>(
+            max(lower_bound, min(127, quantized)));
+    }
+}
+
+template <typename Tdata, unsigned int BLOCK_SIZE>
+infiniStatus_t launchQuant(
+    const PerChannelQuantI8Info &info,
+    int8_t *x_packed,
+    float *x_scale,
+    float *x_zero,
+    const Tdata *x,
+    hcStream_t stream) {
+    perChannelQuantSymmetric<Tdata, BLOCK_SIZE>
+        <<<static_cast<int>(info.M), BLOCK_SIZE, 0, stream>>>(
+            x_packed,
+            x_scale,
+            x_zero,
+            x,
+            static_cast<int>(info.K));
+    return INFINI_STATUS_SUCCESS;
+}
+
+} // namespace
+
+struct Descriptor::Opaque {
+    std::shared_ptr<device::metax::Handle::Internal> internal;
+};
+
+Descriptor::~Descriptor() {
+    delete _opaque;
+}
+
+infiniStatus_t Descriptor::create(
+    infiniopHandle_t handle_,
+    Descriptor **desc_ptr,
+    infiniopTensorDescriptor_t x_packed_desc,
+    infiniopTensorDescriptor_t x_scale_desc,
+    infiniopTensorDescriptor_t x_zero_desc,
+    infiniopTensorDescriptor_t x_desc) {
+    auto info = PerChannelQuantI8Info::createPerChannelQuantI8Info(
+        x_packed_desc, x_scale_desc, x_zero_desc, x_desc);
+    CHECK_RESULT(info);
+
+    auto handle = reinterpret_cast<device::metax::Handle *>(handle_);
+    *desc_ptr = new Descriptor(
+        new Opaque{handle->internal()},
+        info.take(),
+        0,
+        handle->device,
+        handle->device_id);
+    return INFINI_STATUS_SUCCESS;
+}
+
+infiniStatus_t Descriptor::calculate(
+    void *workspace,
+    size_t workspace_size,
+    void *x_packed,
+    void *x_scale,
+    void *x_zero,
+    const void *x,
+    void *stream_) const {
+    (void)workspace;
+    if (workspace_size < _workspace_size) {
+        return INFINI_STATUS_INSUFFICIENT_WORKSPACE;
+    }
+
+    auto stream = reinterpret_cast<hcStream_t>(stream_);
+    int8_t *packed = reinterpret_cast<int8_t *>(x_packed);
+    float *scale = reinterpret_cast<float *>(x_scale);
+    float *zero = reinterpret_cast<float *>(x_zero);
+
+    if (_info.M > static_cast<size_t>(kMaxQuantThreads) * 65535) {
+        return INFINI_STATUS_BAD_TENSOR_SHAPE;
+    }
+    if (_info.K > static_cast<size_t>(std::numeric_limits<int>::max())) {
+        return INFINI_STATUS_BAD_TENSOR_SHAPE;
+    }
+
+    if (_opaque->internal->maxThreadsPerBlock() >= kMaxQuantThreads) {
+        if (_info.dtype == INFINI_DTYPE_F16) {
+            return launchQuant<half, 1024>(_info, packed, scale, zero, reinterpret_cast<const half *>(x), stream);
+        }
+        if (_info.dtype == INFINI_DTYPE_F32) {
+            return launchQuant<float, 1024>(_info, packed, scale, zero, reinterpret_cast<const float *>(x), stream);
+        }
+        if (_info.dtype == INFINI_DTYPE_BF16) {
+            return launchQuant<__nv_bfloat16, 1024>(_info, packed, scale, zero, reinterpret_cast<const __nv_bfloat16 *>(x), stream);
+        }
+    } else if (_opaque->internal->maxThreadsPerBlock() >= 512) {
+        if (_info.dtype == INFINI_DTYPE_F16) {
+            return launchQuant<half, 512>(_info, packed, scale, zero, reinterpret_cast<const half *>(x), stream);
+        }
+        if (_info.dtype == INFINI_DTYPE_F32) {
+            return launchQuant<float, 512>(_info, packed, scale, zero, reinterpret_cast<const float *>(x), stream);
+        }
+        if (_info.dtype == INFINI_DTYPE_BF16) {
+            return launchQuant<__nv_bfloat16, 512>(_info, packed, scale, zero, reinterpret_cast<const __nv_bfloat16 *>(x), stream);
+        }
+    }
+    return INFINI_STATUS_BAD_TENSOR_DTYPE;
+}
+
+} // namespace op::per_channel_quant_int8::metax

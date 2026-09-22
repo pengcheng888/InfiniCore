@@ -766,6 +766,7 @@ target("infinicore_cpp_api")
         add_cxflags("-include", "climits")
         add_cxxflags("-includeclimits", {force = true})
         add_defines("CHAR_BIT=8", "INT_MIN=(-2147483647 - 1)", "INT_MAX=2147483647", "UINT_MAX=4294967295U")
+        add_files("src/infinicore/ops/deepseek_v4/*/kernel/*.maca", {rule = "maca.infinicore"})
     end
     add_includedirs(INFINI_ROOT.."/include", { public = true })
     if has_config("nv-gpu") or has_config("iluvatar-gpu") or has_config("ali-ppu") then

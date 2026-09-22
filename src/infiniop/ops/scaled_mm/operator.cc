@@ -9,6 +9,9 @@
 #if defined(ENABLE_MOORE_API)
 #include "moore/int8_gemm_moore.h"
 #endif
+#ifdef ENABLE_METAX_API
+#include "metax/int8_gemm_metax.h"
+#endif
 
 __INFINI_C infiniStatus_t infiniopCreateI8GemmDescriptor(infiniopHandle_t handle,
                                                          infiniopI8GemmDescriptor_t *desc_ptr,
@@ -42,6 +45,9 @@ __INFINI_C infiniStatus_t infiniopCreateI8GemmDescriptor(infiniopHandle_t handle
 #if defined(ENABLE_MOORE_API)
         CREATE(INFINI_DEVICE_MOORE, moore)
 #endif
+#ifdef ENABLE_METAX_API
+        CREATE(INFINI_DEVICE_METAX, metax)
+#endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
@@ -65,6 +71,9 @@ __INFINI_C infiniStatus_t infiniopGetI8GemmWorkspaceSize(infiniopI8GemmDescripto
 #endif
 #if defined(ENABLE_MOORE_API)
         GET(INFINI_DEVICE_MOORE, moore)
+#endif
+#ifdef ENABLE_METAX_API
+        GET(INFINI_DEVICE_METAX, metax)
 #endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
@@ -99,6 +108,9 @@ __INFINI_C infiniStatus_t infiniopI8Gemm(infiniopI8GemmDescriptor_t desc,
 #if defined(ENABLE_MOORE_API)
         CACULATE(INFINI_DEVICE_MOORE, moore)
 #endif
+#ifdef ENABLE_METAX_API
+        CACULATE(INFINI_DEVICE_METAX, metax)
+#endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;
     }
@@ -122,6 +134,9 @@ __INFINI_C infiniStatus_t infiniopDestroyI8GemmDescriptor(infiniopI8GemmDescript
 #endif
 #if defined(ENABLE_MOORE_API)
         DESTROY(INFINI_DEVICE_MOORE, moore)
+#endif
+#ifdef ENABLE_METAX_API
+        DESTROY(INFINI_DEVICE_METAX, metax)
 #endif
     default:
         return INFINI_STATUS_DEVICE_TYPE_NOT_SUPPORTED;

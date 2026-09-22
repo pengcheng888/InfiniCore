@@ -1,0 +1,110 @@
+#include "int8_gemm_metax.h"
+
+#include "../../../devices/metax/metax_common.h"
+#include "../../../devices/metax/metax_kernel_common.h"
+
+namespace op::i8gemm::metax {
+namespace {
+
+template <typename Tdata>
+INFINIOP_METAX_KERNEL padActivation(
+    int8_t *padded,
+    const int8_t *activation,
+    int rows,
+    int padded_rows,
+    int cols) {
+    const int index = blockIdx.x * blockDim.x + threadIdx.x;
+    const int total = padded_rows * cols;
+    if (index >= total) {
+        return;
+    }
+
+    const int row = index / cols;
+    const int col = index % cols;
+    padded[index] = row < rows ? activation[row * cols + col] : int8_t(0);
+}
+
+template <typename Tdata>
+INFINIOP_METAX_KERNEL epilogue(
+    Tdata *out,
+    const int32_t *packed_out,
+    const Tdata *bias,
+    const float *a_scale,
+    const float *b_scale,
+    int rows,
+    int cols) {
+    const int col = blockIdx.x * blockDim.x + threadIdx.x;
+    const int row = blockIdx.y * blockDim.y + threadIdx.y;
+    if (row >= rows || col >= cols) {
+        return;
+    }
+
+    const int index = row * cols + col;
+    float value = static_cast<float>(packed_out[index]) * a_scale[row] * b_scale[col];
+    if (bias != nullptr) {
+        value += static_cast<float>(bias[col]);
+    }
+    out[index] = static_cast<Tdata>(value);
+}
+
+} // namespace
+
+infiniStatus_t launchPadActivation(
+    void *padded,
+    const void *activation,
+    int rows,
+    int padded_rows,
+    int cols,
+    void *stream) {
+    const int total = padded_rows * cols;
+    const int threads = 256;
+    const int blocks = (total + threads - 1) / threads;
+    padActivation<int8_t><<<blocks, threads, 0, reinterpret_cast<hcStream_t>(stream)>>>(
+        reinterpret_cast<int8_t *>(padded),
+        reinterpret_cast<const int8_t *>(activation),
+        rows,
+        padded_rows,
+        cols);
+    return INFINI_STATUS_SUCCESS;
+}
+
+infiniStatus_t launchEpilogue(
+    void *out,
+    const void *packed_out,
+    const void *bias,
+    const void *a_scale,
+    const void *b_scale,
+    int rows,
+    int cols,
+    infiniDtype_t dtype,
+    void *stream) {
+    dim3 block_dim(32, 32, 1);
+    dim3 grid_dim(
+        (cols + block_dim.x - 1) / block_dim.x,
+        (rows + block_dim.y - 1) / block_dim.y,
+        1);
+    auto stream_handle = reinterpret_cast<hcStream_t>(stream);
+    if (dtype == INFINI_DTYPE_F16) {
+        epilogue<half><<<grid_dim, block_dim, 0, stream_handle>>>(
+            reinterpret_cast<half *>(out),
+            reinterpret_cast<const int32_t *>(packed_out),
+            reinterpret_cast<const half *>(bias),
+            reinterpret_cast<const float *>(a_scale),
+            reinterpret_cast<const float *>(b_scale),
+            rows,
+            cols);
+    } else if (dtype == INFINI_DTYPE_BF16) {
+        epilogue<__nv_bfloat16><<<grid_dim, block_dim, 0, stream_handle>>>(
+            reinterpret_cast<__nv_bfloat16 *>(out),
+            reinterpret_cast<const int32_t *>(packed_out),
+            reinterpret_cast<const __nv_bfloat16 *>(bias),
+            reinterpret_cast<const float *>(a_scale),
+            reinterpret_cast<const float *>(b_scale),
+            rows,
+            cols);
+    } else {
+        return INFINI_STATUS_BAD_TENSOR_DTYPE;
+    }
+    return INFINI_STATUS_SUCCESS;
+}
+} // namespace op::i8gemm::metax

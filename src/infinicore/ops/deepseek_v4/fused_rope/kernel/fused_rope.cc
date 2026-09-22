@@ -151,7 +151,7 @@ void run_one(PlannedTensorMeta &meta,
              const graph::GraphTensor &positions,
              bool positions_i64,
              bool inverse) {
-#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API)
+#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API) || defined(ENABLE_METAX_API)
     fused_rope::launch_fused_rope(meta.tensor->data(),
                                                      meta.dtype,
                                                      freqs_cis->data(),
@@ -169,13 +169,13 @@ void run_one(PlannedTensorMeta &meta,
     (void)positions;
     (void)positions_i64;
     (void)inverse;
-    throw std::runtime_error("fused_rope_ requires a HYGON/NVIDIA build.");
+    throw std::runtime_error("fused_rope_ requires a HYGON/NVIDIA/METAX build.");
 #endif
 }
 
 void run(void *planned_meta) {
     auto *planned = reinterpret_cast<PlannedMeta *>(planned_meta);
-#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API)
+#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API) || defined(ENABLE_METAX_API)
     run_one(planned->query, planned->freqs_cis, planned->positions, planned->positions_i64, planned->inverse);
     if (planned->key.has_value()) {
         run_one(planned->key.value(), planned->freqs_cis, planned->positions, planned->positions_i64, planned->inverse);
@@ -217,7 +217,7 @@ void fused_rope_kernel_(Tensor query,
                         const Tensor &freqs_cis,
                         const Tensor &positions,
                         bool inverse) {
-#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API) \
+#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API) || defined(ENABLE_METAX_API) \
     || (defined(ENABLE_ATEN) && (defined(ENABLE_METAX_API) || defined(ENABLE_ILUVATAR_API)))
     check_common_inputs(query, key, freqs_cis, positions, "fused_rope_");
     FusedRope::execute(query, key, freqs_cis, positions, inverse);

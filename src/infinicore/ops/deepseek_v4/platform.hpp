@@ -74,7 +74,7 @@ inline void check_build_device(const Tensor &tensor, const char *op_name) {
     static bool registered = false;
 #endif
 
-#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API)
+#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API) || defined(ENABLE_METAX_API)
 #define INFINICORE_DSV4_NATIVE_GRAPH_OP_REGISTER_BUILD_DEVICE( \
     __OP_NAME__, __PLAN_F__, __RUN_F__, __CLEANUP_F__)         \
     INFINICORE_DSV4_GRAPH_OP_REGISTER_BUILD_DEVICE(            \

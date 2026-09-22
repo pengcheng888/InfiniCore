@@ -83,7 +83,7 @@ void *plan(Tensor out, const Tensor &x, const Tensor &weight) {
 }
 
 void run(void *planned_meta) {
-#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API)
+#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API) || defined(ENABLE_METAX_API)
     auto *planned = reinterpret_cast<PlannedMeta *>(planned_meta);
     linear_bf16_fp32_native::launch_linear_bf16_fp32(
         reinterpret_cast<float *>(planned->out->data()),
@@ -98,7 +98,7 @@ void run(void *planned_meta) {
     linear_bf16_fp32_aten_(planned->out, planned->x, planned->weight);
 #else
     (void)planned_meta;
-    throw std::runtime_error("linear_bf16_fp32_kernel_ requires a HYGON/NVIDIA build.");
+    throw std::runtime_error("linear_bf16_fp32_kernel_ requires a HYGON/NVIDIA/METAX build.");
 #endif
 }
 
@@ -118,7 +118,7 @@ INFINICORE_DSV4_GRAPH_OP_REGISTER_BUILD_DEVICE(
 } // namespace linear_bf16_fp32_register
 
 void linear_bf16_fp32_kernel_(Tensor out, const Tensor &x, const Tensor &weight) {
-#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API) \
+#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API) || defined(ENABLE_METAX_API) \
     || (defined(ENABLE_ATEN) && (defined(ENABLE_METAX_API) || defined(ENABLE_ILUVATAR_API)))
     check_kernel_tensors(out, x, weight, "linear_bf16_fp32_kernel_");
     LinearBf16Fp32Kernel::execute(out, x, weight);

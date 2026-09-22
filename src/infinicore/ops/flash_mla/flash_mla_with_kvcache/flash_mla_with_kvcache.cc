@@ -127,12 +127,14 @@ void check_fwd_inputs(const Tensor &out,
 
 namespace flash_mla {
 
+// Keep the graph dispatchers before the eager impl dispatcher. Reordering
+// these definitions reproduced a double free during MetaX TP8 teardown.
+INFINICORE_GRAPH_OP_DISPATCHERS_IMPL(FlashMlaWithKvcache);
+
 common::OpDispatcher<FlashMlaWithKvcacheImplSchema> &flash_mla_with_kvcache_impl_dispatcher() {
     static common::OpDispatcher<FlashMlaWithKvcacheImplSchema> dispatcher_;
     return dispatcher_;
 }
-
-INFINICORE_GRAPH_OP_DISPATCHERS_IMPL(FlashMlaWithKvcache);
 
 FlashMlaWithKvcache::FlashMlaWithKvcache(Tensor out,
                                          Tensor lse,

@@ -100,6 +100,34 @@ rule("maca")
     end)
 rule_end()
 
+rule("maca.infinicore")
+    set_extensions(".maca")
+
+    on_build_file(function (target, sourcefile)
+        local objectfile = target:objectfile(sourcefile)
+        os.mkdir(path.directory(objectfile))
+        local compiler
+        local language
+        if has_config("use-mc") then
+            compiler = path.join(MACA_ROOT, "mxgpu_llvm/bin/mxcc")
+            language = "maca"
+        else
+            compiler = path.join(MACA_ROOT, "htgpu_llvm/bin/htcc")
+            language = "hpcc"
+        end
+        os.execv(compiler, {
+            "-x", language,
+            "-c", sourcefile,
+            "-o", objectfile,
+            "-I" .. path.join(os.projectdir(), "include"),
+            "-I" .. path.join(MACA_ROOT, "include"),
+            "-I" .. path.join(MACA_ROOT, "tools/cu-bridge/include"),
+            "-O3", "-fPIC", "-Werror", "-std=c++17"
+        })
+        table.insert(target:objectfiles(), objectfile)
+    end)
+rule_end()
+
 target("infiniop-metax")
     set_kind("static")
     on_install(function (target) end)
@@ -107,8 +135,13 @@ target("infiniop-metax")
     set_warnings("all", "error")
     add_cxflags("-lstdc++", "-fPIC", "-Wno-defaulted-function-deleted", "-Wno-strict-aliasing", {force = true})
     add_cxxflags("-lstdc++", "-fPIC", "-Wno-defaulted-function-deleted", "-Wno-strict-aliasing", {force = true})
-    add_files("../src/infiniop/devices/metax/*.cc", "../src/infiniop/ops/*/metax/*.cc")
+    add_files(
+        "../src/infiniop/devices/metax/*.cc",
+        "../src/infiniop/ops/*/metax/*.cc")
     add_files("../src/infiniop/ops/*/metax/*.maca", {rule = "maca"})
+    add_files(
+        "../src/infiniop/ops/quant/per_channel_quant_int8/metax/*.maca",
+        {rule = "maca"})
 
     if has_config("ninetoothed") then
         add_includedirs(MACA_ROOT .. "/include/hcr")
