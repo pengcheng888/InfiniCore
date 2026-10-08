@@ -6,10 +6,10 @@
 #include "infinicore/device.hpp"
 #include "infinicore/dtype.hpp"
 #include "infinicore/ops/flash_mla/flash_mla_with_kvcache.hpp"
+#include "../flash_mla_with_kvcache_helper.hpp"
 
 #include <ATen/ATen.h>
 
-#include <cmath>
 #include <cstddef>
 #include <optional>
 #include <stdexcept>
@@ -18,20 +18,15 @@
 
 namespace infinicore::op::flash_mla::flash_mla_with_kvcache_hygon::detail {
 
+namespace flash_mla_checks = ::infinicore::op::flash_mla::flash_mla_with_kvcache_detail;
+using flash_mla_checks::has_tensor;
+
 inline void check_device(const Tensor &tensor, const char *op_name) {
-    if (!tensor || tensor->device().getType() != Device::Type::HYGON) {
-        throw std::runtime_error(std::string(op_name) + " expects HYGON tensors.");
-    }
+    flash_mla_checks::check_device(tensor, Device::Type::HYGON, "HYGON", op_name);
 }
 
 inline void check_optional_device(const std::optional<Tensor> &tensor, const char *op_name) {
-    if (tensor.has_value() && tensor.value()) {
-        check_device(*tensor, op_name);
-    }
-}
-
-inline bool has_tensor(const std::optional<Tensor> &tensor) {
-    return tensor.has_value() && tensor.value();
+    flash_mla_checks::check_optional_device(tensor, Device::Type::HYGON, "HYGON", op_name);
 }
 
 inline void check_hygon_dense_decode_options(const std::optional<Tensor> &block_table,
@@ -119,17 +114,7 @@ inline void check_hygon_decode_options(const std::optional<Tensor> &block_table,
                                      op_name);
 }
 
-inline double resolve_softmax_scale(const Tensor &q,
-                                    const std::optional<double> &softmax_scale,
-                                    const char *op_name) {
-    if (softmax_scale.has_value()) {
-        return softmax_scale.value();
-    }
-    if (!q || q->ndim() == 0 || q->size(q->ndim() - 1) == 0) {
-        throw std::runtime_error(std::string(op_name) + " cannot infer softmax_scale from q.");
-    }
-    return 1.0 / std::sqrt(static_cast<double>(q->size(q->ndim() - 1)));
-}
+using flash_mla_checks::resolve_softmax_scale;
 
 inline DataType from_at_scalar_type_for_dense_decode(at::ScalarType dtype) {
     switch (dtype) {
@@ -229,19 +214,8 @@ inline at::Tensor to_aten_tensor_for_flashmla(const Tensor &tensor) {
     return infinicore::adaptor::to_aten_tensor(tensor);
 }
 
-inline std::optional<graph::GraphTensor> to_optional_graph_tensor(const std::optional<Tensor> &tensor) {
-    if (!has_tensor(tensor)) {
-        return std::nullopt;
-    }
-    return graph::GraphTensor(tensor.value());
-}
-
-inline std::optional<Tensor> to_optional_tensor(const std::optional<graph::GraphTensor> &tensor) {
-    if (!tensor.has_value()) {
-        return std::nullopt;
-    }
-    return tensor.value();
-}
+using flash_mla_checks::to_optional_graph_tensor;
+using flash_mla_checks::to_optional_tensor;
 
 inline std::optional<at::Tensor> to_optional_aten_for_flashmla(const std::optional<Tensor> &tensor) {
     if (!has_tensor(tensor)) {

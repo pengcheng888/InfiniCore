@@ -194,6 +194,7 @@ target("infiniop-iluvatar")
 
     -- set_languages("cxx17") 天数似乎不能用这个配置
     add_files("../src/infiniop/devices/nvidia/*.cu", "../src/infiniop/ops/*/nvidia/*.cu")
+    add_files("../src/infiniop/ops/quant/per_channel_quant_int8/nvidia/*.cu")
     -- skip gaussian_nll_loss and hinge_embedding_loss and adapt them later
     remove_files("../src/infiniop/ops/gaussian_nll_loss/nvidia/*.cu")
     remove_files("../src/infiniop/ops/hinge_embedding_loss/nvidia/*.cu")
@@ -203,6 +204,43 @@ target("infiniop-iluvatar")
     if has_config("ninetoothed") then
         add_files("../build/ninetoothed/*.c", "../build/ninetoothed/*.cpp", {cxxflags = {"-Wno-return-type"}})
     end
+target_end()
+
+target("infinicore-dsv4-iluvatar")
+    set_kind("static")
+    add_deps("infini-utils")
+    on_install(function (target) end)
+
+    set_toolchains("iluvatar.toolchain")
+    add_rules("iluvatar.env")
+    set_values("cuda.rdc", false)
+
+    add_links("cudart")
+    set_warnings("all", "error")
+    add_iluvatar_cuflags()
+    add_cuflags(
+        "-Wno-error=unused-private-field",
+        "-Wno-error=unused-variable",
+        "-Wno-unused-variable",
+        "-Wno-error=unused-function",
+        "-Wno-unused-function"
+    )
+    add_culdflags("-fPIC")
+    add_cxflags("-fPIC")
+    add_cxxflags("-fPIC")
+    add_includedirs("../include")
+
+    add_files(
+        "../src/infinicore/ops/deepseek_v4/biased_topk/kernel/biased_topk_kernel.cu",
+        "../src/infinicore/ops/deepseek_v4/embedding_and_hc_expand/kernel/embedding_and_hc_expand_kernel.cu",
+        "../src/infinicore/ops/deepseek_v4/fused_rope/kernel/fused_rope_kernel.cu",
+        "../src/infinicore/ops/deepseek_v4/hash_topk/kernel/hash_topk_kernel.cu",
+        "../src/infinicore/ops/deepseek_v4/hc_head/kernel/hc_head_kernel.cu",
+        "../src/infinicore/ops/deepseek_v4/linear_bf16_fp32/kernel/linear_bf16_fp32_kernel.cu",
+        "../src/infinicore/ops/deepseek_v4/mhc_post/kernel/mhc_post_kernel.cu",
+        "../src/infinicore/ops/deepseek_v4/mhc_pre/kernel/mhc_pre_kernel.cu",
+        "../src/infinicore/ops/deepseek_v4/rmsnorm_self/kernel/rmsnorm_self_kernel.cu"
+    )
 target_end()
 
 target("infinirt-iluvatar")

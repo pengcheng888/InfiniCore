@@ -1,4 +1,5 @@
 #include "infinicore/ops/flash_mla/flash_mla_with_kvcache.hpp"
+#include "../flash_mla_with_kvcache_helper.hpp"
 
 #if defined(ENABLE_ATEN) && defined(ENABLE_METAX_API)
 
@@ -9,7 +10,6 @@
 #include <ATen/ATen.h>
 #include <c10/cuda/CUDAGuard.h>
 
-#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
@@ -22,6 +22,9 @@
 
 namespace infinicore::op::flash_mla::flash_mla_with_kvcache_metax {
 namespace {
+
+namespace flash_mla_checks = ::infinicore::op::flash_mla::flash_mla_with_kvcache_detail;
+using flash_mla_checks::has_tensor;
 
 using FlashMlaFwdKvcacheMlaFn = std::vector<at::Tensor> (*)(
     at::Tensor &,
@@ -44,21 +47,13 @@ using FlashMlaFwdKvcacheMlaFn = std::vector<at::Tensor> (*)(
 constexpr const char *kFlashMlaFwdKvcacheMlaSymbol = "_Z15fwd_kvcache_mlaRN2at6TensorERKS0_RSt8optionalIS2_EiS3_S3_fbS3_S3_bS6_S6_iiS6_";
 constexpr const char *kDefaultFlashMlaSoPath = "/opt/conda/lib/python3.12/site-packages/flash_mla_cuda.cpython-312-x86_64-linux-gnu.so";
 
-bool has_tensor(const std::optional<Tensor> &tensor) {
-    return tensor.has_value() && tensor.value();
-}
-
 void check_device(const Tensor &tensor, const char *op_name) {
-    if (!tensor || tensor->device().getType() != Device::Type::METAX) {
-        throw std::runtime_error(std::string(op_name) + " expects METAX tensors.");
-    }
+    flash_mla_checks::check_device(tensor, Device::Type::METAX, "METAX", op_name);
 }
 
 void check_optional_device(const std::optional<Tensor> &tensor,
                            const char *op_name) {
-    if (has_tensor(tensor)) {
-        check_device(tensor.value(), op_name);
-    }
+    flash_mla_checks::check_optional_device(tensor, Device::Type::METAX, "METAX", op_name);
 }
 
 bool use_sparse_decode(const std::optional<Tensor> &indices) {
@@ -166,18 +161,7 @@ void check_metax_options(const std::optional<Tensor> &block_table,
                               op_name);
 }
 
-double resolve_softmax_scale(const Tensor &q,
-                             const std::optional<double> &softmax_scale,
-                             const char *op_name) {
-    if (softmax_scale.has_value()) {
-        return softmax_scale.value();
-    }
-    if (!q || q->ndim() == 0 || q->size(q->ndim() - 1) == 0) {
-        throw std::runtime_error(
-            std::string(op_name) + " cannot infer softmax_scale from q.");
-    }
-    return 1.0 / std::sqrt(static_cast<double>(q->size(q->ndim() - 1)));
-}
+using flash_mla_checks::resolve_softmax_scale;
 
 int checked_int(int64_t value, const char *name, const char *op_name) {
     if (value < static_cast<int64_t>(std::numeric_limits<int>::min())
@@ -315,21 +299,8 @@ to_optional_const_aten(const std::optional<Tensor> &tensor) {
     return infinicore::adaptor::to_aten_tensor(tensor.value());
 }
 
-std::optional<graph::GraphTensor>
-to_optional_graph_tensor(const std::optional<Tensor> &tensor) {
-    if (!has_tensor(tensor)) {
-        return std::nullopt;
-    }
-    return graph::GraphTensor(tensor.value());
-}
-
-std::optional<Tensor>
-to_optional_tensor(const std::optional<graph::GraphTensor> &tensor) {
-    if (!tensor.has_value()) {
-        return std::nullopt;
-    }
-    return tensor.value();
-}
+using flash_mla_checks::to_optional_graph_tensor;
+using flash_mla_checks::to_optional_tensor;
 
 void validate_inputs(const Tensor &out,
                      const Tensor &lse,

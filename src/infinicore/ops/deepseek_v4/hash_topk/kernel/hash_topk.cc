@@ -161,7 +161,7 @@ void *plan_hash_topk(Tensor topk_weights,
 }
 
 void run_hash_topk(void *planned_meta) {
-#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API) || defined(ENABLE_METAX_API)
+#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API) || defined(ENABLE_METAX_API) || defined(ENABLE_ILUVATAR_API)
     auto *planned = reinterpret_cast<HashTopkPlannedMeta *>(planned_meta);
     auto *topk_weights = reinterpret_cast<float *>(planned->topk_weights->data());
     auto *topk_indices = reinterpret_cast<int32_t *>(planned->topk_indices->data());
@@ -195,7 +195,7 @@ void cleanup_hash_topk(void **planned_meta_ptr) {
 } // namespace hash_topk_graph_impl
 
 namespace hash_topk_register {
-INFINICORE_DSV4_NATIVE_GRAPH_OP_REGISTER_BUILD_DEVICE(
+INFINICORE_DSV4_NATIVE_ROUTER_GRAPH_OP_REGISTER_BUILD_DEVICE(
     HashTopkKernel,
     &hash_topk_graph_impl::plan_hash_topk,
     &hash_topk_graph_impl::run_hash_topk,
@@ -210,7 +210,7 @@ void hash_topk_kernel_(Tensor topk_weights,
                                    int64_t num_fused_shared_experts,
                                    float routed_scaling_factor,
                                    const std::string &scoring_func) {
-#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API) || defined(ENABLE_METAX_API)
+#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API) || defined(ENABLE_METAX_API) || defined(ENABLE_ILUVATAR_API)
     check_scoring_config(routed_scaling_factor, scoring_func);
     HashTopkKernel::execute(topk_weights,
                                       topk_indices,
@@ -240,7 +240,7 @@ void hash_topk_generic_kernel_(Tensor topk_weights,
                                            int64_t num_fused_shared_experts,
                                            float routed_scaling_factor,
                                            const std::string &scoring_func) {
-#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API) || defined(ENABLE_METAX_API)
+#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API) || defined(ENABLE_METAX_API) || defined(ENABLE_ILUVATAR_API)
     check_accelerator_tensor(router_logits, "hash_topk_generic_kernel_");
 
     check_scoring_config(routed_scaling_factor, scoring_func);

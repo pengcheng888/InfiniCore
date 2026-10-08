@@ -11,6 +11,11 @@
 #define INFINICORE_DSV4_ACCELERATOR_API 1
 #endif
 
+#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API) \
+    || defined(ENABLE_ILUVATAR_DSV4_NATIVE_KERNELS)
+#define INFINICORE_DSV4_NATIVE_KERNEL_API 1
+#endif
+
 namespace infinicore::op::deepseek_v4::detail {
 
 constexpr Device::Type build_device_type() noexcept {
@@ -82,5 +87,16 @@ inline void check_build_device(const Tensor &tensor, const char *op_name) {
 #else
 #define INFINICORE_DSV4_NATIVE_GRAPH_OP_REGISTER_BUILD_DEVICE( \
     __OP_NAME__, __PLAN_F__, __RUN_F__, __CLEANUP_F__)         \
+    static bool registered = false;
+#endif
+
+#if defined(INFINICORE_DSV4_NATIVE_KERNEL_API)
+#define INFINICORE_DSV4_NATIVE_ROUTER_GRAPH_OP_REGISTER_BUILD_DEVICE( \
+    __OP_NAME__, __PLAN_F__, __RUN_F__, __CLEANUP_F__)                \
+    INFINICORE_DSV4_GRAPH_OP_REGISTER_BUILD_DEVICE(                   \
+        __OP_NAME__, __PLAN_F__, __RUN_F__, __CLEANUP_F__)
+#else
+#define INFINICORE_DSV4_NATIVE_ROUTER_GRAPH_OP_REGISTER_BUILD_DEVICE( \
+    __OP_NAME__, __PLAN_F__, __RUN_F__, __CLEANUP_F__)                \
     static bool registered = false;
 #endif

@@ -29,20 +29,17 @@ int input_scalar_type(const Tensor &input) {
                                             : fused_store_flashmla_cache::F16;
 }
 
-void check_bf16_cache_store_inputs(const Tensor &input,
-                                   const Tensor &cache,
-                                   const Tensor &indices,
-                                   size_t rope_dim) {
+void check_bf16_cache_store_common_inputs(const Tensor &input,
+                                          const Tensor &cache,
+                                          const Tensor &indices) {
     if (!input || !cache || !indices) {
         throw std::runtime_error("store_flash_mla_bf16_cache_ expects non-empty input/cache/indices.");
     }
-    if (input->ndim() != 2 || input->dtype() != DataType::BF16 || rope_dim == 0
-            || rope_dim >= input->size(1)) {
+    if (input->ndim() != 2 || input->dtype() != DataType::BF16) {
         throw std::runtime_error("store_flash_mla_bf16_cache_ expects BF16 input [tokens, head_dim].");
     }
-    if (cache->ndim() != 4 || cache->size(2) != 1
-            || cache->dtype() != DataType::BF16
-            || cache->size(3) != input->size(1) + rope_dim) {
+    if (cache->ndim() != 4 || cache->size(1) == 0 || cache->size(2) != 1
+        || cache->dtype() != DataType::BF16) {
         throw std::runtime_error("store_flash_mla_bf16_cache_ expects BF16 cache [blocks, page_size, 1, head_dim].");
     }
     if (indices->ndim() != 1 || indices->size(0) != input->size(0)
@@ -53,6 +50,28 @@ void check_bf16_cache_store_inputs(const Tensor &input,
     INFINICORE_ASSERT_TENSORS_SAME_DEVICE(input, indices);
     if (!input->is_contiguous() || !cache->is_contiguous() || !indices->is_contiguous()) {
         throw std::runtime_error("store_flash_mla_bf16_cache_ expects contiguous tensors.");
+    }
+}
+
+void check_plain_bf16_cache_store_inputs(const Tensor &input,
+                                         const Tensor &cache,
+                                         const Tensor &indices) {
+    check_bf16_cache_store_common_inputs(input, cache, indices);
+    if (cache->size(3) != input->size(1)) {
+        throw std::runtime_error(
+            "store_flash_mla_bf16_cache_ expects plain BF16 cache head_dim to match input head_dim.");
+    }
+}
+
+void check_rope_duplicate_bf16_cache_store_inputs(const Tensor &input,
+                                                  const Tensor &cache,
+                                                  const Tensor &indices,
+                                                  size_t rope_dim) {
+    check_bf16_cache_store_common_inputs(input, cache, indices);
+    if (rope_dim == 0 || rope_dim >= input->size(1)
+        || cache->size(3) != input->size(1) + rope_dim) {
+        throw std::runtime_error(
+            "store_flash_mla_bf16_cache_ expects rope-duplicate BF16 cache head_dim to equal input head_dim plus rope_dim.");
     }
 }
 
@@ -88,23 +107,43 @@ void store_flash_mla_bf16_cache_(const Tensor &input,
                                  Tensor cache,
                                  const Tensor &indices,
                                  size_t rope_dim) {
-    check_bf16_cache_store_inputs(input, cache, indices, rope_dim);
+    if (!cache) {
+        throw std::runtime_error("store_flash_mla_bf16_cache_ expects a non-empty cache.");
+    }
 
-    // BF16 cache appends a rope copy. Keep this as a host graph segment so the
-    // store runs on every replay instead of only once during graph recording.
-    auto input_graph = graph::GraphTensor(input);
-    auto cache_graph = graph::GraphTensor(cache);
-    auto indices_graph = graph::GraphTensor(indices);
-    detail::record_or_run_host_graph_op(
-        [input_graph, cache_graph, indices_graph, rope_dim]() mutable {
-            const auto rope = input_graph->narrow(
-                {{1, input_graph->size(1) - rope_dim, rope_dim}});
-            auto expanded_input = ::infinicore::op::cat({input_graph, rope}, 1);
-            auto flat_cache = cache_graph->view(
-                {cache_graph->size(0) * cache_graph->size(1), cache_graph->size(3)});
-            ::infinicore::op::index_copy_(
-                flat_cache, flat_cache, 0, indices_graph, expanded_input);
-        });
+    switch (cache->device().getType()) {
+    case Device::Type::ILUVATAR:
+        check_plain_bf16_cache_store_inputs(input, cache, indices);
+        // Reuse the validated plain-cache path, including filtering negative
+        // slot indices before the BF16 index_copy_.
+        fused_store_flashmla_cache_(
+            input, cache, indices, static_cast<int>(cache->size(1)));
+        return;
+    case Device::Type::METAX: {
+        check_rope_duplicate_bf16_cache_store_inputs(
+            input, cache, indices, rope_dim);
+
+        // MetaX BF16 cache appends a rope copy. Keep this as a host graph
+        // segment so the store runs on every replay.
+        auto input_graph = graph::GraphTensor(input);
+        auto cache_graph = graph::GraphTensor(cache);
+        auto indices_graph = graph::GraphTensor(indices);
+        detail::record_or_run_host_graph_op(
+            [input_graph, cache_graph, indices_graph, rope_dim]() mutable {
+                const auto rope = input_graph->narrow(
+                    {{1, input_graph->size(1) - rope_dim, rope_dim}});
+                auto expanded_input = ::infinicore::op::cat({input_graph, rope}, 1);
+                auto flat_cache = cache_graph->view(
+                    {cache_graph->size(0) * cache_graph->size(1), cache_graph->size(3)});
+                ::infinicore::op::index_copy_(
+                    flat_cache, flat_cache, 0, indices_graph, expanded_input);
+            });
+        return;
+    }
+    default:
+        throw std::runtime_error(
+            "store_flash_mla_bf16_cache_ only supports ILUVATAR and METAX devices.");
+    }
 }
 
 FusedStoreFlashMlaCacheKernel::FusedStoreFlashMlaCacheKernel(const Tensor &input,

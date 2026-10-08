@@ -1,4 +1,5 @@
 #include "infinicore/ops/flash_mla/flash_mla_with_kvcache.hpp"
+#include "../flash_mla_with_kvcache_helper.hpp"
 
 #include "infinicore/device.hpp"
 #include "infinicore/dtype.hpp"
@@ -12,7 +13,6 @@
 #endif
 #endif
 
-#include <cmath>
 #include <cstddef>
 #include <cstdlib>
 #include <dlfcn.h>
@@ -26,6 +26,9 @@ namespace infinicore::op {
 
 #if defined(ENABLE_ATEN) && defined(ENABLE_NVIDIA_API)
 namespace {
+
+namespace flash_mla_checks = ::infinicore::op::flash_mla::flash_mla_with_kvcache_detail;
+using flash_mla_checks::has_tensor;
 
 constexpr const char *kFlashMlaOpName = "_flashmla_C::dense_decode_fwd";
 constexpr const char *kDefaultFlashMlaSoPath = "/usr/local/lib/python3.12/dist-packages/vllm/_flashmla_C.abi3.so";
@@ -77,19 +80,11 @@ auto &flashmla_dense_decode_op() {
 }
 
 void check_device(const Tensor &tensor, const char *op_name) {
-    if (!tensor || tensor->device().getType() != Device::Type::NVIDIA) {
-        throw std::runtime_error(std::string(op_name) + " expects NVIDIA tensors.");
-    }
+    flash_mla_checks::check_device(tensor, Device::Type::NVIDIA, "NVIDIA", op_name);
 }
 
 void check_optional_device(const std::optional<Tensor> &tensor, const char *op_name) {
-    if (tensor.has_value() && tensor.value()) {
-        check_device(*tensor, op_name);
-    }
-}
-
-bool has_tensor(const std::optional<Tensor> &tensor) {
-    return tensor.has_value() && tensor.value();
+    flash_mla_checks::check_optional_device(tensor, Device::Type::NVIDIA, "NVIDIA", op_name);
 }
 
 void check_nvidia_dense_decode_options(const std::optional<Tensor> &block_table,
@@ -118,17 +113,7 @@ void check_nvidia_dense_decode_options(const std::optional<Tensor> &block_table,
     }
 }
 
-double resolve_softmax_scale(const Tensor &q,
-                             const std::optional<double> &softmax_scale,
-                             const char *op_name) {
-    if (softmax_scale.has_value()) {
-        return softmax_scale.value();
-    }
-    if (!q || q->ndim() == 0 || q->size(q->ndim() - 1) == 0) {
-        throw std::runtime_error(std::string(op_name) + " cannot infer softmax_scale from q.");
-    }
-    return 1.0 / std::sqrt(static_cast<double>(q->size(q->ndim() - 1)));
-}
+using flash_mla_checks::resolve_softmax_scale;
 
 DataType from_at_scalar_type_for_dense_decode(at::ScalarType dtype) {
     switch (dtype) {
@@ -230,19 +215,8 @@ at::Tensor to_aten_tensor_for_flashmla(const Tensor &tensor) {
     return infinicore::adaptor::to_aten_tensor(tensor);
 }
 
-std::optional<graph::GraphTensor> to_optional_graph_tensor(const std::optional<Tensor> &tensor) {
-    if (!has_tensor(tensor)) {
-        return std::nullopt;
-    }
-    return graph::GraphTensor(tensor.value());
-}
-
-std::optional<Tensor> to_optional_tensor(const std::optional<graph::GraphTensor> &tensor) {
-    if (!tensor.has_value()) {
-        return std::nullopt;
-    }
-    return tensor.value();
-}
+using flash_mla_checks::to_optional_graph_tensor;
+using flash_mla_checks::to_optional_tensor;
 
 } // namespace
 

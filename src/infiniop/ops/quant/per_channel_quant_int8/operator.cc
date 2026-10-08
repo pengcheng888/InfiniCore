@@ -2,7 +2,7 @@
 #include "../../../handle.h"
 #include "infiniop/ops/quant/per_channel_quant_int8.h"
 
-#if defined(ENABLE_NVIDIA_API) || defined(ENABLE_QY_API) || defined(ENABLE_HYGON_API)
+#if defined(ENABLE_NVIDIA_API) || defined(ENABLE_QY_API) || defined(ENABLE_HYGON_API) || defined(ENABLE_ILUVATAR_API)
 #include "nvidia/per_channel_quant_int8_nvidia.cuh"
 #endif
 #if defined(ENABLE_MOORE_API)
@@ -37,6 +37,9 @@ __INFINI_C infiniStatus_t infiniopCreatePerChannelQuantI8Descriptor(infiniopHand
 #ifdef ENABLE_HYGON_API
         CREATE(INFINI_DEVICE_HYGON, nvidia)
 #endif
+#ifdef ENABLE_ILUVATAR_API
+        CREATE(INFINI_DEVICE_ILUVATAR, nvidia)
+#endif
 #ifdef ENABLE_MOORE_API
         CREATE(INFINI_DEVICE_MOORE, moore)
 #endif
@@ -63,6 +66,9 @@ __INFINI_C infiniStatus_t infiniopGetPerChannelQuantI8WorkspaceSize(infiniopPerC
 #endif
 #ifdef ENABLE_HYGON_API
         GET(INFINI_DEVICE_HYGON, nvidia)
+#endif
+#ifdef ENABLE_ILUVATAR_API
+        GET(INFINI_DEVICE_ILUVATAR, nvidia)
 #endif
 #ifdef ENABLE_MOORE_API
         GET(INFINI_DEVICE_MOORE, moore)
@@ -99,6 +105,9 @@ __INFINI_C infiniStatus_t infiniopPerChannelQuantI8(infiniopPerChannelQuantI8Des
 #ifdef ENABLE_HYGON_API
         QUANT(INFINI_DEVICE_HYGON, nvidia)
 #endif
+#ifdef ENABLE_ILUVATAR_API
+        QUANT(INFINI_DEVICE_ILUVATAR, nvidia)
+#endif
 #ifdef ENABLE_MOORE_API
         QUANT(INFINI_DEVICE_MOORE, moore)
 #endif
@@ -126,6 +135,9 @@ __INFINI_C infiniStatus_t infiniopDestroyPerChannelQuantI8Descriptor(infiniopPer
 #endif
 #ifdef ENABLE_HYGON_API
         DESTROY(INFINI_DEVICE_HYGON, nvidia)
+#endif
+#ifdef ENABLE_ILUVATAR_API
+        DESTROY(INFINI_DEVICE_ILUVATAR, nvidia)
 #endif
 #ifdef ENABLE_MOORE_API
         DESTROY(INFINI_DEVICE_MOORE, moore)

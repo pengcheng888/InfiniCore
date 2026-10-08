@@ -229,6 +229,16 @@ void launch_biased_topk_dsv4(float *topk_weights,
                              int64_t tokens,
                              void *stream) {
     auto cuda_stream = reinterpret_cast<cudaStream_t>(stream);
+#if defined(ENABLE_ILUVATAR_API)
+    // One token per block keeps each logical warp independent on CoreX. The
+    // previous eight-token pack failed for tokens after the first on BI-V150.
+    biased_topk_dsv4_kernel<<<static_cast<unsigned int>(tokens), kDeviceWarpSize, 0, cuda_stream>>>(
+        topk_weights,
+        topk_indices,
+        router_logits,
+        correction_bias,
+        tokens);
+#else
     const int warps_per_block = kDsv4BlockSize / kDeviceWarpSize;
     const int blocks = static_cast<int>((tokens + warps_per_block - 1) / warps_per_block);
     biased_topk_dsv4_kernel<<<blocks, kDsv4BlockSize, 0, cuda_stream>>>(
@@ -237,6 +247,7 @@ void launch_biased_topk_dsv4(float *topk_weights,
         router_logits,
         correction_bias,
         tokens);
+#endif
 }
 
 void launch_biased_topk(float *topk_weights,

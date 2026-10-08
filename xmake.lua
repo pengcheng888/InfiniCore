@@ -726,6 +726,11 @@ target("infinicore_cpp_api")
     set_languages("cxx17")
     set_symbols("visibility")
 
+    if has_config("iluvatar-gpu") then
+        add_deps("infinicore-dsv4-iluvatar")
+        add_defines("ENABLE_ILUVATAR_DSV4_NATIVE_KERNELS")
+    end
+
     if has_config("hygon-dcu") and has_config("aten") then
         set_toolchains("hygon.toolchain")
         add_rules("hygon.env")

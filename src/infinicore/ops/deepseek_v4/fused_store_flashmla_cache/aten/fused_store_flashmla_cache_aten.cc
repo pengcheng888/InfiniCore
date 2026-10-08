@@ -22,6 +22,37 @@ constexpr double kFp8E4M3Max = 448.0;
 at::Tensor arange_like_cols(int64_t cols, const at::Tensor &ref) {
     return at::arange(cols, ref.options().dtype(at::kLong));
 }
+
+bool is_plain_float_cache(const Tensor &cache) {
+    return cache->dtype() == DataType::BF16 || cache->dtype() == DataType::F16;
+}
+
+void check_plain_cache_shapes(const Tensor &input,
+                              const Tensor &cache,
+                              const Tensor &indices,
+                              int page_size) {
+    if (!input || !cache || !indices) {
+        throw std::runtime_error("fused_store_flashmla_cache_ expects non-empty input/cache/indices.");
+    }
+    if (input->ndim() != 2 || input->dtype() != cache->dtype()) {
+        throw std::runtime_error("fused_store_flashmla_cache_ plain cache expects input [tokens, head_dim] with cache dtype.");
+    }
+    if (cache->ndim() != 4 || cache->size(1) != static_cast<size_t>(page_size)
+        || cache->size(2) != 1 || cache->size(3) != input->size(1)) {
+        throw std::runtime_error("fused_store_flashmla_cache_ plain cache expects [blocks, page_size, 1, head_dim].");
+    }
+    if (indices->ndim() != 1 || indices->numel() != input->size(0)
+        || (indices->dtype() != DataType::I32 && indices->dtype() != DataType::I64)) {
+        throw std::runtime_error("fused_store_flashmla_cache_ plain cache expects indices [tokens].");
+    }
+    if (page_size <= 0 || (page_size & (page_size - 1)) != 0) {
+        throw std::runtime_error("fused_store_flashmla_cache_ page_size must be a positive power of two.");
+    }
+    INFINICORE_ASSERT_TENSORS_SAME_DEVICE(input, cache, indices);
+    if (!input->is_contiguous() || !cache->is_contiguous() || !indices->is_contiguous()) {
+        throw std::runtime_error("fused_store_flashmla_cache_ plain cache expects contiguous tensors.");
+    }
+}
 #endif
 
 } // namespace
@@ -35,11 +66,28 @@ void fused_store_flashmla_cache_aten_(const Tensor &input,
     if (input->dtype() == DataType::F32) {
         throw std::runtime_error("fused_store_flashmla_cache_ expects bf16/fp16 input because RoPE bytes are copied verbatim.");
     }
-    fused_store_flashmla_cache_detail::check_shapes(input, cache, indices, page_size);
 
     auto input_at = infinicore::adaptor::to_aten_tensor(input).contiguous();
     auto cache_at = infinicore::adaptor::to_aten_tensor(cache);
     auto indices_at = infinicore::adaptor::to_aten_tensor(indices).to(at::kLong);
+
+    if (is_plain_float_cache(cache)) {
+        check_plain_cache_shapes(input, cache, indices, page_size);
+        auto flat_cache = cache_at.reshape({-1, input_at.size(1)});
+        auto valid_mask = indices_at >= 0;
+        auto valid_rows = at::nonzero(valid_mask).reshape({-1});
+        if (valid_rows.numel() == 0) {
+            return;
+        }
+        if (valid_rows.numel() != indices_at.numel()) {
+            input_at = input_at.index_select(0, valid_rows);
+            indices_at = indices_at.index_select(0, valid_rows);
+        }
+        flat_cache.index_copy_(0, indices_at, input_at);
+        return;
+    }
+
+    fused_store_flashmla_cache_detail::check_shapes(input, cache, indices, page_size);
 
     auto valid_mask = indices_at >= 0;
     auto valid_rows = at::nonzero(valid_mask).reshape({-1});

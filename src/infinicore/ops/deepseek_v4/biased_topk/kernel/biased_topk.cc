@@ -110,7 +110,7 @@ void *plan_dsv4(Tensor topk_weights,
 }
 
 void run_dsv4(void *planned_meta) {
-#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API) || defined(ENABLE_METAX_API)
+#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API) || defined(ENABLE_METAX_API) || defined(ENABLE_ILUVATAR_API)
     auto *planned = reinterpret_cast<Dsv4PlannedMeta *>(planned_meta);
     biased_topk::launch_biased_topk_dsv4(
         reinterpret_cast<float *>(planned->topk_weights->data()),
@@ -133,7 +133,7 @@ void cleanup_dsv4(void **planned_meta_ptr) {
 } // namespace biased_topk_graph_impl
 
 namespace biased_topk_register {
-INFINICORE_DSV4_NATIVE_GRAPH_OP_REGISTER_BUILD_DEVICE(
+INFINICORE_DSV4_NATIVE_ROUTER_GRAPH_OP_REGISTER_BUILD_DEVICE(
     TopkDsv4Kernel,
     &biased_topk_graph_impl::plan_dsv4,
     &biased_topk_graph_impl::run_dsv4,
@@ -157,7 +157,7 @@ void topk_kernel_(Tensor topk_weights,
                               const Tensor &router_logits,
                               const Tensor &correction_bias,
                               bool renormalize) {
-#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API) || defined(ENABLE_METAX_API)
+#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API) || defined(ENABLE_METAX_API) || defined(ENABLE_ILUVATAR_API)
     check_accelerator_tensor(router_logits, "topk_kernel_");
 
     check_shapes(topk_weights, topk_indices, router_logits, correction_bias);
@@ -198,7 +198,7 @@ void topk_generic_kernel_(Tensor topk_weights,
                                       const Tensor &router_logits,
                                       const Tensor &correction_bias,
                                       bool renormalize) {
-#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API) || defined(ENABLE_METAX_API)
+#if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API) || defined(ENABLE_METAX_API) || defined(ENABLE_ILUVATAR_API)
     check_accelerator_tensor(router_logits, "topk_generic_kernel_");
 
     check_shapes(topk_weights, topk_indices, router_logits, correction_bias);
