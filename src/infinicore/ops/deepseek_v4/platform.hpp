@@ -12,6 +12,7 @@
 #endif
 
 #if defined(ENABLE_HYGON_API) || defined(ENABLE_NVIDIA_API) \
+    || defined(ENABLE_METAX_API) \
     || defined(ENABLE_ILUVATAR_DSV4_NATIVE_KERNELS)
 #define INFINICORE_DSV4_NATIVE_KERNEL_API 1
 #endif
