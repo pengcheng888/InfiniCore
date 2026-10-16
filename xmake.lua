@@ -1102,13 +1102,21 @@ target("infinicore_cpp_api")
     add_files("src/infinicore/ops/*/*/*/*.cc")
     add_files("src/infinicore/deepseek_v4_ops/*/*.cc")
     add_files("src/infinicore/deepseek_v4_ops/*/*/*.cc")
-    -- Platform-private Hygon sources are guarded and only kept in Hygon builds.
+    -- Platform-private implementations must match the configured device backend.
+    -- The generic op globs above would otherwise pull CUDA/Metax headers into a
+    -- Hygon toolchain build (and vice versa).
     if has_config("hygon-dcu") and get_config("flash-attn") and get_config("flash-attn") ~= "" then
         -- Hygon links against a prebuilt flash-attn extension with a different ABI.
         -- Keep the platform-specific implementation under each op's hygon/ folder.
         add_files("src/infinicore/adaptor/flash_attn/hygon/*.cc")
     else
-        remove_files("src/infinicore/ops/*/hygon/*.cc")
+        remove_files("src/infinicore/ops/*/*/hygon/*.cc")
+    end
+    if not has_config("nv-gpu") then
+        remove_files("src/infinicore/ops/*/*/nvidia/*.cc")
+    end
+    if not has_config("metax-gpu") then
+        remove_files("src/infinicore/ops/*/*/metax/*.cc")
     end
     if has_config("infiniops") and not has_config("nv-gpu") then
         remove_files("src/infinicore/ops/paged_attention/paged_attention_infiniops.cc")
