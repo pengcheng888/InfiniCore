@@ -1,6 +1,8 @@
 #ifndef __GAUSSIAN_NLL_LOSS_MOORE_H__
 #define __GAUSSIAN_NLL_LOSS_MOORE_H__
 
+#include <vector>
+
 #include "../../../operator.h"
 
 namespace op::gaussian_nll_loss::moore {

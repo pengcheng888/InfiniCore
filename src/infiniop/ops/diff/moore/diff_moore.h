@@ -1,6 +1,10 @@
 #ifndef __DIFF_MOORE_H__
 #define __DIFF_MOORE_H__
 
+#include <vector>
+
+#include "../../../../utils.h"
+
 #include "../../../operator.h"
 
 namespace op::diff::moore {

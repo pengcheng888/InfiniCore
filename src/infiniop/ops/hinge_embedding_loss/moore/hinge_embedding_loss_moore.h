@@ -1,6 +1,8 @@
 #ifndef __HINGE_EMBEDDING_LOSS_MOORE_H__
 #define __HINGE_EMBEDDING_LOSS_MOORE_H__
 
+#include <vector>
+
 #include "../../../operator.h"
 
 namespace op::hinge_embedding_loss::moore {

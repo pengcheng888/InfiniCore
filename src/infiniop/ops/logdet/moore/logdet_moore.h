@@ -1,6 +1,8 @@
 #ifndef __LOGDET_MOORE_H__
 #define __LOGDET_MOORE_H__
 
+#include <vector>
+
 #include "../../../operator.h"
 
 namespace op::logdet::moore {

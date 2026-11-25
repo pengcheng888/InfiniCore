@@ -1,6 +1,8 @@
 #ifndef __DIST_MOORE_H__
 #define __DIST_MOORE_H__
 
+#include <vector>
+
 #include "../../../operator.h"
 
 namespace op::dist::moore {

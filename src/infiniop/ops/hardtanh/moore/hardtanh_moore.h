@@ -1,6 +1,8 @@
 #ifndef __HARDTANH_MOORE_API_H__
 #define __HARDTANH_MOORE_API_H__
 
+#include <vector>
+
 #include "../../../elementwise/moore/elementwise_moore_api.h"
 
 namespace op::hardtanh::moore {

@@ -2,6 +2,8 @@
 #define __ADDCMUL_MOORE_H__
 
 // 1. 切换到 Moore 平台的 Elementwise API
+#include <vector>
+
 #include "../../../elementwise/moore/elementwise_moore_api.h"
 
 namespace op::addcmul::moore {

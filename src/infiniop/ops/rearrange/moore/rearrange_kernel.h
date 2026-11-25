@@ -1,6 +1,8 @@
 #ifndef __REARRANGE_MOORE_KERNEL_H__
 #define __REARRANGE_MOORE_KERNEL_H__
 
+#include <vector>
+
 #include "../../../devices/moore/moore_common.h"
 #include "../../../devices/moore/moore_kernel_common.h"
 
