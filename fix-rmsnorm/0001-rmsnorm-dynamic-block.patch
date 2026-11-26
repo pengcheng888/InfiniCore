@@ -1,0 +1,62 @@
+diff --git a/src/infiniop/devices/moore/moore_kernel_common.h b/src/infiniop/devices/moore/moore_kernel_common.h
+index e121fdd..c662576 100644
+--- a/src/infiniop/devices/moore/moore_kernel_common.h
++++ b/src/infiniop/devices/moore/moore_kernel_common.h
+@@ -12,6 +12,9 @@
+ #define MOORE_BLOCK_SIZE_2048 2048
+ #define MOORE_BLOCK_SIZE_1024 1024
+ #define MOORE_BLOCK_SIZE_512 512
++#define MOORE_BLOCK_SIZE_256 256
++#define MOORE_BLOCK_SIZE_128 128
++#define MOORE_BLOCK_SIZE_64 64
+ 
+ #define CHECK_MOORE(API) CHECK_INTERNAL(API, musaSuccess)
+ 
+diff --git a/src/infiniop/ops/rms_norm/moore/rms_norm_moore.mu b/src/infiniop/ops/rms_norm/moore/rms_norm_moore.mu
+index cf4a3be..9976808 100644
+--- a/src/infiniop/ops/rms_norm/moore/rms_norm_moore.mu
++++ b/src/infiniop/ops/rms_norm/moore/rms_norm_moore.mu
+@@ -116,13 +116,39 @@ infiniStatus_t Descriptor::calculate(
+     size_t nhead = _info.shape.size() > 2 ? _info.shape[1] : 1;
+     auto musa_stream = reinterpret_cast<musaStream_t>(stream);
+ 
++    const auto max_threads = _opaque->internal->maxThreadsPerBlock();
++
++    // Pick the smallest power-of-two block that covers one normalized row.
++    // This avoids wasting 1024 threads on small rows such as head_dim=128.
+     // launch kernel with different block sizes
+-    if (_opaque->internal->maxThreadsPerBlock() == MOORE_BLOCK_SIZE_1024) {
+-        CHECK_STATUS(launchKernel<MOORE_BLOCK_SIZE_1024>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, musa_stream));
+-    } else if (_opaque->internal->maxThreadsPerBlock() == MOORE_BLOCK_SIZE_512) {
++    if (dim <= MOORE_BLOCK_SIZE_64 && max_threads >= MOORE_BLOCK_SIZE_64) {
++        CHECK_STATUS(launchKernel<MOORE_BLOCK_SIZE_64>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, musa_stream));
++    } else if (dim <= MOORE_BLOCK_SIZE_128 && max_threads >= MOORE_BLOCK_SIZE_128) {
++        CHECK_STATUS(launchKernel<MOORE_BLOCK_SIZE_128>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, musa_stream));
++    } else if (dim <= MOORE_BLOCK_SIZE_256 && max_threads >= MOORE_BLOCK_SIZE_256) {
++        CHECK_STATUS(launchKernel<MOORE_BLOCK_SIZE_256>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, musa_stream));
++    } else if (dim <= MOORE_BLOCK_SIZE_512 && max_threads >= MOORE_BLOCK_SIZE_512) {
+         CHECK_STATUS(launchKernel<MOORE_BLOCK_SIZE_512>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, musa_stream));
+-    } else if (_opaque->internal->maxThreadsPerBlock() == MOORE_BLOCK_SIZE_2048) {
++    } else if (dim <= MOORE_BLOCK_SIZE_1024 && max_threads >= MOORE_BLOCK_SIZE_1024) {
++        CHECK_STATUS(launchKernel<MOORE_BLOCK_SIZE_1024>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, musa_stream));
++    } else if (dim <= MOORE_BLOCK_SIZE_2048 && max_threads >= MOORE_BLOCK_SIZE_2048) {
+         CHECK_STATUS(launchKernel<MOORE_BLOCK_SIZE_2048>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, musa_stream));
++    } else if (dim <= MOORE_BLOCK_SIZE_4096 && max_threads >= MOORE_BLOCK_SIZE_4096) {
++        CHECK_STATUS(launchKernel<MOORE_BLOCK_SIZE_4096>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, musa_stream));
++    } else if (max_threads >= MOORE_BLOCK_SIZE_4096) {
++        CHECK_STATUS(launchKernel<MOORE_BLOCK_SIZE_4096>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, musa_stream));
++    } else if (max_threads >= MOORE_BLOCK_SIZE_2048) {
++        CHECK_STATUS(launchKernel<MOORE_BLOCK_SIZE_2048>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, musa_stream));
++    } else if (max_threads >= MOORE_BLOCK_SIZE_1024) {
++        CHECK_STATUS(launchKernel<MOORE_BLOCK_SIZE_1024>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, musa_stream));
++    } else if (max_threads >= MOORE_BLOCK_SIZE_512) {
++        CHECK_STATUS(launchKernel<MOORE_BLOCK_SIZE_512>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, musa_stream));
++    } else if (max_threads >= MOORE_BLOCK_SIZE_256) {
++        CHECK_STATUS(launchKernel<MOORE_BLOCK_SIZE_256>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, musa_stream));
++    } else if (max_threads >= MOORE_BLOCK_SIZE_128) {
++        CHECK_STATUS(launchKernel<MOORE_BLOCK_SIZE_128>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, musa_stream));
++    } else if (max_threads >= MOORE_BLOCK_SIZE_64) {
++        CHECK_STATUS(launchKernel<MOORE_BLOCK_SIZE_64>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, musa_stream));
+     } else {
+         return INFINI_STATUS_DEVICE_ARCHITECTURE_NOT_SUPPORTED;
+     }
