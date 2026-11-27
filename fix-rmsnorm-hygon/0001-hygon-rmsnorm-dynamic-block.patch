@@ -1,0 +1,62 @@
+diff --git a/src/infiniop/devices/nvidia/nvidia_kernel_common.cuh b/src/infiniop/devices/nvidia/nvidia_kernel_common.cuh
+index 658bc441..d02dcaa2 100644
+--- a/src/infiniop/devices/nvidia/nvidia_kernel_common.cuh
++++ b/src/infiniop/devices/nvidia/nvidia_kernel_common.cuh
+@@ -21,6 +21,9 @@
+ #define CUDA_BLOCK_SIZE_2048 2048
+ #define CUDA_BLOCK_SIZE_1024 1024
+ #define CUDA_BLOCK_SIZE_512 512
++#define CUDA_BLOCK_SIZE_256 256
++#define CUDA_BLOCK_SIZE_128 128
++#define CUDA_BLOCK_SIZE_64 64
+ 
+ #define CHECK_CUDA(API) CHECK_INTERNAL(API, cudaSuccess)
+ 
+diff --git a/src/infiniop/ops/rms_norm/nvidia/rms_norm_nvidia.cu b/src/infiniop/ops/rms_norm/nvidia/rms_norm_nvidia.cu
+index 21cda369..edbe2e3e 100644
+--- a/src/infiniop/ops/rms_norm/nvidia/rms_norm_nvidia.cu
++++ b/src/infiniop/ops/rms_norm/nvidia/rms_norm_nvidia.cu
+@@ -116,15 +116,38 @@ infiniStatus_t Descriptor::calculate(
+     size_t nhead = _info.shape.size() > 2 ? _info.shape[1] : 1;
+     auto cuda_stream = reinterpret_cast<cudaStream_t>(stream);
+ 
+-    // launch kernel with different block sizes
+-    if (_opaque->internal->maxThreadsPerBlock() == CUDA_BLOCK_SIZE_4096) {
++    const auto max_threads = _opaque->internal->maxThreadsPerBlock();
++
++    // Pick the smallest power-of-two block that covers one normalized row.
++    // This avoids wasting the device's maximum block size on small rows.
++    if (dim <= CUDA_BLOCK_SIZE_64 && max_threads >= CUDA_BLOCK_SIZE_64) {
++        CHECK_STATUS(launchKernel<CUDA_BLOCK_SIZE_64>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, cuda_stream));
++    } else if (dim <= CUDA_BLOCK_SIZE_128 && max_threads >= CUDA_BLOCK_SIZE_128) {
++        CHECK_STATUS(launchKernel<CUDA_BLOCK_SIZE_128>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, cuda_stream));
++    } else if (dim <= CUDA_BLOCK_SIZE_256 && max_threads >= CUDA_BLOCK_SIZE_256) {
++        CHECK_STATUS(launchKernel<CUDA_BLOCK_SIZE_256>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, cuda_stream));
++    } else if (dim <= CUDA_BLOCK_SIZE_512 && max_threads >= CUDA_BLOCK_SIZE_512) {
++        CHECK_STATUS(launchKernel<CUDA_BLOCK_SIZE_512>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, cuda_stream));
++    } else if (dim <= CUDA_BLOCK_SIZE_1024 && max_threads >= CUDA_BLOCK_SIZE_1024) {
++        CHECK_STATUS(launchKernel<CUDA_BLOCK_SIZE_1024>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, cuda_stream));
++    } else if (dim <= CUDA_BLOCK_SIZE_2048 && max_threads >= CUDA_BLOCK_SIZE_2048) {
++        CHECK_STATUS(launchKernel<CUDA_BLOCK_SIZE_2048>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, cuda_stream));
++    } else if (dim <= CUDA_BLOCK_SIZE_4096 && max_threads >= CUDA_BLOCK_SIZE_4096) {
++        CHECK_STATUS(launchKernel<CUDA_BLOCK_SIZE_4096>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, cuda_stream));
++    } else if (max_threads >= CUDA_BLOCK_SIZE_4096) {
+         CHECK_STATUS(launchKernel<CUDA_BLOCK_SIZE_4096>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, cuda_stream));
+-    } else if (_opaque->internal->maxThreadsPerBlock() == CUDA_BLOCK_SIZE_2048) {
++    } else if (max_threads >= CUDA_BLOCK_SIZE_2048) {
+         CHECK_STATUS(launchKernel<CUDA_BLOCK_SIZE_2048>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, cuda_stream));
+-    } else if (_opaque->internal->maxThreadsPerBlock() == CUDA_BLOCK_SIZE_1024) {
++    } else if (max_threads >= CUDA_BLOCK_SIZE_1024) {
+         CHECK_STATUS(launchKernel<CUDA_BLOCK_SIZE_1024>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, cuda_stream));
+-    } else if (_opaque->internal->maxThreadsPerBlock() == CUDA_BLOCK_SIZE_512) {
++    } else if (max_threads >= CUDA_BLOCK_SIZE_512) {
+         CHECK_STATUS(launchKernel<CUDA_BLOCK_SIZE_512>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, cuda_stream));
++    } else if (max_threads >= CUDA_BLOCK_SIZE_256) {
++        CHECK_STATUS(launchKernel<CUDA_BLOCK_SIZE_256>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, cuda_stream));
++    } else if (max_threads >= CUDA_BLOCK_SIZE_128) {
++        CHECK_STATUS(launchKernel<CUDA_BLOCK_SIZE_128>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, cuda_stream));
++    } else if (max_threads >= CUDA_BLOCK_SIZE_64) {
++        CHECK_STATUS(launchKernel<CUDA_BLOCK_SIZE_64>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, cuda_stream));
+     } else {
+         return INFINI_STATUS_DEVICE_ARCHITECTURE_NOT_SUPPORTED;
+     }

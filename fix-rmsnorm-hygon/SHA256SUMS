@@ -1,0 +1,10 @@
+6e434ecbc2d24dd4660e0f8aaf9b644a207bfdf8544415bb92a7e91376653f9e  fix-rmsnorm-hygon/0001-hygon-rmsnorm-dynamic-block.patch
+ca3a9c827a3390e5763ef5902ece69fc3feb89b8ed7ef4404e6774859720259e  fix-rmsnorm-hygon/2026-11-27-hygon-bw1000-rmsnorm-summary.md
+afa82feab39da4eba9ec00e3caf1501deea4fd2074775457a1052b54cdf21fa0  fix-rmsnorm-hygon/bench_bw1000_rmsnorm.py
+68d321009fc7efe8ce466a80fd06f7bedbc805e66deae555f26821c5dd4f8d7b  fix-rmsnorm-hygon/bench_bw1000_rmsnorm.sh
+5392c58de5b551118f9691e17b19ced0ea08da5cde94fb14f9ab12e339048e33  fix-rmsnorm-hygon/hygon-bw1000-rmsnorm-after.csv
+b96c3fca21c5efb5134beee055285501182f5ea7e0cea2f2ba19f39492f7263f  fix-rmsnorm-hygon/hygon-bw1000-rmsnorm-after.log
+98b2a2f339f55cdfd03809be591eba35e16fa93fd532bfa173368568753e9c35  fix-rmsnorm-hygon/hygon-bw1000-rmsnorm-before.csv
+3f27cb8b1892221c0a834f3a93994623668c3511dfb8a7b15de78af38dca3675  fix-rmsnorm-hygon/hygon-bw1000-rmsnorm-before.log
+113435658b10592d1458399522a344ebd0e8059df53aac563a985a4348884667  fix-rmsnorm-hygon/hygon-bw1000-rmsnorm-operator-test.log
+e976eecfb5c1ae37f64c271cfff967c842786b43d6097f1d6403db76ae1ff476  fix-rmsnorm-hygon/README.md
