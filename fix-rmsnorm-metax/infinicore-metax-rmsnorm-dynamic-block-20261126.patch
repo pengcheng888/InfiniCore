@@ -1,0 +1,74 @@
+diff --git a/src/infiniop/devices/metax/metax_kernel_common.h b/src/infiniop/devices/metax/metax_kernel_common.h
+index 7066a6eb..ec62aaf3 100644
+--- a/src/infiniop/devices/metax/metax_kernel_common.h
++++ b/src/infiniop/devices/metax/metax_kernel_common.h
+@@ -16,6 +16,9 @@
+ // Posible maximum number of threads per block for METAX architectures
+ // Used for picking correct kernel launch configuration
+ #define METAX_BLOCK_SIZE_512 512
++#define METAX_BLOCK_SIZE_256 256
++#define METAX_BLOCK_SIZE_128 128
++#define METAX_BLOCK_SIZE_64 64
+ #define METAX_BLOCK_SIZE_1024 1024
+ #define METAX_BLOCK_SIZE_2048 2048
+ #define METAX_BLOCK_SIZE_4096 4096
+diff --git a/src/infiniop/ops/rms_norm/metax/rms_norm_metax.maca b/src/infiniop/ops/rms_norm/metax/rms_norm_metax.maca
+index 95002eb6..f0976477 100644
+--- a/src/infiniop/ops/rms_norm/metax/rms_norm_metax.maca
++++ b/src/infiniop/ops/rms_norm/metax/rms_norm_metax.maca
+@@ -116,9 +116,38 @@ infiniStatus_t Descriptor::calculate(
+     size_t nhead = _info.shape.size() > 2 ? _info.shape[1] : 1;
+     auto stream = reinterpret_cast<hcStream_t>(stream_);
+ 
+-    // launch kernel with different block sizes
+-    if (_opaque->internal->maxThreadsPerBlock() == METAX_BLOCK_SIZE_1024) {
++    const auto max_threads = _opaque->internal->maxThreadsPerBlock();
++
++    // Pick the smallest power-of-two block that covers one normalized row.
++    // This avoids wasting 1024 threads on small rows such as head_dim=128.
++    if (dim <= METAX_BLOCK_SIZE_64 && max_threads >= METAX_BLOCK_SIZE_64) {
++        CHECK_STATUS(launchKernel<METAX_BLOCK_SIZE_64>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, stream));
++    } else if (dim <= METAX_BLOCK_SIZE_128 && max_threads >= METAX_BLOCK_SIZE_128) {
++        CHECK_STATUS(launchKernel<METAX_BLOCK_SIZE_128>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, stream));
++    } else if (dim <= METAX_BLOCK_SIZE_256 && max_threads >= METAX_BLOCK_SIZE_256) {
++        CHECK_STATUS(launchKernel<METAX_BLOCK_SIZE_256>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, stream));
++    } else if (dim <= METAX_BLOCK_SIZE_512 && max_threads >= METAX_BLOCK_SIZE_512) {
++        CHECK_STATUS(launchKernel<METAX_BLOCK_SIZE_512>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, stream));
++    } else if (dim <= METAX_BLOCK_SIZE_1024 && max_threads >= METAX_BLOCK_SIZE_1024) {
+         CHECK_STATUS(launchKernel<METAX_BLOCK_SIZE_1024>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, stream));
++    } else if (dim <= METAX_BLOCK_SIZE_2048 && max_threads >= METAX_BLOCK_SIZE_2048) {
++        CHECK_STATUS(launchKernel<METAX_BLOCK_SIZE_2048>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, stream));
++    } else if (dim <= METAX_BLOCK_SIZE_4096 && max_threads >= METAX_BLOCK_SIZE_4096) {
++        CHECK_STATUS(launchKernel<METAX_BLOCK_SIZE_4096>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, stream));
++    } else if (max_threads >= METAX_BLOCK_SIZE_4096) {
++        CHECK_STATUS(launchKernel<METAX_BLOCK_SIZE_4096>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, stream));
++    } else if (max_threads >= METAX_BLOCK_SIZE_2048) {
++        CHECK_STATUS(launchKernel<METAX_BLOCK_SIZE_2048>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, stream));
++    } else if (max_threads >= METAX_BLOCK_SIZE_1024) {
++        CHECK_STATUS(launchKernel<METAX_BLOCK_SIZE_1024>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, stream));
++    } else if (max_threads >= METAX_BLOCK_SIZE_512) {
++        CHECK_STATUS(launchKernel<METAX_BLOCK_SIZE_512>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, stream));
++    } else if (max_threads >= METAX_BLOCK_SIZE_256) {
++        CHECK_STATUS(launchKernel<METAX_BLOCK_SIZE_256>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, stream));
++    } else if (max_threads >= METAX_BLOCK_SIZE_128) {
++        CHECK_STATUS(launchKernel<METAX_BLOCK_SIZE_128>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, stream));
++    } else if (max_threads >= METAX_BLOCK_SIZE_64) {
++        CHECK_STATUS(launchKernel<METAX_BLOCK_SIZE_64>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, stream));
+     } else {
+         return INFINI_STATUS_DEVICE_ARCHITECTURE_NOT_SUPPORTED;
+     }
+diff --git a/test/infiniop/rms_norm.py b/test/infiniop/rms_norm.py
+index 247a493c..539905e8 100644
+--- a/test/infiniop/rms_norm.py
++++ b/test/infiniop/rms_norm.py
+@@ -28,6 +28,10 @@ _TEST_CASES_ = [
+     ((2, 4), (2, 4), (4,), None, None),
+     ((2, 2, 4), (2, 2, 4), (4,), None, None),
+     ((2, 2, 4), (2, 2, 4), (4,), (12, 8, 1), (12, 8, 1)),
++    ((16, 128), (16, 128), (128,), None, None),
++    ((4, 4, 128), (4, 4, 128), (128,), None, None),
++    ((4096, 32, 128), (4096, 32, 128), (128,), None, None),
++    ((4096, 8, 128), (4096, 8, 128), (128,), None, None),
+     ((16, 2048), (16, 2048), (2048,), None, None),
+     ((16, 2048), (16, 2048), (2048,), (4096, 1), (4096, 1)),
+     ((15, 3584), (15, 3584), (3584,), None, None),

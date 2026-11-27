@@ -16,6 +16,9 @@
 // Posible maximum number of threads per block for METAX architectures
 // Used for picking correct kernel launch configuration
 #define METAX_BLOCK_SIZE_512 512
+#define METAX_BLOCK_SIZE_256 256
+#define METAX_BLOCK_SIZE_128 128
+#define METAX_BLOCK_SIZE_64 64
 #define METAX_BLOCK_SIZE_1024 1024
 #define METAX_BLOCK_SIZE_2048 2048
 #define METAX_BLOCK_SIZE_4096 4096

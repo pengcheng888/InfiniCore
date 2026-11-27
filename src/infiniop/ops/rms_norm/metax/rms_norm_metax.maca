@@ -116,9 +116,38 @@ infiniStatus_t Descriptor::calculate(
     size_t nhead = _info.shape.size() > 2 ? _info.shape[1] : 1;
     auto stream = reinterpret_cast<hcStream_t>(stream_);
 
-    // launch kernel with different block sizes
-    if (_opaque->internal->maxThreadsPerBlock() == METAX_BLOCK_SIZE_1024) {
+    const auto max_threads = _opaque->internal->maxThreadsPerBlock();
+
+    // Pick the smallest power-of-two block that covers one normalized row.
+    // This avoids wasting 1024 threads on small rows such as head_dim=128.
+    if (dim <= METAX_BLOCK_SIZE_64 && max_threads >= METAX_BLOCK_SIZE_64) {
+        CHECK_STATUS(launchKernel<METAX_BLOCK_SIZE_64>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, stream));
+    } else if (dim <= METAX_BLOCK_SIZE_128 && max_threads >= METAX_BLOCK_SIZE_128) {
+        CHECK_STATUS(launchKernel<METAX_BLOCK_SIZE_128>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, stream));
+    } else if (dim <= METAX_BLOCK_SIZE_256 && max_threads >= METAX_BLOCK_SIZE_256) {
+        CHECK_STATUS(launchKernel<METAX_BLOCK_SIZE_256>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, stream));
+    } else if (dim <= METAX_BLOCK_SIZE_512 && max_threads >= METAX_BLOCK_SIZE_512) {
+        CHECK_STATUS(launchKernel<METAX_BLOCK_SIZE_512>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, stream));
+    } else if (dim <= METAX_BLOCK_SIZE_1024 && max_threads >= METAX_BLOCK_SIZE_1024) {
         CHECK_STATUS(launchKernel<METAX_BLOCK_SIZE_1024>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, stream));
+    } else if (dim <= METAX_BLOCK_SIZE_2048 && max_threads >= METAX_BLOCK_SIZE_2048) {
+        CHECK_STATUS(launchKernel<METAX_BLOCK_SIZE_2048>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, stream));
+    } else if (dim <= METAX_BLOCK_SIZE_4096 && max_threads >= METAX_BLOCK_SIZE_4096) {
+        CHECK_STATUS(launchKernel<METAX_BLOCK_SIZE_4096>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, stream));
+    } else if (max_threads >= METAX_BLOCK_SIZE_4096) {
+        CHECK_STATUS(launchKernel<METAX_BLOCK_SIZE_4096>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, stream));
+    } else if (max_threads >= METAX_BLOCK_SIZE_2048) {
+        CHECK_STATUS(launchKernel<METAX_BLOCK_SIZE_2048>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, stream));
+    } else if (max_threads >= METAX_BLOCK_SIZE_1024) {
+        CHECK_STATUS(launchKernel<METAX_BLOCK_SIZE_1024>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, stream));
+    } else if (max_threads >= METAX_BLOCK_SIZE_512) {
+        CHECK_STATUS(launchKernel<METAX_BLOCK_SIZE_512>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, stream));
+    } else if (max_threads >= METAX_BLOCK_SIZE_256) {
+        CHECK_STATUS(launchKernel<METAX_BLOCK_SIZE_256>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, stream));
+    } else if (max_threads >= METAX_BLOCK_SIZE_128) {
+        CHECK_STATUS(launchKernel<METAX_BLOCK_SIZE_128>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, stream));
+    } else if (max_threads >= METAX_BLOCK_SIZE_64) {
+        CHECK_STATUS(launchKernel<METAX_BLOCK_SIZE_64>(batch_size, nhead, dim, y, _info.atype, stride_y_batch, stride_y_nhead, x, stride_x_batch, stride_x_nhead, w, _info.wtype, _info.epsilon, stream));
     } else {
         return INFINI_STATUS_DEVICE_ARCHITECTURE_NOT_SUPPORTED;
     }
